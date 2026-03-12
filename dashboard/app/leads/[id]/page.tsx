@@ -12,11 +12,13 @@ import {
   getDrafts,
   getLeadById,
   getOutreachLogs,
+  getPipelineRuns,
+  getTaskStatus,
   reviewDraft,
   runFullPipeline,
   updateLeadStatus,
 } from "@/lib/api/client";
-import type { Lead, LeadSignal } from "@/types";
+import type { Lead, LeadSignal, PipelineRunSummary, TaskStatusRecord } from "@/types";
 import {
   ArrowLeft, Globe, Instagram, Mail, Phone, MapPin, Building2,
   RefreshCw, FileText, CheckCircle, XCircle, Sparkles, Clock,
@@ -73,6 +75,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [lead, setLead] = useState<Lead | null>(MOCK_LEADS.find((item) => item.id === id) ?? null);
   const [drafts, setDrafts] = useState(MOCK_DRAFTS.filter((draft) => draft.lead_id === id));
   const [logs, setLogs] = useState(MOCK_LOGS.filter((log) => log.lead_id === id));
+  const [pipelineRuns, setPipelineRuns] = useState<PipelineRunSummary[]>([]);
+  const [latestTask, setLatestTask] = useState<TaskStatusRecord | null>(null);
   const [isMissing, setIsMissing] = useState(false);
   const [isRunningPipeline, setIsRunningPipeline] = useState(false);
   const [isGeneratingDraft, setIsGeneratingDraft] = useState(false);
@@ -84,10 +88,11 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
     async function loadLeadContext() {
       try {
-        const [nextLead, nextDrafts, nextLogs] = await Promise.all([
+        const [nextLead, nextDrafts, nextLogs, nextPipelineRuns] = await Promise.all([
           getLeadById(id),
           getDrafts({ lead_id: id }),
           getOutreachLogs({ lead_id: id, limit: 20 }),
+          getPipelineRuns({ lead_id: id, limit: 5 }),
         ]);
 
         if (!active) {
@@ -97,6 +102,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         setLead(nextLead);
         setDrafts(nextDrafts);
         setLogs(nextLogs);
+        setPipelineRuns(nextPipelineRuns);
+        setLatestTask(null);
         setIsMissing(false);
       } catch {
         if (!active) {
@@ -105,6 +112,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         setLead(null);
         setDrafts([]);
         setLogs([]);
+        setPipelineRuns([]);
+        setLatestTask(null);
         setIsMissing(true);
       }
     }
@@ -117,14 +126,16 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   }, [id]);
 
   async function refreshLeadContext() {
-    const [nextLead, nextDrafts, nextLogs] = await Promise.all([
+    const [nextLead, nextDrafts, nextLogs, nextPipelineRuns] = await Promise.all([
       getLeadById(id),
       getDrafts({ lead_id: id }),
       getOutreachLogs({ lead_id: id, limit: 20 }),
+      getPipelineRuns({ lead_id: id, limit: 5 }),
     ]);
     setLead(nextLead);
     setDrafts(nextDrafts);
     setLogs(nextLogs);
+    setPipelineRuns(nextPipelineRuns);
     setIsMissing(false);
   }
 
@@ -134,7 +145,10 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     }
     setIsRunningPipeline(true);
     try {
-      await runFullPipeline(lead.id);
+      const task = await runFullPipeline(lead.id);
+      const taskStatus = await getTaskStatus(task.task_id);
+      setLatestTask(taskStatus);
+      await refreshLeadContext();
     } finally {
       setIsRunningPipeline(false);
     }
@@ -364,6 +378,51 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               </div>
             ) : (
               <p className="text-sm text-slate-400 text-center py-6">No hay borradores generados</p>
+            )}
+          </div>
+
+          {/* Pipeline Runs */}
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <h3 className="text-sm font-semibold text-slate-900 font-heading">Pipeline Async</h3>
+              {latestTask?.task_id && (
+                <span className="text-xs text-slate-400 font-data">task {latestTask.task_id.slice(0, 8)}</span>
+              )}
+            </div>
+            {latestTask && (
+              <div className="mb-4 rounded-xl border border-violet-100 bg-violet-50/40 p-3">
+                <p className="text-xs font-medium text-violet-700">Última task</p>
+                <p className="mt-1 text-sm text-slate-700">
+                  {latestTask.status} {latestTask.current_step ? `· ${latestTask.current_step}` : ""}
+                </p>
+                {latestTask.pipeline_run_id && (
+                  <p className="mt-1 text-xs text-slate-500 font-data">run {latestTask.pipeline_run_id.slice(0, 8)}</p>
+                )}
+              </div>
+            )}
+            {pipelineRuns.length > 0 ? (
+              <div className="space-y-3">
+                {pipelineRuns.map((run) => (
+                  <div key={run.id} className="rounded-xl border border-slate-100 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">
+                          {run.status} {run.current_step ? `· ${run.current_step}` : ""}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500 font-data">
+                          run {run.id.slice(0, 8)} · {formatRelativeTime(run.updated_at)}
+                        </p>
+                      </div>
+                      {run.root_task_id && (
+                        <span className="text-xs text-slate-400 font-data">{run.root_task_id.slice(0, 8)}</span>
+                      )}
+                    </div>
+                    {run.error && <p className="mt-2 text-xs text-red-600">{run.error}</p>}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400 text-center py-6">Sin ejecuciones async registradas</p>
             )}
           </div>
 

@@ -9,7 +9,9 @@ import type {
   OutreachLog,
   SuppressionEntry,
   PaginatedResponse,
+  PipelineRunSummary,
   TaskResponse,
+  TaskStatusRecord,
   DashboardStats,
   PipelineStage,
   TimeSeriesPoint,
@@ -149,7 +151,14 @@ export async function runAnalysis(leadId: string): Promise<TaskResponse> {
 export async function runFullPipeline(leadId: string): Promise<TaskResponse> {
   return withMockFallback(
     () => apiFetch(`/scoring/${leadId}/pipeline`, { method: "POST" }),
-    () => ({ task_id: "mock-task-004", status: "pipeline_queued" })
+    () => ({
+      task_id: "mock-task-004",
+      status: "queued",
+      queue: "default",
+      lead_id: leadId,
+      pipeline_run_id: "mock-pipeline-001",
+      current_step: "pipeline_dispatch",
+    })
   );
 }
 
@@ -249,6 +258,36 @@ export async function getOutreachLogs(params?: {
       }
       return logs;
     }
+  );
+}
+
+export async function getTaskStatus(taskId: string): Promise<TaskStatusRecord> {
+  return withMockFallback(
+    () => apiFetch(`/tasks/${taskId}/status`),
+    () => ({
+      task_id: taskId,
+      status: "queued",
+      queue: "default",
+      current_step: "pipeline_dispatch",
+    })
+  );
+}
+
+export async function getPipelineRuns(params?: {
+  lead_id?: string;
+  status?: string;
+  limit?: number;
+}): Promise<PipelineRunSummary[]> {
+  return withMockFallback(
+    async () => {
+      const query = new URLSearchParams();
+      if (params?.lead_id) query.set("lead_id", params.lead_id);
+      if (params?.status) query.set("status", params.status);
+      if (params?.limit) query.set("limit", String(params.limit));
+      const suffix = query.size ? `?${query.toString()}` : "";
+      return apiFetch(`/pipelines/runs${suffix}`);
+    },
+    () => []
   );
 }
 

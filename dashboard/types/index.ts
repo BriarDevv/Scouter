@@ -135,6 +135,35 @@ export interface PaginatedResponse<T> {
 export interface TaskResponse {
   task_id: string;
   status: string;
+  queue?: string | null;
+  lead_id?: string | null;
+  pipeline_run_id?: string | null;
+  current_step?: string | null;
+}
+
+export interface TaskStatusRecord extends TaskResponse {
+  correlation_id?: string | null;
+  result?: Record<string, unknown> | null;
+  error?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+}
+
+export interface PipelineRunSummary {
+  id: string;
+  lead_id: string;
+  correlation_id: string;
+  root_task_id: string | null;
+  status: string;
+  current_step: string | null;
+  result: Record<string, unknown> | null;
+  error: string | null;
+  created_at: string;
+  updated_at: string;
+  started_at: string | null;
+  finished_at: string | null;
 }
 
 // ─── Dashboard / Performance ───────────────────────────
