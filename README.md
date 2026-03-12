@@ -13,13 +13,13 @@ app/
 ├── schemas/       # Pydantic request/response schemas
 ├── services/      # Business logic layer
 ├── workers/       # Celery tasks
-├── llm/           # Ollama/Qwen 14B integration
+├── llm/           # Ollama/Qwen integration
 ├── scoring/       # Rule-based scoring engine
 ├── outreach/      # Email draft generation
 └── crawlers/      # Lead discovery crawlers
 ```
 
-**Stack:** Python 3.12, FastAPI, SQLAlchemy 2.x, PostgreSQL, Redis, Celery, Ollama (Qwen 14B), httpx, BeautifulSoup4, structlog.
+**Stack:** Python 3.12, FastAPI, SQLAlchemy 2.x, PostgreSQL, Redis, Celery, Ollama (default `qwen3.5:9b`), httpx, BeautifulSoup4, structlog.
 
 ## Prerequisites
 
@@ -64,11 +64,17 @@ docker compose up -d postgres redis
 alembic upgrade head
 
 # 6. Pull LLM model
-ollama pull qwen2.5:14b
+ollama pull qwen3.5:9b
 
 # 7. Seed sample data (optional)
 python scripts/seed.py
 ```
+
+## LLM Defaults
+
+- Active default model: `qwen3.5:9b` via `OLLAMA_MODEL`
+- Prepared catalog for future switching: `qwen3.5:4b`, `qwen3.5:9b`, `qwen3.5:27b` via `OLLAMA_SUPPORTED_MODELS`
+- The app still uses a single active model today; role-specific model routing is intentionally deferred
 
 ## Running
 

@@ -1,5 +1,6 @@
 # ClawScout v1 — Bootstrap (Windows PowerShell)
 $ErrorActionPreference = "Stop"
+$defaultOllamaModel = "qwen3.5:9b"
 
 Write-Host "=== ClawScout v1 — Bootstrap (Windows) ===" -ForegroundColor Cyan
 
@@ -54,10 +55,10 @@ alembic upgrade head
 # Check for Ollama
 $ollamaPath = Get-Command ollama -ErrorAction SilentlyContinue
 if ($ollamaPath) {
-    Write-Host "Pulling Qwen 14B model via Ollama..."
-    ollama pull qwen2.5:14b
+    Write-Host "Pulling default Ollama model via Ollama ($defaultOllamaModel)..."
+    ollama pull $defaultOllamaModel
 } else {
-    Write-Host "NOTE: Ollama not found. Install from https://ollama.ai and run: ollama pull qwen2.5:14b" -ForegroundColor Yellow
+    Write-Host "NOTE: Ollama not found. Install from https://ollama.ai and run: ollama pull $defaultOllamaModel" -ForegroundColor Yellow
 }
 
 Write-Host ""

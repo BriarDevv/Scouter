@@ -1,6 +1,13 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+DEFAULT_OLLAMA_SUPPORTED_MODELS = (
+    "qwen3.5:4b",
+    "qwen3.5:9b",
+    "qwen3.5:27b",
+)
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -23,7 +30,10 @@ class Settings(BaseSettings):
 
     # Ollama / LLM
     OLLAMA_BASE_URL: str = "http://localhost:11434"
+    # Current default runtime model. Future role-based routing can override this.
     OLLAMA_MODEL: str = "qwen3.5:9b"
+    # Reserved for future model selection by role, kept simple as CSV for now.
+    OLLAMA_SUPPORTED_MODELS: str = ",".join(DEFAULT_OLLAMA_SUPPORTED_MODELS)
     OLLAMA_TIMEOUT: int = 120
     OLLAMA_MAX_RETRIES: int = 3
 
@@ -38,6 +48,14 @@ class Settings(BaseSettings):
 
     # Rate limiting (API)
     API_RATE_LIMIT: str = "60/minute"
+
+    @property
+    def ollama_supported_models(self) -> tuple[str, ...]:
+        return tuple(
+            model.strip()
+            for model in self.OLLAMA_SUPPORTED_MODELS.split(",")
+            if model.strip()
+        )
 
 
 settings = Settings()

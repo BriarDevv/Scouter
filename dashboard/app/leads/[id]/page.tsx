@@ -185,7 +185,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             <div className="rounded-2xl border border-slate-100 bg-white p-8 text-center shadow-sm">
               <Sparkles className="mx-auto h-8 w-8 text-slate-300" />
               <p className="mt-3 text-sm font-medium text-slate-600">Análisis IA no disponible</p>
-              <p className="mt-1 text-xs text-slate-400">Ejecutá el pipeline para generar el análisis con Qwen 14B</p>
+              <p className="mt-1 text-xs text-slate-400">Ejecuta el pipeline para generar el analisis con el modelo configurado en Ollama</p>
               <Button variant="outline" size="sm" className="mt-4 rounded-xl gap-1.5">
                 <RefreshCw className="h-3.5 w-3.5" /> Ejecutar Análisis
               </Button>

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+DEFAULT_OLLAMA_MODEL="qwen3.5:9b"
 
 echo "=== ClawScout v1 — Bootstrap (Linux/WSL) ==="
 
@@ -47,10 +48,10 @@ alembic upgrade head
 
 # Pull Ollama model (if ollama is installed)
 if command -v ollama &> /dev/null; then
-    echo "Pulling Qwen 14B model via Ollama..."
-    ollama pull qwen2.5:14b
+    echo "Pulling default Ollama model via Ollama (${DEFAULT_OLLAMA_MODEL})..."
+    ollama pull "${DEFAULT_OLLAMA_MODEL}"
 else
-    echo "NOTE: Ollama not found. Install it from https://ollama.ai and run: ollama pull qwen2.5:14b"
+    echo "NOTE: Ollama not found. Install it from https://ollama.ai and run: ollama pull ${DEFAULT_OLLAMA_MODEL}"
 fi
 
 echo ""

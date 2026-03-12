@@ -1,4 +1,4 @@
-"""Ollama LLM client for Qwen 14B integration."""
+"""Ollama LLM client using the configured default model."""
 
 import json
 import re
@@ -56,7 +56,7 @@ def _extract_json(text: str) -> dict:
     reraise=True,
 )
 def _call_ollama(prompt: str) -> str:
-    """Call Ollama API with the configured model."""
+    """Call Ollama API with the configured default model."""
     url = f"{settings.OLLAMA_BASE_URL}/api/generate"
     payload = {
         "model": settings.OLLAMA_MODEL,
