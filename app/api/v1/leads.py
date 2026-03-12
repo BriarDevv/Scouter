@@ -10,8 +10,9 @@ from app.schemas.lead import (
     LeadDetailResponse,
     LeadListResponse,
     LeadResponse,
+    LeadStatusUpdate,
 )
-from app.services.lead_service import create_lead, get_lead, list_leads
+from app.services.lead_service import create_lead, get_lead, list_leads, update_lead_status
 
 router = APIRouter(prefix="/leads", tags=["leads"])
 
@@ -46,3 +47,12 @@ def get_by_id(lead_id: uuid.UUID, db: Session = Depends(get_session)):
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
     return LeadDetailResponse.model_validate(lead)
+
+
+@router.patch("/{lead_id}/status", response_model=LeadResponse)
+def patch_status(lead_id: uuid.UUID, data: LeadStatusUpdate, db: Session = Depends(get_session)):
+    """Update the current pipeline status for a lead."""
+    lead = update_lead_status(db, lead_id, data.status)
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    return lead

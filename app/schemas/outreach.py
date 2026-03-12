@@ -24,6 +24,13 @@ class OutreachDraftReview(BaseModel):
     feedback: str | None = Field(None, max_length=2000)
 
 
+class OutreachDraftUpdate(BaseModel):
+    subject: str | None = Field(None, max_length=500)
+    body: str | None = None
+    status: DraftStatus | None = None
+    feedback: str | None = Field(None, max_length=2000)
+
+
 class OutreachLogResponse(BaseModel):
     model_config = {"from_attributes": True}
 

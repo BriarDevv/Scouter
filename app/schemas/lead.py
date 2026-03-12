@@ -31,6 +31,10 @@ class LeadUpdate(BaseModel):
     phone: str | None = Field(None, max_length=50)
 
 
+class LeadStatusUpdate(BaseModel):
+    status: LeadStatus
+
+
 class LeadResponse(BaseModel):
     model_config = {"from_attributes": True}
 

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
 from app.models.lead import Lead, LeadStatus
+from app.models.outreach import LogAction, OutreachLog
 from app.models.suppression import SuppressionEntry
 from app.schemas.lead import LeadCreate, LeadUpdate
 
@@ -106,4 +107,44 @@ def update_lead(db: Session, lead_id: uuid.UUID, data: LeadUpdate) -> Lead | Non
         setattr(lead, field, value)
     db.commit()
     db.refresh(lead)
+    return lead
+
+
+def update_lead_status(db: Session, lead_id: uuid.UUID, status: LeadStatus) -> Lead | None:
+    lead = db.get(Lead, lead_id)
+    if not lead:
+        return None
+
+    previous_status = lead.status
+    lead.status = status
+
+    log_action = {
+        LeadStatus.APPROVED: LogAction.APPROVED,
+        LeadStatus.CONTACTED: LogAction.SENT,
+        LeadStatus.OPENED: LogAction.OPENED,
+        LeadStatus.REPLIED: LogAction.REPLIED,
+        LeadStatus.MEETING: LogAction.MEETING,
+        LeadStatus.WON: LogAction.WON,
+        LeadStatus.LOST: LogAction.LOST,
+    }.get(status)
+
+    if log_action and previous_status != status:
+        db.add(
+            OutreachLog(
+                lead_id=lead.id,
+                draft_id=None,
+                action=log_action,
+                actor="user",
+                detail=f"Lead status updated from {previous_status.value} to {status.value}",
+            )
+        )
+
+    db.commit()
+    db.refresh(lead)
+    logger.info(
+        "lead_status_updated",
+        lead_id=str(lead.id),
+        previous_status=previous_status.value,
+        status=status.value,
+    )
     return lead
