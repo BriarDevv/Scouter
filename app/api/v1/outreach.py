@@ -11,6 +11,7 @@ from app.schemas.outreach import (
     OutreachDraftUpdate,
     OutreachLogResponse,
 )
+from app.schemas.task_tracking import TaskEnqueueResponse
 from app.services.outreach_service import (
     generate_outreach_draft,
     list_drafts,
@@ -18,6 +19,7 @@ from app.services.outreach_service import (
     review_draft,
     update_draft,
 )
+from app.services.task_tracking_service import queue_task_run
 from app.workers.tasks import task_generate_draft
 
 router = APIRouter(prefix="/outreach", tags=["outreach"])
@@ -32,11 +34,25 @@ def generate_draft(lead_id: uuid.UUID, db: Session = Depends(get_session)):
     return draft
 
 
-@router.post("/{lead_id}/draft/async")
-def generate_draft_async(lead_id: uuid.UUID):
+@router.post("/{lead_id}/draft/async", response_model=TaskEnqueueResponse)
+def generate_draft_async(lead_id: uuid.UUID, db: Session = Depends(get_session)):
     """Queue outreach draft generation as an async task."""
     task = task_generate_draft.delay(str(lead_id))
-    return {"task_id": task.id, "status": "queued"}
+    queue_task_run(
+        db,
+        task_id=task.id,
+        task_name="task_generate_draft",
+        queue="llm",
+        lead_id=lead_id,
+        current_step="draft_generation",
+    )
+    return {
+        "task_id": task.id,
+        "status": "queued",
+        "queue": "llm",
+        "lead_id": lead_id,
+        "current_step": "draft_generation",
+    }
 
 
 @router.get("/drafts", response_model=list[OutreachDraftResponse])

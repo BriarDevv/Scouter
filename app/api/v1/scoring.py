@@ -5,8 +5,10 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_session
 from app.schemas.lead import LeadResponse
+from app.schemas.task_tracking import TaskEnqueueResponse
+from app.services.task_tracking_service import attach_pipeline_root_task, create_pipeline_run, queue_task_run
 from app.services.scoring_service import score_lead
-from app.workers.tasks import task_analyze_lead, task_full_pipeline, task_score_lead
+from app.workers.tasks import task_analyze_lead, task_full_pipeline
 
 router = APIRouter(prefix="/scoring", tags=["scoring"])
 
@@ -20,15 +22,52 @@ def score(lead_id: uuid.UUID, db: Session = Depends(get_session)):
     return lead
 
 
-@router.post("/{lead_id}/analyze")
-def analyze_with_llm(lead_id: uuid.UUID):
+@router.post("/{lead_id}/analyze", response_model=TaskEnqueueResponse)
+def analyze_with_llm(lead_id: uuid.UUID, db: Session = Depends(get_session)):
     """Queue LLM analysis (summary + quality evaluation) as an async task."""
     task = task_analyze_lead.delay(str(lead_id))
-    return {"task_id": task.id, "status": "queued"}
+    queue_task_run(
+        db,
+        task_id=task.id,
+        task_name="task_analyze_lead",
+        queue="llm",
+        lead_id=lead_id,
+        current_step="analysis",
+    )
+    return {
+        "task_id": task.id,
+        "status": "queued",
+        "queue": "llm",
+        "lead_id": lead_id,
+        "current_step": "analysis",
+    }
 
 
-@router.post("/{lead_id}/pipeline")
-def run_full_pipeline(lead_id: uuid.UUID):
+@router.post("/{lead_id}/pipeline", response_model=TaskEnqueueResponse)
+def run_full_pipeline(lead_id: uuid.UUID, db: Session = Depends(get_session)):
     """Run the full pipeline: enrich -> score -> LLM analyze -> generate draft."""
-    task = task_full_pipeline.delay(str(lead_id))
-    return {"task_id": task.id, "status": "pipeline_queued"}
+    pipeline_run = create_pipeline_run(db, lead_id, current_step="pipeline_dispatch")
+    task = task_full_pipeline.delay(
+        str(lead_id),
+        pipeline_run_id=str(pipeline_run.id),
+        correlation_id=pipeline_run.correlation_id,
+    )
+    attach_pipeline_root_task(db, pipeline_run.id, task.id)
+    queue_task_run(
+        db,
+        task_id=task.id,
+        task_name="task_full_pipeline",
+        queue="default",
+        lead_id=lead_id,
+        pipeline_run_id=pipeline_run.id,
+        correlation_id=pipeline_run.correlation_id,
+        current_step="pipeline_dispatch",
+    )
+    return {
+        "task_id": task.id,
+        "status": "queued",
+        "queue": "default",
+        "lead_id": lead_id,
+        "pipeline_run_id": pipeline_run.id,
+        "current_step": "pipeline_dispatch",
+    }
