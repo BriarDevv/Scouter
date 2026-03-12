@@ -1,13 +1,12 @@
 /**
- * API client layer — prepared for real backend connection.
- * Currently returns mock data. Replace implementations with fetch calls.
- *
- * TODO (backend): endpoints marked with [MOCK] need real backend support.
+ * API client layer — prefers the real backend and falls back to local mocks
+ * so the dashboard stays usable while the integration is being completed.
  */
 
 import type {
   Lead,
   OutreachDraft,
+  OutreachLog,
   SuppressionEntry,
   PaginatedResponse,
   TaskResponse,
@@ -31,10 +30,10 @@ import {
   MOCK_INDUSTRY_BREAKDOWN,
   MOCK_CITY_BREAKDOWN,
   MOCK_SOURCE_PERFORMANCE,
+  MOCK_LOGS,
 } from "@/data/mock";
 
-// Set to true to use real API instead of mock data
-const USE_REAL_API = false;
+const USE_REAL_API = process.env.NEXT_PUBLIC_USE_REAL_API !== "false";
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, {
@@ -44,7 +43,22 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   if (!res.ok) {
     throw new Error(`API error: ${res.status} ${res.statusText}`);
   }
+  if (res.status === 204) {
+    return undefined as T;
+  }
   return res.json();
+}
+
+async function withMockFallback<T>(loadReal: () => Promise<T>, loadMock: () => T): Promise<T> {
+  if (!USE_REAL_API) {
+    return loadMock();
+  }
+  try {
+    return await loadReal();
+  } catch (error) {
+    console.warn("Falling back to mock data for dashboard API call", error);
+    return loadMock();
+  }
 }
 
 // ─── Leads ─────────────────────────────────────────────
@@ -55,92 +69,122 @@ export async function getLeads(params?: {
   status?: LeadStatus;
   min_score?: number;
 }): Promise<PaginatedResponse<Lead>> {
-  if (USE_REAL_API) {
-    const query = new URLSearchParams();
-    if (params?.page) query.set("page", String(params.page));
-    if (params?.page_size) query.set("page_size", String(params.page_size));
-    if (params?.status) query.set("status", params.status);
-    if (params?.min_score) query.set("min_score", String(params.min_score));
-    return apiFetch(`/leads?${query}`);
-  }
-  return {
-    items: MOCK_LEADS,
-    total: MOCK_LEADS.length,
-    page: 1,
-    page_size: 50,
-  };
+  return withMockFallback(
+    async () => {
+      const query = new URLSearchParams();
+      if (params?.page) query.set("page", String(params.page));
+      if (params?.page_size) query.set("page_size", String(params.page_size));
+      if (params?.status) query.set("status", params.status);
+      if (params?.min_score !== undefined) query.set("min_score", String(params.min_score));
+      const suffix = query.size ? `?${query.toString()}` : "";
+      return apiFetch(`/leads${suffix}`);
+    },
+    () => ({
+      items: MOCK_LEADS,
+      total: MOCK_LEADS.length,
+      page: params?.page ?? 1,
+      page_size: params?.page_size ?? 50,
+    })
+  );
 }
 
 export async function getLeadById(id: string): Promise<Lead> {
-  if (USE_REAL_API) {
-    return apiFetch(`/leads/${id}`);
-  }
-  const lead = MOCK_LEADS.find((l) => l.id === id);
-  if (!lead) throw new Error("Lead not found");
-  return lead;
+  return withMockFallback(
+    () => apiFetch(`/leads/${id}`),
+    () => {
+      const lead = MOCK_LEADS.find((item) => item.id === id);
+      if (!lead) {
+        throw new Error("Lead not found");
+      }
+      return lead;
+    }
+  );
 }
 
 export async function createLead(data: Partial<Lead>): Promise<Lead> {
-  if (USE_REAL_API) {
-    return apiFetch("/leads", { method: "POST", body: JSON.stringify(data) });
-  }
-  return { ...MOCK_LEADS[0], ...data, id: crypto.randomUUID() };
+  return withMockFallback(
+    () => apiFetch("/leads", { method: "POST", body: JSON.stringify(data) }),
+    () => ({ ...MOCK_LEADS[0], ...data, id: crypto.randomUUID() })
+  );
 }
 
 export async function updateLeadStatus(id: string, status: LeadStatus): Promise<Lead> {
-  // [MOCK] Backend needs a PATCH /leads/{id}/status endpoint
-  const lead = MOCK_LEADS.find((l) => l.id === id);
-  if (!lead) throw new Error("Lead not found");
-  return { ...lead, status };
+  return withMockFallback(
+    () => apiFetch(`/leads/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
+    () => {
+      const lead = MOCK_LEADS.find((item) => item.id === id);
+      if (!lead) {
+        throw new Error("Lead not found");
+      }
+      return { ...lead, status };
+    }
+  );
 }
 
 // ─── Enrichment ────────────────────────────────────────
 
 export async function runEnrichment(leadId: string): Promise<TaskResponse> {
-  if (USE_REAL_API) {
-    return apiFetch(`/enrichment/${leadId}/async`, { method: "POST" });
-  }
-  return { task_id: "mock-task-001", status: "queued" };
+  return withMockFallback(
+    () => apiFetch(`/enrichment/${leadId}/async`, { method: "POST" }),
+    () => ({ task_id: "mock-task-001", status: "queued" })
+  );
 }
 
 // ─── Scoring ───────────────────────────────────────────
 
 export async function runScoring(leadId: string): Promise<TaskResponse> {
-  if (USE_REAL_API) {
-    return apiFetch(`/scoring/${leadId}`, { method: "POST" });
-  }
-  return { task_id: "mock-task-002", status: "queued" };
+  return withMockFallback(
+    () => apiFetch(`/scoring/${leadId}`, { method: "POST" }),
+    () => ({ task_id: "mock-task-002", status: "queued" })
+  );
 }
 
 export async function runAnalysis(leadId: string): Promise<TaskResponse> {
-  if (USE_REAL_API) {
-    return apiFetch(`/scoring/${leadId}/analyze`, { method: "POST" });
-  }
-  return { task_id: "mock-task-003", status: "queued" };
+  return withMockFallback(
+    () => apiFetch(`/scoring/${leadId}/analyze`, { method: "POST" }),
+    () => ({ task_id: "mock-task-003", status: "queued" })
+  );
 }
 
 export async function runFullPipeline(leadId: string): Promise<TaskResponse> {
-  if (USE_REAL_API) {
-    return apiFetch(`/scoring/${leadId}/pipeline`, { method: "POST" });
-  }
-  return { task_id: "mock-task-004", status: "pipeline_queued" };
+  return withMockFallback(
+    () => apiFetch(`/scoring/${leadId}/pipeline`, { method: "POST" }),
+    () => ({ task_id: "mock-task-004", status: "pipeline_queued" })
+  );
 }
 
 // ─── Outreach ──────────────────────────────────────────
 
 export async function generateDraft(leadId: string): Promise<OutreachDraft> {
-  if (USE_REAL_API) {
-    return apiFetch(`/outreach/${leadId}/draft`, { method: "POST" });
-  }
-  return MOCK_DRAFTS[0];
+  return withMockFallback(
+    () => apiFetch(`/outreach/${leadId}/draft`, { method: "POST" }),
+    () => ({ ...MOCK_DRAFTS[0], id: crypto.randomUUID(), lead_id: leadId })
+  );
 }
 
-export async function getDrafts(status?: DraftStatus): Promise<OutreachDraft[]> {
-  if (USE_REAL_API) {
-    const query = status ? `?status=${status}` : "";
-    return apiFetch(`/outreach/drafts${query}`);
-  }
-  return status ? MOCK_DRAFTS.filter((d) => d.status === status) : MOCK_DRAFTS;
+export async function getDrafts(params?: {
+  status?: DraftStatus;
+  lead_id?: string;
+}): Promise<OutreachDraft[]> {
+  return withMockFallback(
+    async () => {
+      const query = new URLSearchParams();
+      if (params?.status) query.set("status", params.status);
+      if (params?.lead_id) query.set("lead_id", params.lead_id);
+      const suffix = query.size ? `?${query.toString()}` : "";
+      return apiFetch(`/outreach/drafts${suffix}`);
+    },
+    () => {
+      let drafts = [...MOCK_DRAFTS];
+      if (params?.status) {
+        drafts = drafts.filter((draft) => draft.status === params.status);
+      }
+      if (params?.lead_id) {
+        drafts = drafts.filter((draft) => draft.lead_id === params.lead_id);
+      }
+      return drafts;
+    }
+  );
 }
 
 export async function reviewDraft(
@@ -148,24 +192,73 @@ export async function reviewDraft(
   approved: boolean,
   feedback?: string
 ): Promise<OutreachDraft> {
-  if (USE_REAL_API) {
-    return apiFetch(`/outreach/drafts/${draftId}/review`, {
-      method: "POST",
-      body: JSON.stringify({ approved, feedback }),
-    });
-  }
-  const draft = MOCK_DRAFTS.find((d) => d.id === draftId);
-  if (!draft) throw new Error("Draft not found");
-  return { ...draft, status: approved ? "approved" : "rejected" };
+  return withMockFallback(
+    () =>
+      apiFetch(`/outreach/drafts/${draftId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          status: approved ? "approved" : "rejected",
+          feedback,
+        }),
+      }),
+    () => {
+      const draft = MOCK_DRAFTS.find((item) => item.id === draftId);
+      if (!draft) {
+        throw new Error("Draft not found");
+      }
+      return { ...draft, status: approved ? "approved" : "rejected" };
+    }
+  );
+}
+
+export async function updateDraft(
+  draftId: string,
+  data: Partial<Pick<OutreachDraft, "subject" | "body" | "status">> & { feedback?: string }
+): Promise<OutreachDraft> {
+  return withMockFallback(
+    () => apiFetch(`/outreach/drafts/${draftId}`, { method: "PATCH", body: JSON.stringify(data) }),
+    () => {
+      const draft = MOCK_DRAFTS.find((item) => item.id === draftId);
+      if (!draft) {
+        throw new Error("Draft not found");
+      }
+      return { ...draft, ...data } as OutreachDraft;
+    }
+  );
+}
+
+export async function getOutreachLogs(params?: {
+  lead_id?: string;
+  limit?: number;
+}): Promise<OutreachLog[]> {
+  return withMockFallback(
+    async () => {
+      const query = new URLSearchParams();
+      if (params?.lead_id) query.set("lead_id", params.lead_id);
+      if (params?.limit) query.set("limit", String(params.limit));
+      const suffix = query.size ? `?${query.toString()}` : "";
+      return apiFetch(`/outreach/logs${suffix}`);
+    },
+    () => {
+      let logs = [...MOCK_LOGS];
+      if (params?.lead_id) {
+        logs = logs.filter((log) => log.lead_id === params.lead_id);
+      }
+      if (params?.limit) {
+        logs = logs.slice(0, params.limit);
+      }
+      return logs;
+    }
+  );
 }
 
 // ─── Suppression ───────────────────────────────────────
 
 export async function getSuppressionList(): Promise<SuppressionEntry[]> {
-  if (USE_REAL_API) {
-    return apiFetch("/suppression");
-  }
-  return MOCK_SUPPRESSION;
+  return withMockFallback(
+    () => apiFetch("/suppression"),
+    () => MOCK_SUPPRESSION
+  );
 }
 
 export async function addToSuppression(data: {
@@ -174,43 +267,67 @@ export async function addToSuppression(data: {
   phone?: string;
   reason?: string;
 }): Promise<SuppressionEntry> {
-  if (USE_REAL_API) {
-    return apiFetch("/suppression", { method: "POST", body: JSON.stringify(data) });
-  }
-  return { id: crypto.randomUUID(), ...data, email: data.email ?? null, domain: data.domain ?? null, phone: data.phone ?? null, reason: data.reason ?? null, added_at: new Date().toISOString() };
+  return withMockFallback(
+    () => apiFetch("/suppression", { method: "POST", body: JSON.stringify(data) }),
+    () => ({
+      id: crypto.randomUUID(),
+      ...data,
+      email: data.email ?? null,
+      domain: data.domain ?? null,
+      phone: data.phone ?? null,
+      reason: data.reason ?? null,
+      added_at: new Date().toISOString(),
+    })
+  );
 }
 
 export async function removeFromSuppression(id: string): Promise<void> {
-  if (USE_REAL_API) {
-    await apiFetch(`/suppression/${id}`, { method: "DELETE" });
-    return;
-  }
+  await withMockFallback(
+    () => apiFetch<void>(`/suppression/${id}`, { method: "DELETE" }),
+    () => undefined
+  );
 }
 
 // ─── Dashboard / Performance ───────────────────────────
-// [MOCK] All performance endpoints need backend implementation
 
 export async function getDashboardStats(): Promise<DashboardStats> {
-  return MOCK_STATS;
+  return withMockFallback(
+    () => apiFetch("/dashboard/stats"),
+    () => MOCK_STATS
+  );
 }
 
 export async function getPipeline(): Promise<PipelineStage[]> {
-  return MOCK_PIPELINE;
+  return withMockFallback(
+    () => apiFetch("/dashboard/pipeline"),
+    () => MOCK_PIPELINE
+  );
 }
 
 export async function getTimeSeries(days?: number): Promise<TimeSeriesPoint[]> {
-  const data = MOCK_TIME_SERIES;
-  return days ? data.slice(-days) : data;
+  return withMockFallback(
+    () => apiFetch(`/dashboard/time-series${days ? `?days=${days}` : ""}`),
+    () => (days ? MOCK_TIME_SERIES.slice(-days) : MOCK_TIME_SERIES)
+  );
 }
 
 export async function getIndustryBreakdown(): Promise<IndustryBreakdown[]> {
-  return MOCK_INDUSTRY_BREAKDOWN;
+  return withMockFallback(
+    () => apiFetch("/performance/industry"),
+    () => MOCK_INDUSTRY_BREAKDOWN
+  );
 }
 
 export async function getCityBreakdown(): Promise<CityBreakdown[]> {
-  return MOCK_CITY_BREAKDOWN;
+  return withMockFallback(
+    () => apiFetch("/performance/city"),
+    () => MOCK_CITY_BREAKDOWN
+  );
 }
 
 export async function getSourcePerformance(): Promise<SourcePerformance[]> {
-  return MOCK_SOURCE_PERFORMANCE;
+  return withMockFallback(
+    () => apiFetch("/performance/source"),
+    () => MOCK_SOURCE_PERFORMANCE
+  );
 }

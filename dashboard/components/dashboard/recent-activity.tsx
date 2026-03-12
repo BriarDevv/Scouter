@@ -1,8 +1,7 @@
 "use client";
 
 import { formatRelativeTime } from "@/lib/formatters";
-import { STATUS_CONFIG } from "@/lib/constants";
-import type { OutreachLog } from "@/types";
+import type { Lead, OutreachLog } from "@/types";
 import { MOCK_LEADS } from "@/data/mock";
 import {
   FileText, Send, Eye, MessageSquare, CalendarCheck, Trophy, XCircle, CheckCircle,
@@ -22,7 +21,7 @@ const ACTION_ICONS: Record<string, { icon: typeof FileText; color: string; bg: s
   reviewed:  { icon: Eye,            color: "text-indigo-600",  bg: "bg-indigo-50" },
 };
 
-export function RecentActivity({ logs }: { logs: OutreachLog[] }) {
+export function RecentActivity({ logs, leads }: { logs: OutreachLog[]; leads?: Lead[] }) {
   return (
     <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
       <h3 className="text-sm font-semibold text-slate-900 font-heading">Actividad Reciente</h3>
@@ -32,7 +31,7 @@ export function RecentActivity({ logs }: { logs: OutreachLog[] }) {
         {logs.slice(0, 8).map((log) => {
           const actionConfig = ACTION_ICONS[log.action] || ACTION_ICONS.generated;
           const Icon = actionConfig.icon;
-          const lead = MOCK_LEADS.find((l) => l.id === log.lead_id);
+          const lead = leads?.find((item) => item.id === log.lead_id) ?? MOCK_LEADS.find((item) => item.id === log.lead_id);
 
           return (
             <div key={log.id} className="flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-slate-50">

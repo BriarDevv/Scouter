@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/table";
 import { formatDate } from "@/lib/formatters";
 import { MOCK_SUPPRESSION } from "@/data/mock";
+import { addToSuppression, getSuppressionList, removeFromSuppression } from "@/lib/api/client";
 import { ShieldOff, Plus, Search, Undo2 } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import {
@@ -18,6 +19,58 @@ import {
 export default function SuppressionPage() {
   const [search, setSearch] = useState("");
   const [items, setItems] = useState(MOCK_SUPPRESSION);
+  const [email, setEmail] = useState("");
+  const [domain, setDomain] = useState("");
+  const [reason, setReason] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSuppression() {
+      const entries = await getSuppressionList();
+      if (!active) {
+        return;
+      }
+      setItems(entries);
+    }
+
+    void loadSuppression();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function handleAdd() {
+    setIsSubmitting(true);
+    try {
+      const entry = await addToSuppression({
+        email: email || undefined,
+        domain: domain || undefined,
+        reason: reason || undefined,
+      });
+      setItems((current) => [entry, ...current]);
+      setEmail("");
+      setDomain("");
+      setReason("");
+      setIsDialogOpen(false);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleRemove(id: string) {
+    setRemovingId(id);
+    try {
+      await removeFromSuppression(id);
+      setItems((current) => current.filter((entry) => entry.id !== id));
+    } finally {
+      setRemovingId(null);
+    }
+  }
 
   const filtered = search
     ? items.filter(
@@ -34,7 +87,7 @@ export default function SuppressionPage() {
         title="Lista de Supresión"
         description="Emails, dominios y teléfonos que no deben ser contactados"
       >
-        <Dialog>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger render={<Button className="rounded-xl bg-violet-600 text-white hover:bg-violet-700" />}>
             <Plus className="mr-2 h-4 w-4" />
             Agregar
@@ -46,22 +99,41 @@ export default function SuppressionPage() {
             <div className="space-y-4 py-4">
               <div>
                 <label className="text-sm font-medium text-slate-700">Email</label>
-                <Input placeholder="email@ejemplo.com" className="mt-1 rounded-xl" />
+                <Input
+                  placeholder="email@ejemplo.com"
+                  className="mt-1 rounded-xl"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
               </div>
               <div>
                 <label className="text-sm font-medium text-slate-700">Dominio</label>
-                <Input placeholder="ejemplo.com" className="mt-1 rounded-xl" />
+                <Input
+                  placeholder="ejemplo.com"
+                  className="mt-1 rounded-xl"
+                  value={domain}
+                  onChange={(e) => setDomain(e.target.value)}
+                />
               </div>
               <div>
                 <label className="text-sm font-medium text-slate-700">Motivo</label>
-                <Input placeholder="Ej: pidió no ser contactado" className="mt-1 rounded-xl" />
+                <Input
+                  placeholder="Ej: pidió no ser contactado"
+                  className="mt-1 rounded-xl"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                />
               </div>
             </div>
             <DialogFooter>
               <DialogClose render={<Button variant="outline" className="rounded-xl" />}>
                 Cancelar
               </DialogClose>
-              <Button className="rounded-xl bg-violet-600 text-white hover:bg-violet-700">
+              <Button
+                className="rounded-xl bg-violet-600 text-white hover:bg-violet-700"
+                onClick={() => void handleAdd()}
+                disabled={isSubmitting || (!email && !domain)}
+              >
                 Agregar
               </Button>
             </DialogFooter>
@@ -108,6 +180,8 @@ export default function SuppressionPage() {
                       size="icon"
                       className="h-8 w-8 text-slate-400 hover:text-red-600"
                       title="Restaurar (remover de supresión)"
+                      onClick={() => void handleRemove(entry.id)}
+                      disabled={removingId === entry.id}
                     >
                       <Undo2 className="h-4 w-4" />
                     </Button>

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { DraftStatusBadge, StatusBadge } from "@/components/shared/status-badge";
 import { formatRelativeTime, formatDate, truncate } from "@/lib/formatters";
 import { MOCK_DRAFTS, MOCK_LOGS, MOCK_LEADS } from "@/data/mock";
+import { getDrafts, getLeads, getOutreachLogs, reviewDraft } from "@/lib/api/client";
 import type { DraftStatus, OutreachDraft, OutreachLog } from "@/types";
 import { DRAFT_STATUS_CONFIG } from "@/lib/constants";
 import {
@@ -33,10 +34,56 @@ const FILTER_OPTIONS: (DraftStatus | "all")[] = ["all", "pending_review", "appro
 export default function OutreachPage() {
   const [filter, setFilter] = useState<DraftStatus | "all">("all");
   const [selectedDraft, setSelectedDraft] = useState<OutreachDraft | null>(null);
+  const [drafts, setDrafts] = useState(MOCK_DRAFTS);
+  const [logs, setLogs] = useState(MOCK_LOGS);
+  const [leads, setLeads] = useState(MOCK_LEADS);
+  const [isReviewingDraftId, setIsReviewingDraftId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadOutreachData() {
+      const [nextDrafts, nextLogs, nextLeads] = await Promise.all([
+        getDrafts(),
+        getOutreachLogs({ limit: 50 }),
+        getLeads({ page: 1, page_size: 200 }),
+      ]);
+
+      if (!active) {
+        return;
+      }
+
+      setDrafts(nextDrafts);
+      setLogs(nextLogs);
+      setLeads(nextLeads.items);
+      setSelectedDraft((current) =>
+        current ? nextDrafts.find((draft) => draft.id === current.id) ?? null : nextDrafts[0] ?? null
+      );
+    }
+
+    void loadOutreachData();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const filteredDrafts = filter === "all"
-    ? MOCK_DRAFTS
-    : MOCK_DRAFTS.filter((d) => d.status === filter);
+    ? drafts
+    : drafts.filter((d) => d.status === filter);
+
+  async function handleReview(draftId: string, approved: boolean) {
+    setIsReviewingDraftId(draftId);
+    try {
+      const updated = await reviewDraft(draftId, approved);
+      setDrafts((current) =>
+        current.map((draft) => (draft.id === draftId ? { ...draft, ...updated } : draft))
+      );
+      setLogs(await getOutreachLogs({ limit: 50 }));
+    } finally {
+      setIsReviewingDraftId(null);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -69,7 +116,7 @@ export default function OutreachPage() {
           {/* Drafts */}
           <div className="space-y-3">
             {filteredDrafts.map((draft) => {
-              const lead = MOCK_LEADS.find((l) => l.id === draft.lead_id);
+              const lead = draft.lead ?? leads.find((item) => item.id === draft.lead_id);
               return (
                 <div
                   key={draft.id}
@@ -97,10 +144,21 @@ export default function OutreachPage() {
 
                   {draft.status === "pending_review" && (
                     <div className="mt-3 flex gap-2 border-t border-slate-50 pt-3">
-                      <Button size="sm" className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 gap-1.5 h-8">
+                      <Button
+                        size="sm"
+                        className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 gap-1.5 h-8"
+                        onClick={() => void handleReview(draft.id, true)}
+                        disabled={isReviewingDraftId === draft.id}
+                      >
                         <CheckCircle className="h-3.5 w-3.5" /> Aprobar
                       </Button>
-                      <Button variant="outline" size="sm" className="rounded-xl gap-1.5 h-8 text-red-600 border-red-200 hover:bg-red-50">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-xl gap-1.5 h-8 text-red-600 border-red-200 hover:bg-red-50"
+                        onClick={() => void handleReview(draft.id, false)}
+                        disabled={isReviewingDraftId === draft.id}
+                      >
                         <XCircle className="h-3.5 w-3.5" /> Rechazar
                       </Button>
                     </div>
@@ -124,10 +182,10 @@ export default function OutreachPage() {
 
           <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
             <div className="space-y-1">
-              {MOCK_LOGS.map((log) => {
+              {logs.map((log) => {
                 const config = ACTION_CONFIG[log.action] || ACTION_CONFIG.generated;
                 const Icon = config.icon;
-                const lead = MOCK_LEADS.find((l) => l.id === log.lead_id);
+                const lead = leads.find((item) => item.id === log.lead_id);
 
                 return (
                   <div key={log.id} className="flex items-start gap-3 rounded-xl px-2 py-2.5 hover:bg-slate-50 transition-colors">

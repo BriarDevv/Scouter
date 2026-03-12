@@ -1,10 +1,19 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { AreaChartCard } from "@/components/charts/area-chart-card";
 import { PipelineFunnel } from "@/components/dashboard/pipeline-funnel";
 import { formatPercent, formatDays } from "@/lib/formatters";
+import {
+  getCityBreakdown,
+  getDashboardStats,
+  getIndustryBreakdown,
+  getPipeline,
+  getSourcePerformance,
+  getTimeSeries,
+} from "@/lib/api/client";
 import {
   MOCK_STATS,
   MOCK_TIME_SERIES,
@@ -75,7 +84,45 @@ function MetricTable({
 }
 
 export default function PerformancePage() {
-  const stats = MOCK_STATS;
+  const [stats, setStats] = useState(MOCK_STATS);
+  const [timeSeries, setTimeSeries] = useState(MOCK_TIME_SERIES);
+  const [pipeline, setPipeline] = useState(MOCK_PIPELINE);
+  const [industryBreakdown, setIndustryBreakdown] = useState(MOCK_INDUSTRY_BREAKDOWN);
+  const [cityBreakdown, setCityBreakdown] = useState(MOCK_CITY_BREAKDOWN);
+  const [sourcePerformance, setSourcePerformance] = useState(MOCK_SOURCE_PERFORMANCE);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadPerformance() {
+      const [nextStats, nextTimeSeries, nextPipeline, nextIndustry, nextCity, nextSource] =
+        await Promise.all([
+          getDashboardStats(),
+          getTimeSeries(30),
+          getPipeline(),
+          getIndustryBreakdown(),
+          getCityBreakdown(),
+          getSourcePerformance(),
+        ]);
+
+      if (!active) {
+        return;
+      }
+
+      setStats(nextStats);
+      setTimeSeries(nextTimeSeries);
+      setPipeline(nextPipeline);
+      setIndustryBreakdown(nextIndustry);
+      setCityBreakdown(nextCity);
+      setSourcePerformance(nextSource);
+    }
+
+    void loadPerformance();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <div className="space-y-10">
@@ -110,15 +157,15 @@ export default function PerformancePage() {
       {/* Pipeline */}
       <section>
         <SectionTitle title="Embudo Comercial" subtitle="Dónde están los cuellos de botella" />
-        <PipelineFunnel stages={MOCK_PIPELINE} />
+        <PipelineFunnel stages={pipeline} />
       </section>
 
       {/* Trends */}
       <section>
         <SectionTitle title="Tendencias" subtitle="Evolución últimos 30 días" />
         <div className="grid gap-6 lg:grid-cols-2">
-          <AreaChartCard title="Leads Nuevos" data={MOCK_TIME_SERIES} dataKey="leads" color="#8b5cf6" gradientId="perfLeads" />
-          <AreaChartCard title="Conversiones" data={MOCK_TIME_SERIES} dataKey="conversions" color="#22c55e" gradientId="perfConv" />
+          <AreaChartCard title="Leads Nuevos" data={timeSeries} dataKey="leads" color="#8b5cf6" gradientId="perfLeads" />
+          <AreaChartCard title="Conversiones" data={timeSeries} dataKey="conversions" color="#22c55e" gradientId="perfConv" />
         </div>
       </section>
 
@@ -134,19 +181,19 @@ export default function PerformancePage() {
               { key: "avg_score", label: "Score Prom.", format: (v: number) => v.toFixed(1) },
               { key: "conversion_rate", label: "Conv. Rate", format: (v: number) => formatPercent(v) },
             ]}
-            data={[...MOCK_INDUSTRY_BREAKDOWN].sort((a, b) => b.conversion_rate - a.conversion_rate)}
+            data={[...industryBreakdown].sort((a, b) => b.conversion_rate - a.conversion_rate)}
           />
           <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <h3 className="text-sm font-semibold text-slate-900 mb-4 font-heading">Conversión por Rubro</h3>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={[...MOCK_INDUSTRY_BREAKDOWN].sort((a, b) => b.conversion_rate - a.conversion_rate)} layout="vertical">
+                <BarChart data={[...industryBreakdown].sort((a, b) => b.conversion_rate - a.conversion_rate)} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 11, fill: "#94a3b8" }} tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} tickLine={false} axisLine={false} />
                   <YAxis type="category" dataKey="industry" tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} width={90} />
                   <Tooltip formatter={(v) => formatPercent(Number(v))} contentStyle={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "12px", fontSize: 12 }} />
                   <Bar dataKey="conversion_rate" radius={[0, 6, 6, 0]} barSize={18}>
-                    {MOCK_INDUSTRY_BREAKDOWN.sort((a, b) => b.conversion_rate - a.conversion_rate).map((_, i) => (
+                    {[...industryBreakdown].sort((a, b) => b.conversion_rate - a.conversion_rate).map((_, i) => (
                       <Cell key={i} fill={CONVERSION_COLORS[i % CONVERSION_COLORS.length]} />
                     ))}
                   </Bar>
@@ -168,7 +215,7 @@ export default function PerformancePage() {
             { key: "avg_score", label: "Score Prom.", format: (v: number) => v.toFixed(1) },
             { key: "reply_rate", label: "Reply Rate", format: (v: number) => formatPercent(v) },
           ]}
-          data={[...MOCK_CITY_BREAKDOWN].sort((a, b) => b.reply_rate - a.reply_rate)}
+          data={[...cityBreakdown].sort((a, b) => b.reply_rate - a.reply_rate)}
         />
       </section>
 
@@ -184,7 +231,7 @@ export default function PerformancePage() {
             { key: "reply_rate", label: "Reply Rate", format: (v: number) => formatPercent(v) },
             { key: "conversion_rate", label: "Conv. Rate", format: (v: number) => formatPercent(v) },
           ]}
-          data={[...MOCK_SOURCE_PERFORMANCE].sort((a, b) => b.conversion_rate - a.conversion_rate)}
+          data={[...sourcePerformance].sort((a, b) => b.conversion_rate - a.conversion_rate)}
         />
       </section>
 

@@ -1,18 +1,25 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, QualityBadge, ScoreBadge } from "@/components/shared/status-badge";
 import { SIGNAL_CONFIG } from "@/lib/constants";
-import { formatDate, formatDateTime, formatRelativeTime, extractDomain } from "@/lib/formatters";
+import { formatDateTime, formatRelativeTime, extractDomain } from "@/lib/formatters";
 import { MOCK_LEADS, MOCK_DRAFTS, MOCK_LOGS } from "@/data/mock";
+import {
+  generateDraft,
+  getDrafts,
+  getLeadById,
+  getOutreachLogs,
+  reviewDraft,
+  runFullPipeline,
+  updateLeadStatus,
+} from "@/lib/api/client";
 import type { Lead, LeadSignal } from "@/types";
 import {
   ArrowLeft, Globe, Instagram, Mail, Phone, MapPin, Building2,
-  RefreshCw, FileText, CheckCircle, XCircle, Send, Calendar,
-  Trophy, Ban, Sparkles, ExternalLink, Clock,
+  RefreshCw, FileText, CheckCircle, XCircle, Sparkles, Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -63,9 +70,113 @@ function SignalsList({ signals }: { signals: LeadSignal[] }) {
 
 export default function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const lead = MOCK_LEADS.find((l) => l.id === id);
+  const [lead, setLead] = useState<Lead | null>(MOCK_LEADS.find((item) => item.id === id) ?? null);
+  const [drafts, setDrafts] = useState(MOCK_DRAFTS.filter((draft) => draft.lead_id === id));
+  const [logs, setLogs] = useState(MOCK_LOGS.filter((log) => log.lead_id === id));
+  const [isMissing, setIsMissing] = useState(false);
+  const [isRunningPipeline, setIsRunningPipeline] = useState(false);
+  const [isGeneratingDraft, setIsGeneratingDraft] = useState(false);
+  const [isApprovingLead, setIsApprovingLead] = useState(false);
+  const [isReviewingDraftId, setIsReviewingDraftId] = useState<string | null>(null);
 
-  if (!lead) {
+  useEffect(() => {
+    let active = true;
+
+    async function loadLeadContext() {
+      try {
+        const [nextLead, nextDrafts, nextLogs] = await Promise.all([
+          getLeadById(id),
+          getDrafts({ lead_id: id }),
+          getOutreachLogs({ lead_id: id, limit: 20 }),
+        ]);
+
+        if (!active) {
+          return;
+        }
+
+        setLead(nextLead);
+        setDrafts(nextDrafts);
+        setLogs(nextLogs);
+        setIsMissing(false);
+      } catch {
+        if (!active) {
+          return;
+        }
+        setLead(null);
+        setDrafts([]);
+        setLogs([]);
+        setIsMissing(true);
+      }
+    }
+
+    void loadLeadContext();
+
+    return () => {
+      active = false;
+    };
+  }, [id]);
+
+  async function refreshLeadContext() {
+    const [nextLead, nextDrafts, nextLogs] = await Promise.all([
+      getLeadById(id),
+      getDrafts({ lead_id: id }),
+      getOutreachLogs({ lead_id: id, limit: 20 }),
+    ]);
+    setLead(nextLead);
+    setDrafts(nextDrafts);
+    setLogs(nextLogs);
+    setIsMissing(false);
+  }
+
+  async function handleRunPipeline() {
+    if (!lead) {
+      return;
+    }
+    setIsRunningPipeline(true);
+    try {
+      await runFullPipeline(lead.id);
+    } finally {
+      setIsRunningPipeline(false);
+    }
+  }
+
+  async function handleGenerateDraft() {
+    if (!lead) {
+      return;
+    }
+    setIsGeneratingDraft(true);
+    try {
+      await generateDraft(lead.id);
+      await refreshLeadContext();
+    } finally {
+      setIsGeneratingDraft(false);
+    }
+  }
+
+  async function handleApproveLead() {
+    if (!lead) {
+      return;
+    }
+    setIsApprovingLead(true);
+    try {
+      await updateLeadStatus(lead.id, "approved");
+      await refreshLeadContext();
+    } finally {
+      setIsApprovingLead(false);
+    }
+  }
+
+  async function handleReviewDraft(draftId: string, approved: boolean) {
+    setIsReviewingDraftId(draftId);
+    try {
+      await reviewDraft(draftId, approved);
+      await refreshLeadContext();
+    } finally {
+      setIsReviewingDraftId(null);
+    }
+  }
+
+  if (!lead || isMissing) {
     return (
       <div className="space-y-6">
         <Link href="/leads" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
@@ -77,9 +188,6 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       </div>
     );
   }
-
-  const drafts = MOCK_DRAFTS.filter((d) => d.lead_id === lead.id);
-  const logs = MOCK_LOGS.filter((l) => l.lead_id === lead.id);
 
   return (
     <div className="space-y-6">
@@ -104,13 +212,31 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
         {/* Actions */}
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="rounded-xl gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-xl gap-1.5"
+            onClick={() => void handleRunPipeline()}
+            disabled={isRunningPipeline}
+          >
             <RefreshCw className="h-3.5 w-3.5" /> Pipeline
           </Button>
-          <Button variant="outline" size="sm" className="rounded-xl gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-xl gap-1.5"
+            onClick={() => void handleGenerateDraft()}
+            disabled={isGeneratingDraft}
+          >
             <FileText className="h-3.5 w-3.5" /> Generar Draft
           </Button>
-          <Button variant="outline" size="sm" className="rounded-xl gap-1.5 text-emerald-700 border-emerald-200 hover:bg-emerald-50">
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-xl gap-1.5 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+            onClick={() => void handleApproveLead()}
+            disabled={isApprovingLead}
+          >
             <CheckCircle className="h-3.5 w-3.5" /> Aprobar
           </Button>
         </div>
@@ -214,10 +340,21 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                     <p className="text-sm text-slate-600 whitespace-pre-line leading-relaxed">{draft.body}</p>
                     {draft.status === "pending_review" && (
                       <div className="mt-3 flex gap-2">
-                        <Button size="sm" className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 gap-1.5">
+                        <Button
+                          size="sm"
+                          className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 gap-1.5"
+                          onClick={() => void handleReviewDraft(draft.id, true)}
+                          disabled={isReviewingDraftId === draft.id}
+                        >
                           <CheckCircle className="h-3.5 w-3.5" /> Aprobar
                         </Button>
-                        <Button variant="outline" size="sm" className="rounded-xl gap-1.5 text-red-600 border-red-200 hover:bg-red-50">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="rounded-xl gap-1.5 text-red-600 border-red-200 hover:bg-red-50"
+                          onClick={() => void handleReviewDraft(draft.id, false)}
+                          disabled={isReviewingDraftId === draft.id}
+                        >
                           <XCircle className="h-3.5 w-3.5" /> Rechazar
                         </Button>
                       </div>
