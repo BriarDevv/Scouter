@@ -3,6 +3,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.models.outreach import DraftStatus, LogAction
+
 
 class OutreachDraftResponse(BaseModel):
     model_config = {"from_attributes": True}
@@ -11,7 +13,7 @@ class OutreachDraftResponse(BaseModel):
     lead_id: uuid.UUID
     subject: str
     body: str
-    status: str
+    status: DraftStatus
     generated_at: datetime
     reviewed_at: datetime | None
     sent_at: datetime | None
@@ -28,7 +30,7 @@ class OutreachLogResponse(BaseModel):
     id: uuid.UUID
     lead_id: uuid.UUID
     draft_id: uuid.UUID | None
-    action: str
+    action: LogAction
     actor: str
     detail: str | None
     created_at: datetime

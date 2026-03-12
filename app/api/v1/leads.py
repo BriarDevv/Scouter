@@ -10,7 +10,6 @@ from app.schemas.lead import (
     LeadDetailResponse,
     LeadListResponse,
     LeadResponse,
-    LeadSignalResponse,
 )
 from app.services.lead_service import create_lead, get_lead, list_leads
 
@@ -46,7 +45,4 @@ def get_by_id(lead_id: uuid.UUID, db: Session = Depends(get_session)):
     lead = get_lead(db, lead_id)
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
-    return LeadDetailResponse(
-        **LeadResponse.model_validate(lead).model_dump(),
-        signals=[LeadSignalResponse.model_validate(s) for s in lead.signals],
-    )
+    return LeadDetailResponse.model_validate(lead)

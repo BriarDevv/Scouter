@@ -45,6 +45,11 @@ class LogAction(str, enum.Enum):
     APPROVED = "approved"
     REJECTED = "rejected"
     SENT = "sent"
+    OPENED = "opened"
+    REPLIED = "replied"
+    MEETING = "meeting"
+    WON = "won"
+    LOST = "lost"
 
 
 class OutreachLog(Base):

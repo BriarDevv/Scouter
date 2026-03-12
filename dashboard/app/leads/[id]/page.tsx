@@ -150,7 +150,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           {/* Signals */}
           <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <h3 className="text-sm font-semibold text-slate-900 mb-3 font-heading">Señales Detectadas</h3>
-            <SignalsList signals={lead.signals} />
+            <SignalsList signals={lead.signals ?? []} />
           </div>
         </div>
 

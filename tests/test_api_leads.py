@@ -19,6 +19,7 @@ def test_create_lead(client):
     data = resp.json()
     assert data["business_name"] == "Test Cafe"
     assert data["status"] == "new"
+    assert data["quality"] == "unknown"
     assert data["dedup_hash"] is not None
 
 
@@ -47,6 +48,20 @@ def test_list_leads(client):
 def test_get_lead_not_found(client):
     resp = client.get("/api/v1/leads/00000000-0000-0000-0000-000000000000")
     assert resp.status_code == 404
+
+
+def test_get_lead_detail_includes_contract_fields(client):
+    created = client.post("/api/v1/leads", json={"business_name": "Detail Test", "city": "Cordoba"})
+    lead_id = created.json()["id"]
+
+    resp = client.get(f"/api/v1/leads/{lead_id}")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["id"] == lead_id
+    assert data["status"] == "new"
+    assert data["quality"] == "unknown"
+    assert data["signals"] == []
+    assert data["source"] is None
 
 
 def test_create_lead_validation(client):

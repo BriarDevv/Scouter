@@ -68,10 +68,10 @@ export interface Lead {
   updated_at: string;
   enriched_at: string | null;
   scored_at: string | null;
-  signals: LeadSignal[];
-  source: LeadSource | null;
-  owner: string | null;
-  notes: string | null;
+  signals?: LeadSignal[];
+  source?: LeadSource | null;
+  owner?: string | null;
+  notes?: string | null;
 }
 
 export interface LeadSignal {
@@ -94,7 +94,7 @@ export interface LeadSource {
 export interface OutreachDraft {
   id: string;
   lead_id: string;
-  lead: Lead | null;
+  lead?: Lead | null;
   subject: string;
   body: string;
   status: DraftStatus;

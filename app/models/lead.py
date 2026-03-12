@@ -12,10 +12,23 @@ class LeadStatus(str, enum.Enum):
     NEW = "new"
     ENRICHED = "enriched"
     SCORED = "scored"
+    QUALIFIED = "qualified"
     DRAFT_READY = "draft_ready"
     APPROVED = "approved"
     CONTACTED = "contacted"
+    OPENED = "opened"
+    REPLIED = "replied"
+    MEETING = "meeting"
+    WON = "won"
+    LOST = "lost"
     SUPPRESSED = "suppressed"
+
+
+class LeadQuality(str, enum.Enum):
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+    UNKNOWN = "unknown"
 
 
 class Lead(Base):
@@ -72,3 +85,13 @@ class Lead(Base):
     outreach_drafts: Mapped[list["OutreachDraft"]] = relationship(  # noqa: F821
         "OutreachDraft", back_populates="lead", cascade="all, delete-orphan"
     )
+
+    @property
+    def quality(self) -> LeadQuality:
+        if self.score is None:
+            return LeadQuality.UNKNOWN
+        if self.score >= 60:
+            return LeadQuality.HIGH
+        if self.score >= 30:
+            return LeadQuality.MEDIUM
+        return LeadQuality.LOW

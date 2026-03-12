@@ -1,7 +1,11 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field, HttpUrl
+from pydantic import BaseModel, Field
+
+from app.models.lead import LeadQuality, LeadStatus
+from app.models.lead_signal import SignalType
+from app.models.lead_source import SourceType
 
 
 class LeadCreate(BaseModel):
@@ -40,8 +44,9 @@ class LeadResponse(BaseModel):
     email: str | None
     phone: str | None
     source_id: uuid.UUID | None
-    status: str
+    status: LeadStatus
     score: float | None
+    quality: LeadQuality
     llm_summary: str | None
     llm_quality_assessment: str | None
     llm_suggested_angle: str | None
@@ -63,10 +68,22 @@ class LeadSignalResponse(BaseModel):
     model_config = {"from_attributes": True}
 
     id: uuid.UUID
-    signal_type: str
+    signal_type: SignalType
     detail: str | None
     detected_at: datetime
 
 
+class LeadSourceResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: uuid.UUID
+    name: str
+    source_type: SourceType
+    url: str | None
+    description: str | None
+    created_at: datetime
+
+
 class LeadDetailResponse(LeadResponse):
-    signals: list[LeadSignalResponse] = []
+    signals: list[LeadSignalResponse] = Field(default_factory=list)
+    source: LeadSourceResponse | None = None

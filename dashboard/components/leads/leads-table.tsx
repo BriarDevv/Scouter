@@ -45,7 +45,7 @@ const PAGE_SIZE = 10;
 
 const STATUS_FILTER_OPTIONS: (LeadStatus | "all")[] = [
   "all", "new", "enriched", "scored", "qualified", "draft_ready",
-  "approved", "contacted", "replied", "meeting", "won", "lost",
+  "approved", "contacted", "opened", "replied", "meeting", "won", "lost", "suppressed",
 ];
 
 export function LeadsTable({ leads }: LeadsTableProps) {
