@@ -1,3 +1,10 @@
+from sqlalchemy.exc import IntegrityError
+
+from app.models.task_tracking import TaskRun
+from app.services.task_tracking_service import queue_task_run
+from tests.conftest import TestSessionLocal
+
+
 def test_async_enrichment_status_endpoint(client):
     created = client.post("/api/v1/leads", json={"business_name": "Async Enrich", "city": "Cordoba"})
     lead_id = created.json()["id"]
@@ -62,3 +69,44 @@ def test_pipeline_run_is_tracked_for_full_pipeline(client):
     assert task_list.status_code == 200
     tasks = task_list.json()
     assert any(task["task_id"] == payload["task_id"] for task in tasks)
+
+
+def test_queue_task_run_handles_worker_race(db, monkeypatch):
+    task_id = "race-task-id"
+    real_commit = db.commit
+    commit_calls = {"count": 0}
+
+    def fake_commit():
+        commit_calls["count"] += 1
+        if commit_calls["count"] == 1:
+            db.rollback()
+            other = TestSessionLocal()
+            try:
+                other.add(
+                    TaskRun(
+                        task_id=task_id,
+                        task_name="task_full_pipeline",
+                        queue="default",
+                        status="running",
+                        current_step="pipeline_dispatch",
+                    )
+                )
+                other.commit()
+            finally:
+                other.close()
+            raise IntegrityError("insert", {}, Exception("duplicate task_id"))
+        return real_commit()
+
+    monkeypatch.setattr(db, "commit", fake_commit)
+
+    task_run = queue_task_run(
+        db,
+        task_id=task_id,
+        task_name="task_full_pipeline",
+        queue="default",
+        current_step="pipeline_dispatch",
+    )
+
+    assert task_run.task_id == task_id
+    assert task_run.status == "running"
+    assert task_run.current_step == "pipeline_dispatch"

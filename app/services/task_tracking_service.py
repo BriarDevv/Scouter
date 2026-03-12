@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 import uuid
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 import structlog
 
@@ -9,6 +10,8 @@ from app.core.logging import get_logger
 from app.models.task_tracking import PipelineRun, TaskRun
 
 logger = get_logger(__name__)
+
+TASK_PROGRESS_STATUSES = {"running", "retrying", "succeeded", "failed"}
 
 
 def utcnow() -> datetime:
@@ -77,21 +80,44 @@ def queue_task_run(
     correlation_id: str | None = None,
     current_step: str | None = None,
 ) -> TaskRun:
+    def _apply_metadata(task_run: TaskRun, *, preserve_progress: bool) -> None:
+        task_run.task_name = task_name
+        task_run.queue = queue
+        task_run.lead_id = lead_id
+        task_run.pipeline_run_id = pipeline_run_id
+        task_run.correlation_id = correlation_id
+
+        if preserve_progress and task_run.status in TASK_PROGRESS_STATUSES:
+            task_run.current_step = task_run.current_step or current_step
+            return
+
+        task_run.status = "queued"
+        task_run.current_step = current_step
+        task_run.error = None
+
     task_run = db.get(TaskRun, task_id)
+    is_new = task_run is None
     if not task_run:
         task_run = TaskRun(task_id=task_id, task_name=task_name)
         db.add(task_run)
-    task_run.queue = queue
-    task_run.lead_id = lead_id
-    task_run.pipeline_run_id = pipeline_run_id
-    task_run.correlation_id = correlation_id
-    task_run.status = "queued"
-    task_run.current_step = current_step
-    task_run.error = None
-    db.commit()
+
+    _apply_metadata(task_run, preserve_progress=not is_new)
+
+    try:
+        db.commit()
+    except IntegrityError:
+        # A fast worker may persist the task before the API finishes writing
+        # its own queued row. Reload and keep the most advanced state.
+        db.rollback()
+        task_run = db.get(TaskRun, task_id)
+        if not task_run:
+            raise
+        _apply_metadata(task_run, preserve_progress=True)
+        db.commit()
+
     db.refresh(task_run)
     logger.info(
-        "task_run_queued",
+        "task_run_synced" if task_run.status != "queued" else "task_run_queued",
         task_id=task_id,
         task_name=task_name,
         queue=queue,
