@@ -1,0 +1,55 @@
+"use client";
+
+import { formatRelativeTime } from "@/lib/formatters";
+import { STATUS_CONFIG } from "@/lib/constants";
+import type { OutreachLog } from "@/types";
+import { MOCK_LEADS } from "@/data/mock";
+import {
+  FileText, Send, Eye, MessageSquare, CalendarCheck, Trophy, XCircle, CheckCircle,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const ACTION_ICONS: Record<string, { icon: typeof FileText; color: string; bg: string }> = {
+  generated: { icon: FileText,       color: "text-slate-500",   bg: "bg-slate-100" },
+  sent:      { icon: Send,           color: "text-blue-600",    bg: "bg-blue-50" },
+  opened:    { icon: Eye,            color: "text-amber-600",   bg: "bg-amber-50" },
+  replied:   { icon: MessageSquare,  color: "text-emerald-600", bg: "bg-emerald-50" },
+  meeting:   { icon: CalendarCheck,  color: "text-teal-600",    bg: "bg-teal-50" },
+  won:       { icon: Trophy,         color: "text-green-600",   bg: "bg-green-50" },
+  lost:      { icon: XCircle,        color: "text-red-500",     bg: "bg-red-50" },
+  approved:  { icon: CheckCircle,    color: "text-violet-600",  bg: "bg-violet-50" },
+  rejected:  { icon: XCircle,        color: "text-red-500",     bg: "bg-red-50" },
+  reviewed:  { icon: Eye,            color: "text-indigo-600",  bg: "bg-indigo-50" },
+};
+
+export function RecentActivity({ logs }: { logs: OutreachLog[] }) {
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+      <h3 className="text-sm font-semibold text-slate-900 font-heading">Actividad Reciente</h3>
+      <p className="mt-0.5 text-xs text-slate-500">Últimas acciones del pipeline</p>
+
+      <div className="mt-4 space-y-1">
+        {logs.slice(0, 8).map((log) => {
+          const actionConfig = ACTION_ICONS[log.action] || ACTION_ICONS.generated;
+          const Icon = actionConfig.icon;
+          const lead = MOCK_LEADS.find((l) => l.id === log.lead_id);
+
+          return (
+            <div key={log.id} className="flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-slate-50">
+              <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", actionConfig.bg)}>
+                <Icon className={cn("h-4 w-4", actionConfig.color)} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm text-slate-700">
+                  <span className="font-medium">{lead?.business_name || "Lead"}</span>
+                  {log.detail && <span className="text-slate-500"> — {log.detail}</span>}
+                </p>
+              </div>
+              <span className="shrink-0 text-xs text-slate-400 font-data">{formatRelativeTime(log.created_at)}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
