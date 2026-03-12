@@ -1,0 +1,109 @@
+import hashlib
+import uuid
+
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from app.core.logging import get_logger
+from app.models.lead import Lead, LeadStatus
+from app.models.suppression import SuppressionEntry
+from app.schemas.lead import LeadCreate, LeadUpdate
+
+logger = get_logger(__name__)
+
+
+def _compute_dedup_hash(business_name: str, city: str | None, website_url: str | None) -> str:
+    """Generate a dedup fingerprint from normalized fields."""
+    parts = [
+        business_name.strip().lower(),
+        (city or "").strip().lower(),
+        (website_url or "").strip().lower().rstrip("/"),
+    ]
+    raw = "|".join(parts)
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
+def is_suppressed(db: Session, email: str | None, domain: str | None = None) -> bool:
+    """Check if an email or domain is in the suppression list."""
+    if not email and not domain:
+        return False
+    conditions = []
+    if email:
+        conditions.append(SuppressionEntry.email == email.lower())
+    if domain:
+        conditions.append(SuppressionEntry.domain == domain.lower())
+    stmt = select(SuppressionEntry.id).where(*conditions).limit(1)
+    return db.execute(stmt).first() is not None
+
+
+def create_lead(db: Session, data: LeadCreate) -> Lead:
+    """Create a new lead with dedup check and suppression check."""
+    # Check suppression
+    if data.email and is_suppressed(db, email=data.email):
+        raise ValueError(f"Email {data.email} is in the suppression list")
+
+    # Compute dedup hash
+    dedup_hash = _compute_dedup_hash(data.business_name, data.city, data.website_url)
+
+    # Check for duplicate
+    existing = db.execute(select(Lead).where(Lead.dedup_hash == dedup_hash)).scalar_one_or_none()
+    if existing:
+        logger.info("duplicate_lead_skipped", lead_id=str(existing.id), hash=dedup_hash)
+        return existing
+
+    lead = Lead(
+        **data.model_dump(exclude_unset=True),
+        dedup_hash=dedup_hash,
+        status=LeadStatus.NEW,
+    )
+    db.add(lead)
+    db.commit()
+    db.refresh(lead)
+    logger.info("lead_created", lead_id=str(lead.id), business=lead.business_name)
+    return lead
+
+
+def get_lead(db: Session, lead_id: uuid.UUID) -> Lead | None:
+    return db.get(Lead, lead_id)
+
+
+def list_leads(
+    db: Session,
+    page: int = 1,
+    page_size: int = 50,
+    status: LeadStatus | None = None,
+    min_score: float | None = None,
+) -> tuple[list[Lead], int]:
+    """List leads with pagination and optional filters."""
+    stmt = select(Lead)
+    count_stmt = select(func.count(Lead.id))
+
+    if status:
+        stmt = stmt.where(Lead.status == status)
+        count_stmt = count_stmt.where(Lead.status == status)
+    if min_score is not None:
+        stmt = stmt.where(Lead.score >= min_score)
+        count_stmt = count_stmt.where(Lead.score >= min_score)
+
+    total = db.execute(count_stmt).scalar() or 0
+    leads = (
+        db.execute(
+            stmt.order_by(Lead.score.desc().nulls_last(), Lead.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        .scalars()
+        .all()
+    )
+    return list(leads), total
+
+
+def update_lead(db: Session, lead_id: uuid.UUID, data: LeadUpdate) -> Lead | None:
+    lead = db.get(Lead, lead_id)
+    if not lead:
+        return None
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(lead, field, value)
+    db.commit()
+    db.refresh(lead)
+    return lead
