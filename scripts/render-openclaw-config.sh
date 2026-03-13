@@ -22,6 +22,8 @@ CONFIG_PATH="${OPENCLAW_CONFIG_PATH:-$HOME/.openclaw/openclaw.json}"
 CONFIG_DIR="$(dirname -- "$CONFIG_PATH")"
 WORKSPACE_PATH="${OPENCLAW_WORKSPACE:-$REPO_ROOT}"
 OPENCLAW_TIMEOUT_SECONDS="${OPENCLAW_TIMEOUT_SECONDS:-180}"
+OPENCLAW_OLLAMA_PROBE_TIMEOUT_SECONDS="${OPENCLAW_OLLAMA_PROBE_TIMEOUT_SECONDS:-5}"
+OPENCLAW_ALLOW_UNREACHABLE_OLLAMA="${OPENCLAW_ALLOW_UNREACHABLE_OLLAMA:-0}"
 
 LEADER_MODEL_ID="${OPENCLAW_LEADER_MODEL:-qwen3.5:4b}"
 EXECUTOR_MODEL_ID="${OPENCLAW_EXECUTOR_MODEL:-qwen3.5:9b}"
@@ -54,6 +56,29 @@ resolve_ollama_base_url() {
 
   [[ -n "$host" ]] || die "No pude resolver el host de Ollama. Definí OPENCLAW_OLLAMA_BASE_URL o OPENCLAW_OLLAMA_HOST."
   printf '%s://%s:%s' "$OLLAMA_SCHEME" "$host" "$OLLAMA_PORT"
+}
+
+probe_ollama_base_url() {
+  local probe_url
+  probe_url="${1%/}/api/tags"
+  python3 - "$probe_url" "$OPENCLAW_OLLAMA_PROBE_TIMEOUT_SECONDS" <<'PY'
+import json
+import sys
+import urllib.error
+import urllib.request
+
+url = sys.argv[1]
+timeout = float(sys.argv[2])
+
+try:
+    with urllib.request.urlopen(url, timeout=timeout) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+    count = len(payload.get("models", [])) if isinstance(payload, dict) else 0
+    print(f"reachable:{count}")
+except Exception as exc:  # noqa: BLE001
+    print(f"unreachable:{exc}")
+    sys.exit(1)
+PY
 }
 
 [[ -f "$TEMPLATE_PATH" ]] || die "No existe la plantilla: $TEMPLATE_PATH"
@@ -140,6 +165,17 @@ tmp_path = pathlib.Path(os.environ["TMP_PATH"])
 json.loads(tmp_path.read_text(encoding="utf-8"))
 PY
 
+if PROBE_RESULT="$(probe_ollama_base_url "$OLLAMA_BASE_URL_RENDERED" 2>&1)"; then
+  PROBE_LOG="Ollama connectivity probe: OK ($PROBE_RESULT)"
+else
+  if [[ "$OPENCLAW_ALLOW_UNREACHABLE_OLLAMA" == "1" ]]; then
+    PROBE_LOG="WARN: Ollama connectivity probe falló pero se continúa por OPENCLAW_ALLOW_UNREACHABLE_OLLAMA=1 ($PROBE_RESULT)"
+  else
+    rm -f "$TMP_PATH"
+    die "Ollama no responde en $OLLAMA_BASE_URL_RENDERED ($PROBE_RESULT). Revisá el bridge WSL->Windows o definí OPENCLAW_ALLOW_UNREACHABLE_OLLAMA=1 para forzar el render."
+  fi
+fi
+
 if [[ -f "$CONFIG_PATH" ]]; then
   BACKUP_PATH="$(mktemp "${CONFIG_PATH}.bak.$(date '+%Y%m%d_%H%M%S').XXXXXX")"
   cp "$CONFIG_PATH" "$BACKUP_PATH"
@@ -155,6 +191,11 @@ log "Leader model: $LEADER_MODEL_ID"
 log "Executor model: $EXECUTOR_MODEL_ID"
 log "Reviewer model: $REVIEWER_MODEL_ID"
 log "Agent timeout seconds: $OPENCLAW_TIMEOUT_SECONDS"
+if [[ "$PROBE_LOG" == WARN:* ]]; then
+  warn "${PROBE_LOG#WARN: }"
+else
+  log "$PROBE_LOG"
+fi
 
 if [[ -x "$HOME/.openclaw/bin/openclaw" ]]; then
   if [[ "$CONFIG_PATH" == "$HOME/.openclaw/openclaw.json" ]]; then

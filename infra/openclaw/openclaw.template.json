@@ -61,6 +61,9 @@
     "defaults": {
       "workspace": "__WORKSPACE_PATH__",
       "timeoutSeconds": __OPENCLAW_TIMEOUT_SECONDS__,
+      "bootstrapMaxChars": 4000,
+      "bootstrapTotalMaxChars": 6000,
+      "bootstrapPromptTruncationWarning": "off",
       "model": {
         "primary": "ollama/__LEADER_MODEL_ID__"
       },
@@ -76,7 +79,8 @@
         }
       },
       "compaction": {
-        "mode": "safeguard"
+        "mode": "safeguard",
+        "postCompactionSections": []
       }
     }
   },
@@ -87,10 +91,18 @@
     "ownerDisplay": "raw"
   },
   "skills": {
+    "allowBundled": [],
     "load": {
       "watch": true,
       "watchDebounceMs": 250
     }
+  },
+  "tools": {
+    "allow": [
+      "read",
+      "exec",
+      "session_status"
+    ]
   },
   "gateway": {
     "mode": "local",
