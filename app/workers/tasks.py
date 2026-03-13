@@ -5,6 +5,7 @@ import uuid
 from app.core.logging import get_logger
 from app.db.session import SessionLocal
 from app.llm.client import evaluate_lead_quality, summarize_business
+from app.llm.roles import LLMRole
 from app.models.lead import Lead
 from app.services.enrichment_service import enrich_lead
 from app.services.outreach_service import generate_outreach_draft
@@ -274,6 +275,7 @@ def task_analyze_lead(
                 website_url=lead.website_url,
                 instagram_url=lead.instagram_url,
                 signals=list(lead.signals),
+                role=LLMRole.EXECUTOR,
             )
             lead.llm_summary = summary
 
@@ -285,6 +287,7 @@ def task_analyze_lead(
                 instagram_url=lead.instagram_url,
                 signals=list(lead.signals),
                 score=lead.score,
+                role=LLMRole.EXECUTOR,
             )
             lead.llm_quality_assessment = evaluation["reasoning"]
             lead.llm_suggested_angle = evaluation["suggested_angle"]

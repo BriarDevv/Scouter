@@ -1,4 +1,4 @@
-"""Ollama LLM client using the configured default model."""
+"""Ollama LLM client that resolves the configured model by role."""
 
 import json
 import re
@@ -9,6 +9,8 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.llm.prompts import EVALUATE_LEAD_QUALITY, GENERATE_OUTREACH_EMAIL, SUMMARIZE_BUSINESS
+from app.llm.resolver import normalize_role, resolve_model_for_role
+from app.llm.roles import LLMRole
 
 logger = get_logger(__name__)
 
@@ -50,16 +52,32 @@ def _extract_json(text: str) -> dict:
     raise LLMParseError(f"Could not extract JSON from LLM response: {text[:200]}")
 
 
+def _resolve_role_model(role: LLMRole | str) -> tuple[LLMRole, str]:
+    normalized_role = normalize_role(role)
+    model = resolve_model_for_role(normalized_role)
+    if not model:
+        raise LLMError(f"No model configured for role {normalized_role.value}")
+    return normalized_role, model
+
+
+def _role_value(role: LLMRole | str) -> str:
+    try:
+        return normalize_role(role).value
+    except ValueError:
+        return str(role)
+
+
 @retry(
     stop=stop_after_attempt(settings.OLLAMA_MAX_RETRIES),
     wait=wait_exponential(multiplier=1, min=2, max=30),
     reraise=True,
 )
-def _call_ollama(prompt: str) -> str:
-    """Call Ollama API with the configured default model."""
+def _call_ollama(prompt: str, role: LLMRole | str = LLMRole.EXECUTOR) -> str:
+    """Call Ollama API with the configured model for a given role."""
+    normalized_role, model = _resolve_role_model(role)
     url = f"{settings.OLLAMA_BASE_URL}/api/generate"
     payload = {
-        "model": settings.OLLAMA_MODEL,
+        "model": model,
         "prompt": prompt,
         "stream": False,
         "think": False,
@@ -69,7 +87,12 @@ def _call_ollama(prompt: str) -> str:
         },
     }
 
-    logger.debug("ollama_request", model=settings.OLLAMA_MODEL, prompt_len=len(prompt))
+    logger.debug(
+        "ollama_request",
+        role=normalized_role.value,
+        model=model,
+        prompt_len=len(prompt),
+    )
 
     with httpx.Client(timeout=settings.OLLAMA_TIMEOUT) as client:
         resp = client.post(url, json=payload)
@@ -85,7 +108,12 @@ def _call_ollama(prompt: str) -> str:
     if not response_text.strip():
         raise LLMError("Empty response from Ollama")
 
-    logger.debug("ollama_response", response_len=len(response_text))
+    logger.debug(
+        "ollama_response",
+        role=normalized_role.value,
+        model=model,
+        response_len=len(response_text),
+    )
     return response_text
 
 
@@ -103,6 +131,7 @@ def summarize_business(
     website_url: str | None,
     instagram_url: str | None,
     signals: list,
+    role: LLMRole | str = LLMRole.EXECUTOR,
 ) -> str:
     """Generate a business summary using the local LLM."""
     prompt = SUMMARIZE_BUSINESS.format(
@@ -115,11 +144,11 @@ def summarize_business(
     )
 
     try:
-        raw = _call_ollama(prompt)
+        raw = _call_ollama(prompt, role=role)
         data = _extract_json(raw)
         return data.get("summary", raw)
     except Exception as e:
-        logger.error("llm_summarize_failed", error=str(e))
+        logger.error("llm_summarize_failed", role=_role_value(role), error=str(e))
         return f"[LLM unavailable] {business_name} - {industry or 'Unknown industry'} in {city or 'Unknown location'}"
 
 
@@ -131,6 +160,7 @@ def evaluate_lead_quality(
     instagram_url: str | None,
     signals: list,
     score: float | None,
+    role: LLMRole | str = LLMRole.EXECUTOR,
 ) -> dict:
     """Evaluate lead quality using the local LLM. Returns dict with quality, reasoning, suggested_angle."""
     prompt = EVALUATE_LEAD_QUALITY.format(
@@ -150,7 +180,7 @@ def evaluate_lead_quality(
     }
 
     try:
-        raw = _call_ollama(prompt)
+        raw = _call_ollama(prompt, role=role)
         data = _extract_json(raw)
         return {
             "quality": data.get("quality", "unknown"),
@@ -158,7 +188,7 @@ def evaluate_lead_quality(
             "suggested_angle": data.get("suggested_angle", "General web development services"),
         }
     except Exception as e:
-        logger.error("llm_evaluate_failed", error=str(e))
+        logger.error("llm_evaluate_failed", role=_role_value(role), error=str(e))
         return fallback
 
 
@@ -171,6 +201,7 @@ def generate_outreach_draft(
     llm_summary: str | None,
     llm_suggested_angle: str | None,
     signals: list,
+    role: LLMRole | str = LLMRole.EXECUTOR,
 ) -> dict:
     """Generate an outreach email draft. Returns dict with subject and body."""
     prompt = GENERATE_OUTREACH_EMAIL.format(
@@ -190,7 +221,7 @@ def generate_outreach_draft(
     }
 
     try:
-        raw = _call_ollama(prompt)
+        raw = _call_ollama(prompt, role=role)
         data = _extract_json(raw)
         subject = data.get("subject")
         body = data.get("body")
@@ -198,5 +229,5 @@ def generate_outreach_draft(
             raise LLMParseError("Missing subject or body in LLM response")
         return {"subject": subject, "body": body}
     except Exception as e:
-        logger.error("llm_outreach_failed", error=str(e))
+        logger.error("llm_outreach_failed", role=_role_value(role), error=str(e))
         return fallback
