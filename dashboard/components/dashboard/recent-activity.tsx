@@ -1,8 +1,8 @@
 "use client";
 
-import { formatRelativeTime } from "@/lib/formatters";
 import type { Lead, OutreachLog } from "@/types";
 import { MOCK_LEADS } from "@/data/mock";
+import { RelativeTime } from "@/components/shared/relative-time";
 import {
   FileText, Send, Eye, MessageSquare, CalendarCheck, Trophy, XCircle, CheckCircle,
 } from "lucide-react";
@@ -44,7 +44,10 @@ export function RecentActivity({ logs, leads }: { logs: OutreachLog[]; leads?: L
                   {log.detail && <span className="text-slate-500"> — {log.detail}</span>}
                 </p>
               </div>
-              <span className="shrink-0 text-xs text-slate-400 font-data">{formatRelativeTime(log.created_at)}</span>
+              <RelativeTime
+                date={log.created_at}
+                className="shrink-0 text-xs text-slate-400 font-data"
+              />
             </div>
           );
         })}

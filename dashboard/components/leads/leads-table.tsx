@@ -20,7 +20,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { StatusBadge, QualityBadge, ScoreBadge } from "@/components/shared/status-badge";
-import { formatRelativeTime, extractDomain, truncate } from "@/lib/formatters";
+import { RelativeTime } from "@/components/shared/relative-time";
+import { extractDomain, truncate } from "@/lib/formatters";
 import type { Lead, LeadStatus } from "@/types";
 import { STATUS_CONFIG } from "@/lib/constants";
 import {
@@ -174,7 +175,9 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                 <TableCell><ScoreBadge score={lead.score} /></TableCell>
                 <TableCell><QualityBadge quality={lead.quality} /></TableCell>
                 <TableCell><StatusBadge status={lead.status} /></TableCell>
-                <TableCell className="text-xs text-slate-500 font-data">{formatRelativeTime(lead.created_at)}</TableCell>
+                <TableCell className="text-xs text-slate-500 font-data">
+                  <RelativeTime date={lead.created_at} />
+                </TableCell>
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />}>

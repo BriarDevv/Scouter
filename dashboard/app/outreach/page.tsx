@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { DraftStatusBadge, StatusBadge } from "@/components/shared/status-badge";
-import { formatRelativeTime, formatDate, truncate } from "@/lib/formatters";
+import { RelativeTime } from "@/components/shared/relative-time";
+import { formatDate, truncate } from "@/lib/formatters";
 import { MOCK_DRAFTS, MOCK_LOGS, MOCK_LEADS } from "@/data/mock";
 import { getDrafts, getLeads, getOutreachLogs, reviewDraft } from "@/lib/api/client";
 import type { DraftStatus, OutreachDraft, OutreachLog } from "@/types";
@@ -139,7 +140,10 @@ export default function OutreachPage() {
                       <h4 className="text-sm font-medium text-slate-900 font-heading">{draft.subject}</h4>
                       <p className="mt-1 text-sm text-slate-500 line-clamp-2">{draft.body}</p>
                     </div>
-                    <span className="shrink-0 text-xs text-slate-400 font-data">{formatRelativeTime(draft.generated_at)}</span>
+                    <RelativeTime
+                      date={draft.generated_at}
+                      className="shrink-0 text-xs text-slate-400 font-data"
+                    />
                   </div>
 
                   {draft.status === "pending_review" && (
@@ -198,7 +202,7 @@ export default function OutreachPage() {
                       {log.detail && <p className="text-xs text-slate-500 mt-0.5">{log.detail}</p>}
                       <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1 font-data">
                         <Clock className="h-3 w-3" />
-                        {formatRelativeTime(log.created_at)}
+                        <RelativeTime date={log.created_at} />
                       </p>
                     </div>
                   </div>

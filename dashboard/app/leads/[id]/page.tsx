@@ -5,7 +5,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, QualityBadge, ScoreBadge } from "@/components/shared/status-badge";
 import { SIGNAL_CONFIG } from "@/lib/constants";
-import { formatDateTime, formatRelativeTime, extractDomain } from "@/lib/formatters";
+import { RelativeTime } from "@/components/shared/relative-time";
+import { formatDateTime, extractDomain } from "@/lib/formatters";
 import { MOCK_LEADS, MOCK_DRAFTS, MOCK_LOGS } from "@/data/mock";
 import {
   generateDraft,
@@ -220,7 +221,9 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           <div className="flex items-center gap-4 text-sm text-slate-500">
             {lead.industry && <span>{lead.industry}</span>}
             {lead.city && <span>{lead.city}{lead.zone ? `, ${lead.zone}` : ""}</span>}
-            <span>Creado {formatRelativeTime(lead.created_at)}</span>
+            <span>
+              Creado <RelativeTime date={lead.created_at} />
+            </span>
           </div>
         </div>
 
@@ -410,7 +413,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                           {run.status} {run.current_step ? `· ${run.current_step}` : ""}
                         </p>
                         <p className="mt-1 text-xs text-slate-500 font-data">
-                          run {run.id.slice(0, 8)} · {formatRelativeTime(run.updated_at)}
+                          run {run.id.slice(0, 8)} · <RelativeTime date={run.updated_at} />
                         </p>
                       </div>
                       {run.root_task_id && (
