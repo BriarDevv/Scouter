@@ -15,6 +15,7 @@ ClawScout remains the source of truth. Always prefer the local API wrapper over 
 - Recent drafts, pipelines, tasks, and activity
 - Active LLM settings by role
 - Public website inspection through `scripts/browserctl.py`
+- Controlled mail workflows through `scripts/mailctl.py`
 - Safe actions explicitly requested by the user:
   - generate a draft for a lead
   - run the full pipeline for a lead
@@ -27,6 +28,7 @@ ClawScout remains the source of truth. Always prefer the local API wrapper over 
 - Direct database inspection when the API already exposes the state
 - Destructive actions
 - Mail, WhatsApp, or browser-channel automation
+- Direct SMTP access when `scripts/mailctl.py` already covers the requested draft send/status workflow
 - Built-in browser tooling when `scripts/browserctl.py` already covers the requested public inspection
 
 ## Reviewer rule
@@ -62,6 +64,10 @@ python3 scripts/browserctl.py inspect-url --url <public_url>
 python3 scripts/browserctl.py inspect-url --url <public_url> --screenshot
 python3 scripts/browserctl.py inspect-business-site --lead-id <lead_id>
 python3 scripts/browserctl.py inspect-business-site --lead-id <lead_id> --screenshot
+python3 scripts/mailctl.py recent-drafts --limit <n>
+python3 scripts/mailctl.py draft-detail --draft-id <draft_id>
+python3 scripts/mailctl.py send-status --draft-id <draft_id>
+python3 scripts/mailctl.py send-draft --draft-id <draft_id>
 ```
 
 Prefer one wrapper command per question unless the user explicitly asks for a multi-part answer.
@@ -105,6 +111,14 @@ Prefer one wrapper command per question unless the user explicitly asks for a mu
 - Public website inspection by lead:
   - run `python3 scripts/browserctl.py inspect-business-site --lead-id <lead_id>`
   - add `--screenshot` only when useful
+- Drafts ready to send:
+  - run `python3 scripts/mailctl.py recent-drafts --limit <n>`
+- Draft detail:
+  - run `python3 scripts/mailctl.py draft-detail --draft-id <draft_id>`
+- Draft send status:
+  - run `python3 scripts/mailctl.py send-status --draft-id <draft_id>`
+- Send one explicit approved draft:
+  - run `python3 scripts/mailctl.py send-draft --draft-id <draft_id>`
 
 ## Workflow rules
 
@@ -126,6 +140,11 @@ Prefer one wrapper command per question unless the user explicitly asks for a mu
   - prefer `python3 scripts/browserctl.py inspect-url --url <public_url>`
   - if the user references a lead id and wants the lead's website, use `python3 scripts/browserctl.py inspect-business-site --lead-id <lead_id>`
   - do not use the built-in OpenClaw browser tool for these grounded inspections unless the user explicitly asks for interactive browsing
+- For mail workflows:
+  - prefer `python3 scripts/mailctl.py recent-drafts --limit <n>` for send-ready drafts
+  - use `draft-detail` before sending if the user asks to inspect content first
+  - use `send-draft` only on explicit user request
+  - use `send-status` when the user asks what happened with a draft delivery
 - For `generate-draft` and `run-pipeline`:
   - prefer the `--wait` workflow unless the user explicitly wants just the task id
   - when `--wait` succeeds, answer with the wrapper `summary` fields rather than free-form narration
@@ -148,6 +167,7 @@ Prefer one wrapper command per question unless the user explicitly asks for a mu
 - For `generate-draft --wait`, `run-pipeline --wait`, `review-lead`, and `review-draft`, prefer returning the `summary` or review payload fields directly instead of paraphrasing them loosely.
 - For `generate-draft --wait`, `run-pipeline --wait`, `review-lead --wait`, and `review-draft --wait`, prefer returning the `summary` or review payload fields directly instead of paraphrasing them loosely.
 - For website inspection, copy `title`, `meta_description`, `h1`, `contact_signals`, `social_links`, `cta_signals`, `page_type_guess`, `screenshot_path`, and `important_links` exactly from `browserctl` JSON.
+- For mail delivery, copy `status`, `provider`, `provider_message_id`, `recipient_email`, `sent_at`, and `error` exactly from `mailctl` JSON.
 
 ## Mutation rules
 
@@ -158,5 +178,6 @@ Prefer one wrapper command per question unless the user explicitly asks for a mu
   - `task-status` and `wait-task` follow-up checks after an action
   - `review-lead`
   - `review-draft`
+  - `send-draft`
 - Do not change lead status from this skill.
 - Do not trigger reviewer automatically.

@@ -144,3 +144,8 @@ def test_send_draft_failure_persists_failed_delivery(client, db, monkeypatch):
     assert delivery is not None
     assert delivery.status == OutreachDeliveryStatus.FAILED
     assert delivery.error == "smtp unavailable"
+
+
+def test_outreach_delivery_enum_uses_lowercase_values():
+    enum_values = list(OutreachDelivery.__table__.c.status.type.enums)
+    assert enum_values == ["sending", "sent", "failed"]

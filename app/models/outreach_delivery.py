@@ -34,7 +34,13 @@ class OutreachDelivery(Base):
     recipient_email: Mapped[str] = mapped_column(String(320), nullable=False)
     subject_snapshot: Mapped[str] = mapped_column(String(500), nullable=False)
     status: Mapped[OutreachDeliveryStatus] = mapped_column(
-        Enum(OutreachDeliveryStatus), nullable=False, default=OutreachDeliveryStatus.SENDING
+        Enum(
+            OutreachDeliveryStatus,
+            name="outreachdeliverystatus",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
+        nullable=False,
+        default=OutreachDeliveryStatus.SENDING,
     )
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
