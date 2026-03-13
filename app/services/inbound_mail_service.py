@@ -22,6 +22,7 @@ from app.models.inbound_mail import (
 )
 from app.models.outreach import LogAction, OutreachDraft, OutreachLog
 from app.models.outreach_delivery import OutreachDelivery, OutreachDeliveryStatus
+from app.models.reply_assistant import ReplyAssistantDraft
 
 logger = get_logger(__name__)
 
@@ -76,7 +77,7 @@ def list_inbound_messages(
         select(InboundMessage)
         .options(
             selectinload(InboundMessage.thread),
-            selectinload(InboundMessage.reply_assistant_draft),
+            selectinload(InboundMessage.reply_assistant_draft).selectinload(ReplyAssistantDraft.review),
         )
         .order_by(InboundMessage.received_at.desc(), InboundMessage.created_at.desc())
         .limit(limit)
@@ -95,7 +96,7 @@ def get_inbound_message(db: Session, message_id: uuid.UUID) -> InboundMessage | 
         select(InboundMessage)
         .options(
             selectinload(InboundMessage.thread),
-            selectinload(InboundMessage.reply_assistant_draft),
+            selectinload(InboundMessage.reply_assistant_draft).selectinload(ReplyAssistantDraft.review),
         )
         .where(InboundMessage.id == message_id)
     )
@@ -107,7 +108,11 @@ def list_email_threads(
 ) -> list[EmailThread]:
     stmt = (
         select(EmailThread)
-        .options(selectinload(EmailThread.messages))
+        .options(
+            selectinload(EmailThread.messages)
+            .selectinload(InboundMessage.reply_assistant_draft)
+            .selectinload(ReplyAssistantDraft.review)
+        )
         .order_by(EmailThread.last_message_at.desc(), EmailThread.updated_at.desc())
         .limit(limit)
     )
@@ -120,7 +125,9 @@ def get_email_thread(db: Session, thread_id: uuid.UUID) -> EmailThread | None:
     stmt = (
         select(EmailThread)
         .options(
-            selectinload(EmailThread.messages).selectinload(InboundMessage.reply_assistant_draft)
+            selectinload(EmailThread.messages)
+            .selectinload(InboundMessage.reply_assistant_draft)
+            .selectinload(ReplyAssistantDraft.review)
         )
         .where(EmailThread.id == thread_id)
     )

@@ -147,6 +147,30 @@ export interface ReplyAssistantDraft {
   should_escalate_reviewer: boolean;
   generator_role: string;
   generator_model: string;
+  review?: ReplyAssistantDraftReview | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReplyAssistantDraftReview {
+  id: string;
+  reply_assistant_draft_id: string;
+  inbound_message_id: string;
+  thread_id: string | null;
+  lead_id: string | null;
+  status: "pending" | "reviewed" | "failed" | string;
+  summary: string | null;
+  feedback: string | null;
+  suggested_edits: string[] | null;
+  recommended_action: string | null;
+  should_use_as_is: boolean;
+  should_edit: boolean;
+  should_escalate: boolean;
+  reviewer_role: string | null;
+  reviewer_model: string | null;
+  task_id: string | null;
+  error: string | null;
+  reviewed_at: string | null;
   created_at: string;
   updated_at: string;
 }

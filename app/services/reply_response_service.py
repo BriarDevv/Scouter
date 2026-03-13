@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.logging import get_logger
@@ -16,6 +17,30 @@ from app.models.reply_assistant import ReplyAssistantDraft, ReplyAssistantDraftS
 logger = get_logger(__name__)
 
 
+def _apply_generated_reply_draft(
+    draft: ReplyAssistantDraft,
+    *,
+    message: InboundMessage,
+    related_outbound_draft,
+    generated: dict,
+    role: LLMRole,
+    model: str,
+    should_escalate_reviewer: bool,
+) -> None:
+    draft.thread_id = message.thread_id
+    draft.lead_id = message.lead_id
+    draft.related_delivery_id = message.delivery_id
+    draft.related_outbound_draft_id = related_outbound_draft.id if related_outbound_draft else None
+    draft.status = ReplyAssistantDraftStatus.GENERATED
+    draft.subject = generated["subject"]
+    draft.body = generated["body"]
+    draft.summary = generated.get("summary")
+    draft.suggested_tone = generated.get("suggested_tone")
+    draft.should_escalate_reviewer = should_escalate_reviewer
+    draft.generator_role = role.value
+    draft.generator_model = model
+
+
 def get_reply_assistant_draft_for_message(
     db: Session, message_id: uuid.UUID
 ) -> ReplyAssistantDraft | None:
@@ -27,6 +52,7 @@ def get_reply_assistant_draft_for_message(
             joinedload(ReplyAssistantDraft.lead),
             joinedload(ReplyAssistantDraft.related_delivery),
             joinedload(ReplyAssistantDraft.related_outbound_draft),
+            joinedload(ReplyAssistantDraft.review),
         )
         .where(ReplyAssistantDraft.inbound_message_id == message_id)
     )
@@ -90,20 +116,43 @@ def generate_reply_assistant_draft(
         draft = ReplyAssistantDraft(inbound_message_id=message.id)
         db.add(draft)
 
-    draft.thread_id = message.thread_id
-    draft.lead_id = message.lead_id
-    draft.related_delivery_id = message.delivery_id
-    draft.related_outbound_draft_id = related_outbound_draft.id if related_outbound_draft else None
-    draft.status = ReplyAssistantDraftStatus.GENERATED
-    draft.subject = generated["subject"]
-    draft.body = generated["body"]
-    draft.summary = generated.get("summary")
-    draft.suggested_tone = generated.get("suggested_tone")
-    draft.should_escalate_reviewer = should_escalate_reviewer
-    draft.generator_role = role.value
-    draft.generator_model = model
+    if draft.review is not None:
+        db.delete(draft.review)
+        db.flush()
 
-    db.commit()
+    _apply_generated_reply_draft(
+        draft,
+        message=message,
+        related_outbound_draft=related_outbound_draft,
+        generated=generated,
+        role=role,
+        model=model,
+        should_escalate_reviewer=should_escalate_reviewer,
+    )
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        draft = get_reply_assistant_draft_for_message(db, message.id)
+        if not draft:
+            raise
+
+        if draft.review is not None:
+            db.delete(draft.review)
+            db.flush()
+
+        _apply_generated_reply_draft(
+            draft,
+            message=message,
+            related_outbound_draft=related_outbound_draft,
+            generated=generated,
+            role=role,
+            model=model,
+            should_escalate_reviewer=should_escalate_reviewer,
+        )
+        db.commit()
+
     db.refresh(draft)
 
     logger.info(

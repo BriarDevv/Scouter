@@ -13,6 +13,7 @@ from app.llm.prompts import (
     EVALUATE_LEAD_QUALITY,
     GENERATE_REPLY_ASSISTANT_DRAFT,
     GENERATE_OUTREACH_EMAIL,
+    REVIEW_REPLY_ASSISTANT_DRAFT,
     REVIEW_INBOUND_REPLY,
     REVIEW_LEAD,
     REVIEW_OUTREACH_DRAFT,
@@ -514,4 +515,77 @@ def generate_reply_assistant_draft(
         }
     except Exception as e:
         logger.error("llm_reply_assistant_failed", role=_role_value(role), error=str(e))
+        return fallback
+
+
+def review_reply_assistant_draft(
+    *,
+    business_name: str | None,
+    industry: str | None,
+    city: str | None,
+    lead_email: str | None,
+    classification_label: str | None,
+    classification_summary: str | None,
+    next_action_suggestion: str | None,
+    reply_should_escalate_reviewer: bool,
+    outbound_subject: str | None,
+    outbound_body: str | None,
+    thread_context: str | None,
+    from_email: str | None,
+    to_email: str | None,
+    subject: str | None,
+    body_text: str | None,
+    draft_subject: str,
+    draft_body: str,
+    draft_summary: str | None,
+    suggested_tone: str | None,
+    role: LLMRole | str = LLMRole.REVIEWER,
+) -> dict:
+    """Review an existing assisted reply draft without regenerating it."""
+    prompt = REVIEW_REPLY_ASSISTANT_DRAFT.format(
+        business_name=business_name or "Unknown",
+        industry=industry or "Unknown",
+        city=city or "Unknown",
+        lead_email=lead_email or "Unknown",
+        classification_label=classification_label or "Unknown",
+        classification_summary=classification_summary or "No classification summary available",
+        next_action_suggestion=next_action_suggestion or "No next action suggestion available",
+        reply_should_escalate_reviewer="true" if reply_should_escalate_reviewer else "false",
+        outbound_subject=outbound_subject or "Unknown",
+        outbound_body=outbound_body or "Unknown",
+        thread_context=thread_context or "No previous thread context available",
+        from_email=from_email or "Unknown",
+        to_email=to_email or "Unknown",
+        subject=subject or "No subject",
+        body_text=body_text or "No body text available",
+        draft_subject=draft_subject,
+        draft_body=draft_body,
+        draft_summary=draft_summary or "No draft summary available",
+        suggested_tone=suggested_tone or "Unknown",
+    )
+
+    fallback = {
+        "summary": "Reviewer analysis unavailable.",
+        "feedback": "No se pudo revisar el draft de forma automática. Conviene revisarlo manualmente.",
+        "suggested_edits": ["Revisar manualmente antes de usar este draft."],
+        "recommended_action": "edit_before_sending",
+        "should_use_as_is": False,
+        "should_edit": True,
+        "should_escalate": True,
+    }
+
+    try:
+        raw = _call_ollama(prompt, role=role)
+        data = _extract_json(raw)
+        return {
+            "summary": str(data.get("summary", "")).strip() or fallback["summary"],
+            "feedback": str(data.get("feedback", "")).strip() or fallback["feedback"],
+            "suggested_edits": [str(item).strip() for item in (data.get("suggested_edits", []) or []) if str(item).strip()],
+            "recommended_action": str(data.get("recommended_action", "")).strip() or fallback["recommended_action"],
+            "should_use_as_is": bool(data.get("should_use_as_is")),
+            "should_edit": bool(data.get("should_edit")),
+            "should_escalate": bool(data.get("should_escalate")),
+        }
+    except Exception as e:
+        logger.error("llm_review_reply_assistant_failed", role=_role_value(role), error=str(e))
         return fallback

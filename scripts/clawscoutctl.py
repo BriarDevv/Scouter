@@ -46,6 +46,12 @@ COMMAND_SPECS: dict[str, CommandSpec] = {
     "task-status": CommandSpec("GET", "/tasks/{task_id}/status"),
     "reply-response-draft": CommandSpec("GET", "/replies/{message_id}/draft-response"),
     "reply-response-draft-generate": CommandSpec("POST", "/replies/{message_id}/draft-response", mutating=True),
+    "reply-response-draft-review": CommandSpec(
+        "POST", "/replies/{message_id}/draft-response/review", mutating=True
+    ),
+    "reply-response-draft-review-status": CommandSpec(
+        "GET", "/replies/{message_id}/draft-response/review"
+    ),
     "review-lead": CommandSpec("POST", "/reviews/leads/{lead_id}/async", mutating=True),
     "review-draft": CommandSpec("POST", "/reviews/drafts/{draft_id}/async", mutating=True),
     "review-reply": CommandSpec("POST", "/reviews/inbound/messages/{message_id}/async", mutating=True),
@@ -283,6 +289,13 @@ def parse_args() -> argparse.Namespace:
     )
     reply_response_draft_generate.add_argument("--message-id", required=True)
 
+    reply_response_draft_review = subparsers.add_parser("reply-response-draft-review")
+    reply_response_draft_review.add_argument("--message-id", required=True)
+    _add_wait_args(reply_response_draft_review)
+
+    reply_response_draft_review_status = subparsers.add_parser("reply-response-draft-review-status")
+    reply_response_draft_review_status.add_argument("--message-id", required=True)
+
     wait_task = subparsers.add_parser("wait-task")
     wait_task.add_argument("--task-id", required=True)
     wait_task.add_argument("--interval", type=float, default=DEFAULT_POLL_INTERVAL_SECONDS)
@@ -365,6 +378,10 @@ def build_request(args: argparse.Namespace) -> tuple[str, str, dict[str, Any] | 
     elif direct_command == "reply-response-draft":
         path = spec.path_template.format(message_id=args.message_id)
     elif direct_command == "reply-response-draft-generate":
+        path = spec.path_template.format(message_id=args.message_id)
+    elif direct_command == "reply-response-draft-review":
+        path = spec.path_template.format(message_id=args.message_id)
+    elif direct_command == "reply-response-draft-review-status":
         path = spec.path_template.format(message_id=args.message_id)
     elif direct_command == "review-lead":
         path = spec.path_template.format(lead_id=args.lead_id)
@@ -844,6 +861,91 @@ def handle_generate_draft(client: APIClient, args: argparse.Namespace) -> tuple[
     return make_success("generate-draft", data=data, request_meta=response["request"], status_code=response["status_code"])
 
 
+def handle_reply_response_draft_review(
+    client: APIClient, args: argparse.Namespace
+) -> tuple[dict[str, Any], int]:
+    try:
+        settings = fetch_settings(client)
+    except APIClientError as exc:
+        return exc.response, exc.exit_code
+
+    response, exit_code = client.request(
+        "reply-response-draft-review",
+        path=COMMAND_SPECS["reply-response-draft-review"].path_template.format(message_id=args.message_id),
+        method="POST",
+    )
+    if exit_code != 0 or not args.wait:
+        if exit_code != 0:
+            return response, exit_code
+        data = {
+            "mode": "async",
+            "enqueued": response["data"],
+            "summary": {
+                "workflow": "reply-response-draft-review",
+                "mode": "async",
+                "configured_role": "reviewer",
+                "configured_model": settings["reviewer_model"],
+                "task_id": response["data"].get("task_id"),
+                "lead_id": response["data"].get("lead_id"),
+                "current_step": response["data"].get("current_step"),
+            },
+        }
+        return make_success(
+            "reply-response-draft-review",
+            data=data,
+            request_meta=response["request"],
+            status_code=response["status_code"],
+        )
+
+    try:
+        wait_data = wait_for_task(
+            client,
+            task_id=response["data"]["task_id"],
+            interval=args.interval,
+            max_attempts=args.max_attempts,
+        )
+        review_response = client.request_or_raise(
+            "reply-response-draft-review-status",
+            path=COMMAND_SPECS["reply-response-draft-review-status"].path_template.format(
+                message_id=args.message_id
+            ),
+            method="GET",
+        )
+    except APIClientError as exc:
+        return exc.response, exc.exit_code
+
+    review = review_response["data"]
+    final = wait_data.get("final") or {}
+    data = {
+        "mode": "async",
+        "enqueued": response["data"],
+        "wait": wait_data,
+        "review": review,
+        "summary": {
+            "workflow": "reply-response-draft-review",
+            "mode": "async",
+            "configured_role": "reviewer",
+            "configured_model": settings["reviewer_model"],
+            "task_status": final.get("status"),
+            "task_id": final.get("task_id"),
+            "lead_id": final.get("lead_id"),
+            "current_step": final.get("current_step"),
+            "error": final.get("error"),
+            "review_status": review.get("status"),
+            "recommended_action": review.get("recommended_action"),
+            "should_use_as_is": review.get("should_use_as_is"),
+            "should_edit": review.get("should_edit"),
+            "should_escalate": review.get("should_escalate"),
+        },
+    }
+    return make_success(
+        "reply-response-draft-review",
+        data=data,
+        request_meta=response["request"],
+        status_code=response["status_code"],
+    )
+
+
 def handle_run_pipeline(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
     response, exit_code = client.request(
         "run-pipeline",
@@ -1070,6 +1172,7 @@ def main() -> int:
         "failed-tasks": handle_failed_tasks,
         "wait-task": handle_wait_task,
         "generate-draft": handle_generate_draft,
+        "reply-response-draft-review": handle_reply_response_draft_review,
         "run-pipeline": handle_run_pipeline,
         "review-lead": handle_review_lead,
         "review-draft": handle_review_draft,

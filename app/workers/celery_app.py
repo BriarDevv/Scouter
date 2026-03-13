@@ -28,6 +28,7 @@ celery_app.conf.update(
         "app.workers.tasks.task_review_lead": {"queue": "reviewer"},
         "app.workers.tasks.task_review_draft": {"queue": "reviewer"},
         "app.workers.tasks.task_review_inbound_message": {"queue": "reviewer"},
+        "app.workers.tasks.task_review_reply_assistant_draft": {"queue": "reviewer"},
     },
     # Default queue for unmatched tasks
     task_default_queue="default",

@@ -1,6 +1,9 @@
 from datetime import UTC, datetime
 import uuid
 
+from sqlalchemy.exc import IntegrityError
+
+from app.db.session import SessionLocal
 from app.models.inbound_mail import (
     EmailThread,
     InboundMailClassificationStatus,
@@ -210,3 +213,58 @@ def test_get_reply_assistant_draft_returns_404_when_absent(client, db):
     resp = client.get(f"/api/v1/replies/{message.id}/draft-response")
     assert resp.status_code == 404
     assert "Reply assistant draft not found" in resp.json()["detail"]
+
+
+def test_generate_reply_assistant_draft_handles_concurrent_insert(client, db, monkeypatch):
+    lead, outbound_draft, delivery, thread, message = _seed_inbound_reply(db)
+
+    monkeypatch.setattr(
+        "app.services.reply_response_service.llm_generate_reply_assistant_draft",
+        lambda **kwargs: {
+            "subject": "Re: Seguimiento sitio web",
+            "body": "Versión final después del race.",
+            "summary": "Draft consolidado después de insert concurrente.",
+            "suggested_tone": "professional",
+            "should_escalate_reviewer": False,
+        },
+    )
+
+    original_commit = db.commit
+    state = {"raised": False}
+
+    def flaky_commit():
+        if not state["raised"]:
+            state["raised"] = True
+            concurrent_session = SessionLocal()
+            try:
+                concurrent_session.add(
+                    ReplyAssistantDraft(
+                        inbound_message_id=message.id,
+                        thread_id=thread.id,
+                        lead_id=lead.id,
+                        related_delivery_id=delivery.id,
+                        related_outbound_draft_id=outbound_draft.id,
+                        status="generated",
+                        subject="Draft concurrente",
+                        body="Borrador viejo",
+                        summary="Viejo",
+                        suggested_tone="brief",
+                        should_escalate_reviewer=False,
+                        generator_role="executor",
+                        generator_model="qwen3.5:9b",
+                    )
+                )
+                concurrent_session.commit()
+            finally:
+                concurrent_session.close()
+            raise IntegrityError("insert", {}, Exception("duplicate"))
+        return original_commit()
+
+    monkeypatch.setattr(db, "commit", flaky_commit)
+
+    resp = client.post(f"/api/v1/replies/{message.id}/draft-response")
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["body"] == "Versión final después del race."
+    assert payload["subject"] == "Re: Seguimiento sitio web"
+    assert db.query(ReplyAssistantDraft).count() == 1

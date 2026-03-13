@@ -27,6 +27,7 @@ import {
   getInboundThreads,
   getLeads,
   generateReplyAssistantDraft,
+  requestReplyAssistantDraftReview,
   classifyInboundMessage,
   classifyPendingInboundMessages,
   syncInboundMail,
@@ -60,6 +61,7 @@ export default function ResponsesPage() {
   const [isClassifying, setIsClassifying] = useState(false);
   const [classifyingMessageId, setClassifyingMessageId] = useState<string | null>(null);
   const [generatingReplyDraftId, setGeneratingReplyDraftId] = useState<string | null>(null);
+  const [reviewingReplyDraftId, setReviewingReplyDraftId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "pending" | "classified" | "failed">("all");
 
   async function loadInboxData() {
@@ -172,6 +174,22 @@ export default function ResponsesPage() {
       );
     } finally {
       setGeneratingReplyDraftId(null);
+    }
+  }
+
+  async function handleReviewReplyDraft(messageId: string) {
+    setReviewingReplyDraftId(messageId);
+    try {
+      await requestReplyAssistantDraftReview(messageId);
+      await loadInboxData();
+    } catch (nextError) {
+      setError(
+        nextError instanceof Error
+          ? nextError.message
+          : "No se pudo pedir la review del draft sugerido."
+      );
+    } finally {
+      setReviewingReplyDraftId(null);
     }
   }
 
@@ -369,6 +387,22 @@ export default function ResponsesPage() {
                                 ? "Regenerar draft"
                                 : "Generar draft"}
                           </Button>
+                          {replyDraft && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="rounded-xl gap-1.5"
+                              onClick={() => void handleReviewReplyDraft(message.id)}
+                              disabled={reviewingReplyDraftId === message.id}
+                            >
+                              <LifeBuoy className="h-3.5 w-3.5" />
+                              {reviewingReplyDraftId === message.id
+                                ? "Pidiendo review..."
+                                : replyDraft.review
+                                  ? "Pedir review otra vez"
+                                  : "Pedir review"}
+                            </Button>
+                          )}
                         </div>
                       </div>
 
@@ -396,6 +430,68 @@ export default function ResponsesPage() {
                               {replyDraft.body}
                             </p>
                           </div>
+                          {replyDraft.review && (
+                            <div className="mt-3 rounded-xl border border-fuchsia-100 bg-fuchsia-50/40 px-3 py-3">
+                              <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                  <p className="text-sm font-medium text-slate-900">
+                                    Review opcional del draft
+                                  </p>
+                                  <p className="mt-1 text-xs text-slate-500">
+                                    {replyDraft.review.reviewer_role || "reviewer"} ·{" "}
+                                    {replyDraft.review.reviewer_model || "modelo no informado"}
+                                  </p>
+                                </div>
+                                <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                                  {replyDraft.review.status}
+                                </span>
+                              </div>
+                              {replyDraft.review.summary && (
+                                <p className="mt-3 text-sm text-slate-700">
+                                  {replyDraft.review.summary}
+                                </p>
+                              )}
+                              {replyDraft.review.feedback && (
+                                <p className="mt-2 text-sm text-slate-600">
+                                  <span className="font-medium text-slate-700">Feedback:</span>{" "}
+                                  {replyDraft.review.feedback}
+                                </p>
+                              )}
+                              {replyDraft.review.recommended_action && (
+                                <p className="mt-2 text-sm text-slate-600">
+                                  <span className="font-medium text-slate-700">Acción recomendada:</span>{" "}
+                                  {replyDraft.review.recommended_action}
+                                </p>
+                              )}
+                              {replyDraft.review.suggested_edits && replyDraft.review.suggested_edits.length > 0 && (
+                                <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-600">
+                                  {replyDraft.review.suggested_edits.map((edit, index) => (
+                                    <li key={`${replyDraft.review?.id}-edit-${index}`}>{edit}</li>
+                                  ))}
+                                </ul>
+                              )}
+                              <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                                {replyDraft.review.should_use_as_is && (
+                                  <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 font-medium text-emerald-700">
+                                    Usable tal cual
+                                  </span>
+                                )}
+                                {replyDraft.review.should_edit && (
+                                  <span className="rounded-full bg-amber-50 px-2.5 py-0.5 font-medium text-amber-700">
+                                    Conviene editar
+                                  </span>
+                                )}
+                                {replyDraft.review.should_escalate && (
+                                  <span className="rounded-full bg-fuchsia-50 px-2.5 py-0.5 font-medium text-fuchsia-700">
+                                    Mejor escalar
+                                  </span>
+                                )}
+                              </div>
+                              {replyDraft.review.error && (
+                                <p className="mt-2 text-sm text-rose-600">{replyDraft.review.error}</p>
+                              )}
+                            </div>
+                          )}
                         </>
                       ) : (
                         <p className="mt-3 text-sm text-slate-600">

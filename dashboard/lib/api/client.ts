@@ -29,6 +29,7 @@ import type {
   LLMSettings,
   MailSettings,
   ReplyAssistantDraft,
+  ReplyAssistantDraftReview,
 } from "@/types";
 import { API_BASE_URL } from "@/lib/constants";
 import {
@@ -427,6 +428,23 @@ export async function getReplyAssistantDraft(messageId: string): Promise<ReplyAs
 
 export async function generateReplyAssistantDraft(messageId: string): Promise<ReplyAssistantDraft> {
   return apiFetch(`/replies/${messageId}/draft-response`, { method: "POST" });
+}
+
+export async function getReplyAssistantDraftReview(
+  messageId: string
+): Promise<ReplyAssistantDraftReview | null> {
+  try {
+    return await apiFetch(`/replies/${messageId}/draft-response/review`);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("404")) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+export async function requestReplyAssistantDraftReview(messageId: string): Promise<TaskResponse> {
+  return apiFetch(`/replies/${messageId}/draft-response/review`, { method: "POST" });
 }
 
 export async function classifyInboundMessage(messageId: string): Promise<InboundMessage> {
