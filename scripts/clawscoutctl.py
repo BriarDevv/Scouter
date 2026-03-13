@@ -29,6 +29,7 @@ class CommandSpec:
 
 COMMAND_SPECS: dict[str, CommandSpec] = {
     "overview": CommandSpec("GET", "/leader/overview"),
+    "settings-mail": CommandSpec("GET", "/settings/mail"),
     "replies-summary": CommandSpec("GET", "/leader/replies/summary"),
     "recent-replies": CommandSpec("GET", "/leader/replies"),
     "top-leads": CommandSpec("GET", "/leader/top-leads"),
@@ -196,6 +197,7 @@ def parse_args() -> argparse.Namespace:
 
     subparsers.add_parser("overview", aliases=["ops-overview"])
     subparsers.add_parser("settings-llm", aliases=["ops-settings-llm"])
+    subparsers.add_parser("settings-mail", aliases=["ops-settings-mail"])
     replies_summary = subparsers.add_parser("replies-summary", aliases=["ops-replies-summary"])
     replies_summary.add_argument("--hours", type=int, default=24)
 
@@ -304,6 +306,7 @@ def build_request(args: argparse.Namespace) -> tuple[str, str, dict[str, Any] | 
         "drafts-ready": "recent-drafts",
         "ops-overview": "overview",
         "ops-settings-llm": "settings-llm",
+        "ops-settings-mail": "settings-mail",
         "ops-replies-summary": "replies-summary",
         "ops-important-replies": "important-replies",
         "ops-top-leads": "top-leads",

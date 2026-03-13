@@ -6,7 +6,12 @@ metadata: { "openclaw": { "emoji": "🦀", "always": true, "os": ["linux"], "req
 
 # ClawScout Leader Skill
 
-ClawScout is the source of truth. For exact operational data, execute the local wrapper first and return its JSON exactly.
+ClawScout is the source of truth.
+
+Use two modes:
+
+- exact-data mode -> `clawscoutctl.py`
+- briefing / prioritization mode -> `opsctl.py`
 
 ## Hard rule for grounded queries
 
@@ -53,6 +58,35 @@ Map grounded requests as follows:
 - running / failed tasks -> `task-health`
 
 Never derive counts from filtered lists.
+
+## Briefing / prioritization mode
+
+For compact grounded briefs, do not improvise tool calls yourself. Use `opsctl.py`, which runs grounded wrappers first and only then asks the leader to summarize the resolved JSON.
+
+Run from the workspace root:
+
+```bash
+cd /home/briar/src/ClawScout && .venv/bin/python scripts/opsctl.py --compact replies-digest --hours <n> --limit <n>
+cd /home/briar/src/ClawScout && .venv/bin/python scripts/opsctl.py --compact important-replies-brief --hours <n> --limit <n>
+cd /home/briar/src/ClawScout && .venv/bin/python scripts/opsctl.py --compact leads-priority --limit <n> --drafts-limit <n>
+cd /home/briar/src/ClawScout && .venv/bin/python scripts/opsctl.py --compact commercial-brief --hours <n> --limit <n> --drafts-limit <n>
+cd /home/briar/src/ClawScout && .venv/bin/python scripts/opsctl.py --compact settings-brief
+```
+
+Use `opsctl.py` for:
+
+- "resumime los replies importantes"
+- "qué leads debería mirar primero"
+- "qué drafts parecen más urgentes"
+- "qué cambió hoy en el inbox comercial"
+- "resumime el estado operativo"
+
+Rules:
+
+1. `opsctl.py` is for summary, prioritization, and next-step suggestions.
+2. `clawscoutctl.py` is for exact raw data.
+3. Do not restate counts or IDs that are not already present in the JSON returned by `opsctl.py`.
+4. If the user asks for raw exact numbers, use `clawscoutctl.py` instead.
 
 ## Action workflows
 
