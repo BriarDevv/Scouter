@@ -238,3 +238,27 @@ export interface PerformanceMetrics {
   avg_time_to_meeting: number;
   avg_time_to_close: number;
 }
+
+// ─── Settings ──────────────────────────────────────────
+
+export interface LLMRoleDefaults {
+  leader: string;
+  executor: string;
+  reviewer: string | null;
+}
+
+export interface LLMSettings {
+  provider: string;
+  base_url: string;
+  read_only: boolean;
+  editable: boolean;
+  leader_model: string;
+  executor_model: string;
+  reviewer_model: string | null;
+  supported_models: string[];
+  default_role_models: LLMRoleDefaults;
+  legacy_executor_fallback_model: string;
+  legacy_executor_fallback_active: boolean;
+  timeout_seconds: number;
+  max_retries: number;
+}

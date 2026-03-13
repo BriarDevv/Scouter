@@ -20,6 +20,7 @@ import type {
   SourcePerformance,
   DraftStatus,
   LeadStatus,
+  LLMSettings,
 } from "@/types";
 import { API_BASE_URL } from "@/lib/constants";
 import {
@@ -369,4 +370,10 @@ export async function getSourcePerformance(): Promise<SourcePerformance[]> {
     () => apiFetch("/performance/source"),
     () => MOCK_SOURCE_PERFORMANCE
   );
+}
+
+// ─── Settings ──────────────────────────────────────────
+
+export async function getLLMSettings(): Promise<LLMSettings> {
+  return apiFetch("/settings/llm");
 }
