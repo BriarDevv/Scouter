@@ -27,6 +27,7 @@ import type {
   InboundClassificationStatus,
   LeadStatus,
   LLMSettings,
+  MailSettings,
 } from "@/types";
 import { API_BASE_URL } from "@/lib/constants";
 import {
@@ -443,4 +444,8 @@ export async function getInboundMailStatus(): Promise<InboundMailStatus> {
 
 export async function getLLMSettings(): Promise<LLMSettings> {
   return apiFetch("/settings/llm");
+}
+
+export async function getMailSettings(): Promise<MailSettings> {
+  return apiFetch("/settings/mail");
 }

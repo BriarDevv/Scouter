@@ -374,3 +374,64 @@ export interface LLMSettings {
   timeout_seconds: number;
   max_retries: number;
 }
+
+export interface MailSyncCounts {
+  fetched: number;
+  new: number;
+  deduplicated: number;
+  matched: number;
+  unmatched: number;
+}
+
+export interface MailLastSync {
+  status: string;
+  at: string | null;
+  counts: MailSyncCounts;
+  error: string | null;
+}
+
+export interface OutboundMailSettings {
+  enabled: boolean;
+  provider: string;
+  configured: boolean;
+  ready: boolean;
+  from_email: string | null;
+  from_name: string;
+  reply_to: string | null;
+  send_timeout_seconds: number;
+  require_approved_drafts: boolean;
+  missing_requirements: string[];
+}
+
+export interface InboundMailSettings {
+  enabled: boolean;
+  provider: string;
+  configured: boolean;
+  ready: boolean;
+  account: string | null;
+  mailbox: string;
+  sync_limit: number;
+  timeout_seconds: number;
+  search_criteria: string;
+  auto_classify_inbound: boolean;
+  use_reviewer_for_labels: string[];
+  last_sync: MailLastSync | null;
+  missing_requirements: string[];
+}
+
+export interface MailHealthSettings {
+  configured: boolean;
+  enabled: boolean;
+  outbound_ready: boolean;
+  inbound_ready: boolean;
+  last_sync_status: string | null;
+  last_sync_at: string | null;
+}
+
+export interface MailSettings {
+  read_only: boolean;
+  editable: boolean;
+  outbound: OutboundMailSettings;
+  inbound: InboundMailSettings;
+  health: MailHealthSettings;
+}
