@@ -170,11 +170,18 @@ python -m playwright install chromium
 - La configuración viva de OpenClaw sigue viviendo fuera del repo en `~/.openclaw/openclaw.json`.
 - El repo versiona solo una plantilla segura en:
   - `infra/openclaw/openclaw.template.json`
+- La config real se regenera localmente con:
+  - `scripts/render-openclaw-config.sh`
 - Esa plantilla no incluye:
   - token del gateway
   - metadata/runtime local
   - paths personales
-- La config real debe renderizarse localmente a partir de esa plantilla y del entorno WSL actual.
+- La config real se renderiza a partir de esa plantilla y del entorno WSL actual.
+- El renderer:
+  - autodetecta el host Windows desde `ip route show default`
+  - permite override con `OPENCLAW_OLLAMA_BASE_URL` o `OPENCLAW_OLLAMA_HOST`
+  - hace backup de `~/.openclaw/openclaw.json` antes de sobrescribir
+  - preserva localmente el token del gateway si ya existía
 
 ### Ollama desde WSL
 
