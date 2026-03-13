@@ -19,13 +19,26 @@ app/
 └── crawlers/      # Lead discovery crawlers
 ```
 
-**Stack:** Python 3.12, FastAPI, SQLAlchemy 2.x, PostgreSQL, Redis, Celery, Ollama (default `qwen3.5:9b`), httpx, BeautifulSoup4, structlog.
+**Stack:** Python 3.12, FastAPI, SQLAlchemy 2.x, PostgreSQL, Redis, Celery, Ollama (default `qwen3.5:9b`), Next.js 16, Playwright-ready browser runtime, httpx, BeautifulSoup4, structlog.
+
+## Recommended Local Environment
+
+ClawScout is now **Linux-first for local development**.
+
+- Primary local environment: **WSL2 / Ubuntu**
+- Primary repo location: `~/src/ClawScout`
+- Current migration branch: `codex/feat/wsl-linux-first`
+- Windows clone remains a fallback and should stay quiet on `main`
+
+See the full operational guide in [docs/linux-first.md](docs/linux-first.md).
 
 ## Prerequisites
 
 - Python 3.12+
-- Docker & Docker Compose
-- Ollama (for local LLM)
+- Node `>=20.9.0`
+- Docker Desktop + Docker Compose
+- Ollama (temporarily still hosted on Windows in the validated setup)
+- Ubuntu on WSL2
 
 ## Quick Start
 
@@ -41,6 +54,8 @@ app/
 chmod +x bootstrap.sh
 ./bootstrap.sh
 ```
+
+For the current validated Linux-first workflow, use the dedicated guide in [docs/linux-first.md](docs/linux-first.md).
 
 ### Manual Setup
 
@@ -181,13 +196,13 @@ pytest -v
 - **LLM output treated as untrusted**: JSON extraction with fallback, all outputs sanitized before storage.
 - **No auto-send in v1**: All outreach requires human approval.
 
-## What's Not in v1 (Roadmap)
+## What's Still Pending
 
-- Frontend panel (admin dashboard)
+- Role-based model selection and routing
+- OpenClaw leader / supervisor orchestration layer
+- Browser automation beyond the current Playwright runtime validation
 - Email sending integration (SMTP/Resend/etc.)
-- Playwright-based deep crawling
-- Advanced SEO analysis
-- Multi-model LLM support
-- Webhook integrations
-- Analytics and reporting
-- Bulk operations UI
+- WhatsApp / outbound messaging channel
+- Real settings / operations UI beyond the current dashboard screens
+- Advanced SEO analysis and deeper crawling
+- Multi-executor / supervisor workflows
