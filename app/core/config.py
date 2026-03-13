@@ -48,6 +48,7 @@ class Settings(BaseSettings):
 
     # Rate limiting (API)
     API_RATE_LIMIT: str = "60/minute"
+    API_CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
 
     @property
     def ollama_supported_models(self) -> tuple[str, ...]:
@@ -55,6 +56,14 @@ class Settings(BaseSettings):
             model.strip()
             for model in self.OLLAMA_SUPPORTED_MODELS.split(",")
             if model.strip()
+        )
+
+    @property
+    def api_cors_origins(self) -> tuple[str, ...]:
+        return tuple(
+            origin.strip()
+            for origin in self.API_CORS_ORIGINS.split(",")
+            if origin.strip()
         )
 
 

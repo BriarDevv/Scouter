@@ -156,3 +156,25 @@ def test_dashboard_time_series_and_performance(client, db):
     assert activity_resp.status_code == 200
     activity = activity_resp.json()
     assert len(activity) == 2
+
+
+def test_dashboard_cors_allows_local_wsl_origins(client):
+    localhost_preflight = client.options(
+        "/api/v1/dashboard/stats",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert localhost_preflight.status_code == 200
+    assert localhost_preflight.headers["access-control-allow-origin"] == "http://localhost:3000"
+
+    loopback_preflight = client.options(
+        "/api/v1/dashboard/stats",
+        headers={
+            "Origin": "http://127.0.0.1:3000",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert loopback_preflight.status_code == 200
+    assert loopback_preflight.headers["access-control-allow-origin"] == "http://127.0.0.1:3000"

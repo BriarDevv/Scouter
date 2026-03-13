@@ -99,6 +99,22 @@ Notes:
 - The current crawler implementation in `app/crawlers/base_crawler.py` is still an `httpx` / BeautifulSoup template.
 - Browser runtime is ready in Linux-first, but a real Playwright crawler has not been implemented yet.
 
+## Dashboard On Linux / WSL
+
+The Next.js dashboard requires Node `>=20.9.0`.
+
+```bash
+cd dashboard
+npm ci
+npm run dev -- --hostname 0.0.0.0 --port 3000
+```
+
+Notes:
+
+- The dashboard talks to the API from the browser, so the backend must allow the dashboard origin via `API_CORS_ORIGINS`.
+- The default API CORS origins now cover both `http://localhost:3000` and `http://127.0.0.1:3000` for WSL/Linux-first local development.
+- If you override `NEXT_PUBLIC_API_URL`, keep it pointed at the backend API root (for example `http://localhost:8000/api/v1`).
+
 ## Running
 
 ```bash
