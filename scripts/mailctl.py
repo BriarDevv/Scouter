@@ -156,6 +156,16 @@ def parse_args() -> argparse.Namespace:
         default=float(os.getenv("CLAWSCOUT_API_TIMEOUT", str(DEFAULT_TIMEOUT_SECONDS))),
         help=f"HTTP timeout in seconds (default: {DEFAULT_TIMEOUT_SECONDS})",
     )
+    parser.add_argument(
+        "--data-only",
+        action="store_true",
+        help="Print only the response data on success. On failure, print a compact error object.",
+    )
+    parser.add_argument(
+        "--compact",
+        action="store_true",
+        help="Print compact JSON with no indentation.",
+    )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -280,7 +290,20 @@ def main() -> int:
         "send-draft": handle_send_draft,
     }
     response, exit_code = handlers[args.command](client, args)
-    print(json.dumps(response, ensure_ascii=False, indent=2))
+    if args.data_only:
+        if response.get("ok"):
+            rendered = response.get("data")
+        else:
+            rendered = {
+                "ok": False,
+                "command": response.get("command"),
+                "status_code": response.get("status_code"),
+                "error": response.get("error"),
+            }
+    else:
+        rendered = response
+
+    print(json.dumps(rendered, ensure_ascii=False, indent=None if args.compact else 2))
     return exit_code
 
 

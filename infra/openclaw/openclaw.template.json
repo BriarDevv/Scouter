@@ -61,8 +61,8 @@
     "defaults": {
       "workspace": "__WORKSPACE_PATH__",
       "timeoutSeconds": __OPENCLAW_TIMEOUT_SECONDS__,
-      "bootstrapMaxChars": 4000,
-      "bootstrapTotalMaxChars": 6000,
+      "bootstrapMaxChars": 1,
+      "bootstrapTotalMaxChars": 1,
       "bootstrapPromptTruncationWarning": "off",
       "model": {
         "primary": "ollama/__LEADER_MODEL_ID__"
@@ -95,13 +95,28 @@
     "load": {
       "watch": true,
       "watchDebounceMs": 250
+    },
+    "entries": {
+      "clawscout-leader": {
+        "env": {
+          "CLAWSCOUT_API_BASE_URL": "__CLAWSCOUT_API_BASE_URL__"
+        }
+      },
+      "clawscout-mail": {
+        "env": {
+          "CLAWSCOUT_API_BASE_URL": "__CLAWSCOUT_API_BASE_URL__"
+        }
+      },
+      "clawscout-browser": {
+        "env": {
+          "CLAWSCOUT_API_BASE_URL": "__CLAWSCOUT_API_BASE_URL__"
+        }
+      }
     }
   },
   "tools": {
     "allow": [
-      "read",
-      "exec",
-      "session_status"
+      "exec"
     ]
   },
   "gateway": {

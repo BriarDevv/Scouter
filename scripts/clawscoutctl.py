@@ -181,12 +181,22 @@ def parse_args() -> argparse.Namespace:
         default=float(os.getenv("CLAWSCOUT_API_TIMEOUT", str(DEFAULT_TIMEOUT_SECONDS))),
         help=f"HTTP timeout in seconds (default: {DEFAULT_TIMEOUT_SECONDS})",
     )
+    parser.add_argument(
+        "--data-only",
+        action="store_true",
+        help="Print only the response data on success. On failure, print a compact error object.",
+    )
+    parser.add_argument(
+        "--compact",
+        action="store_true",
+        help="Print compact JSON with no indentation.",
+    )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    subparsers.add_parser("overview")
-    subparsers.add_parser("settings-llm")
-    replies_summary = subparsers.add_parser("replies-summary")
+    subparsers.add_parser("overview", aliases=["ops-overview"])
+    subparsers.add_parser("settings-llm", aliases=["ops-settings-llm"])
+    replies_summary = subparsers.add_parser("replies-summary", aliases=["ops-replies-summary"])
     replies_summary.add_argument("--hours", type=int, default=24)
 
     recent_replies = subparsers.add_parser("recent-replies")
@@ -195,7 +205,7 @@ def parse_args() -> argparse.Namespace:
     recent_replies.add_argument("--labels")
     recent_replies.add_argument("--classification-status")
 
-    important_replies = subparsers.add_parser("important-replies")
+    important_replies = subparsers.add_parser("important-replies", aliases=["ops-important-replies"])
     important_replies.add_argument("--limit", type=int, default=10)
     important_replies.add_argument("--hours", type=int, default=24)
 
@@ -218,7 +228,7 @@ def parse_args() -> argparse.Namespace:
     performance_summary = subparsers.add_parser("performance-summary")
     performance_summary.add_argument("--limit", type=int, default=3)
 
-    top_leads = subparsers.add_parser("top-leads")
+    top_leads = subparsers.add_parser("top-leads", aliases=["ops-top-leads"])
     top_leads.add_argument("--limit", type=int, default=10)
     top_leads.add_argument("--status")
 
@@ -226,7 +236,7 @@ def parse_args() -> argparse.Namespace:
     best_leads.add_argument("--limit", type=int, default=10)
     best_leads.add_argument("--status")
 
-    recent_drafts = subparsers.add_parser("recent-drafts")
+    recent_drafts = subparsers.add_parser("recent-drafts", aliases=["ops-recent-drafts"])
     recent_drafts.add_argument("--limit", type=int, default=10)
     recent_drafts.add_argument("--status")
 
@@ -292,6 +302,12 @@ def build_request(args: argparse.Namespace) -> tuple[str, str, dict[str, Any] | 
     direct_command = {
         "best-leads": "top-leads",
         "drafts-ready": "recent-drafts",
+        "ops-overview": "overview",
+        "ops-settings-llm": "settings-llm",
+        "ops-replies-summary": "replies-summary",
+        "ops-important-replies": "important-replies",
+        "ops-top-leads": "top-leads",
+        "ops-recent-drafts": "recent-drafts",
     }.get(command, command)
     spec = COMMAND_SPECS[direct_command]
     params: dict[str, Any] | None = None
@@ -1057,7 +1073,20 @@ def main() -> int:
                 "items": response["data"],
             }
 
-    json.dump(response, sys.stdout, indent=2)
+    if args.data_only:
+        if response.get("ok"):
+            rendered = response.get("data")
+        else:
+            rendered = {
+                "ok": False,
+                "command": response.get("command"),
+                "status_code": response.get("status_code"),
+                "error": response.get("error"),
+            }
+    else:
+        rendered = response
+
+    json.dump(rendered, sys.stdout, indent=None if args.compact else 2)
     sys.stdout.write("\n")
     return exit_code
 

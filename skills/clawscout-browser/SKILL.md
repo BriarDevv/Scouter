@@ -1,7 +1,7 @@
 ---
 name: clawscout-browser
 description: "Inspect public business websites with Playwright through scripts/browserctl.py. Use this for grounded site checks such as title, meta description, h1, contact signals, CTA signals, social links, screenshots, or inspecting a lead's website by lead id."
-metadata: { "openclaw": { "emoji": "🌐", "always": true, "os": ["linux"], "requires": { "bins": ["python3"] } } }
+metadata: { "openclaw": { "emoji": "🌐", "os": ["linux"], "requires": { "bins": ["python3"] } } }
 ---
 
 # ClawScout Browser Skill
