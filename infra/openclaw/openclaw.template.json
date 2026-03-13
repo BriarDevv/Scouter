@@ -85,6 +85,12 @@
     "restart": true,
     "ownerDisplay": "raw"
   },
+  "skills": {
+    "load": {
+      "watch": true,
+      "watchDebounceMs": 250
+    }
+  },
   "gateway": {
     "mode": "local",
     "bind": "loopback",
