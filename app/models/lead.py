@@ -88,6 +88,12 @@ class Lead(Base):
     outreach_deliveries: Mapped[list["OutreachDelivery"]] = relationship(  # noqa: F821
         "OutreachDelivery", back_populates="lead", cascade="all, delete-orphan"
     )
+    email_threads: Mapped[list["EmailThread"]] = relationship(  # noqa: F821
+        "EmailThread", back_populates="lead"
+    )
+    inbound_messages: Mapped[list["InboundMessage"]] = relationship(  # noqa: F821
+        "InboundMessage", back_populates="lead"
+    )
     pipeline_runs: Mapped[list["PipelineRun"]] = relationship(  # noqa: F821
         "PipelineRun", back_populates="lead", cascade="all, delete-orphan"
     )

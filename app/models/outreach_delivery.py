@@ -20,6 +20,7 @@ class OutreachDelivery(Base):
         Index("ix_outreach_deliveries_draft_id", "draft_id"),
         Index("ix_outreach_deliveries_lead_id", "lead_id"),
         Index("ix_outreach_deliveries_status", "status"),
+        Index("ix_outreach_deliveries_provider_message_id", "provider_message_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
@@ -52,4 +53,10 @@ class OutreachDelivery(Base):
     lead: Mapped["Lead"] = relationship("Lead", back_populates="outreach_deliveries")  # noqa: F821
     draft: Mapped["OutreachDraft"] = relationship(  # noqa: F821
         "OutreachDraft", back_populates="deliveries"
+    )
+    email_threads: Mapped[list["EmailThread"]] = relationship(  # noqa: F821
+        "EmailThread", back_populates="delivery"
+    )
+    inbound_messages: Mapped[list["InboundMessage"]] = relationship(  # noqa: F821
+        "InboundMessage", back_populates="delivery"
     )

@@ -1,3 +1,4 @@
+from app.models.inbound_mail import EmailThread, InboundMailSyncRun, InboundMessage
 from app.models.lead import Lead
 from app.models.lead_signal import LeadSignal
 from app.models.lead_source import LeadSource
@@ -7,6 +8,9 @@ from app.models.suppression import SuppressionEntry
 from app.models.task_tracking import PipelineRun, TaskRun
 
 __all__ = [
+    "EmailThread",
+    "InboundMailSyncRun",
+    "InboundMessage",
     "Lead",
     "LeadSignal",
     "LeadSource",

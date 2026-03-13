@@ -60,6 +60,19 @@ class Settings(BaseSettings):
     MAIL_SMTP_STARTTLS: bool = True
     MAIL_SMTP_SSL: bool = False
     MAIL_SEND_TIMEOUT: int = 30
+    MAIL_INBOUND_PROVIDER: str = "imap"
+    MAIL_INBOUND_ENABLED: bool = False
+    MAIL_IMAP_HOST: str | None = None
+    MAIL_IMAP_PORT: int = 993
+    MAIL_IMAP_USERNAME: str | None = None
+    MAIL_IMAP_PASSWORD: str | None = None
+    MAIL_IMAP_SSL: bool = True
+    MAIL_IMAP_MAILBOX: str = "INBOX"
+    MAIL_IMAP_SEARCH_CRITERIA: str = "ALL"
+    MAIL_INBOUND_SYNC_LIMIT: int = 25
+    MAIL_INBOUND_TIMEOUT: int = 30
+    MAIL_AUTO_CLASSIFY_INBOUND: bool = False
+    MAIL_USE_REVIEWER_FOR_LABELS: str = ""
 
     # Rate limiting (API)
     API_RATE_LIMIT: str = "60/minute"
@@ -117,6 +130,14 @@ class Settings(BaseSettings):
             origin.strip()
             for origin in self.API_CORS_ORIGINS.split(",")
             if origin.strip()
+        )
+
+    @property
+    def mail_use_reviewer_for_labels(self) -> tuple[str, ...]:
+        return tuple(
+            label.strip()
+            for label in self.MAIL_USE_REVIEWER_FOR_LABELS.split(",")
+            if label.strip()
         )
 
 

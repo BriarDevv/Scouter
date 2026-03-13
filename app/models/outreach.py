@@ -40,6 +40,12 @@ class OutreachDraft(Base):
     deliveries: Mapped[list["OutreachDelivery"]] = relationship(  # noqa: F821
         "OutreachDelivery", back_populates="draft", cascade="all, delete-orphan"
     )
+    email_threads: Mapped[list["EmailThread"]] = relationship(  # noqa: F821
+        "EmailThread", back_populates="draft"
+    )
+    inbound_messages: Mapped[list["InboundMessage"]] = relationship(  # noqa: F821
+        "InboundMessage", back_populates="draft"
+    )
 
 
 class LogAction(str, enum.Enum):
