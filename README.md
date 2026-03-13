@@ -76,6 +76,29 @@ python scripts/seed.py
 - Prepared catalog for future switching: `qwen3.5:4b`, `qwen3.5:9b`, `qwen3.5:27b` via `OLLAMA_SUPPORTED_MODELS`
 - The app still uses a single active model today; role-specific model routing is intentionally deferred
 
+## Playwright On Linux / WSL
+
+Playwright is declared as an optional dependency and should be installed only on environments that need browser automation or deep crawling.
+
+```bash
+# Python package
+pip install -e ".[playwright]"
+
+# System dependencies for Chromium on Ubuntu / WSL
+python -m playwright install-deps chromium
+
+# Browser binaries for the current Linux user
+python -m playwright install chromium
+```
+
+Validated on WSL2 with headless Chromium navigation against a public site.
+
+Notes:
+
+- `install-deps` pulls the Linux packages Playwright needs for Chromium, including NSS, audio, Xvfb, and font packages.
+- The current crawler implementation in `app/crawlers/base_crawler.py` is still an `httpx` / BeautifulSoup template.
+- Browser runtime is ready in Linux-first, but a real Playwright crawler has not been implemented yet.
+
 ## Running
 
 ```bash
