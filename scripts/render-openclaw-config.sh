@@ -172,7 +172,7 @@ else
     PROBE_LOG="WARN: Ollama connectivity probe falló pero se continúa por OPENCLAW_ALLOW_UNREACHABLE_OLLAMA=1 ($PROBE_RESULT)"
   else
     rm -f "$TMP_PATH"
-    die "Ollama no responde en $OLLAMA_BASE_URL_RENDERED ($PROBE_RESULT). Revisá el bridge WSL->Windows o definí OPENCLAW_ALLOW_UNREACHABLE_OLLAMA=1 para forzar el render."
+    die "Ollama no responde en $OLLAMA_BASE_URL_RENDERED ($PROBE_RESULT). Restaurá el bridge con 'bash scripts/ensure-ollama-bridge.sh' o definí OPENCLAW_ALLOW_UNREACHABLE_OLLAMA=1 para forzar el render."
   fi
 fi
 

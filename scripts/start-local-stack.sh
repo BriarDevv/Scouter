@@ -49,6 +49,7 @@ EOF
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 RENDER_SCRIPT="$REPO_ROOT/scripts/render-openclaw-config.sh"
+ENSURE_OLLAMA_BRIDGE_SCRIPT="$REPO_ROOT/scripts/ensure-ollama-bridge.sh"
 OPENCLAW_CONFIG_PATH="${OPENCLAW_CONFIG_PATH:-$HOME/.openclaw/openclaw.json}"
 ENV_FILE="$REPO_ROOT/.env"
 LAUNCH_MODE=0
@@ -247,6 +248,14 @@ render_openclaw_config() {
   "$RENDER_SCRIPT"
 }
 
+ensure_ollama_bridge() {
+  if [[ -r "$ENSURE_OLLAMA_BRIDGE_SCRIPT" ]]; then
+    bash "$ENSURE_OLLAMA_BRIDGE_SCRIPT" --quiet
+  else
+    warn "No encontré $ENSURE_OLLAMA_BRIDGE_SCRIPT; asumo que el bridge Ollama ya está operativo."
+  fi
+}
+
 show_openclaw_config_summary() {
   python3 - "$OPENCLAW_CONFIG_PATH" <<'PY'
 import json
@@ -327,6 +336,7 @@ main() {
 
   normalize_services
   show_prereq_status
+  ensure_ollama_bridge
   render_openclaw_config
 
   declare -A rendered

@@ -194,6 +194,8 @@ python -m playwright install chromium
   - `infra/openclaw/openclaw.template.json`
 - La config real se regenera localmente con:
   - `scripts/render-openclaw-config.sh`
+- El bridge WSL -> Ollama se restaura de forma reproducible con:
+  - `scripts/ensure-ollama-bridge.sh`
 - Esa plantilla no incluye:
   - token del gateway
   - metadata/runtime local
@@ -212,6 +214,18 @@ Solución validada hoy:
 - Ollama sigue en Windows
 - WSL consume una instancia dedicada expuesta al bridge WSL
 - `OLLAMA_BASE_URL` del clon Linux apunta a esa instancia
+- El bridge se restaura con:
+
+```bash
+cd ~/src/ClawScout
+bash scripts/ensure-ollama-bridge.sh
+```
+
+- Para imprimir solo la URL efectiva del bridge:
+
+```bash
+bash scripts/ensure-ollama-bridge.sh --print-url
+```
 
 Ejemplo validado:
 
@@ -220,26 +234,12 @@ OLLAMA_BASE_URL=http://172.22.48.1:11435
 OLLAMA_MODEL=qwen3.5:9b
 ```
 
-PowerShell de referencia para la instancia dedicada:
-
-```powershell
-$env:OLLAMA_HOST='172.22.48.1:11435'
-Start-Process -FilePath "$env:LOCALAPPDATA\\Programs\\Ollama\\ollama.exe" `
-  -ArgumentList 'serve' `
-  -WindowStyle Hidden `
-  -Environment @{ OLLAMA_HOST = '172.22.48.1:11435' }
-```
-
 Importante:
 
 - la IP del bridge WSL puede cambiar tras reinicios de WSL o de red
-- para revisar la gateway actual desde WSL:
-
-```bash
-ip route show default
-```
-
-- si cambia, actualizar `OLLAMA_BASE_URL` en el `.env` del clon Linux
+- el helper detecta la gateway actual desde `ip route show default` y relanza una segunda instancia de Ollama atada a esa IP
+- OpenClaw y ClawScout deben apuntar a la misma URL efectiva del bridge
+- si el `.env` local de ClawScout sigue apuntando a una URL vieja, actualizar `OLLAMA_BASE_URL`
 - esto es **temporal y reversible** hasta decidir si Ollama migra a WSL
 
 ### CORS dashboard -> backend
@@ -284,14 +284,25 @@ nc -zv 127.0.0.1 6379
 
 ### Ollama no responde
 
-- Verificar la instancia Windows dedicada al bridge WSL
+- Restaurar el bridge WSL -> Windows:
+
+```bash
+cd ~/src/ClawScout
+bash scripts/ensure-ollama-bridge.sh
+```
+
 - Comprobar desde WSL:
 
 ```bash
 curl "$OLLAMA_BASE_URL/api/tags"
 ```
 
-- Si falla tras reinicio de WSL, revisar si cambió la IP del bridge y actualizar `.env`
+- Si falla tras reinicio de WSL, el helper vuelve a detectar la IP del gateway actual y relanza la instancia dedicada
+- Si OpenClaw sigue fallando al renderizar config, volver a correr:
+
+```bash
+bash scripts/render-openclaw-config.sh
+```
 
 ### DNS falla
 
