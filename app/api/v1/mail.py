@@ -21,6 +21,10 @@ from app.services.inbound_mail_service import (
     list_inbound_messages,
     sync_inbound_messages,
 )
+from app.services.reply_classification_service import (
+    classify_inbound_message,
+    classify_pending_inbound_messages,
+)
 from app.core.config import settings
 
 router = APIRouter(prefix="/mail/inbound", tags=["mail-inbound"])
@@ -43,10 +47,25 @@ def sync_inbound_mail(
 def list_messages(
     lead_id: uuid.UUID | None = None,
     thread_id: uuid.UUID | None = None,
+    classification_status: str | None = None,
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_session),
 ):
-    return list_inbound_messages(db, lead_id=lead_id, thread_id=thread_id, limit=limit)
+    return list_inbound_messages(
+        db,
+        lead_id=lead_id,
+        thread_id=thread_id,
+        classification_status=classification_status,
+        limit=limit,
+    )
+
+
+@router.post("/messages/classify-pending", response_model=list[InboundMessageResponse])
+def classify_pending_messages(
+    limit: int = Query(25, ge=1, le=100),
+    db: Session = Depends(get_session),
+):
+    return classify_pending_inbound_messages(db, limit=limit)
 
 
 @router.get("/messages/{message_id}", response_model=InboundMessageResponse)
@@ -86,3 +105,11 @@ def get_status(db: Session = Depends(get_session)):
         "reviewer_labels": list(settings.mail_use_reviewer_for_labels),
         "last_sync": get_inbound_sync_status(db),
     }
+
+
+@router.post("/messages/{message_id}/classify", response_model=InboundMessageResponse)
+def classify_message(message_id: uuid.UUID, db: Session = Depends(get_session)):
+    message = classify_inbound_message(db, message_id)
+    if not message:
+        raise HTTPException(status_code=404, detail="Inbound message not found")
+    return message

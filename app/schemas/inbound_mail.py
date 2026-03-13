@@ -34,6 +34,10 @@ class InboundMessageResponse(BaseModel):
     confidence: float | None
     next_action_suggestion: str | None
     should_escalate_reviewer: bool
+    classification_error: str | None
+    classification_role: str | None
+    classification_model: str | None
+    classified_at: datetime | None
     created_at: datetime
     updated_at: datetime
 

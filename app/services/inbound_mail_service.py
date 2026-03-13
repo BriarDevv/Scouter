@@ -69,6 +69,7 @@ def list_inbound_messages(
     *,
     lead_id: uuid.UUID | None = None,
     thread_id: uuid.UUID | None = None,
+    classification_status: str | None = None,
     limit: int = 50,
 ) -> list[InboundMessage]:
     stmt = (
@@ -81,6 +82,8 @@ def list_inbound_messages(
         stmt = stmt.where(InboundMessage.lead_id == lead_id)
     if thread_id:
         stmt = stmt.where(InboundMessage.thread_id == thread_id)
+    if classification_status:
+        stmt = stmt.where(InboundMessage.classification_status == classification_status)
     return list(db.execute(stmt).scalars().all())
 
 
@@ -143,7 +146,7 @@ def sync_inbound_messages(db: Session, *, limit: int | None = None) -> InboundMa
         sync_run.fetched_count = len(messages)
 
         for payload in messages:
-            result = _persist_inbound_message(db, payload)
+            persisted_message, result = _persist_inbound_message(db, payload)
             if result == "deduplicated":
                 sync_run.deduplicated_count += 1
                 continue
@@ -153,6 +156,11 @@ def sync_inbound_messages(db: Session, *, limit: int | None = None) -> InboundMa
                 sync_run.matched_count += 1
             else:
                 sync_run.unmatched_count += 1
+
+            if persisted_message and settings.MAIL_AUTO_CLASSIFY_INBOUND:
+                from app.services.reply_classification_service import classify_inbound_message
+
+                classify_inbound_message(db, persisted_message.id)
 
         sync_run.status = InboundMailSyncStatus.COMPLETED.value
         sync_run.error = None
@@ -183,22 +191,18 @@ def sync_inbound_messages(db: Session, *, limit: int | None = None) -> InboundMa
         raise
 
 
-def _persist_inbound_message(db: Session, payload: InboundMailMessage) -> str:
+def _persist_inbound_message(
+    db: Session, payload: InboundMailMessage
+) -> tuple[InboundMessage | None, str]:
     dedupe_key = _build_dedupe_key(payload)
     existing = db.execute(
         select(InboundMessage).where(InboundMessage.dedupe_key == dedupe_key)
     ).scalars().first()
     if existing:
-        return "deduplicated"
+        return None, "deduplicated"
 
     match = _match_delivery(db, payload)
     thread = _resolve_thread(db, payload, match)
-    classification_status = (
-        InboundMailClassificationStatus.PENDING.value
-        if settings.MAIL_AUTO_CLASSIFY_INBOUND
-        else InboundMailClassificationStatus.SKIPPED.value
-    )
-
     message = InboundMessage(
         dedupe_key=dedupe_key,
         thread_id=thread.id if thread else None,
@@ -219,12 +223,16 @@ def _persist_inbound_message(db: Session, payload: InboundMailMessage) -> str:
         body_snippet=payload.body_snippet,
         received_at=payload.received_at,
         raw_metadata_json=payload.raw_metadata,
-        classification_status=classification_status,
+        classification_status=InboundMailClassificationStatus.PENDING.value,
         classification_label=None,
         summary=None,
         confidence=None,
         next_action_suggestion=None,
         should_escalate_reviewer=False,
+        classification_error=None,
+        classification_role=None,
+        classification_model=None,
+        classified_at=None,
     )
     db.add(message)
     db.flush()
@@ -260,7 +268,7 @@ def _persist_inbound_message(db: Session, payload: InboundMailMessage) -> str:
         match_confidence=thread.match_confidence,
         classification_status=message.classification_status,
     )
-    return "matched" if match.delivery else "unmatched"
+    return message, "matched" if match.delivery else "unmatched"
 
 
 def _resolve_thread(db: Session, payload: InboundMailMessage, match: DeliveryMatch) -> EmailThread:

@@ -119,7 +119,7 @@ def test_inbound_sync_deduplicates_and_matches_by_message_id(client, db, monkeyp
     assert items[0]["lead_id"] == str(lead.id)
     assert items[0]["draft_id"] == str(draft.id)
     assert items[0]["delivery_id"] == str(delivery.id)
-    assert items[0]["classification_status"] == InboundMailClassificationStatus.SKIPPED.value
+    assert items[0]["classification_status"] == InboundMailClassificationStatus.PENDING.value
 
     threads = client.get("/api/v1/mail/inbound/threads")
     assert threads.status_code == 200
@@ -218,7 +218,7 @@ def test_inbound_status_and_detail_endpoints(client, db, monkeypatch):
             return [payload]
 
     monkeypatch.setattr(settings, "MAIL_INBOUND_ENABLED", True)
-    monkeypatch.setattr(settings, "MAIL_AUTO_CLASSIFY_INBOUND", True)
+    monkeypatch.setattr(settings, "MAIL_AUTO_CLASSIFY_INBOUND", False)
     monkeypatch.setattr(settings, "MAIL_USE_REVIEWER_FOR_LABELS", "asked_for_quote,needs_human_review")
     monkeypatch.setattr("app.services.inbound_mail_service.get_inbound_provider", lambda: FakeProvider())
 
@@ -230,7 +230,7 @@ def test_inbound_status_and_detail_endpoints(client, db, monkeypatch):
     status_payload = status_resp.json()
     assert status_payload["enabled"] is True
     assert status_payload["provider"] == "imap"
-    assert status_payload["auto_classify_inbound"] is True
+    assert status_payload["auto_classify_inbound"] is False
     assert status_payload["reviewer_labels"] == ["asked_for_quote", "needs_human_review"]
     assert status_payload["last_sync"]["status"] == "completed"
 

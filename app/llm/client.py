@@ -9,6 +9,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.llm.prompts import (
+    CLASSIFY_INBOUND_REPLY,
     EVALUATE_LEAD_QUALITY,
     GENERATE_OUTREACH_EMAIL,
     REVIEW_LEAD,
@@ -350,3 +351,39 @@ def review_outreach_draft(
     except Exception as e:
         logger.error("llm_review_draft_failed", role=_role_value(role), error=str(e))
         return fallback
+
+
+def classify_inbound_reply(
+    *,
+    business_name: str | None,
+    industry: str | None,
+    city: str | None,
+    lead_email: str | None,
+    outbound_subject: str | None,
+    outbound_message_id: str | None,
+    from_email: str | None,
+    to_email: str | None,
+    subject: str | None,
+    body_text: str | None,
+    role: LLMRole | str = LLMRole.EXECUTOR,
+) -> dict:
+    """Classify an inbound reply with the executor model."""
+    prompt = CLASSIFY_INBOUND_REPLY.format(
+        business_name=business_name or "Unknown",
+        industry=industry or "Unknown",
+        city=city or "Unknown",
+        lead_email=lead_email or "Unknown",
+        outbound_subject=outbound_subject or "Unknown",
+        outbound_message_id=outbound_message_id or "Unknown",
+        from_email=from_email or "Unknown",
+        to_email=to_email or "Unknown",
+        subject=subject or "No subject",
+        body_text=body_text or "No body text available",
+    )
+
+    try:
+        raw = _call_ollama(prompt, role=role)
+        return _extract_json(raw)
+    except Exception as e:
+        logger.error("llm_classify_inbound_failed", role=_role_value(role), error=str(e))
+        raise

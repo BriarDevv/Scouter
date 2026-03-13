@@ -125,3 +125,51 @@ Respond ONLY with a JSON object:
   "revised_subject": "optional improved subject or null",
   "revised_body": "optional improved body or null"
 }}"""
+
+CLASSIFY_INBOUND_REPLY = """You are the executor model for ClawScout. Classify this inbound sales reply from a lead and produce a short operator-facing summary.
+
+Lead context:
+- Business name: {business_name}
+- Industry: {industry}
+- City: {city}
+- Lead email: {lead_email}
+
+Outreach context:
+- Last outbound subject: {outbound_subject}
+- Last outbound message id: {outbound_message_id}
+
+Inbound reply:
+- From: {from_email}
+- To: {to_email}
+- Subject: {subject}
+- Body: {body_text}
+
+Valid labels:
+- interested
+- not_interested
+- neutral
+- asked_for_quote
+- asked_for_meeting
+- asked_for_more_info
+- wrong_contact
+- out_of_office
+- spam_or_irrelevant
+- needs_human_review
+
+Rules:
+- Return exactly one label from the valid list.
+- Treat autoresponders and vacation notices as out_of_office.
+- Use needs_human_review when the message is too ambiguous or risky to classify confidently.
+- Keep summary short and factual.
+- next_action_suggestion must be practical and short.
+- should_escalate_reviewer should be true only if the reply is high-value, ambiguous, risky, or deserves a deeper second opinion.
+- Confidence must be a number between 0 and 1.
+
+Respond ONLY with a JSON object:
+{{
+  "label": "one valid label",
+  "summary": "short factual summary",
+  "confidence": 0.0,
+  "next_action_suggestion": "short operator next step",
+  "should_escalate_reviewer": false
+}}"""
