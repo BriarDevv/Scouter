@@ -14,6 +14,7 @@ ClawScout remains the source of truth. Always prefer the local API wrapper over 
 - Top-scoring leads
 - Recent drafts, pipelines, tasks, and activity
 - Active LLM settings by role
+- Public website inspection through `scripts/browserctl.py`
 - Safe actions explicitly requested by the user:
   - generate a draft for a lead
   - run the full pipeline for a lead
@@ -26,6 +27,7 @@ ClawScout remains the source of truth. Always prefer the local API wrapper over 
 - Direct database inspection when the API already exposes the state
 - Destructive actions
 - Mail, WhatsApp, or browser-channel automation
+- Built-in browser tooling when `scripts/browserctl.py` already covers the requested public inspection
 
 ## Reviewer rule
 
@@ -56,6 +58,10 @@ python3 scripts/clawscoutctl.py task-status --task-id <task_id>
 python3 scripts/clawscoutctl.py wait-task --task-id <task_id>
 python3 scripts/clawscoutctl.py review-lead --lead-id <lead_id> --wait
 python3 scripts/clawscoutctl.py review-draft --draft-id <draft_id> --wait
+python3 scripts/browserctl.py inspect-url --url <public_url>
+python3 scripts/browserctl.py inspect-url --url <public_url> --screenshot
+python3 scripts/browserctl.py inspect-business-site --lead-id <lead_id>
+python3 scripts/browserctl.py inspect-business-site --lead-id <lead_id> --screenshot
 ```
 
 Prefer one wrapper command per question unless the user explicitly asks for a multi-part answer.
@@ -93,6 +99,12 @@ Prefer one wrapper command per question unless the user explicitly asks for a mu
   - run `python3 scripts/clawscoutctl.py review-lead --lead-id <lead_id> --wait`
 - Reviewer second opinion on a draft:
   - run `python3 scripts/clawscoutctl.py review-draft --draft-id <draft_id> --wait`
+- Public website inspection by URL:
+  - run `python3 scripts/browserctl.py inspect-url --url <public_url>`
+  - add `--screenshot` only when the user asked for visual evidence or a screenshot would materially help
+- Public website inspection by lead:
+  - run `python3 scripts/browserctl.py inspect-business-site --lead-id <lead_id>`
+  - add `--screenshot` only when useful
 
 ## Workflow rules
 
@@ -110,6 +122,10 @@ Prefer one wrapper command per question unless the user explicitly asks for a mu
   - use `performance-summary`
 - For "qué modelo usa cada rol":
   - use `settings-llm`
+- For public website inspection:
+  - prefer `python3 scripts/browserctl.py inspect-url --url <public_url>`
+  - if the user references a lead id and wants the lead's website, use `python3 scripts/browserctl.py inspect-business-site --lead-id <lead_id>`
+  - do not use the built-in OpenClaw browser tool for these grounded inspections unless the user explicitly asks for interactive browsing
 - For `generate-draft` and `run-pipeline`:
   - prefer the `--wait` workflow unless the user explicitly wants just the task id
   - when `--wait` succeeds, answer with the wrapper `summary` fields rather than free-form narration
@@ -131,6 +147,7 @@ Prefer one wrapper command per question unless the user explicitly asks for a mu
 - Mention failures plainly using the wrapper `error` field when a command fails.
 - For `generate-draft --wait`, `run-pipeline --wait`, `review-lead`, and `review-draft`, prefer returning the `summary` or review payload fields directly instead of paraphrasing them loosely.
 - For `generate-draft --wait`, `run-pipeline --wait`, `review-lead --wait`, and `review-draft --wait`, prefer returning the `summary` or review payload fields directly instead of paraphrasing them loosely.
+- For website inspection, copy `title`, `meta_description`, `h1`, `contact_signals`, `social_links`, `cta_signals`, `page_type_guess`, `screenshot_path`, and `important_links` exactly from `browserctl` JSON.
 
 ## Mutation rules
 
