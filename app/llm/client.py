@@ -11,6 +11,7 @@ from app.core.logging import get_logger
 from app.llm.prompts import (
     CLASSIFY_INBOUND_REPLY,
     EVALUATE_LEAD_QUALITY,
+    GENERATE_REPLY_ASSISTANT_DRAFT,
     GENERATE_OUTREACH_EMAIL,
     REVIEW_INBOUND_REPLY,
     REVIEW_LEAD,
@@ -448,4 +449,69 @@ def review_inbound_reply(
         }
     except Exception as e:
         logger.error("llm_review_inbound_failed", role=_role_value(role), error=str(e))
+        return fallback
+
+
+def generate_reply_assistant_draft(
+    *,
+    business_name: str | None,
+    industry: str | None,
+    city: str | None,
+    lead_email: str | None,
+    classification_label: str | None,
+    classification_summary: str | None,
+    next_action_suggestion: str | None,
+    should_escalate_reviewer: bool,
+    outbound_subject: str | None,
+    outbound_body: str | None,
+    thread_context: str | None,
+    from_email: str | None,
+    to_email: str | None,
+    subject: str | None,
+    body_text: str | None,
+    role: LLMRole | str = LLMRole.EXECUTOR,
+) -> dict:
+    """Generate a grounded response draft for a real inbound reply."""
+    prompt = GENERATE_REPLY_ASSISTANT_DRAFT.format(
+        business_name=business_name or "Unknown",
+        industry=industry or "Unknown",
+        city=city or "Unknown",
+        lead_email=lead_email or "Unknown",
+        classification_label=classification_label or "Unknown",
+        classification_summary=classification_summary or "No classification summary available",
+        next_action_suggestion=next_action_suggestion or "No next action suggestion available",
+        should_escalate_reviewer="true" if should_escalate_reviewer else "false",
+        outbound_subject=outbound_subject or "Unknown",
+        outbound_body=outbound_body or "Unknown",
+        thread_context=thread_context or "No previous thread context available",
+        from_email=from_email or "Unknown",
+        to_email=to_email or "Unknown",
+        subject=subject or "No subject",
+        body_text=body_text or "No body text available",
+    )
+
+    fallback = {
+        "subject": subject or "Re: Consulta",
+        "body": "Gracias por tu mensaje. Quedo atento para seguir la conversación.",
+        "summary": "Draft de respuesta generado con fallback por indisponibilidad del LLM.",
+        "suggested_tone": "professional",
+        "should_escalate_reviewer": True,
+    }
+
+    try:
+        raw = _call_ollama(prompt, role=role)
+        data = _extract_json(raw)
+        subject_value = data.get("subject")
+        body_value = data.get("body")
+        if not subject_value or not body_value:
+            raise LLMParseError("Missing subject or body in reply assistant response")
+        return {
+            "subject": str(subject_value).strip(),
+            "body": str(body_value).strip(),
+            "summary": str(data.get("summary", "")).strip() or None,
+            "suggested_tone": str(data.get("suggested_tone", "")).strip() or None,
+            "should_escalate_reviewer": bool(data.get("should_escalate_reviewer")),
+        }
+    except Exception as e:
+        logger.error("llm_reply_assistant_failed", role=_role_value(role), error=str(e))
         return fallback

@@ -213,3 +213,46 @@ Respond ONLY with a JSON object:
   "suggested_response_angle": "1 short suggestion for the reply angle or null",
   "watchouts": ["short list of risks, blockers, or caveats"]
 }}"""
+
+GENERATE_REPLY_ASSISTANT_DRAFT = """You are the executor model for ClawScout. Draft a reply email for a real inbound sales reply.
+
+Lead context:
+- Business name: {business_name}
+- Industry: {industry}
+- City: {city}
+- Lead email: {lead_email}
+
+Reply classification context:
+- Label: {classification_label}
+- Summary: {classification_summary}
+- Suggested next action: {next_action_suggestion}
+- Suggested reviewer escalation: {should_escalate_reviewer}
+
+Conversation context:
+- Related outbound subject: {outbound_subject}
+- Related outbound body: {outbound_body}
+- Thread context: {thread_context}
+
+Inbound reply:
+- From: {from_email}
+- To: {to_email}
+- Subject: {subject}
+- Body: {body_text}
+
+Rules:
+- Draft a reply that is short, professional, and grounded in the actual message.
+- Do not invent prices, delivery times, availability, portfolio items, or business facts that are not present in the context.
+- If the inbound message language is clear, mirror that language.
+- Keep the email body concise and practical.
+- If the case is delicate, ambiguous, or commercially important, set should_escalate_reviewer to true.
+- suggested_tone must be one of: professional, warm, consultative, empathetic, brief.
+- summary must be a short operator-facing explanation of what the draft is trying to do.
+
+Respond ONLY with a JSON object:
+{{
+  "subject": "reply subject",
+  "body": "full reply body",
+  "summary": "short operator-facing summary",
+  "suggested_tone": "professional",
+  "should_escalate_reviewer": false
+}}"""

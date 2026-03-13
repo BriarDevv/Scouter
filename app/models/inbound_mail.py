@@ -79,6 +79,9 @@ class EmailThread(Base):
     messages: Mapped[list["InboundMessage"]] = relationship(
         "InboundMessage", back_populates="thread", order_by="InboundMessage.received_at.desc()"
     )
+    reply_assistant_drafts: Mapped[list["ReplyAssistantDraft"]] = relationship(  # noqa: F821
+        "ReplyAssistantDraft", back_populates="thread"
+    )
 
     @property
     def message_count(self) -> int:
@@ -151,6 +154,12 @@ class InboundMessage(Base):
     )
     delivery: Mapped["OutreachDelivery | None"] = relationship(  # noqa: F821
         "OutreachDelivery", back_populates="inbound_messages"
+    )
+    reply_assistant_draft: Mapped["ReplyAssistantDraft | None"] = relationship(  # noqa: F821
+        "ReplyAssistantDraft",
+        back_populates="inbound_message",
+        cascade="all, delete-orphan",
+        uselist=False,
     )
 
 

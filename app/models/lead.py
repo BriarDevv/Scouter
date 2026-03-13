@@ -94,6 +94,9 @@ class Lead(Base):
     inbound_messages: Mapped[list["InboundMessage"]] = relationship(  # noqa: F821
         "InboundMessage", back_populates="lead"
     )
+    reply_assistant_drafts: Mapped[list["ReplyAssistantDraft"]] = relationship(  # noqa: F821
+        "ReplyAssistantDraft", back_populates="lead"
+    )
     pipeline_runs: Mapped[list["PipelineRun"]] = relationship(  # noqa: F821
         "PipelineRun", back_populates="lead", cascade="all, delete-orphan"
     )

@@ -46,6 +46,9 @@ class OutreachDraft(Base):
     inbound_messages: Mapped[list["InboundMessage"]] = relationship(  # noqa: F821
         "InboundMessage", back_populates="draft"
     )
+    reply_assistant_drafts: Mapped[list["ReplyAssistantDraft"]] = relationship(  # noqa: F821
+        "ReplyAssistantDraft", back_populates="related_outbound_draft"
+    )
 
 
 class LogAction(str, enum.Enum):
