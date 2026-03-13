@@ -29,6 +29,8 @@ class CommandSpec:
 
 COMMAND_SPECS: dict[str, CommandSpec] = {
     "overview": CommandSpec("GET", "/leader/overview"),
+    "replies-summary": CommandSpec("GET", "/leader/replies/summary"),
+    "recent-replies": CommandSpec("GET", "/leader/replies"),
     "top-leads": CommandSpec("GET", "/leader/top-leads"),
     "recent-drafts": CommandSpec("GET", "/leader/recent-drafts"),
     "recent-pipelines": CommandSpec("GET", "/leader/recent-pipelines"),
@@ -43,6 +45,7 @@ COMMAND_SPECS: dict[str, CommandSpec] = {
     "task-status": CommandSpec("GET", "/tasks/{task_id}/status"),
     "review-lead": CommandSpec("POST", "/reviews/leads/{lead_id}/async", mutating=True),
     "review-draft": CommandSpec("POST", "/reviews/drafts/{draft_id}/async", mutating=True),
+    "review-reply": CommandSpec("POST", "/reviews/inbound/messages/{message_id}", timeout_seconds=240),
 }
 
 
@@ -182,6 +185,35 @@ def parse_args() -> argparse.Namespace:
 
     subparsers.add_parser("overview")
     subparsers.add_parser("settings-llm")
+    replies_summary = subparsers.add_parser("replies-summary")
+    replies_summary.add_argument("--hours", type=int, default=24)
+
+    recent_replies = subparsers.add_parser("recent-replies")
+    recent_replies.add_argument("--limit", type=int, default=10)
+    recent_replies.add_argument("--hours", type=int, default=24)
+    recent_replies.add_argument("--labels")
+    recent_replies.add_argument("--classification-status")
+
+    important_replies = subparsers.add_parser("important-replies")
+    important_replies.add_argument("--limit", type=int, default=10)
+    important_replies.add_argument("--hours", type=int, default=24)
+
+    positive_replies = subparsers.add_parser("positive-replies")
+    positive_replies.add_argument("--limit", type=int, default=10)
+    positive_replies.add_argument("--hours", type=int, default=24)
+
+    quote_replies = subparsers.add_parser("quote-replies")
+    quote_replies.add_argument("--limit", type=int, default=10)
+    quote_replies.add_argument("--hours", type=int, default=24)
+
+    meeting_replies = subparsers.add_parser("meeting-replies")
+    meeting_replies.add_argument("--limit", type=int, default=10)
+    meeting_replies.add_argument("--hours", type=int, default=24)
+
+    reviewer_candidates = subparsers.add_parser("reviewer-candidates")
+    reviewer_candidates.add_argument("--limit", type=int, default=10)
+    reviewer_candidates.add_argument("--hours", type=int, default=24)
+
     performance_summary = subparsers.add_parser("performance-summary")
     performance_summary.add_argument("--limit", type=int, default=3)
 
@@ -240,6 +272,10 @@ def parse_args() -> argparse.Namespace:
     review_draft.add_argument("--draft-id", required=True)
     _add_wait_args(review_draft)
 
+    review_reply = subparsers.add_parser("review-reply")
+    review_reply.add_argument("--message-id", required=True)
+    _add_wait_args(review_reply)
+
     return parser.parse_args()
 
 
@@ -258,7 +294,18 @@ def build_request(args: argparse.Namespace) -> tuple[str, str, dict[str, Any] | 
     spec = COMMAND_SPECS[direct_command]
     params: dict[str, Any] | None = None
 
-    if direct_command == "top-leads":
+    if direct_command == "replies-summary":
+        params = {"hours": args.hours}
+        path = spec.path_template
+    elif direct_command == "recent-replies":
+        params = {
+            "limit": args.limit,
+            "hours": args.hours,
+            "labels": getattr(args, "labels", None),
+            "classification_status": getattr(args, "classification_status", None),
+        }
+        path = spec.path_template
+    elif direct_command == "top-leads":
         params = {"limit": args.limit, "status": getattr(args, "status", None)}
         path = spec.path_template
     elif direct_command == "recent-drafts":
@@ -286,6 +333,8 @@ def build_request(args: argparse.Namespace) -> tuple[str, str, dict[str, Any] | 
         path = spec.path_template.format(lead_id=args.lead_id)
     elif direct_command == "review-draft":
         path = spec.path_template.format(draft_id=args.draft_id)
+    elif direct_command == "review-reply":
+        path = spec.path_template.format(message_id=args.message_id)
     else:
         path = spec.path_template
 
@@ -313,6 +362,25 @@ def make_success(
 
 def fetch_settings(client: APIClient) -> dict[str, Any]:
     return client.request_or_raise("settings-llm", path="/settings/llm", method="GET")["data"]
+
+
+def _reply_list_response(
+    response: dict[str, Any],
+    *,
+    command: str,
+    filters: dict[str, Any],
+) -> tuple[dict[str, Any], int]:
+    items = response["data"] or []
+    return make_success(
+        command,
+        data={
+            "count": len(items),
+            "filters": filters,
+            "items": items,
+        },
+        request_meta=response["request"],
+        status_code=response["status_code"],
+    )
 
 
 def fetch_latest_draft_for_lead(client: APIClient, lead_id: str | None) -> dict[str, Any] | None:
@@ -548,6 +616,142 @@ def handle_failed_tasks(client: APIClient, args: argparse.Namespace) -> tuple[di
     return make_success("failed-tasks", data=data, request_meta=response["request"], status_code=response["status_code"])
 
 
+def handle_replies_summary(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    return client.request(
+        "replies-summary",
+        path=COMMAND_SPECS["replies-summary"].path_template,
+        method="GET",
+        params={"hours": args.hours},
+    )
+
+
+def handle_recent_replies(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    response, exit_code = client.request(
+        "recent-replies",
+        path=COMMAND_SPECS["recent-replies"].path_template,
+        method="GET",
+        params={
+            "limit": args.limit,
+            "hours": args.hours,
+            "labels": args.labels,
+            "classification_status": args.classification_status,
+        },
+    )
+    if exit_code != 0:
+        return response, exit_code
+    return _reply_list_response(
+        response,
+        command="recent-replies",
+        filters={
+            "limit": args.limit,
+            "hours": args.hours,
+            "labels": args.labels,
+            "classification_status": args.classification_status,
+        },
+    )
+
+
+def handle_important_replies(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    response, exit_code = client.request(
+        "important-replies",
+        path=COMMAND_SPECS["recent-replies"].path_template,
+        method="GET",
+        params={
+            "limit": args.limit,
+            "hours": args.hours,
+            "important_only": True,
+        },
+    )
+    if exit_code != 0:
+        return response, exit_code
+    return _reply_list_response(
+        response,
+        command="important-replies",
+        filters={"limit": args.limit, "hours": args.hours, "important_only": True},
+    )
+
+
+def handle_positive_replies(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    labels = "interested,asked_for_quote,asked_for_meeting,asked_for_more_info"
+    response, exit_code = client.request(
+        "positive-replies",
+        path=COMMAND_SPECS["recent-replies"].path_template,
+        method="GET",
+        params={
+            "limit": args.limit,
+            "hours": args.hours,
+            "labels": labels,
+        },
+    )
+    if exit_code != 0:
+        return response, exit_code
+    return _reply_list_response(
+        response,
+        command="positive-replies",
+        filters={"limit": args.limit, "hours": args.hours, "labels": labels},
+    )
+
+
+def handle_quote_replies(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    response, exit_code = client.request(
+        "quote-replies",
+        path=COMMAND_SPECS["recent-replies"].path_template,
+        method="GET",
+        params={
+            "limit": args.limit,
+            "hours": args.hours,
+            "labels": "asked_for_quote",
+        },
+    )
+    if exit_code != 0:
+        return response, exit_code
+    return _reply_list_response(
+        response,
+        command="quote-replies",
+        filters={"limit": args.limit, "hours": args.hours, "labels": "asked_for_quote"},
+    )
+
+
+def handle_meeting_replies(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    response, exit_code = client.request(
+        "meeting-replies",
+        path=COMMAND_SPECS["recent-replies"].path_template,
+        method="GET",
+        params={
+            "limit": args.limit,
+            "hours": args.hours,
+            "labels": "asked_for_meeting",
+        },
+    )
+    if exit_code != 0:
+        return response, exit_code
+    return _reply_list_response(
+        response,
+        command="meeting-replies",
+        filters={"limit": args.limit, "hours": args.hours, "labels": "asked_for_meeting"},
+    )
+
+
+def handle_reviewer_candidates(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    response, exit_code = client.request(
+        "reviewer-candidates",
+        path=COMMAND_SPECS["recent-replies"].path_template,
+        method="GET",
+        params={
+            "limit": args.limit,
+            "hours": args.hours,
+            "needs_reviewer": True,
+        },
+    )
+    if exit_code != 0:
+        return response, exit_code
+    return _reply_list_response(
+        response,
+        command="reviewer-candidates",
+        filters={"limit": args.limit, "hours": args.hours, "needs_reviewer": True},
+    )
+
+
 def handle_wait_task(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
     try:
         data = wait_for_task(
@@ -718,11 +922,50 @@ def handle_review_draft(client: APIClient, args: argparse.Namespace) -> tuple[di
     return make_success("review-draft", data=data, request_meta=response["request"], status_code=response["status_code"])
 
 
+def handle_review_reply(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    response, exit_code = client.request(
+        "review-reply",
+        path=COMMAND_SPECS["review-reply"].path_template.format(message_id=args.message_id),
+        method="POST",
+        timeout_seconds=COMMAND_SPECS["review-reply"].timeout_seconds,
+    )
+    if exit_code != 0:
+        return response, exit_code
+
+    try:
+        settings = fetch_settings(client)
+    except APIClientError as exc:
+        return exc.response, exc.exit_code
+
+    data = {
+        "result": response["data"],
+        "summary": {
+            "workflow": "review-reply",
+            "configured_role": "reviewer",
+            "configured_model": settings["reviewer_model"],
+            "inbound_message_id": response["data"].get("inbound_message_id"),
+            "lead_id": response["data"].get("lead_id"),
+            "classification_label": response["data"].get("classification_label"),
+            "verdict": response["data"].get("verdict"),
+            "confidence": response["data"].get("confidence"),
+            "recommended_action": response["data"].get("recommended_action"),
+        },
+    }
+    return make_success("review-reply", data=data, request_meta=response["request"], status_code=response["status_code"])
+
+
 def main() -> int:
     args = parse_args()
     client = APIClient(base_url=args.base_url, timeout_seconds=args.timeout)
 
     handlers = {
+        "replies-summary": handle_replies_summary,
+        "recent-replies": handle_recent_replies,
+        "important-replies": handle_important_replies,
+        "positive-replies": handle_positive_replies,
+        "quote-replies": handle_quote_replies,
+        "meeting-replies": handle_meeting_replies,
+        "reviewer-candidates": handle_reviewer_candidates,
         "performance-summary": handle_performance_summary,
         "running-tasks": handle_running_tasks,
         "failed-tasks": handle_failed_tasks,
@@ -731,6 +974,7 @@ def main() -> int:
         "run-pipeline": handle_run_pipeline,
         "review-lead": handle_review_lead,
         "review-draft": handle_review_draft,
+        "review-reply": handle_review_reply,
     }
 
     if args.command in handlers:

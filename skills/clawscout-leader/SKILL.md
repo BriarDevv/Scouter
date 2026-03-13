@@ -1,6 +1,6 @@
 ---
 name: clawscout-leader
-description: "Use ClawScout's local API through scripts/clawscoutctl.py for live operational queries, safe async workflows, and reviewer-on-demand checks. Use this when the user asks for system overview, best leads, recent drafts, recent pipelines, task health, activity, active LLM settings, or explicit actions like generating drafts, running pipelines, checking task status, or requesting reviewer second opinions."
+description: "Use ClawScout's local API through scripts/clawscoutctl.py for live operational queries, reply prioritization, safe async workflows, and reviewer-on-demand checks. Use this when the user asks for system overview, best leads, inbound reply summaries, recent drafts, recent pipelines, task health, activity, active LLM settings, or explicit actions like generating drafts, running pipelines, checking task status, or requesting reviewer second opinions."
 metadata: { "openclaw": { "emoji": "🦀", "always": true, "os": ["linux"], "requires": { "bins": ["python3"] } } }
 ---
 
@@ -11,6 +11,7 @@ ClawScout remains the source of truth. Always prefer the local API wrapper over 
 ## Use this skill for
 
 - System overview and operator status
+- Inbound reply summary, prioritization, and reviewer candidates
 - Top-scoring leads
 - Recent drafts, pipelines, tasks, and activity
 - Active LLM settings by role
@@ -21,6 +22,7 @@ ClawScout remains the source of truth. Always prefer the local API wrapper over 
   - run the full pipeline for a lead
   - check task status or wait for completion
   - ask reviewer for a second opinion on a lead or draft
+  - ask reviewer for a second opinion on an inbound reply
 
 ## Do not use this skill for
 
@@ -44,6 +46,13 @@ Run commands from the ClawScout workspace root:
 
 ```bash
 python3 scripts/clawscoutctl.py overview
+python3 scripts/clawscoutctl.py replies-summary --hours 24
+python3 scripts/clawscoutctl.py recent-replies --limit 10 --hours 24
+python3 scripts/clawscoutctl.py important-replies --limit 10 --hours 24
+python3 scripts/clawscoutctl.py positive-replies --limit 10 --hours 24
+python3 scripts/clawscoutctl.py quote-replies --limit 10 --hours 24
+python3 scripts/clawscoutctl.py meeting-replies --limit 10 --hours 24
+python3 scripts/clawscoutctl.py reviewer-candidates --limit 10 --hours 24
 python3 scripts/clawscoutctl.py best-leads --limit 10
 python3 scripts/clawscoutctl.py recent-drafts --limit 10
 python3 scripts/clawscoutctl.py drafts-ready --limit 10
@@ -60,6 +69,7 @@ python3 scripts/clawscoutctl.py task-status --task-id <task_id>
 python3 scripts/clawscoutctl.py wait-task --task-id <task_id>
 python3 scripts/clawscoutctl.py review-lead --lead-id <lead_id> --wait
 python3 scripts/clawscoutctl.py review-draft --draft-id <draft_id> --wait
+python3 scripts/clawscoutctl.py review-reply --message-id <message_id>
 python3 scripts/browserctl.py inspect-url --url <public_url>
 python3 scripts/browserctl.py inspect-url --url <public_url> --screenshot
 python3 scripts/browserctl.py inspect-business-site --lead-id <lead_id>
@@ -74,6 +84,20 @@ Prefer one wrapper command per question unless the user explicitly asks for a mu
 
 - Overview and system snapshot questions:
   - run only `python3 scripts/clawscoutctl.py overview`
+- Reply summary and inbox counters:
+  - run only `python3 scripts/clawscoutctl.py replies-summary --hours <n>`
+- Recent replies:
+  - run `python3 scripts/clawscoutctl.py recent-replies --limit <n> --hours <n>`
+- Important replies that deserve attention first:
+  - run `python3 scripts/clawscoutctl.py important-replies --limit <n> --hours <n>`
+- Positive replies:
+  - run `python3 scripts/clawscoutctl.py positive-replies --limit <n> --hours <n>`
+- Quote requests:
+  - run `python3 scripts/clawscoutctl.py quote-replies --limit <n> --hours <n>`
+- Meeting requests:
+  - run `python3 scripts/clawscoutctl.py meeting-replies --limit <n> --hours <n>`
+- Replies that deserve reviewer:
+  - run `python3 scripts/clawscoutctl.py reviewer-candidates --limit <n> --hours <n>`
 - Top leads:
   - run `python3 scripts/clawscoutctl.py best-leads --limit <n>`
 - Recent drafts:
@@ -105,6 +129,8 @@ Prefer one wrapper command per question unless the user explicitly asks for a mu
   - run `python3 scripts/clawscoutctl.py review-lead --lead-id <lead_id> --wait`
 - Reviewer second opinion on a draft:
   - run `python3 scripts/clawscoutctl.py review-draft --draft-id <draft_id> --wait`
+- Reviewer second opinion on an inbound reply:
+  - run `python3 scripts/clawscoutctl.py review-reply --message-id <message_id>`
 - Public website inspection by URL:
   - run `python3 scripts/browserctl.py inspect-url --url <public_url>`
   - add `--screenshot` only when the user asked for visual evidence or a screenshot would materially help
@@ -124,6 +150,18 @@ Prefer one wrapper command per question unless the user explicitly asks for a mu
 
 - For "dame los mejores leads":
   - use `best-leads`
+- For "qué replies hubo hoy":
+  - use `replies-summary`
+- For "qué respuestas positivas tengo":
+  - use `positive-replies`
+- For "quién pidió presupuesto":
+  - use `quote-replies`
+- For "quién pidió reunión":
+  - use `meeting-replies`
+- For "cuáles conviene responder primero":
+  - use `important-replies`
+- For "cuáles conviene revisar con reviewer":
+  - use `reviewer-candidates`
 - For "mostrame drafts listos":
   - use `drafts-ready`
 - For "qué falló hoy":
@@ -149,23 +187,25 @@ Prefer one wrapper command per question unless the user explicitly asks for a mu
   - prefer the `--wait` workflow unless the user explicitly wants just the task id
   - when `--wait` succeeds, answer with the wrapper `summary` fields rather than free-form narration
 - For reviewer:
-  - only use `review-lead --wait` or `review-draft --wait` when the user explicitly asks for deeper review, second opinion, or reviewer
+  - only use `review-lead --wait`, `review-draft --wait`, or `review-reply` when the user explicitly asks for deeper review, second opinion, or reviewer
   - always mention that reviewer used the premium second-opinion path and report the returned `role` and `model`
 
 ## Grounding rules
 
 - ClawScout is the source of truth. Do not answer operational questions from memory, repo files, or model intuition when `clawscoutctl` already exposes the data.
 - For counts, IDs, statuses, scores, timestamps, and model names, copy values exactly from wrapper JSON.
+- For reply counts and inbox metrics, use `replies-summary` and only `replies-summary`.
 - For machine-readable answers, prefer compact JSON objects with named keys over bare arrays.
 - Never derive a global metric from the length of a list returned by another command.
   - Example: never infer `total_leads` from `top-leads`.
+- Never infer reply totals from `recent-replies`, `important-replies`, or other filtered reply lists.
 - If the user asks for overview numbers, use `overview` and only `overview`.
+- If the user asks for reply summary numbers, use `replies-summary` and only `replies-summary`.
 - If the user asks for settings/model configuration, use `settings-llm` and only `settings-llm`.
 - If the user asks for exact JSON, return only the requested fields copied verbatim from `data`.
 - If the requested field is missing from wrapper output, say it is unavailable. Do not estimate or backfill it from another command.
 - Mention failures plainly using the wrapper `error` field when a command fails.
-- For `generate-draft --wait`, `run-pipeline --wait`, `review-lead`, and `review-draft`, prefer returning the `summary` or review payload fields directly instead of paraphrasing them loosely.
-- For `generate-draft --wait`, `run-pipeline --wait`, `review-lead --wait`, and `review-draft --wait`, prefer returning the `summary` or review payload fields directly instead of paraphrasing them loosely.
+- For `generate-draft --wait`, `run-pipeline --wait`, `review-lead --wait`, `review-draft --wait`, and `review-reply`, prefer returning the `summary` or review payload fields directly instead of paraphrasing them loosely.
 - For website inspection, copy `title`, `meta_description`, `h1`, `contact_signals`, `social_links`, `cta_signals`, `page_type_guess`, `screenshot_path`, and `important_links` exactly from `browserctl` JSON.
 - For mail delivery, copy `status`, `provider`, `provider_message_id`, `recipient_email`, `sent_at`, and `error` exactly from `mailctl` JSON.
 
@@ -178,6 +218,7 @@ Prefer one wrapper command per question unless the user explicitly asks for a mu
   - `task-status` and `wait-task` follow-up checks after an action
   - `review-lead`
   - `review-draft`
+  - `review-reply`
   - `send-draft`
 - Do not change lead status from this skill.
 - Do not trigger reviewer automatically.

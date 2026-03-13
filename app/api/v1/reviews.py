@@ -4,13 +4,18 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_session
+from app.models.inbound_mail import InboundMessage
 from app.models.lead import Lead
 from app.models.outreach import OutreachDraft
-from app.schemas.review import DraftReviewResponse, LeadReviewResponse
+from app.schemas.review import DraftReviewResponse, InboundReplyReviewResponse, LeadReviewResponse
 from app.schemas.task_tracking import TaskEnqueueResponse
-from app.services.review_service import review_draft_with_reviewer, review_lead_with_reviewer
+from app.services.review_service import (
+    review_draft_with_reviewer,
+    review_inbound_message_with_reviewer,
+    review_lead_with_reviewer,
+)
 from app.services.task_tracking_service import queue_task_run
-from app.workers.tasks import task_review_draft, task_review_lead
+from app.workers.tasks import task_review_draft, task_review_inbound_message, task_review_lead
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 
@@ -79,4 +84,38 @@ def review_draft_async(draft_id: uuid.UUID, db: Session = Depends(get_session)):
         "queue": "reviewer",
         "lead_id": draft.lead_id,
         "current_step": "draft_review",
+    }
+
+
+@router.post("/inbound/messages/{message_id}", response_model=InboundReplyReviewResponse)
+def review_inbound_message(message_id: uuid.UUID, db: Session = Depends(get_session)):
+    """Run a reviewer-only second opinion for an inbound reply."""
+    payload = review_inbound_message_with_reviewer(db, message_id)
+    if not payload:
+        raise HTTPException(status_code=404, detail="Inbound message not found")
+    return payload
+
+
+@router.post("/inbound/messages/{message_id}/async", response_model=TaskEnqueueResponse)
+def review_inbound_message_async(message_id: uuid.UUID, db: Session = Depends(get_session)):
+    """Queue a reviewer-only second opinion for an inbound reply."""
+    message = db.get(InboundMessage, message_id)
+    if not message:
+        raise HTTPException(status_code=404, detail="Inbound message not found")
+
+    task = task_review_inbound_message.delay(str(message_id))
+    queue_task_run(
+        db,
+        task_id=task.id,
+        task_name="task_review_inbound_message",
+        queue="reviewer",
+        lead_id=message.lead_id,
+        current_step="inbound_reply_review",
+    )
+    return {
+        "task_id": task.id,
+        "status": "queued",
+        "queue": "reviewer",
+        "lead_id": message.lead_id,
+        "current_step": "inbound_reply_review",
     }

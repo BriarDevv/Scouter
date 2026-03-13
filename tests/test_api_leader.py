@@ -1,9 +1,11 @@
 from datetime import datetime, timedelta, timezone
 import uuid
 
+from app.models.inbound_mail import EmailThread, InboundMailClassificationStatus, InboundMessage
 from app.models.lead import Lead, LeadStatus
 from app.models.lead_source import LeadSource, SourceType
 from app.models.outreach import DraftStatus, LogAction, OutreachDraft, OutreachLog
+from app.models.outreach_delivery import OutreachDelivery, OutreachDeliveryStatus
 from app.models.task_tracking import PipelineRun, TaskRun
 
 
@@ -186,6 +188,105 @@ def seed_leader_data(db):
             ),
         ]
     )
+
+    approved_delivery = OutreachDelivery(
+        lead_id=leads[3].id,
+        draft_id=approved_draft.id,
+        provider="smtp",
+        provider_message_id="smtp-message-123",
+        recipient_email="owner@delta.example",
+        subject_snapshot=approved_draft.subject,
+        status=OutreachDeliveryStatus.SENT,
+        sent_at=now - timedelta(hours=3),
+    )
+    db.add(approved_delivery)
+    db.flush()
+
+    thread = EmailThread(
+        lead_id=leads[3].id,
+        draft_id=approved_draft.id,
+        delivery_id=approved_delivery.id,
+        provider="imap",
+        provider_mailbox="INBOX",
+        external_thread_id="thread-123",
+        thread_key="thread-123",
+        matched_via="message_id",
+        match_confidence=1.0,
+        last_message_at=now - timedelta(minutes=45),
+    )
+    db.add(thread)
+    db.flush()
+
+    db.add_all(
+        [
+            InboundMessage(
+                dedupe_key="imap:INBOX:reply-1",
+                thread_id=thread.id,
+                lead_id=leads[3].id,
+                draft_id=approved_draft.id,
+                delivery_id=approved_delivery.id,
+                provider="imap",
+                provider_mailbox="INBOX",
+                provider_message_id="reply-1",
+                message_id="<reply-1@example.com>",
+                in_reply_to="<smtp-message-123>",
+                from_email="owner@delta.example",
+                to_email="sales@clawscout.local",
+                subject="Re: Approved draft",
+                body_text="Nos interesa, pasen propuesta.",
+                body_snippet="Nos interesa, pasen propuesta.",
+                received_at=now - timedelta(minutes=45),
+                classification_status=InboundMailClassificationStatus.CLASSIFIED.value,
+                classification_label="asked_for_quote",
+                summary="Pidieron propuesta comercial.",
+                confidence=0.92,
+                next_action_suggestion="Responder con presupuesto inicial.",
+                should_escalate_reviewer=False,
+                classification_role="executor",
+                classification_model="qwen3.5:9b",
+                classified_at=now - timedelta(minutes=40),
+            ),
+            InboundMessage(
+                dedupe_key="imap:INBOX:reply-2",
+                thread_id=thread.id,
+                lead_id=leads[2].id,
+                draft_id=pending_draft.id,
+                provider="imap",
+                provider_mailbox="INBOX",
+                provider_message_id="reply-2",
+                message_id="<reply-2@example.com>",
+                from_email="ops@unknown.example",
+                to_email="sales@clawscout.local",
+                subject="Re: Draft ready for review",
+                body_text="Quiero hablar, pero el mensaje es ambiguo.",
+                body_snippet="Quiero hablar, pero el mensaje es ambiguo.",
+                received_at=now - timedelta(minutes=30),
+                classification_status=InboundMailClassificationStatus.CLASSIFIED.value,
+                classification_label="needs_human_review",
+                summary="Respuesta ambigua con intención potencial.",
+                confidence=0.31,
+                next_action_suggestion="Revisar antes de responder.",
+                should_escalate_reviewer=True,
+                classification_role="executor",
+                classification_model="qwen3.5:9b",
+                classified_at=now - timedelta(minutes=25),
+            ),
+            InboundMessage(
+                dedupe_key="imap:INBOX:reply-3",
+                provider="imap",
+                provider_mailbox="INBOX",
+                provider_message_id="reply-3",
+                message_id="<reply-3@example.com>",
+                from_email="noreply@example.com",
+                to_email="sales@clawscout.local",
+                subject="Out of office",
+                body_text="Estoy fuera de la oficina hasta el lunes.",
+                body_snippet="Estoy fuera de la oficina hasta el lunes.",
+                received_at=now - timedelta(minutes=10),
+                classification_status=InboundMailClassificationStatus.PENDING.value,
+            ),
+        ]
+    )
     db.commit()
 
 
@@ -260,3 +361,47 @@ def test_leader_task_health(client, db):
     assert health["running"][0]["task_id"] == "task-analyze-running"
     assert health["retrying"][0]["task_id"] == "task-enrich-retrying"
     assert health["failed"][0]["task_id"] == "task-score-failed"
+
+
+def test_leader_reply_summary_and_lists(client, db):
+    seed_leader_data(db)
+
+    summary_resp = client.get("/api/v1/leader/replies/summary?hours=24")
+    assert summary_resp.status_code == 200
+    summary = summary_resp.json()
+    assert summary["total_recent_replies"] == 3
+    assert summary["replied_leads"] == 2
+    assert summary["positive_replies"] == 1
+    assert summary["quote_replies"] == 1
+    assert summary["meeting_replies"] == 0
+    assert summary["reviewer_candidates"] == 1
+    assert summary["important_replies"] == 3
+    assert summary["pending_classification"] == 1
+    assert summary["failed_classification"] == 0
+    assert summary["unmatched_replies"] == 1
+
+    recent_resp = client.get("/api/v1/leader/replies?limit=5&hours=24")
+    assert recent_resp.status_code == 200
+    recent = recent_resp.json()
+    assert len(recent) == 3
+    assert recent[0]["classification_status"] == "pending"
+
+    important_resp = client.get("/api/v1/leader/replies?important_only=true&limit=5&hours=24")
+    assert important_resp.status_code == 200
+    important = important_resp.json()
+    assert [item["classification_label"] for item in important[:2]] == [
+        "asked_for_quote",
+        "needs_human_review",
+    ]
+
+    reviewer_resp = client.get("/api/v1/leader/replies?needs_reviewer=true&limit=5&hours=24")
+    assert reviewer_resp.status_code == 200
+    reviewer_items = reviewer_resp.json()
+    assert len(reviewer_items) == 1
+    assert reviewer_items[0]["classification_label"] == "needs_human_review"
+
+    quote_resp = client.get("/api/v1/leader/replies?labels=asked_for_quote&limit=5&hours=24")
+    assert quote_resp.status_code == 200
+    quote_items = quote_resp.json()
+    assert len(quote_items) == 1
+    assert quote_items[0]["lead_name"] == "Delta Services"

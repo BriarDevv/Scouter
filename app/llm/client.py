@@ -12,6 +12,7 @@ from app.llm.prompts import (
     CLASSIFY_INBOUND_REPLY,
     EVALUATE_LEAD_QUALITY,
     GENERATE_OUTREACH_EMAIL,
+    REVIEW_INBOUND_REPLY,
     REVIEW_LEAD,
     REVIEW_OUTREACH_DRAFT,
     SUMMARIZE_BUSINESS,
@@ -387,3 +388,64 @@ def classify_inbound_reply(
     except Exception as e:
         logger.error("llm_classify_inbound_failed", role=_role_value(role), error=str(e))
         raise
+
+
+def review_inbound_reply(
+    *,
+    business_name: str | None,
+    industry: str | None,
+    city: str | None,
+    lead_email: str | None,
+    outbound_subject: str | None,
+    outbound_message_id: str | None,
+    from_email: str | None,
+    to_email: str | None,
+    subject: str | None,
+    body_text: str | None,
+    classification_label: str | None,
+    classification_summary: str | None,
+    next_action_suggestion: str | None,
+    should_escalate_reviewer: bool,
+    role: LLMRole | str = LLMRole.REVIEWER,
+) -> dict:
+    """Run a reviewer pass on an inbound reply."""
+    prompt = REVIEW_INBOUND_REPLY.format(
+        business_name=business_name or "Unknown",
+        industry=industry or "Unknown",
+        city=city or "Unknown",
+        lead_email=lead_email or "Unknown",
+        outbound_subject=outbound_subject or "Unknown",
+        outbound_message_id=outbound_message_id or "Unknown",
+        from_email=from_email or "Unknown",
+        to_email=to_email or "Unknown",
+        subject=subject or "No subject",
+        body_text=body_text or "No body text available",
+        classification_label=classification_label or "None",
+        classification_summary=classification_summary or "No executor summary available",
+        next_action_suggestion=next_action_suggestion or "No executor suggestion available",
+        should_escalate_reviewer="true" if should_escalate_reviewer else "false",
+    )
+
+    fallback = {
+        "verdict": "consider_reply",
+        "confidence": "low",
+        "reasoning": "Reviewer analysis unavailable.",
+        "recommended_action": "Review this reply manually before responding.",
+        "suggested_response_angle": None,
+        "watchouts": ["Reviewer output unavailable"],
+    }
+
+    try:
+        raw = _call_ollama(prompt, role=role)
+        data = _extract_json(raw)
+        return {
+            "verdict": data.get("verdict", "consider_reply"),
+            "confidence": data.get("confidence", "medium"),
+            "reasoning": data.get("reasoning", "No reasoning provided"),
+            "recommended_action": data.get("recommended_action", "Review manually"),
+            "suggested_response_angle": data.get("suggested_response_angle"),
+            "watchouts": data.get("watchouts", []) or [],
+        }
+    except Exception as e:
+        logger.error("llm_review_inbound_failed", role=_role_value(role), error=str(e))
+        return fallback

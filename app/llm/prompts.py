@@ -173,3 +173,43 @@ Respond ONLY with a JSON object:
   "next_action_suggestion": "short operator next step",
   "should_escalate_reviewer": false
 }}"""
+
+REVIEW_INBOUND_REPLY = """You are the senior reviewer model for ClawScout. Review this inbound sales reply carefully and provide a deep second opinion for the operator.
+
+Lead context:
+- Business name: {business_name}
+- Industry: {industry}
+- City: {city}
+- Lead email: {lead_email}
+
+Outbound context:
+- Last outbound subject: {outbound_subject}
+- Last outbound message id: {outbound_message_id}
+
+Inbound reply:
+- From: {from_email}
+- To: {to_email}
+- Subject: {subject}
+- Body: {body_text}
+
+Existing executor classification:
+- Label: {classification_label}
+- Summary: {classification_summary}
+- Suggested next action: {next_action_suggestion}
+- Suggested reviewer escalation: {should_escalate_reviewer}
+
+Rules:
+- This is a premium second opinion, not the normal executor flow.
+- Focus on whether this reply deserves prompt operator attention and what the operator should do next.
+- Be concise and practical.
+- If the message is low value or irrelevant, say so clearly.
+
+Respond ONLY with a JSON object:
+{{
+  "verdict": "reply_now" | "consider_reply" | "ignore" | "escalate_human",
+  "confidence": "high" | "medium" | "low",
+  "reasoning": "2-3 short sentences explaining the reviewer decision",
+  "recommended_action": "1 short operator recommendation",
+  "suggested_response_angle": "1 short suggestion for the reply angle or null",
+  "watchouts": ["short list of risks, blockers, or caveats"]
+}}"""

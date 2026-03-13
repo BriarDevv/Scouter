@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
+from app.models.inbound_mail import InboundMailClassificationStatus, InboundMessage
 from app.models.lead import Lead, LeadStatus
 from app.models.outreach import DraftStatus, OutreachDraft, OutreachLog
 from app.models.task_tracking import PipelineRun, TaskRun
@@ -124,6 +125,110 @@ def _serialize_task(task: TaskRun) -> dict:
         "updated_at": task.updated_at,
         "started_at": task.started_at,
         "finished_at": task.finished_at,
+    }
+
+
+POSITIVE_REPLY_LABELS = {
+    "interested",
+    "asked_for_quote",
+    "asked_for_meeting",
+    "asked_for_more_info",
+}
+
+ACTIONABLE_REPLY_LABELS = POSITIVE_REPLY_LABELS | {
+    "needs_human_review",
+    "wrong_contact",
+}
+
+
+def _count_inbound_messages(
+    db: Session,
+    *,
+    since: datetime | None = None,
+    label: str | None = None,
+    labels: set[str] | None = None,
+    classification_status: str | None = None,
+    needs_reviewer: bool | None = None,
+    matched_via: str | None = None,
+) -> int:
+    stmt = select(func.count(InboundMessage.id))
+    if since:
+        stmt = stmt.where(InboundMessage.received_at >= since)
+    if label:
+        stmt = stmt.where(InboundMessage.classification_label == label)
+    if labels:
+        stmt = stmt.where(InboundMessage.classification_label.in_(sorted(labels)))
+    if classification_status:
+        stmt = stmt.where(InboundMessage.classification_status == classification_status)
+    if needs_reviewer is not None:
+        stmt = stmt.where(InboundMessage.should_escalate_reviewer.is_(needs_reviewer))
+    if matched_via:
+        stmt = stmt.where(InboundMessage.matched_via == matched_via)
+    return db.execute(stmt).scalar() or 0
+
+
+def _count_replied_leads(db: Session, *, since: datetime | None = None) -> int:
+    stmt = select(func.count(func.distinct(InboundMessage.lead_id))).where(InboundMessage.lead_id.is_not(None))
+    if since:
+        stmt = stmt.where(InboundMessage.received_at >= since)
+    return db.execute(stmt).scalar() or 0
+
+
+def _latest_reply_at(db: Session, *, since: datetime | None = None) -> datetime | None:
+    stmt = select(func.max(InboundMessage.received_at))
+    if since:
+        stmt = stmt.where(InboundMessage.received_at >= since)
+    return db.execute(stmt).scalar()
+
+
+def _reply_priority_score(message: InboundMessage) -> int:
+    base = {
+        "asked_for_meeting": 115,
+        "asked_for_quote": 110,
+        "interested": 95,
+        "asked_for_more_info": 90,
+        "needs_human_review": 75,
+        "wrong_contact": 60,
+        "neutral": 40,
+        "out_of_office": 20,
+        "spam_or_irrelevant": 10,
+        "not_interested": 5,
+    }.get(message.classification_label or "", 30)
+
+    if message.should_escalate_reviewer:
+        base += 15
+    if message.classification_status == InboundMailClassificationStatus.PENDING.value:
+        base += 10
+    elif message.classification_status == InboundMailClassificationStatus.FAILED.value:
+        base += 5
+
+    match_boost = int((((message.thread.match_confidence if message.thread else None) or 0) * 10))
+    return base + match_boost
+
+
+def _serialize_reply(message: InboundMessage) -> dict:
+    return {
+        "id": message.id,
+        "thread_id": message.thread_id,
+        "lead_id": message.lead_id,
+        "lead_name": message.lead.business_name if message.lead else None,
+        "draft_id": message.draft_id,
+        "delivery_id": message.delivery_id,
+        "from_email": message.from_email,
+        "subject": message.subject,
+        "body_snippet": message.body_snippet,
+        "classification_status": message.classification_status,
+        "classification_label": message.classification_label,
+        "summary": message.summary,
+        "confidence": message.confidence,
+        "next_action_suggestion": message.next_action_suggestion,
+        "should_escalate_reviewer": message.should_escalate_reviewer,
+        "matched_via": message.thread.matched_via if message.thread else "unmatched",
+        "match_confidence": message.thread.match_confidence if message.thread else 0.0,
+        "received_at": message.received_at,
+        "classification_role": message.classification_role,
+        "classification_model": message.classification_model,
+        "priority_score": _reply_priority_score(message),
     }
 
 
@@ -253,3 +358,104 @@ def list_recent_activity_items(db: Session, *, limit: int = 10) -> list[dict]:
         }
         for log in logs
     ]
+
+
+def get_reply_summary(db: Session, *, hours: int = 24) -> dict:
+    since = _since(hours)
+    stmt = select(InboundMessage).where(InboundMessage.received_at >= since)
+    messages = list(db.execute(stmt).scalars().all())
+
+    important_replies = sum(
+        1
+        for message in messages
+        if (
+            message.should_escalate_reviewer
+            or message.classification_status
+            in {
+                InboundMailClassificationStatus.PENDING.value,
+                InboundMailClassificationStatus.FAILED.value,
+            }
+            or (message.classification_label in ACTIONABLE_REPLY_LABELS)
+        )
+    )
+
+    return {
+        "since_hours": hours,
+        "since_at": since,
+        "snapshot_at": _now_utc(),
+        "latest_reply_at": _latest_reply_at(db, since=since),
+        "total_recent_replies": len(messages),
+        "replied_leads": len({message.lead_id for message in messages if message.lead_id}),
+        "positive_replies": sum(
+            1 for message in messages if message.classification_label in POSITIVE_REPLY_LABELS
+        ),
+        "interested_replies": sum(1 for message in messages if message.classification_label == "interested"),
+        "quote_replies": sum(1 for message in messages if message.classification_label == "asked_for_quote"),
+        "meeting_replies": sum(
+            1 for message in messages if message.classification_label == "asked_for_meeting"
+        ),
+        "reviewer_candidates": sum(1 for message in messages if message.should_escalate_reviewer),
+        "important_replies": important_replies,
+        "pending_classification": sum(
+            1
+            for message in messages
+            if message.classification_status == InboundMailClassificationStatus.PENDING.value
+        ),
+        "failed_classification": sum(
+            1
+            for message in messages
+            if message.classification_status == InboundMailClassificationStatus.FAILED.value
+        ),
+        "unmatched_replies": sum(
+            1
+            for message in messages
+            if (message.thread.matched_via if message.thread else "unmatched") == "unmatched"
+        ),
+    }
+
+
+def list_leader_replies(
+    db: Session,
+    *,
+    limit: int = 10,
+    hours: int = 24,
+    labels: tuple[str, ...] = (),
+    classification_status: str | None = None,
+    important_only: bool = False,
+    needs_reviewer: bool = False,
+) -> list[dict]:
+    since = _since(hours)
+    stmt = (
+        select(InboundMessage)
+        .options(joinedload(InboundMessage.lead), joinedload(InboundMessage.thread))
+        .where(InboundMessage.received_at >= since)
+    )
+    if labels:
+        stmt = stmt.where(InboundMessage.classification_label.in_(labels))
+    if classification_status:
+        stmt = stmt.where(InboundMessage.classification_status == classification_status)
+    if needs_reviewer:
+        stmt = stmt.where(InboundMessage.should_escalate_reviewer.is_(True))
+    messages = list(db.execute(stmt).scalars().unique().all())
+
+    if important_only:
+        messages = [
+            message
+            for message in messages
+            if (
+                message.should_escalate_reviewer
+                or message.classification_status in {
+                    InboundMailClassificationStatus.PENDING.value,
+                    InboundMailClassificationStatus.FAILED.value,
+                }
+                or (message.classification_label in ACTIONABLE_REPLY_LABELS)
+            )
+        ]
+        messages.sort(
+            key=lambda item: (_reply_priority_score(item), item.received_at or datetime.min.replace(tzinfo=UTC)),
+            reverse=True,
+        )
+    else:
+        messages.sort(key=lambda item: item.received_at or datetime.min.replace(tzinfo=UTC), reverse=True)
+
+    return [_serialize_reply(message) for message in messages[:limit]]

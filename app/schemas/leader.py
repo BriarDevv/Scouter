@@ -104,3 +104,45 @@ class LeaderActivityItemResponse(BaseModel):
     actor: str
     detail: str | None
     created_at: datetime
+
+
+class LeaderReplySummaryResponse(BaseModel):
+    since_hours: int
+    since_at: datetime
+    snapshot_at: datetime
+    latest_reply_at: datetime | None
+    total_recent_replies: int
+    replied_leads: int
+    positive_replies: int
+    interested_replies: int
+    quote_replies: int
+    meeting_replies: int
+    reviewer_candidates: int
+    important_replies: int
+    pending_classification: int
+    failed_classification: int
+    unmatched_replies: int
+
+
+class LeaderReplyItemResponse(BaseModel):
+    id: uuid.UUID
+    thread_id: uuid.UUID | None
+    lead_id: uuid.UUID | None
+    lead_name: str | None
+    draft_id: uuid.UUID | None
+    delivery_id: uuid.UUID | None
+    from_email: str | None
+    subject: str | None
+    body_snippet: str | None
+    classification_status: str
+    classification_label: str | None
+    summary: str | None
+    confidence: float | None
+    next_action_suggestion: str | None
+    should_escalate_reviewer: bool
+    matched_via: str
+    match_confidence: float | None
+    received_at: datetime | None
+    classification_role: str | None
+    classification_model: str | None
+    priority_score: int

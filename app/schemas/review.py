@@ -31,3 +31,19 @@ class DraftReviewResponse(BaseModel):
     suggested_changes: list[str]
     revised_subject: str | None
     revised_body: str | None
+
+
+class InboundReplyReviewResponse(BaseModel):
+    inbound_message_id: uuid.UUID
+    thread_id: uuid.UUID | None
+    lead_id: uuid.UUID | None
+    business_name: str | None
+    role: LLMRole
+    model: str
+    classification_label: str | None
+    verdict: str
+    confidence: str
+    reasoning: str
+    recommended_action: str
+    suggested_response_angle: str | None
+    watchouts: list[str]

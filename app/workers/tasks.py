@@ -7,11 +7,16 @@ from app.core.logging import get_logger
 from app.db.session import SessionLocal
 from app.llm.client import evaluate_lead_quality, summarize_business
 from app.llm.roles import LLMRole
+from app.models.inbound_mail import InboundMessage
 from app.models.lead import Lead
 from app.models.outreach import OutreachDraft
 from app.services.enrichment_service import enrich_lead
 from app.services.outreach_service import generate_outreach_draft
-from app.services.review_service import review_draft_with_reviewer, review_lead_with_reviewer
+from app.services.review_service import (
+    review_draft_with_reviewer,
+    review_inbound_message_with_reviewer,
+    review_lead_with_reviewer,
+)
 from app.services.scoring_service import score_lead
 from app.services.task_tracking_service import (
     bind_tracking_context,
@@ -553,6 +558,91 @@ def task_review_draft(self, draft_id: str) -> dict:
             pipeline_run_id=None,
             correlation_id=None,
             current_step="draft_review",
+            queue=queue,
+            error=str(exc),
+        )
+        raise self.retry(exc=exc)
+    finally:
+        clear_tracking_context()
+
+
+@celery_app.task(bind=True, max_retries=1, default_retry_delay=90)
+def task_review_inbound_message(self, message_id: str) -> dict:
+    """Async task: run reviewer-only second opinion on an inbound reply."""
+    task_id = str(self.request.id)
+    queue = _queue_name(self.request, "reviewer")
+    lead_id: str | None = None
+
+    try:
+        with SessionLocal() as db:
+            message = db.get(InboundMessage, uuid.UUID(message_id))
+            if not message:
+                bind_tracking_context(task_id=task_id, current_step="inbound_reply_review")
+                mark_task_running(
+                    db,
+                    task_id=task_id,
+                    task_name="task_review_inbound_message",
+                    queue=queue,
+                    current_step="inbound_reply_review",
+                )
+                error = "Inbound message not found"
+                mark_task_failed(
+                    db,
+                    task_id=task_id,
+                    error=error,
+                    current_step="inbound_reply_review",
+                )
+                return {"status": "not_found", "inbound_message_id": message_id}
+
+            lead_id = str(message.lead_id) if message.lead_id else None
+            bind_tracking_context(
+                lead_id=lead_id,
+                task_id=task_id,
+                current_step="inbound_reply_review",
+            )
+            mark_task_running(
+                db,
+                task_id=task_id,
+                task_name="task_review_inbound_message",
+                queue=queue,
+                lead_id=uuid.UUID(lead_id) if lead_id else None,
+                current_step="inbound_reply_review",
+            )
+
+            payload = review_inbound_message_with_reviewer(db, uuid.UUID(message_id))
+            if not payload:
+                error = "Inbound message not found"
+                mark_task_failed(
+                    db,
+                    task_id=task_id,
+                    error=error,
+                    current_step="inbound_reply_review",
+                )
+                return {"status": "not_found", "inbound_message_id": message_id}
+
+            result = {
+                "status": "ok",
+                "inbound_message_id": message_id,
+                **payload,
+            }
+            result = jsonable_encoder(result)
+            mark_task_succeeded(
+                db,
+                task_id=task_id,
+                result=result,
+                current_step="inbound_reply_review",
+            )
+            logger.info("task_step_completed", task_name="task_review_inbound_message", result=result)
+            return result
+    except Exception as exc:
+        _track_failure(
+            task=self,
+            task_name="task_review_inbound_message",
+            task_id=task_id,
+            lead_id=lead_id,
+            pipeline_run_id=None,
+            correlation_id=None,
+            current_step="inbound_reply_review",
             queue=queue,
             error=str(exc),
         )
