@@ -165,6 +165,17 @@ python -m playwright install chromium
 
 ## E. Notas importantes de integración
 
+### OpenClaw: template versionado vs config viva
+
+- La configuración viva de OpenClaw sigue viviendo fuera del repo en `~/.openclaw/openclaw.json`.
+- El repo versiona solo una plantilla segura en:
+  - `infra/openclaw/openclaw.template.json`
+- Esa plantilla no incluye:
+  - token del gateway
+  - metadata/runtime local
+  - paths personales
+- La config real debe renderizarse localmente a partir de esa plantilla y del entorno WSL actual.
+
 ### Ollama desde WSL
 
 Solución validada hoy:
