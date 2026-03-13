@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
+  Inbox,
   LayoutDashboard,
   Users,
   Mail,
@@ -17,6 +18,7 @@ const NAV_ITEMS = [
   { href: "/",            label: "Overview",     icon: LayoutDashboard },
   { href: "/leads",       label: "Leads",        icon: Users },
   { href: "/outreach",    label: "Outreach",     icon: Mail },
+  { href: "/responses",   label: "Responses",    icon: Inbox },
   { href: "/performance", label: "Rendimiento",  icon: BarChart3 },
   { href: "/suppression", label: "Supresión",    icon: ShieldOff },
 ];

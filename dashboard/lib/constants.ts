@@ -1,4 +1,11 @@
-import type { LeadQuality, LeadStatus, SignalType, DraftStatus } from "@/types";
+import type {
+  DraftStatus,
+  InboundClassificationLabel,
+  InboundClassificationStatus,
+  LeadQuality,
+  LeadStatus,
+  SignalType,
+} from "@/types";
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -45,6 +52,45 @@ export const DRAFT_STATUS_CONFIG: Record<DraftStatus, { label: string; color: st
   rejected:       { label: "Rechazado",  color: "text-red-700",     bg: "bg-red-50" },
   sent:           { label: "Enviado",    color: "text-blue-700",    bg: "bg-blue-50" },
 };
+
+export const INBOUND_CLASSIFICATION_STATUS_CONFIG: Record<
+  InboundClassificationStatus,
+  { label: string; color: string; bg: string }
+> = {
+  pending: { label: "Pendiente", color: "text-amber-700", bg: "bg-amber-50" },
+  classified: { label: "Clasificado", color: "text-emerald-700", bg: "bg-emerald-50" },
+  failed: { label: "Falló", color: "text-rose-700", bg: "bg-rose-50" },
+};
+
+export const INBOUND_REPLY_LABEL_CONFIG: Record<
+  InboundClassificationLabel,
+  { label: string; color: string; bg: string }
+> = {
+  interested: { label: "Interesado", color: "text-emerald-700", bg: "bg-emerald-50" },
+  not_interested: { label: "No interesado", color: "text-rose-700", bg: "bg-rose-50" },
+  neutral: { label: "Neutral", color: "text-slate-700", bg: "bg-slate-100" },
+  asked_for_quote: { label: "Pidió cotización", color: "text-cyan-700", bg: "bg-cyan-50" },
+  asked_for_meeting: { label: "Pidió reunión", color: "text-teal-700", bg: "bg-teal-50" },
+  asked_for_more_info: { label: "Pidió más info", color: "text-indigo-700", bg: "bg-indigo-50" },
+  wrong_contact: { label: "Contacto incorrecto", color: "text-orange-700", bg: "bg-orange-50" },
+  out_of_office: { label: "Fuera de oficina", color: "text-amber-700", bg: "bg-amber-50" },
+  spam_or_irrelevant: { label: "Spam / irrelevante", color: "text-slate-600", bg: "bg-slate-100" },
+  needs_human_review: { label: "Revisión humana", color: "text-fuchsia-700", bg: "bg-fuchsia-50" },
+};
+
+export const INBOUND_MATCH_VIA_LABELS: Record<string, string> = {
+  message_id: "Header match",
+  references: "References",
+  subject_fallback: "Fallback por asunto",
+  unmatched: "Sin match",
+};
+
+export const POSITIVE_REPLY_LABELS: InboundClassificationLabel[] = [
+  "interested",
+  "asked_for_quote",
+  "asked_for_meeting",
+  "asked_for_more_info",
+];
 
 export const PIPELINE_STAGES: LeadStatus[] = [
   "new", "enriched", "scored", "qualified", "draft_ready",

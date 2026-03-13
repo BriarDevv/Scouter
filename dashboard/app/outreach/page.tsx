@@ -3,13 +3,33 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { DraftStatusBadge, StatusBadge } from "@/components/shared/status-badge";
+import {
+  DraftStatusBadge,
+  InboundClassificationStatusBadge,
+  InboundReplyLabelBadge,
+  StatusBadge,
+} from "@/components/shared/status-badge";
 import { RelativeTime } from "@/components/shared/relative-time";
 import { formatDate, truncate } from "@/lib/formatters";
 import { MOCK_DRAFTS, MOCK_LOGS, MOCK_LEADS } from "@/data/mock";
-import { getDrafts, getLeads, getOutreachLogs, reviewDraft } from "@/lib/api/client";
-import type { DraftStatus, OutreachDraft, OutreachLog } from "@/types";
-import { DRAFT_STATUS_CONFIG } from "@/lib/constants";
+import {
+  getDraftDeliveries,
+  getDrafts,
+  getInboundMessages,
+  getInboundThreads,
+  getLeads,
+  getOutreachLogs,
+  reviewDraft,
+} from "@/lib/api/client";
+import type {
+  DraftStatus,
+  EmailThreadSummary,
+  InboundMessage,
+  OutreachDelivery,
+  OutreachDraft,
+  OutreachLog,
+} from "@/types";
+import { DRAFT_STATUS_CONFIG, INBOUND_MATCH_VIA_LABELS } from "@/lib/constants";
 import {
   Mail, CheckCircle, XCircle, Send, Eye, MessageSquare,
   CalendarCheck, Trophy, FileText, Clock,
@@ -38,16 +58,22 @@ export default function OutreachPage() {
   const [drafts, setDrafts] = useState(MOCK_DRAFTS);
   const [logs, setLogs] = useState(MOCK_LOGS);
   const [leads, setLeads] = useState(MOCK_LEADS);
+  const [inboundMessages, setInboundMessages] = useState<InboundMessage[]>([]);
+  const [inboundThreads, setInboundThreads] = useState<EmailThreadSummary[]>([]);
+  const [selectedDeliveries, setSelectedDeliveries] = useState<OutreachDelivery[]>([]);
+  const [mailError, setMailError] = useState<string | null>(null);
   const [isReviewingDraftId, setIsReviewingDraftId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
 
     async function loadOutreachData() {
-      const [nextDrafts, nextLogs, nextLeads] = await Promise.all([
+      const [nextDrafts, nextLogs, nextLeads, nextInboundMessages, nextInboundThreads] = await Promise.all([
         getDrafts(),
         getOutreachLogs({ limit: 50 }),
         getLeads({ page: 1, page_size: 200 }),
+        getInboundMessages({ limit: 100 }).catch(() => null),
+        getInboundThreads({ limit: 50 }).catch(() => null),
       ]);
 
       if (!active) {
@@ -57,6 +83,15 @@ export default function OutreachPage() {
       setDrafts(nextDrafts);
       setLogs(nextLogs);
       setLeads(nextLeads.items);
+      if (nextInboundMessages && nextInboundThreads) {
+        setInboundMessages(nextInboundMessages);
+        setInboundThreads(nextInboundThreads);
+        setMailError(null);
+      } else {
+        setInboundMessages([]);
+        setInboundThreads([]);
+        setMailError("No se pudo cargar el contexto de replies inbound.");
+      }
       setSelectedDraft((current) =>
         current ? nextDrafts.find((draft) => draft.id === current.id) ?? null : nextDrafts[0] ?? null
       );
@@ -69,9 +104,45 @@ export default function OutreachPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadSelectedDraftDeliveries() {
+      if (!selectedDraft) {
+        setSelectedDeliveries([]);
+        return;
+      }
+
+      try {
+        const deliveries = await getDraftDeliveries(selectedDraft.id);
+        if (!active) {
+          return;
+        }
+        setSelectedDeliveries(deliveries);
+      } catch {
+        if (!active) {
+          return;
+        }
+        setSelectedDeliveries([]);
+      }
+    }
+
+    void loadSelectedDraftDeliveries();
+
+    return () => {
+      active = false;
+    };
+  }, [selectedDraft]);
+
   const filteredDrafts = filter === "all"
     ? drafts
     : drafts.filter((d) => d.status === filter);
+  const selectedReplies = selectedDraft
+    ? inboundMessages.filter((message) => message.draft_id === selectedDraft.id)
+    : [];
+  const selectedThreads = selectedDraft
+    ? inboundThreads.filter((thread) => thread.draft_id === selectedDraft.id)
+    : [];
 
   async function handleReview(draftId: string, approved: boolean) {
     setIsReviewingDraftId(draftId);
@@ -180,8 +251,112 @@ export default function OutreachPage() {
           </div>
         </div>
 
-        {/* Right: Activity Feed */}
+        {/* Right: Thread + Activity */}
         <div className="space-y-4">
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900 font-heading">Hilo del draft</h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Delivery real y replies inbound vinculadas al borrador seleccionado.
+                </p>
+              </div>
+              {selectedDraft && <DraftStatusBadge status={selectedDraft.status} />}
+            </div>
+
+            {selectedDraft ? (
+              <div className="mt-4 space-y-4">
+                <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+                  <p className="text-sm font-medium text-slate-900">{selectedDraft.subject}</p>
+                  <p className="mt-1 text-xs text-slate-500 line-clamp-3">{selectedDraft.body}</p>
+                  <p className="mt-2 text-xs text-slate-400 font-data">
+                    Generado <RelativeTime date={selectedDraft.generated_at} />
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Deliveries</p>
+                  {selectedDeliveries.length > 0 ? (
+                    <div className="mt-2 space-y-2">
+                      {selectedDeliveries.map((delivery) => (
+                        <div key={delivery.id} className="rounded-xl border border-slate-100 px-3 py-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className={cn(
+                              "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+                              delivery.status === "sent" && "bg-blue-50 text-blue-700",
+                              delivery.status === "sending" && "bg-amber-50 text-amber-700",
+                              delivery.status === "failed" && "bg-rose-50 text-rose-700"
+                            )}>
+                              {delivery.status}
+                            </span>
+                            <span className="text-xs text-slate-400 font-data">
+                              {delivery.sent_at ? <RelativeTime date={delivery.sent_at} /> : "Sin envío"}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-sm text-slate-700">{delivery.recipient_email}</p>
+                          {delivery.error && <p className="mt-1 text-xs text-rose-600">{delivery.error}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sm text-slate-400">Este draft todavía no tiene deliveries registradas.</p>
+                  )}
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Replies vinculadas</p>
+                  {mailError && (
+                    <p className="mt-2 text-xs text-rose-600">{mailError}</p>
+                  )}
+                  {selectedReplies.length > 0 ? (
+                    <div className="mt-2 space-y-2">
+                      {selectedReplies.map((message) => {
+                        const thread = selectedThreads.find((item) => item.id === message.thread_id);
+                        return (
+                          <div key={message.id} className="rounded-xl border border-slate-100 px-3 py-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <InboundClassificationStatusBadge status={message.classification_status} />
+                              <InboundReplyLabelBadge label={message.classification_label} />
+                              {message.should_escalate_reviewer && (
+                                <span className="inline-flex items-center rounded-full bg-fuchsia-50 px-2.5 py-0.5 text-xs font-medium text-fuchsia-700">
+                                  Sugerir reviewer
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-2 text-sm text-slate-900">
+                              {message.from_name || message.from_email || "Reply sin remitente"}
+                            </p>
+                            {message.summary && <p className="mt-1 text-sm text-slate-700">{message.summary}</p>}
+                            {message.next_action_suggestion && (
+                              <p className="mt-1 text-xs text-slate-500">
+                                Siguiente paso: {message.next_action_suggestion}
+                              </p>
+                            )}
+                            <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-400 font-data">
+                              <span>
+                                <RelativeTime date={message.received_at || message.created_at} />
+                              </span>
+                              {thread && (
+                                <span>
+                                  {INBOUND_MATCH_VIA_LABELS[thread.matched_via] || thread.matched_via}
+                                  {thread.match_confidence !== null ? ` · ${thread.match_confidence.toFixed(2)}` : ""}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sm text-slate-400">Todavía no hay replies vinculadas a este draft.</p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-slate-400">Seleccioná un draft para ver su hilo.</p>
+            )}
+          </div>
+
           <h3 className="text-sm font-semibold text-slate-900 font-heading">Actividad Reciente</h3>
 
           <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">

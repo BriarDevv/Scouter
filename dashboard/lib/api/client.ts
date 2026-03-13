@@ -4,8 +4,13 @@
  */
 
 import type {
+  EmailThreadDetail,
+  EmailThreadSummary,
   Lead,
+  InboundMailStatus,
+  InboundMessage,
   OutreachDraft,
+  OutreachDelivery,
   OutreachLog,
   SuppressionEntry,
   PaginatedResponse,
@@ -19,6 +24,7 @@ import type {
   CityBreakdown,
   SourcePerformance,
   DraftStatus,
+  InboundClassificationStatus,
   LeadStatus,
   LLMSettings,
 } from "@/types";
@@ -197,6 +203,14 @@ export async function getDrafts(params?: {
   );
 }
 
+export async function getDraftDetail(draftId: string): Promise<OutreachDraft> {
+  return apiFetch(`/outreach/drafts/${draftId}`);
+}
+
+export async function getDraftDeliveries(draftId: string): Promise<OutreachDelivery[]> {
+  return apiFetch(`/outreach/drafts/${draftId}/deliveries`);
+}
+
 export async function reviewDraft(
   draftId: string,
   approved: boolean,
@@ -370,6 +384,59 @@ export async function getSourcePerformance(): Promise<SourcePerformance[]> {
     () => apiFetch("/performance/source"),
     () => MOCK_SOURCE_PERFORMANCE
   );
+}
+
+// ─── Inbound Mail ─────────────────────────────────────
+
+export async function syncInboundMail(limit?: number) {
+  const suffix = limit ? `?limit=${limit}` : "";
+  return apiFetch(`/mail/inbound/sync${suffix}`, { method: "POST" });
+}
+
+export async function getInboundMessages(params?: {
+  lead_id?: string;
+  thread_id?: string;
+  classification_status?: InboundClassificationStatus;
+  limit?: number;
+}): Promise<InboundMessage[]> {
+  const query = new URLSearchParams();
+  if (params?.lead_id) query.set("lead_id", params.lead_id);
+  if (params?.thread_id) query.set("thread_id", params.thread_id);
+  if (params?.classification_status) query.set("classification_status", params.classification_status);
+  if (params?.limit) query.set("limit", String(params.limit));
+  const suffix = query.size ? `?${query.toString()}` : "";
+  return apiFetch(`/mail/inbound/messages${suffix}`);
+}
+
+export async function getInboundMessageById(messageId: string): Promise<InboundMessage> {
+  return apiFetch(`/mail/inbound/messages/${messageId}`);
+}
+
+export async function classifyInboundMessage(messageId: string): Promise<InboundMessage> {
+  return apiFetch(`/mail/inbound/messages/${messageId}/classify`, { method: "POST" });
+}
+
+export async function classifyPendingInboundMessages(limit = 25): Promise<InboundMessage[]> {
+  return apiFetch(`/mail/inbound/messages/classify-pending?limit=${limit}`, { method: "POST" });
+}
+
+export async function getInboundThreads(params?: {
+  lead_id?: string;
+  limit?: number;
+}): Promise<EmailThreadSummary[]> {
+  const query = new URLSearchParams();
+  if (params?.lead_id) query.set("lead_id", params.lead_id);
+  if (params?.limit) query.set("limit", String(params.limit));
+  const suffix = query.size ? `?${query.toString()}` : "";
+  return apiFetch(`/mail/inbound/threads${suffix}`);
+}
+
+export async function getInboundThreadById(threadId: string): Promise<EmailThreadDetail> {
+  return apiFetch(`/mail/inbound/threads/${threadId}`);
+}
+
+export async function getInboundMailStatus(): Promise<InboundMailStatus> {
+  return apiFetch("/mail/inbound/status");
 }
 
 // ─── Settings ──────────────────────────────────────────

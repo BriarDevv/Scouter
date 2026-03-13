@@ -3,7 +3,14 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { StatusBadge, QualityBadge, ScoreBadge } from "@/components/shared/status-badge";
+import {
+  InboundClassificationStatusBadge,
+  InboundReplyLabelBadge,
+  QualityBadge,
+  ScoreBadge,
+  StatusBadge,
+} from "@/components/shared/status-badge";
+import { INBOUND_MATCH_VIA_LABELS } from "@/lib/constants";
 import { SIGNAL_CONFIG } from "@/lib/constants";
 import { RelativeTime } from "@/components/shared/relative-time";
 import { formatDateTime, extractDomain } from "@/lib/formatters";
@@ -11,6 +18,8 @@ import { MOCK_LEADS, MOCK_DRAFTS, MOCK_LOGS } from "@/data/mock";
 import {
   generateDraft,
   getDrafts,
+  getInboundMessages,
+  getInboundThreads,
   getLeadById,
   getOutreachLogs,
   getPipelineRuns,
@@ -19,7 +28,14 @@ import {
   runFullPipeline,
   updateLeadStatus,
 } from "@/lib/api/client";
-import type { Lead, LeadSignal, PipelineRunSummary, TaskStatusRecord } from "@/types";
+import type {
+  EmailThreadSummary,
+  InboundMessage,
+  Lead,
+  LeadSignal,
+  PipelineRunSummary,
+  TaskStatusRecord,
+} from "@/types";
 import {
   ArrowLeft, Globe, Instagram, Mail, Phone, MapPin, Building2,
   RefreshCw, FileText, CheckCircle, XCircle, Sparkles, Clock,
@@ -77,6 +93,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [drafts, setDrafts] = useState(MOCK_DRAFTS.filter((draft) => draft.lead_id === id));
   const [logs, setLogs] = useState(MOCK_LOGS.filter((log) => log.lead_id === id));
   const [pipelineRuns, setPipelineRuns] = useState<PipelineRunSummary[]>([]);
+  const [inboundMessages, setInboundMessages] = useState<InboundMessage[]>([]);
+  const [inboundThreads, setInboundThreads] = useState<EmailThreadSummary[]>([]);
   const [latestTask, setLatestTask] = useState<TaskStatusRecord | null>(null);
   const [isMissing, setIsMissing] = useState(false);
   const [isRunningPipeline, setIsRunningPipeline] = useState(false);
@@ -89,11 +107,13 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
     async function loadLeadContext() {
       try {
-        const [nextLead, nextDrafts, nextLogs, nextPipelineRuns] = await Promise.all([
+        const [nextLead, nextDrafts, nextLogs, nextPipelineRuns, nextInboundMessages, nextInboundThreads] = await Promise.all([
           getLeadById(id),
           getDrafts({ lead_id: id }),
           getOutreachLogs({ lead_id: id, limit: 20 }),
           getPipelineRuns({ lead_id: id, limit: 5 }),
+          getInboundMessages({ lead_id: id, limit: 20 }).catch(() => []),
+          getInboundThreads({ lead_id: id, limit: 10 }).catch(() => []),
         ]);
 
         if (!active) {
@@ -104,6 +124,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         setDrafts(nextDrafts);
         setLogs(nextLogs);
         setPipelineRuns(nextPipelineRuns);
+        setInboundMessages(nextInboundMessages);
+        setInboundThreads(nextInboundThreads);
         setLatestTask(null);
         setIsMissing(false);
       } catch {
@@ -114,6 +136,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         setDrafts([]);
         setLogs([]);
         setPipelineRuns([]);
+        setInboundMessages([]);
+        setInboundThreads([]);
         setLatestTask(null);
         setIsMissing(true);
       }
@@ -127,16 +151,20 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   }, [id]);
 
   async function refreshLeadContext() {
-    const [nextLead, nextDrafts, nextLogs, nextPipelineRuns] = await Promise.all([
+    const [nextLead, nextDrafts, nextLogs, nextPipelineRuns, nextInboundMessages, nextInboundThreads] = await Promise.all([
       getLeadById(id),
       getDrafts({ lead_id: id }),
       getOutreachLogs({ lead_id: id, limit: 20 }),
       getPipelineRuns({ lead_id: id, limit: 5 }),
+      getInboundMessages({ lead_id: id, limit: 20 }).catch(() => []),
+      getInboundThreads({ lead_id: id, limit: 10 }).catch(() => []),
     ]);
     setLead(nextLead);
     setDrafts(nextDrafts);
     setLogs(nextLogs);
     setPipelineRuns(nextPipelineRuns);
+    setInboundMessages(nextInboundMessages);
+    setInboundThreads(nextInboundThreads);
     setIsMissing(false);
   }
 
@@ -203,6 +231,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       </div>
     );
   }
+
+  const threadById = new Map(inboundThreads.map((thread) => [thread.id, thread]));
 
   return (
     <div className="space-y-6">
@@ -426,6 +456,96 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               </div>
             ) : (
               <p className="text-sm text-slate-400 text-center py-6">Sin ejecuciones async registradas</p>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900 font-heading">Replies del lead</h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Inbound real vinculado por delivery/thread y clasificado por el executor.
+                </p>
+              </div>
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
+                {inboundMessages.length} replies
+              </span>
+            </div>
+            {inboundMessages.length > 0 ? (
+              <div className="space-y-3">
+                {inboundMessages.map((message) => {
+                  const thread = message.thread_id ? threadById.get(message.thread_id) : undefined;
+                  return (
+                    <div key={message.id} className="rounded-xl border border-slate-100 p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <InboundClassificationStatusBadge status={message.classification_status} />
+                            <InboundReplyLabelBadge label={message.classification_label} />
+                            {message.should_escalate_reviewer && (
+                              <span className="inline-flex items-center rounded-full bg-fuchsia-50 px-2.5 py-0.5 text-xs font-medium text-fuchsia-700">
+                                Sugerir reviewer
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-slate-900">
+                              {message.from_name || message.from_email || "Remitente desconocido"}
+                            </p>
+                            <p className="text-xs text-slate-500 font-data">
+                              {message.subject || "(sin asunto)"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right text-xs text-slate-400 font-data">
+                          <div>{formatDateTime(message.received_at || message.created_at)}</div>
+                          <div className="mt-1">
+                            <RelativeTime date={message.received_at || message.created_at} />
+                          </div>
+                        </div>
+                      </div>
+
+                      {message.summary && (
+                        <p className="mt-3 text-sm text-slate-700">{message.summary}</p>
+                      )}
+                      {message.next_action_suggestion && (
+                        <p className="mt-2 text-sm text-slate-600">
+                          <span className="font-medium text-slate-700">Siguiente paso:</span>{" "}
+                          {message.next_action_suggestion}
+                        </p>
+                      )}
+                      {message.classification_error && (
+                        <p className="mt-2 text-sm text-rose-600">{message.classification_error}</p>
+                      )}
+                      {message.body_snippet && (
+                        <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                          {message.body_snippet}
+                        </p>
+                      )}
+
+                      <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500">
+                        {thread && (
+                          <span>
+                            {INBOUND_MATCH_VIA_LABELS[thread.matched_via] || thread.matched_via}
+                            {thread.match_confidence !== null ? ` · ${thread.match_confidence.toFixed(2)}` : ""}
+                            {" · "}
+                            {thread.message_count} mensaje(s)
+                          </span>
+                        )}
+                        {message.classification_model && (
+                          <span className="font-data">
+                            {message.classification_role} · {message.classification_model}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400 text-center py-6">
+                Este lead todavía no tiene replies inbound vinculadas.
+              </p>
             )}
           </div>
 

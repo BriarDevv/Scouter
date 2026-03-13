@@ -1,6 +1,18 @@
 import { cn } from "@/lib/utils";
-import { STATUS_CONFIG, QUALITY_CONFIG, DRAFT_STATUS_CONFIG } from "@/lib/constants";
-import type { LeadStatus, LeadQuality, DraftStatus } from "@/types";
+import {
+  DRAFT_STATUS_CONFIG,
+  INBOUND_CLASSIFICATION_STATUS_CONFIG,
+  INBOUND_REPLY_LABEL_CONFIG,
+  QUALITY_CONFIG,
+  STATUS_CONFIG,
+} from "@/lib/constants";
+import type {
+  DraftStatus,
+  InboundClassificationLabel,
+  InboundClassificationStatus,
+  LeadQuality,
+  LeadStatus,
+} from "@/types";
 
 export function StatusBadge({ status }: { status: LeadStatus }) {
   const config = STATUS_CONFIG[status];
@@ -40,6 +52,51 @@ export function DraftStatusBadge({ status }: { status: DraftStatus }) {
   const config = DRAFT_STATUS_CONFIG[status];
   return (
     <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium", config.bg, config.color)}>
+      {config.label}
+    </span>
+  );
+}
+
+export function InboundClassificationStatusBadge({
+  status,
+}: {
+  status: InboundClassificationStatus;
+}) {
+  const config = INBOUND_CLASSIFICATION_STATUS_CONFIG[status];
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+        config.bg,
+        config.color
+      )}
+    >
+      {config.label}
+    </span>
+  );
+}
+
+export function InboundReplyLabelBadge({
+  label,
+}: {
+  label: InboundClassificationLabel | null;
+}) {
+  if (!label) {
+    return (
+      <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">
+        Sin label
+      </span>
+    );
+  }
+  const config = INBOUND_REPLY_LABEL_CONFIG[label];
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+        config.bg,
+        config.color
+      )}
+    >
       {config.label}
     </span>
   );
