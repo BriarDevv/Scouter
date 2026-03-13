@@ -7,6 +7,7 @@ from app.api.v1.leads import router as leads_router
 from app.api.v1.outreach import router as outreach_router
 from app.api.v1.performance import router as performance_router
 from app.api.v1.pipelines import router as pipelines_router
+from app.api.v1.reviews import router as reviews_router
 from app.api.v1.scoring import router as scoring_router
 from app.api.v1.settings import router as settings_router
 from app.api.v1.suppression import router as suppression_router
@@ -25,3 +26,4 @@ api_router.include_router(dashboard_router)
 api_router.include_router(performance_router)
 api_router.include_router(tasks_router)
 api_router.include_router(pipelines_router)
+api_router.include_router(reviews_router)

@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     OLLAMA_EXECUTOR_MODEL: str | None = None
     OLLAMA_REVIEWER_MODEL: str | None = DEFAULT_ROLE_MODEL_MAP[LLMRole.REVIEWER]
     OLLAMA_TIMEOUT: int = 120
+    OLLAMA_REVIEWER_TIMEOUT: int = 360
     OLLAMA_MAX_RETRIES: int = 3
 
     # Crawling

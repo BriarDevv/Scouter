@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from dataclasses import dataclass
 from typing import Any
 from urllib import error, parse, request
@@ -12,6 +13,10 @@ from urllib import error, parse, request
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8000/api/v1"
 DEFAULT_TIMEOUT_SECONDS = 15.0
+DEFAULT_POLL_INTERVAL_SECONDS = 5.0
+DEFAULT_MAX_ATTEMPTS = 12
+TERMINAL_TASK_STATUSES = {"succeeded", "failed"}
+TERMINAL_PIPELINE_STATUSES = {"succeeded", "failed"}
 
 
 @dataclass(frozen=True)
@@ -19,6 +24,7 @@ class CommandSpec:
     method: str
     path_template: str
     mutating: bool = False
+    timeout_seconds: float | None = None
 
 
 COMMAND_SPECS: dict[str, CommandSpec] = {
@@ -29,10 +35,22 @@ COMMAND_SPECS: dict[str, CommandSpec] = {
     "task-health": CommandSpec("GET", "/leader/task-health"),
     "activity": CommandSpec("GET", "/leader/activity"),
     "settings-llm": CommandSpec("GET", "/settings/llm"),
+    "performance-industry": CommandSpec("GET", "/performance/industry"),
+    "performance-city": CommandSpec("GET", "/performance/city"),
+    "performance-source": CommandSpec("GET", "/performance/source"),
     "generate-draft": CommandSpec("POST", "/outreach/{lead_id}/draft/async", mutating=True),
     "run-pipeline": CommandSpec("POST", "/scoring/{lead_id}/pipeline", mutating=True),
     "task-status": CommandSpec("GET", "/tasks/{task_id}/status"),
+    "review-lead": CommandSpec("POST", "/reviews/leads/{lead_id}/async", mutating=True),
+    "review-draft": CommandSpec("POST", "/reviews/drafts/{draft_id}/async", mutating=True),
 }
+
+
+class APIClientError(RuntimeError):
+    def __init__(self, response: dict[str, Any], exit_code: int):
+        super().__init__(response.get("error", {}).get("message", "API request failed"))
+        self.response = response
+        self.exit_code = exit_code
 
 
 class APIClient:
@@ -48,6 +66,7 @@ class APIClient:
         method: str,
         params: dict[str, Any] | None = None,
         payload: dict[str, Any] | None = None,
+        timeout_seconds: float | None = None,
     ) -> tuple[dict[str, Any], int]:
         query = parse.urlencode({k: v for k, v in (params or {}).items() if v is not None})
         endpoint = f"{self.base_url}{path}"
@@ -71,7 +90,7 @@ class APIClient:
             request_meta["payload"] = payload
 
         try:
-            with request.urlopen(req, timeout=self.timeout_seconds) as response:
+            with request.urlopen(req, timeout=timeout_seconds or self.timeout_seconds) as response:
                 raw = response.read().decode("utf-8")
                 data = json.loads(raw) if raw else None
                 return (
@@ -120,6 +139,28 @@ class APIClient:
                 1,
             )
 
+    def request_or_raise(
+        self,
+        command: str,
+        *,
+        path: str,
+        method: str,
+        params: dict[str, Any] | None = None,
+        payload: dict[str, Any] | None = None,
+        timeout_seconds: float | None = None,
+    ) -> dict[str, Any]:
+        response, exit_code = self.request(
+            command,
+            path=path,
+            method=method,
+            params=params,
+            payload=payload,
+            timeout_seconds=timeout_seconds,
+        )
+        if exit_code != 0:
+            raise APIClientError(response, exit_code)
+        return response
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -141,14 +182,23 @@ def parse_args() -> argparse.Namespace:
 
     subparsers.add_parser("overview")
     subparsers.add_parser("settings-llm")
+    performance_summary = subparsers.add_parser("performance-summary")
+    performance_summary.add_argument("--limit", type=int, default=3)
 
     top_leads = subparsers.add_parser("top-leads")
     top_leads.add_argument("--limit", type=int, default=10)
     top_leads.add_argument("--status")
 
+    best_leads = subparsers.add_parser("best-leads")
+    best_leads.add_argument("--limit", type=int, default=10)
+    best_leads.add_argument("--status")
+
     recent_drafts = subparsers.add_parser("recent-drafts")
     recent_drafts.add_argument("--limit", type=int, default=10)
     recent_drafts.add_argument("--status")
+
+    drafts_ready = subparsers.add_parser("drafts-ready")
+    drafts_ready.add_argument("--limit", type=int, default=10)
 
     recent_pipelines = subparsers.add_parser("recent-pipelines")
     recent_pipelines.add_argument("--limit", type=int, default=10)
@@ -157,63 +207,548 @@ def parse_args() -> argparse.Namespace:
     task_health = subparsers.add_parser("task-health")
     task_health.add_argument("--limit", type=int, default=10)
 
+    running_tasks = subparsers.add_parser("running-tasks")
+    running_tasks.add_argument("--limit", type=int, default=10)
+
+    failed_tasks = subparsers.add_parser("failed-tasks")
+    failed_tasks.add_argument("--limit", type=int, default=10)
+
     activity = subparsers.add_parser("activity")
     activity.add_argument("--limit", type=int, default=10)
 
     generate_draft = subparsers.add_parser("generate-draft")
     generate_draft.add_argument("--lead-id", required=True)
+    _add_wait_args(generate_draft)
 
     run_pipeline = subparsers.add_parser("run-pipeline")
     run_pipeline.add_argument("--lead-id", required=True)
+    _add_wait_args(run_pipeline)
 
     task_status = subparsers.add_parser("task-status")
     task_status.add_argument("--task-id", required=True)
 
+    wait_task = subparsers.add_parser("wait-task")
+    wait_task.add_argument("--task-id", required=True)
+    wait_task.add_argument("--interval", type=float, default=DEFAULT_POLL_INTERVAL_SECONDS)
+    wait_task.add_argument("--max-attempts", type=int, default=DEFAULT_MAX_ATTEMPTS)
+
+    review_lead = subparsers.add_parser("review-lead")
+    review_lead.add_argument("--lead-id", required=True)
+    _add_wait_args(review_lead)
+
+    review_draft = subparsers.add_parser("review-draft")
+    review_draft.add_argument("--draft-id", required=True)
+    _add_wait_args(review_draft)
+
     return parser.parse_args()
+
+
+def _add_wait_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--wait", action="store_true")
+    parser.add_argument("--interval", type=float, default=DEFAULT_POLL_INTERVAL_SECONDS)
+    parser.add_argument("--max-attempts", type=int, default=DEFAULT_MAX_ATTEMPTS)
 
 
 def build_request(args: argparse.Namespace) -> tuple[str, str, dict[str, Any] | None]:
     command = args.command
-    spec = COMMAND_SPECS[command]
+    direct_command = {
+        "best-leads": "top-leads",
+        "drafts-ready": "recent-drafts",
+    }.get(command, command)
+    spec = COMMAND_SPECS[direct_command]
     params: dict[str, Any] | None = None
 
-    if command == "top-leads":
-        params = {"limit": args.limit, "status": args.status}
+    if direct_command == "top-leads":
+        params = {"limit": args.limit, "status": getattr(args, "status", None)}
         path = spec.path_template
-    elif command == "recent-drafts":
-        params = {"limit": args.limit, "status": args.status}
+    elif direct_command == "recent-drafts":
+        status = getattr(args, "status", None)
+        if command == "drafts-ready":
+            status = "pending_review"
+        params = {"limit": args.limit, "status": status}
         path = spec.path_template
-    elif command == "recent-pipelines":
-        params = {"limit": args.limit, "status": args.status}
+    elif direct_command == "recent-pipelines":
+        params = {"limit": args.limit, "status": getattr(args, "status", None)}
         path = spec.path_template
-    elif command == "task-health":
+    elif direct_command == "task-health":
         params = {"limit": args.limit}
         path = spec.path_template
-    elif command == "activity":
+    elif direct_command == "activity":
         params = {"limit": args.limit}
         path = spec.path_template
-    elif command == "generate-draft":
+    elif direct_command == "generate-draft":
         path = spec.path_template.format(lead_id=args.lead_id)
-    elif command == "run-pipeline":
+    elif direct_command == "run-pipeline":
         path = spec.path_template.format(lead_id=args.lead_id)
-    elif command == "task-status":
+    elif direct_command == "task-status":
         path = spec.path_template.format(task_id=args.task_id)
+    elif direct_command == "review-lead":
+        path = spec.path_template.format(lead_id=args.lead_id)
+    elif direct_command == "review-draft":
+        path = spec.path_template.format(draft_id=args.draft_id)
     else:
         path = spec.path_template
 
-    return spec.method, path, params
+    return direct_command, spec.method, path, params
 
 
-def main() -> int:
-    args = parse_args()
-    method, path, params = build_request(args)
-    client = APIClient(base_url=args.base_url, timeout_seconds=args.timeout)
-    response, exit_code = client.request(
+def make_success(
+    command: str,
+    *,
+    data: Any,
+    request_meta: dict[str, Any] | None = None,
+    status_code: int = 200,
+) -> tuple[dict[str, Any], int]:
+    return (
+        {
+            "ok": True,
+            "command": command,
+            "request": request_meta or {},
+            "status_code": status_code,
+            "data": data,
+        },
+        0,
+    )
+
+
+def fetch_settings(client: APIClient) -> dict[str, Any]:
+    return client.request_or_raise("settings-llm", path="/settings/llm", method="GET")["data"]
+
+
+def fetch_latest_draft_for_lead(client: APIClient, lead_id: str | None) -> dict[str, Any] | None:
+    if not lead_id:
+        return None
+    response = client.request_or_raise(
+        "list-drafts",
+        path="/outreach/drafts",
+        method="GET",
+        params={"lead_id": lead_id, "page": 1, "page_size": 1},
+    )
+    drafts = response["data"] or []
+    return drafts[0] if drafts else None
+
+
+def fetch_draft_for_lead(client: APIClient, lead_id: str | None, draft_id: str | None) -> dict[str, Any] | None:
+    if not lead_id:
+        return None
+    if not draft_id:
+        return fetch_latest_draft_for_lead(client, lead_id)
+    response = client.request_or_raise(
+        "list-drafts",
+        path="/outreach/drafts",
+        method="GET",
+        params={"lead_id": lead_id, "page": 1, "page_size": 20},
+    )
+    drafts = response["data"] or []
+    for draft in drafts:
+        if draft.get("id") == draft_id:
+            return draft
+    return None
+
+
+def fetch_pipeline_run(client: APIClient, pipeline_run_id: str | None) -> dict[str, Any] | None:
+    if not pipeline_run_id:
+        return None
+    response = client.request_or_raise(
+        "pipeline-run",
+        path=f"/pipelines/runs/{pipeline_run_id}",
+        method="GET",
+    )
+    return response["data"]
+
+
+def wait_for_pipeline_run(
+    client: APIClient,
+    *,
+    pipeline_run_id: str,
+    interval: float,
+    max_attempts: int,
+) -> dict[str, Any]:
+    final: dict[str, Any] | None = None
+    for attempt in range(1, max_attempts + 1):
+        final = fetch_pipeline_run(client, pipeline_run_id)
+        status = (final or {}).get("status")
+        if status in TERMINAL_PIPELINE_STATUSES:
+            return {
+                "completed": True,
+                "attempts": attempt,
+                "interval_seconds": interval,
+                "final": final,
+            }
+        if attempt < max_attempts:
+            time.sleep(interval)
+
+    return {
+        "completed": False,
+        "attempts": max_attempts,
+        "interval_seconds": interval,
+        "final": final,
+    }
+
+
+def wait_for_task(
+    client: APIClient,
+    *,
+    task_id: str,
+    interval: float,
+    max_attempts: int,
+) -> dict[str, Any]:
+    final_response: dict[str, Any] | None = None
+    for attempt in range(1, max_attempts + 1):
+        final_response = client.request_or_raise(
+            "task-status",
+            path=f"/tasks/{task_id}/status",
+            method="GET",
+        )
+        status = (final_response["data"] or {}).get("status")
+        if status in TERMINAL_TASK_STATUSES:
+            return {
+                "completed": True,
+                "attempts": attempt,
+                "interval_seconds": interval,
+                "final": final_response["data"],
+            }
+        if attempt < max_attempts:
+            time.sleep(interval)
+
+    return {
+        "completed": False,
+        "attempts": max_attempts,
+        "interval_seconds": interval,
+        "final": final_response["data"] if final_response else None,
+    }
+
+
+def summarize_wait_result(
+    *,
+    workflow: str,
+    wait_data: dict[str, Any],
+    configured_role: str,
+    configured_model: str | None,
+    latest_draft: dict[str, Any] | None = None,
+    pipeline_run: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    final = wait_data.get("final") or {}
+    result = final.get("result") or {}
+    return {
+        "workflow": workflow,
+        "configured_role": configured_role,
+        "configured_model": configured_model,
+        "task_status": final.get("status"),
+        "lead_id": final.get("lead_id"),
+        "pipeline_run_id": final.get("pipeline_run_id"),
+        "current_step": final.get("current_step"),
+        "draft_id": result.get("draft_id") or (latest_draft or {}).get("id"),
+        "error": final.get("error"),
+        "result": result,
+        "latest_draft": latest_draft,
+        "pipeline_run": pipeline_run,
+    }
+
+
+def summarize_pipeline_wait_result(
+    *,
+    wait_data: dict[str, Any],
+    configured_role: str,
+    configured_model: str | None,
+    latest_draft: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    final = wait_data.get("final") or {}
+    result = final.get("result") or {}
+    return {
+        "workflow": "run-pipeline",
+        "configured_role": configured_role,
+        "configured_model": configured_model,
+        "pipeline_status": final.get("status"),
+        "lead_id": final.get("lead_id"),
+        "pipeline_run_id": final.get("id"),
+        "current_step": final.get("current_step"),
+        "draft_id": result.get("draft_id") or (latest_draft or {}).get("id"),
+        "error": final.get("error"),
+        "result": result,
+        "latest_draft": latest_draft,
+        "pipeline_run": final,
+    }
+
+
+def handle_direct_command(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    direct_command, method, path, params = build_request(args)
+    return client.request(
         args.command,
         path=path,
         method=method,
         params=params,
+        timeout_seconds=COMMAND_SPECS[direct_command].timeout_seconds,
     )
+
+
+def handle_performance_summary(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    try:
+        industry = client.request_or_raise(
+            "performance-industry",
+            path=COMMAND_SPECS["performance-industry"].path_template,
+            method="GET",
+        )["data"]
+        city = client.request_or_raise(
+            "performance-city",
+            path=COMMAND_SPECS["performance-city"].path_template,
+            method="GET",
+        )["data"]
+        source = client.request_or_raise(
+            "performance-source",
+            path=COMMAND_SPECS["performance-source"].path_template,
+            method="GET",
+        )["data"]
+    except APIClientError as exc:
+        return exc.response, exc.exit_code
+
+    data = {
+        "top_industry": industry[0] if industry else None,
+        "top_city": city[0] if city else None,
+        "top_source": source[0] if source else None,
+        "industry": industry[: args.limit],
+        "city": city[: args.limit],
+        "source": source[: args.limit],
+    }
+    return make_success("performance-summary", data=data)
+
+
+def handle_running_tasks(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    response, exit_code = client.request(
+        "task-health",
+        path=COMMAND_SPECS["task-health"].path_template,
+        method="GET",
+        params={"limit": args.limit},
+    )
+    if exit_code != 0:
+        return response, exit_code
+    health = response["data"]
+    data = {
+        "running_count": health["running_count"],
+        "retrying_count": health["retrying_count"],
+        "items": health["running"] + health["retrying"],
+    }
+    return make_success("running-tasks", data=data, request_meta=response["request"], status_code=response["status_code"])
+
+
+def handle_failed_tasks(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    response, exit_code = client.request(
+        "task-health",
+        path=COMMAND_SPECS["task-health"].path_template,
+        method="GET",
+        params={"limit": args.limit},
+    )
+    if exit_code != 0:
+        return response, exit_code
+    health = response["data"]
+    data = {
+        "failed_count": health["failed_count"],
+        "items": health["failed"],
+    }
+    return make_success("failed-tasks", data=data, request_meta=response["request"], status_code=response["status_code"])
+
+
+def handle_wait_task(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    try:
+        data = wait_for_task(
+            client,
+            task_id=args.task_id,
+            interval=args.interval,
+            max_attempts=args.max_attempts,
+        )
+    except APIClientError as exc:
+        return exc.response, exc.exit_code
+    return make_success("wait-task", data=data)
+
+
+def handle_generate_draft(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    response, exit_code = client.request(
+        "generate-draft",
+        path=COMMAND_SPECS["generate-draft"].path_template.format(lead_id=args.lead_id),
+        method="POST",
+    )
+    if exit_code != 0 or not args.wait:
+        return response, exit_code
+
+    try:
+        wait_data = wait_for_task(
+            client,
+            task_id=response["data"]["task_id"],
+            interval=args.interval,
+            max_attempts=args.max_attempts,
+        )
+        settings = fetch_settings(client)
+        final_result = (wait_data.get("final") or {}).get("result") or {}
+        latest_draft = None
+        if wait_data.get("completed") and final_result.get("draft_id"):
+            latest_draft = fetch_draft_for_lead(
+                client,
+                response["data"].get("lead_id"),
+                final_result.get("draft_id"),
+            )
+    except APIClientError as exc:
+        return exc.response, exc.exit_code
+
+    data = {
+        "enqueued": response["data"],
+        "wait": wait_data,
+        "summary": summarize_wait_result(
+            workflow="generate-draft",
+            wait_data=wait_data,
+            configured_role="executor",
+            configured_model=settings["executor_model"],
+            latest_draft=latest_draft,
+        ),
+    }
+    return make_success("generate-draft", data=data, request_meta=response["request"], status_code=response["status_code"])
+
+
+def handle_run_pipeline(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    response, exit_code = client.request(
+        "run-pipeline",
+        path=COMMAND_SPECS["run-pipeline"].path_template.format(lead_id=args.lead_id),
+        method="POST",
+    )
+    if exit_code != 0 or not args.wait:
+        return response, exit_code
+
+    try:
+        settings = fetch_settings(client)
+        pipeline_wait = wait_for_pipeline_run(
+            client,
+            pipeline_run_id=response["data"]["pipeline_run_id"],
+            interval=args.interval,
+            max_attempts=args.max_attempts,
+        )
+        final_pipeline = pipeline_wait.get("final") or {}
+        latest_draft = None
+        if pipeline_wait.get("completed") and (final_pipeline.get("result") or {}).get("draft_id"):
+            latest_draft = fetch_draft_for_lead(
+                client,
+                response["data"].get("lead_id"),
+                (final_pipeline.get("result") or {}).get("draft_id"),
+            )
+    except APIClientError as exc:
+        return exc.response, exc.exit_code
+
+    data = {
+        "enqueued": response["data"],
+        "wait": pipeline_wait,
+        "summary": summarize_pipeline_wait_result(
+            wait_data=pipeline_wait,
+            configured_role="executor",
+            configured_model=settings["executor_model"],
+            latest_draft=latest_draft,
+        ),
+    }
+    return make_success("run-pipeline", data=data, request_meta=response["request"], status_code=response["status_code"])
+
+
+def handle_review_lead(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    response, exit_code = client.request(
+        "review-lead",
+        path=COMMAND_SPECS["review-lead"].path_template.format(lead_id=args.lead_id),
+        method="POST",
+    )
+    if exit_code != 0 or not args.wait:
+        return response, exit_code
+
+    try:
+        wait_data = wait_for_task(
+            client,
+            task_id=response["data"]["task_id"],
+            interval=args.interval,
+            max_attempts=args.max_attempts,
+        )
+        settings = fetch_settings(client)
+    except APIClientError as exc:
+        return exc.response, exc.exit_code
+
+    data = {
+        "enqueued": response["data"],
+        "wait": wait_data,
+        "summary": {
+            "workflow": "review-lead",
+            "configured_role": "reviewer",
+            "configured_model": settings["reviewer_model"],
+            "task_status": (wait_data.get("final") or {}).get("status"),
+            "lead_id": (wait_data.get("final") or {}).get("lead_id"),
+            "current_step": (wait_data.get("final") or {}).get("current_step"),
+            "error": (wait_data.get("final") or {}).get("error"),
+            "result": (wait_data.get("final") or {}).get("result"),
+        },
+    }
+    return make_success("review-lead", data=data, request_meta=response["request"], status_code=response["status_code"])
+
+
+def handle_review_draft(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    response, exit_code = client.request(
+        "review-draft",
+        path=COMMAND_SPECS["review-draft"].path_template.format(draft_id=args.draft_id),
+        method="POST",
+    )
+    if exit_code != 0 or not args.wait:
+        return response, exit_code
+
+    try:
+        wait_data = wait_for_task(
+            client,
+            task_id=response["data"]["task_id"],
+            interval=args.interval,
+            max_attempts=args.max_attempts,
+        )
+        settings = fetch_settings(client)
+    except APIClientError as exc:
+        return exc.response, exc.exit_code
+
+    data = {
+        "enqueued": response["data"],
+        "wait": wait_data,
+        "summary": {
+            "workflow": "review-draft",
+            "configured_role": "reviewer",
+            "configured_model": settings["reviewer_model"],
+            "task_status": (wait_data.get("final") or {}).get("status"),
+            "lead_id": (wait_data.get("final") or {}).get("lead_id"),
+            "current_step": (wait_data.get("final") or {}).get("current_step"),
+            "error": (wait_data.get("final") or {}).get("error"),
+            "result": (wait_data.get("final") or {}).get("result"),
+        },
+    }
+    return make_success("review-draft", data=data, request_meta=response["request"], status_code=response["status_code"])
+
+
+def main() -> int:
+    args = parse_args()
+    client = APIClient(base_url=args.base_url, timeout_seconds=args.timeout)
+
+    handlers = {
+        "performance-summary": handle_performance_summary,
+        "running-tasks": handle_running_tasks,
+        "failed-tasks": handle_failed_tasks,
+        "wait-task": handle_wait_task,
+        "generate-draft": handle_generate_draft,
+        "run-pipeline": handle_run_pipeline,
+        "review-lead": handle_review_lead,
+        "review-draft": handle_review_draft,
+    }
+
+    if args.command in handlers:
+        response, exit_code = handlers[args.command](client, args)
+    else:
+        response, exit_code = handle_direct_command(client, args)
+
+        if exit_code == 0 and args.command == "best-leads":
+            response["data"] = {
+                "count": len(response["data"]),
+                "items": response["data"],
+            }
+        elif exit_code == 0 and args.command == "drafts-ready":
+            response["data"] = {
+                "count": len(response["data"]),
+                "items": response["data"],
+            }
+
     json.dump(response, sys.stdout, indent=2)
     sys.stdout.write("\n")
     return exit_code

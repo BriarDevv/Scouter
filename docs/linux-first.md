@@ -91,7 +91,7 @@ celery -A app.workers.celery_app worker \
   --loglevel=info \
   --concurrency=2 \
   --pool=prefork \
-  --queues=default,enrichment,scoring,llm \
+  --queues=default,enrichment,scoring,llm,reviewer \
   --hostname=clawscout-wsl
 ```
 

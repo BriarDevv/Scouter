@@ -8,7 +8,13 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.core.config import settings
 from app.core.logging import get_logger
-from app.llm.prompts import EVALUATE_LEAD_QUALITY, GENERATE_OUTREACH_EMAIL, SUMMARIZE_BUSINESS
+from app.llm.prompts import (
+    EVALUATE_LEAD_QUALITY,
+    GENERATE_OUTREACH_EMAIL,
+    REVIEW_LEAD,
+    REVIEW_OUTREACH_DRAFT,
+    SUMMARIZE_BUSINESS,
+)
 from app.llm.resolver import normalize_role, resolve_model_for_role
 from app.llm.roles import LLMRole
 
@@ -67,6 +73,13 @@ def _role_value(role: LLMRole | str) -> str:
         return str(role)
 
 
+def _timeout_for_role(role: LLMRole | str) -> float:
+    normalized_role = normalize_role(role)
+    if normalized_role == LLMRole.REVIEWER:
+        return float(settings.OLLAMA_REVIEWER_TIMEOUT)
+    return float(settings.OLLAMA_TIMEOUT)
+
+
 @retry(
     stop=stop_after_attempt(settings.OLLAMA_MAX_RETRIES),
     wait=wait_exponential(multiplier=1, min=2, max=30),
@@ -75,6 +88,7 @@ def _role_value(role: LLMRole | str) -> str:
 def _call_ollama(prompt: str, role: LLMRole | str = LLMRole.EXECUTOR) -> str:
     """Call Ollama API with the configured model for a given role."""
     normalized_role, model = _resolve_role_model(role)
+    timeout_seconds = _timeout_for_role(normalized_role)
     url = f"{settings.OLLAMA_BASE_URL}/api/generate"
     payload = {
         "model": model,
@@ -92,9 +106,10 @@ def _call_ollama(prompt: str, role: LLMRole | str = LLMRole.EXECUTOR) -> str:
         role=normalized_role.value,
         model=model,
         prompt_len=len(prompt),
+        timeout_seconds=timeout_seconds,
     )
 
-    with httpx.Client(timeout=settings.OLLAMA_TIMEOUT) as client:
+    with httpx.Client(timeout=timeout_seconds) as client:
         resp = client.post(url, json=payload)
         resp.raise_for_status()
 
@@ -230,4 +245,108 @@ def generate_outreach_draft(
         return {"subject": subject, "body": body}
     except Exception as e:
         logger.error("llm_outreach_failed", role=_role_value(role), error=str(e))
+        return fallback
+
+
+def review_lead(
+    business_name: str,
+    industry: str | None,
+    city: str | None,
+    website_url: str | None,
+    instagram_url: str | None,
+    llm_summary: str | None,
+    llm_suggested_angle: str | None,
+    signals: list,
+    score: float | None,
+    role: LLMRole | str = LLMRole.REVIEWER,
+) -> dict:
+    """Run a reviewer pass on a lead. Returns verdict, confidence, reasoning, recommended_action, watchouts."""
+    prompt = REVIEW_LEAD.format(
+        business_name=business_name,
+        industry=industry or "Unknown",
+        city=city or "Unknown",
+        website_url=website_url or "None",
+        instagram_url=instagram_url or "None",
+        llm_summary=llm_summary or "No summary available",
+        llm_suggested_angle=llm_suggested_angle or "No suggested angle available",
+        signals=_format_signals(signals),
+        score=score or 0,
+    )
+
+    fallback = {
+        "verdict": "worth_follow_up",
+        "confidence": "low",
+        "reasoning": "Reviewer analysis unavailable.",
+        "recommended_action": "Review this lead manually before taking action.",
+        "watchouts": ["Reviewer output unavailable"],
+    }
+
+    try:
+        raw = _call_ollama(prompt, role=role)
+        data = _extract_json(raw)
+        return {
+            "verdict": data.get("verdict", "worth_follow_up"),
+            "confidence": data.get("confidence", "medium"),
+            "reasoning": data.get("reasoning", "No reasoning provided"),
+            "recommended_action": data.get("recommended_action", "Review manually"),
+            "watchouts": data.get("watchouts", []) or [],
+        }
+    except Exception as e:
+        logger.error("llm_review_lead_failed", role=_role_value(role), error=str(e))
+        return fallback
+
+
+def review_outreach_draft(
+    business_name: str,
+    industry: str | None,
+    city: str | None,
+    website_url: str | None,
+    instagram_url: str | None,
+    llm_summary: str | None,
+    llm_suggested_angle: str | None,
+    signals: list,
+    subject: str,
+    body: str,
+    role: LLMRole | str = LLMRole.REVIEWER,
+) -> dict:
+    """Run a reviewer pass on an outreach draft."""
+    prompt = REVIEW_OUTREACH_DRAFT.format(
+        business_name=business_name,
+        industry=industry or "Unknown",
+        city=city or "Unknown",
+        website_url=website_url or "None",
+        instagram_url=instagram_url or "None",
+        llm_summary=llm_summary or "No summary available",
+        llm_suggested_angle=llm_suggested_angle or "No suggested angle available",
+        signals=_format_signals(signals),
+        subject=subject,
+        body=body,
+    )
+
+    fallback = {
+        "verdict": "revise",
+        "confidence": "low",
+        "reasoning": "Reviewer analysis unavailable.",
+        "strengths": [],
+        "concerns": ["Reviewer output unavailable"],
+        "suggested_changes": ["Review this draft manually before sending."],
+        "revised_subject": None,
+        "revised_body": None,
+    }
+
+    try:
+        raw = _call_ollama(prompt, role=role)
+        data = _extract_json(raw)
+        return {
+            "verdict": data.get("verdict", "revise"),
+            "confidence": data.get("confidence", "medium"),
+            "reasoning": data.get("reasoning", "No reasoning provided"),
+            "strengths": data.get("strengths", []) or [],
+            "concerns": data.get("concerns", []) or [],
+            "suggested_changes": data.get("suggested_changes", []) or [],
+            "revised_subject": data.get("revised_subject"),
+            "revised_body": data.get("revised_body"),
+        }
+    except Exception as e:
+        logger.error("llm_review_draft_failed", role=_role_value(role), error=str(e))
         return fallback

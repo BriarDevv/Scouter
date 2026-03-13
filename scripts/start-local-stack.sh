@@ -142,7 +142,7 @@ service_command() {
       printf "cd %q && .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000" "$REPO_ROOT"
       ;;
     worker)
-      printf "cd %q && .venv/bin/celery -A app.workers.celery_app worker --loglevel=info --concurrency=2 --pool=prefork --queues=default,enrichment,scoring,llm --hostname=clawscout-wsl" "$REPO_ROOT"
+      printf "cd %q && .venv/bin/celery -A app.workers.celery_app worker --loglevel=info --concurrency=2 --pool=prefork --queues=default,enrichment,scoring,llm,reviewer --hostname=clawscout-wsl" "$REPO_ROOT"
       ;;
     dashboard)
       printf "cd %q && npm run dev -- --hostname 0.0.0.0 --port 3000" "$REPO_ROOT/dashboard"

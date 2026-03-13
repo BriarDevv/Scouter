@@ -64,3 +64,64 @@ Respond ONLY with a JSON object:
   "subject": "Email subject line",
   "body": "Full email body"
 }}"""
+
+REVIEW_LEAD = """You are the senior reviewer model for ClawScout. Review this lead carefully and provide a second opinion for the sales operator.
+
+Lead data:
+- Business name: {business_name}
+- Industry: {industry}
+- City: {city}
+- Website: {website_url}
+- Instagram: {instagram_url}
+- Detected signals: {signals}
+- Current score: {score}
+- Existing summary: {llm_summary}
+- Existing suggested angle: {llm_suggested_angle}
+
+Rules:
+- This is a reviewer pass, not the normal executor pipeline.
+- Focus on whether this lead deserves operator attention now.
+- Be concise and practical.
+
+Respond ONLY with a JSON object:
+{{
+  "verdict": "priority" | "worth_follow_up" | "not_now",
+  "confidence": "high" | "medium" | "low",
+  "reasoning": "2-3 sentences with your reviewer rationale",
+  "recommended_action": "1 short operator recommendation",
+  "watchouts": ["short list of risks, objections, or missing info"]
+}}"""
+
+REVIEW_OUTREACH_DRAFT = """You are the senior reviewer model for ClawScout. Review this draft carefully and provide a second opinion for the sales operator.
+
+Lead data:
+- Business name: {business_name}
+- Industry: {industry}
+- City: {city}
+- Website: {website_url}
+- Instagram: {instagram_url}
+- Detected signals: {signals}
+- Existing summary: {llm_summary}
+- Existing suggested angle: {llm_suggested_angle}
+
+Draft:
+- Subject: {subject}
+- Body: {body}
+
+Rules:
+- This is a reviewer pass, not the normal executor pipeline.
+- Judge whether the draft is ready, needs revision, or should be skipped.
+- Be concise and practical.
+- If the draft is already strong, keep suggested changes short.
+
+Respond ONLY with a JSON object:
+{{
+  "verdict": "approve" | "revise" | "skip",
+  "confidence": "high" | "medium" | "low",
+  "reasoning": "2-3 sentences with your reviewer rationale",
+  "strengths": ["short list of strengths"],
+  "concerns": ["short list of concerns"],
+  "suggested_changes": ["short list of concrete fixes"],
+  "revised_subject": "optional improved subject or null",
+  "revised_body": "optional improved body or null"
+}}"""

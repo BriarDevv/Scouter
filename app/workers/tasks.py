@@ -2,13 +2,16 @@
 
 import uuid
 
+from fastapi.encoders import jsonable_encoder
 from app.core.logging import get_logger
 from app.db.session import SessionLocal
 from app.llm.client import evaluate_lead_quality, summarize_business
 from app.llm.roles import LLMRole
 from app.models.lead import Lead
+from app.models.outreach import OutreachDraft
 from app.services.enrichment_service import enrich_lead
 from app.services.outreach_service import generate_outreach_draft
+from app.services.review_service import review_draft_with_reviewer, review_lead_with_reviewer
 from app.services.scoring_service import score_lead
 from app.services.task_tracking_service import (
     bind_tracking_context,
@@ -37,7 +40,7 @@ def _track_failure(
     task,
     task_name: str,
     task_id: str,
-    lead_id: str,
+    lead_id: str | None,
     pipeline_run_id: uuid.UUID | None,
     correlation_id: str | None,
     current_step: str,
@@ -57,7 +60,7 @@ def _track_failure(
             task_id=task_id,
             task_name=task_name,
             queue=queue,
-            lead_id=uuid.UUID(lead_id),
+            lead_id=uuid.UUID(lead_id) if lead_id else None,
             pipeline_run_id=pipeline_run_id,
             correlation_id=correlation_id,
             current_step=current_step,
@@ -401,6 +404,155 @@ def task_generate_draft(
             pipeline_run_id=pipeline_uuid,
             correlation_id=correlation_id,
             current_step="draft_generation",
+            queue=queue,
+            error=str(exc),
+        )
+        raise self.retry(exc=exc)
+    finally:
+        clear_tracking_context()
+
+
+@celery_app.task(bind=True, max_retries=1, default_retry_delay=90)
+def task_review_lead(self, lead_id: str) -> dict:
+    """Async task: run reviewer-only second opinion on a lead."""
+    task_id = str(self.request.id)
+    queue = _queue_name(self.request, "reviewer")
+
+    try:
+        with SessionLocal() as db:
+            bind_tracking_context(
+                lead_id=lead_id,
+                task_id=task_id,
+                current_step="lead_review",
+            )
+            mark_task_running(
+                db,
+                task_id=task_id,
+                task_name="task_review_lead",
+                queue=queue,
+                lead_id=uuid.UUID(lead_id),
+                current_step="lead_review",
+            )
+
+            payload = review_lead_with_reviewer(db, uuid.UUID(lead_id))
+            if not payload:
+                error = "Lead not found"
+                mark_task_failed(
+                    db,
+                    task_id=task_id,
+                    error=error,
+                    current_step="lead_review",
+                )
+                return {"status": "not_found", "lead_id": lead_id}
+
+            result = {
+                "status": "ok",
+                "lead_id": lead_id,
+                **payload,
+            }
+            result = jsonable_encoder(result)
+            mark_task_succeeded(
+                db,
+                task_id=task_id,
+                result=result,
+                current_step="lead_review",
+            )
+            logger.info("task_step_completed", task_name="task_review_lead", result=result)
+            return result
+    except Exception as exc:
+        _track_failure(
+            task=self,
+            task_name="task_review_lead",
+            task_id=task_id,
+            lead_id=lead_id,
+            pipeline_run_id=None,
+            correlation_id=None,
+            current_step="lead_review",
+            queue=queue,
+            error=str(exc),
+        )
+        raise self.retry(exc=exc)
+    finally:
+        clear_tracking_context()
+
+
+@celery_app.task(bind=True, max_retries=1, default_retry_delay=90)
+def task_review_draft(self, draft_id: str) -> dict:
+    """Async task: run reviewer-only second opinion on a draft."""
+    task_id = str(self.request.id)
+    queue = _queue_name(self.request, "reviewer")
+    lead_id: str | None = None
+
+    try:
+        with SessionLocal() as db:
+            draft = db.get(OutreachDraft, uuid.UUID(draft_id))
+            if not draft or not draft.lead_id:
+                bind_tracking_context(task_id=task_id, current_step="draft_review")
+                mark_task_running(
+                    db,
+                    task_id=task_id,
+                    task_name="task_review_draft",
+                    queue=queue,
+                    current_step="draft_review",
+                )
+                error = "Draft not found"
+                mark_task_failed(
+                    db,
+                    task_id=task_id,
+                    error=error,
+                    current_step="draft_review",
+                )
+                return {"status": "not_found", "draft_id": draft_id}
+
+            lead_id = str(draft.lead_id)
+            bind_tracking_context(
+                lead_id=lead_id,
+                task_id=task_id,
+                current_step="draft_review",
+            )
+            mark_task_running(
+                db,
+                task_id=task_id,
+                task_name="task_review_draft",
+                queue=queue,
+                lead_id=uuid.UUID(lead_id),
+                current_step="draft_review",
+            )
+
+            draft_payload = review_draft_with_reviewer(db, uuid.UUID(draft_id))
+            if not draft_payload:
+                error = "Draft not found"
+                mark_task_failed(
+                    db,
+                    task_id=task_id,
+                    error=error,
+                    current_step="draft_review",
+                )
+                return {"status": "not_found", "draft_id": draft_id}
+
+            result = {
+                "status": "ok",
+                "draft_id": draft_id,
+                **draft_payload,
+            }
+            result = jsonable_encoder(result)
+            mark_task_succeeded(
+                db,
+                task_id=task_id,
+                result=result,
+                current_step="draft_review",
+            )
+            logger.info("task_step_completed", task_name="task_review_draft", result=result)
+            return result
+    except Exception as exc:
+        _track_failure(
+            task=self,
+            task_name="task_review_draft",
+            task_id=task_id,
+            lead_id=lead_id,
+            pipeline_run_id=None,
+            correlation_id=None,
+            current_step="draft_review",
             queue=queue,
             error=str(exc),
         )
