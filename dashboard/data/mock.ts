@@ -14,15 +14,23 @@ import type {
 
 // ─── Helpers ───────────────────────────────────────────
 
+const MOCK_NOW = new Date("2026-03-13T12:00:00.000Z");
+
 function daysAgo(n: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
+  const d = new Date(MOCK_NOW);
+  d.setUTCDate(d.getUTCDate() - n);
   return d.toISOString();
 }
 
-function uuid(): string {
-  return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
-}
+const MOCK_SERIES = [
+  { leads: 7, outreach: 3, replies: 1, conversions: 0 },
+  { leads: 9, outreach: 4, replies: 0, conversions: 0 },
+  { leads: 6, outreach: 2, replies: 1, conversions: 0 },
+  { leads: 11, outreach: 5, replies: 2, conversions: 1 },
+  { leads: 8, outreach: 3, replies: 1, conversions: 0 },
+  { leads: 12, outreach: 6, replies: 2, conversions: 1 },
+  { leads: 10, outreach: 4, replies: 1, conversions: 0 },
+];
 
 // ─── Leads ─────────────────────────────────────────────
 
@@ -294,13 +302,19 @@ export const MOCK_PIPELINE: PipelineStage[] = [
   { stage: "won",         label: "Ganados",     count: 3,   percentage: 0.064, color: "#22c55e" },
 ];
 
-export const MOCK_TIME_SERIES: TimeSeriesPoint[] = Array.from({ length: 30 }, (_, i) => ({
-  date: new Date(Date.now() - (29 - i) * 86400000).toISOString().slice(0, 10),
-  leads: Math.floor(Math.random() * 15) + 3,
-  outreach: Math.floor(Math.random() * 8) + 1,
-  replies: Math.floor(Math.random() * 4),
-  conversions: Math.floor(Math.random() * 2),
-}));
+export const MOCK_TIME_SERIES: TimeSeriesPoint[] = Array.from({ length: 30 }, (_, i) => {
+  const d = new Date(MOCK_NOW);
+  d.setUTCDate(d.getUTCDate() - (29 - i));
+  const sample = MOCK_SERIES[i % MOCK_SERIES.length];
+
+  return {
+    date: d.toISOString().slice(0, 10),
+    leads: sample.leads,
+    outreach: sample.outreach,
+    replies: sample.replies,
+    conversions: sample.conversions,
+  };
+});
 
 export const MOCK_INDUSTRY_BREAKDOWN: IndustryBreakdown[] = [
   { industry: "Gastronomía",  count: 45, avg_score: 67.2, conversion_rate: 0.12 },

@@ -8,13 +8,27 @@ interface RelativeTimeProps {
   className?: string;
 }
 
+function formatStableDateTime(date: string): string {
+  const value = new Date(date);
+  const day = String(value.getUTCDate()).padStart(2, "0");
+  const month = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"][value.getUTCMonth()];
+  const minutes = String(value.getUTCMinutes()).padStart(2, "0");
+  const hours24 = value.getUTCHours();
+  const meridiem = hours24 >= 12 ? "p. m." : "a. m.";
+  const hours12 = hours24 % 12 || 12;
+
+  return `${day}-${month}, ${hours12}:${minutes} ${meridiem}`;
+}
+
 export function RelativeTime({ date, className }: RelativeTimeProps) {
-  const absoluteText = formatDateTime(date);
-  const [text, setText] = useState(absoluteText);
+  const stableAbsoluteText = formatStableDateTime(date);
+  const [text, setText] = useState(stableAbsoluteText);
+  const [title, setTitle] = useState(stableAbsoluteText);
 
   useEffect(() => {
     const update = () => {
       setText(formatRelativeTime(date));
+      setTitle(formatDateTime(date));
     };
 
     update();
@@ -26,7 +40,7 @@ export function RelativeTime({ date, className }: RelativeTimeProps) {
   }, [date]);
 
   return (
-    <time dateTime={new Date(date).toISOString()} title={absoluteText} className={className}>
+    <time dateTime={new Date(date).toISOString()} title={title} className={className}>
       {text}
     </time>
   );
