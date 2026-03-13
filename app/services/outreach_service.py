@@ -13,6 +13,10 @@ from app.services.lead_service import is_suppressed
 logger = get_logger(__name__)
 
 
+def get_draft(db: Session, draft_id: uuid.UUID) -> OutreachDraft | None:
+    return db.get(OutreachDraft, draft_id)
+
+
 def generate_outreach_draft(db: Session, lead_id: uuid.UUID) -> OutreachDraft | None:
     """Generate an outreach email draft for a lead using LLM."""
     lead = db.get(Lead, lead_id)
@@ -101,6 +105,7 @@ def update_draft(
     body: str | None = None,
     status: DraftStatus | None = None,
     feedback: str | None = None,
+    actor: str = "user",
 ) -> OutreachDraft | None:
     draft = db.get(OutreachDraft, draft_id)
     if not draft:
@@ -133,7 +138,7 @@ def update_draft(
                     lead_id=draft.lead_id,
                     draft_id=draft.id,
                     action=action,
-                    actor="user",
+                    actor=actor,
                     detail=feedback,
                 )
             )

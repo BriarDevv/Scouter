@@ -47,6 +47,20 @@ class Settings(BaseSettings):
     # Outreach
     OUTREACH_AUTO_SEND: bool = False
 
+    # Mail
+    MAIL_PROVIDER: str = "smtp"
+    MAIL_ENABLED: bool = False
+    MAIL_FROM_EMAIL: str | None = None
+    MAIL_FROM_NAME: str = "ClawScout"
+    MAIL_REPLY_TO: str | None = None
+    MAIL_SMTP_HOST: str | None = None
+    MAIL_SMTP_PORT: int = 587
+    MAIL_SMTP_USERNAME: str | None = None
+    MAIL_SMTP_PASSWORD: str | None = None
+    MAIL_SMTP_STARTTLS: bool = True
+    MAIL_SMTP_SSL: bool = False
+    MAIL_SEND_TIMEOUT: int = 30
+
     # Rate limiting (API)
     API_RATE_LIMIT: str = "60/minute"
     API_CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"

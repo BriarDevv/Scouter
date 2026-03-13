@@ -4,7 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_session
+from app.mail.provider import MailProviderError
 from app.models.outreach import DraftStatus
+from app.schemas.mail import OutreachDeliveryResponse
 from app.schemas.outreach import (
     OutreachDraftResponse,
     OutreachDraftReview,
@@ -14,10 +16,19 @@ from app.schemas.outreach import (
 from app.schemas.task_tracking import TaskEnqueueResponse
 from app.services.outreach_service import (
     generate_outreach_draft,
+    get_draft,
     list_drafts,
     list_logs,
     review_draft,
     update_draft,
+)
+from app.services.mail_service import (
+    DraftAlreadySentError,
+    DraftNotApprovedError,
+    DraftRecipientMissingError,
+    MailDisabledError,
+    list_deliveries,
+    send_draft,
 )
 from app.services.task_tracking_service import queue_task_run
 from app.workers.tasks import task_generate_draft
@@ -65,6 +76,45 @@ def list_all_drafts(
 ):
     """List outreach drafts, optionally filtered by status."""
     return list_drafts(db, status=status, lead_id=lead_id, page=page, page_size=page_size)
+
+
+@router.get("/drafts/{draft_id}", response_model=OutreachDraftResponse)
+def get_draft_by_id(draft_id: uuid.UUID, db: Session = Depends(get_session)):
+    """Get a single outreach draft by ID."""
+    draft = get_draft(db, draft_id)
+    if not draft:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    return draft
+
+
+@router.post("/drafts/{draft_id}/send", response_model=OutreachDeliveryResponse)
+def send_draft_by_id(draft_id: uuid.UUID, db: Session = Depends(get_session)):
+    """Send an approved outreach draft through the configured mail provider."""
+    try:
+        delivery = send_draft(db, draft_id)
+    except MailDisabledError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except DraftNotApprovedError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except DraftAlreadySentError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except DraftRecipientMissingError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except MailProviderError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    if not delivery:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    return delivery
+
+
+@router.get("/drafts/{draft_id}/deliveries", response_model=list[OutreachDeliveryResponse])
+def list_draft_deliveries(draft_id: uuid.UUID, db: Session = Depends(get_session)):
+    """List delivery attempts for a specific outreach draft."""
+    draft = get_draft(db, draft_id)
+    if not draft:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    return list_deliveries(db, draft_id)
 
 
 @router.post("/drafts/{draft_id}/review", response_model=OutreachDraftResponse)
