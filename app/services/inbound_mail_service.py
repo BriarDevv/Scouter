@@ -74,7 +74,10 @@ def list_inbound_messages(
 ) -> list[InboundMessage]:
     stmt = (
         select(InboundMessage)
-        .options(selectinload(InboundMessage.thread))
+        .options(
+            selectinload(InboundMessage.thread),
+            selectinload(InboundMessage.reply_assistant_draft),
+        )
         .order_by(InboundMessage.received_at.desc(), InboundMessage.created_at.desc())
         .limit(limit)
     )
@@ -90,7 +93,10 @@ def list_inbound_messages(
 def get_inbound_message(db: Session, message_id: uuid.UUID) -> InboundMessage | None:
     stmt = (
         select(InboundMessage)
-        .options(selectinload(InboundMessage.thread))
+        .options(
+            selectinload(InboundMessage.thread),
+            selectinload(InboundMessage.reply_assistant_draft),
+        )
         .where(InboundMessage.id == message_id)
     )
     return db.execute(stmt).scalars().first()
@@ -113,7 +119,9 @@ def list_email_threads(
 def get_email_thread(db: Session, thread_id: uuid.UUID) -> EmailThread | None:
     stmt = (
         select(EmailThread)
-        .options(selectinload(EmailThread.messages))
+        .options(
+            selectinload(EmailThread.messages).selectinload(InboundMessage.reply_assistant_draft)
+        )
         .where(EmailThread.id == thread_id)
     )
     return db.execute(stmt).scalars().first()

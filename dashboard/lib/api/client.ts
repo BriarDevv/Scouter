@@ -28,6 +28,7 @@ import type {
   LeadStatus,
   LLMSettings,
   MailSettings,
+  ReplyAssistantDraft,
 } from "@/types";
 import { API_BASE_URL } from "@/lib/constants";
 import {
@@ -411,6 +412,21 @@ export async function getInboundMessages(params?: {
 
 export async function getInboundMessageById(messageId: string): Promise<InboundMessage> {
   return apiFetch(`/mail/inbound/messages/${messageId}`);
+}
+
+export async function getReplyAssistantDraft(messageId: string): Promise<ReplyAssistantDraft | null> {
+  try {
+    return await apiFetch(`/replies/${messageId}/draft-response`);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("404")) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+export async function generateReplyAssistantDraft(messageId: string): Promise<ReplyAssistantDraft> {
+  return apiFetch(`/replies/${messageId}/draft-response`, { method: "POST" });
 }
 
 export async function classifyInboundMessage(messageId: string): Promise<InboundMessage> {

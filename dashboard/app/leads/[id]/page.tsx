@@ -17,6 +17,7 @@ import { formatDateTime, extractDomain } from "@/lib/formatters";
 import { MOCK_LEADS, MOCK_DRAFTS, MOCK_LOGS } from "@/data/mock";
 import {
   generateDraft,
+  generateReplyAssistantDraft,
   getDrafts,
   getInboundMessages,
   getInboundThreads,
@@ -99,6 +100,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [isMissing, setIsMissing] = useState(false);
   const [isRunningPipeline, setIsRunningPipeline] = useState(false);
   const [isGeneratingDraft, setIsGeneratingDraft] = useState(false);
+  const [isGeneratingReplyDraftId, setIsGeneratingReplyDraftId] = useState<string | null>(null);
   const [isApprovingLead, setIsApprovingLead] = useState(false);
   const [isReviewingDraftId, setIsReviewingDraftId] = useState<string | null>(null);
 
@@ -209,6 +211,16 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     }
   }
 
+  async function handleGenerateReplyDraft(messageId: string) {
+    setIsGeneratingReplyDraftId(messageId);
+    try {
+      await generateReplyAssistantDraft(messageId);
+      await refreshLeadContext();
+    } finally {
+      setIsGeneratingReplyDraftId(null);
+    }
+  }
+
   async function handleReviewDraft(draftId: string, approved: boolean) {
     setIsReviewingDraftId(draftId);
     try {
@@ -233,6 +245,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   const threadById = new Map(inboundThreads.map((thread) => [thread.id, thread]));
+  const latestInboundMessage = inboundMessages[0] ?? null;
+  const latestReplyDraft = latestInboundMessage?.reply_assistant_draft ?? null;
 
   return (
     <div className="space-y-6">
@@ -471,6 +485,87 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 {inboundMessages.length} replies
               </span>
             </div>
+            {latestInboundMessage && (
+              <div className="mb-4 rounded-2xl border border-violet-100 bg-violet-50/30 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <InboundClassificationStatusBadge status={latestInboundMessage.classification_status} />
+                      <InboundReplyLabelBadge label={latestInboundMessage.classification_label} />
+                      {latestReplyDraft?.should_escalate_reviewer && (
+                        <span className="inline-flex items-center rounded-full bg-fuchsia-50 px-2.5 py-0.5 text-xs font-medium text-fuchsia-700">
+                          Conviene reviewer
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">
+                        Última reply: {latestInboundMessage.from_name || latestInboundMessage.from_email || "Remitente desconocido"}
+                      </p>
+                      <p className="text-xs text-slate-500 font-data">
+                        {latestInboundMessage.subject || "(sin asunto)"}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-xl gap-1.5"
+                    onClick={() => void handleGenerateReplyDraft(latestInboundMessage.id)}
+                    disabled={isGeneratingReplyDraftId === latestInboundMessage.id}
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    {isGeneratingReplyDraftId === latestInboundMessage.id
+                      ? "Generando..."
+                      : latestReplyDraft
+                        ? "Regenerar respuesta"
+                        : "Generar respuesta"}
+                  </Button>
+                </div>
+
+                {latestInboundMessage.summary && (
+                  <p className="mt-3 text-sm text-slate-700">{latestInboundMessage.summary}</p>
+                )}
+                {latestInboundMessage.next_action_suggestion && (
+                  <p className="mt-2 text-sm text-slate-600">
+                    <span className="font-medium text-slate-700">Siguiente paso:</span>{" "}
+                    {latestInboundMessage.next_action_suggestion}
+                  </p>
+                )}
+
+                {latestReplyDraft ? (
+                  <div className="mt-4 rounded-xl bg-white/80 px-3 py-3 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">
+                          {latestReplyDraft.subject}
+                        </p>
+                        {latestReplyDraft.summary && (
+                          <p className="mt-1 text-xs text-slate-500">
+                            {latestReplyDraft.summary}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-right text-xs text-slate-500">
+                        {latestReplyDraft.suggested_tone && (
+                          <p>Tono: {latestReplyDraft.suggested_tone}</p>
+                        )}
+                        <p>
+                          {latestReplyDraft.generator_role} · {latestReplyDraft.generator_model}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-700">
+                      {latestReplyDraft.body}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="mt-4 text-sm text-slate-600">
+                    Todavía no hay draft de respuesta sugerido para esta reply.
+                  </p>
+                )}
+              </div>
+            )}
             {inboundMessages.length > 0 ? (
               <div className="space-y-3">
                 {inboundMessages.map((message) => {

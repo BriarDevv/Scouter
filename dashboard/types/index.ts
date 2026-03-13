@@ -132,6 +132,25 @@ export interface OutreachDelivery {
   updated_at: string;
 }
 
+export interface ReplyAssistantDraft {
+  id: string;
+  inbound_message_id: string;
+  thread_id: string | null;
+  lead_id: string | null;
+  related_delivery_id: string | null;
+  related_outbound_draft_id: string | null;
+  status: "generated" | string;
+  subject: string;
+  body: string;
+  summary: string | null;
+  suggested_tone: string | null;
+  should_escalate_reviewer: boolean;
+  generator_role: string;
+  generator_model: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface OutreachLog {
   id: string;
   lead_id: string;
@@ -225,6 +244,7 @@ export interface InboundMessage {
   classification_role: string | null;
   classification_model: string | null;
   classified_at: string | null;
+  reply_assistant_draft?: ReplyAssistantDraft | null;
   created_at: string;
   updated_at: string;
 }

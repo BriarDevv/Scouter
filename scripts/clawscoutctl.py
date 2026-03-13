@@ -44,6 +44,8 @@ COMMAND_SPECS: dict[str, CommandSpec] = {
     "generate-draft": CommandSpec("POST", "/outreach/{lead_id}/draft/async", mutating=True),
     "run-pipeline": CommandSpec("POST", "/scoring/{lead_id}/pipeline", mutating=True),
     "task-status": CommandSpec("GET", "/tasks/{task_id}/status"),
+    "reply-response-draft": CommandSpec("GET", "/replies/{message_id}/draft-response"),
+    "reply-response-draft-generate": CommandSpec("POST", "/replies/{message_id}/draft-response", mutating=True),
     "review-lead": CommandSpec("POST", "/reviews/leads/{lead_id}/async", mutating=True),
     "review-draft": CommandSpec("POST", "/reviews/drafts/{draft_id}/async", mutating=True),
     "review-reply": CommandSpec("POST", "/reviews/inbound/messages/{message_id}/async", mutating=True),
@@ -272,6 +274,15 @@ def parse_args() -> argparse.Namespace:
     task_status = subparsers.add_parser("task-status")
     task_status.add_argument("--task-id", required=True)
 
+    reply_response_draft = subparsers.add_parser("reply-response-draft")
+    reply_response_draft.add_argument("--message-id", required=True)
+
+    reply_response_draft_generate = subparsers.add_parser(
+        "reply-response-draft-generate",
+        aliases=["reply-response-draft-regenerate"],
+    )
+    reply_response_draft_generate.add_argument("--message-id", required=True)
+
     wait_task = subparsers.add_parser("wait-task")
     wait_task.add_argument("--task-id", required=True)
     wait_task.add_argument("--interval", type=float, default=DEFAULT_POLL_INTERVAL_SECONDS)
@@ -311,6 +322,7 @@ def build_request(args: argparse.Namespace) -> tuple[str, str, dict[str, Any] | 
         "ops-important-replies": "important-replies",
         "ops-top-leads": "top-leads",
         "ops-recent-drafts": "recent-drafts",
+        "reply-response-draft-regenerate": "reply-response-draft-generate",
     }.get(command, command)
     spec = COMMAND_SPECS[direct_command]
     params: dict[str, Any] | None = None
@@ -350,6 +362,10 @@ def build_request(args: argparse.Namespace) -> tuple[str, str, dict[str, Any] | 
         path = spec.path_template.format(lead_id=args.lead_id)
     elif direct_command == "task-status":
         path = spec.path_template.format(task_id=args.task_id)
+    elif direct_command == "reply-response-draft":
+        path = spec.path_template.format(message_id=args.message_id)
+    elif direct_command == "reply-response-draft-generate":
+        path = spec.path_template.format(message_id=args.message_id)
     elif direct_command == "review-lead":
         path = spec.path_template.format(lead_id=args.lead_id)
     elif direct_command == "review-draft":

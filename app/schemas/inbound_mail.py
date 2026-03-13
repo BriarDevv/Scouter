@@ -4,6 +4,7 @@ from datetime import datetime
 from pydantic import BaseModel
 
 from app.models.inbound_mail import InboundMailSyncStatus
+from app.schemas.reply_assistant import ReplyAssistantDraftResponse
 
 
 class InboundMessageResponse(BaseModel):
@@ -38,6 +39,7 @@ class InboundMessageResponse(BaseModel):
     classification_role: str | None
     classification_model: str | None
     classified_at: datetime | None
+    reply_assistant_draft: ReplyAssistantDraftResponse | None = None
     created_at: datetime
     updated_at: datetime
 

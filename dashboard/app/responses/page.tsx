@@ -26,6 +26,7 @@ import {
   getInboundMessages,
   getInboundThreads,
   getLeads,
+  generateReplyAssistantDraft,
   classifyInboundMessage,
   classifyPendingInboundMessages,
   syncInboundMail,
@@ -58,6 +59,7 @@ export default function ResponsesPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isClassifying, setIsClassifying] = useState(false);
   const [classifyingMessageId, setClassifyingMessageId] = useState<string | null>(null);
+  const [generatingReplyDraftId, setGeneratingReplyDraftId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "pending" | "classified" | "failed">("all");
 
   async function loadInboxData() {
@@ -157,6 +159,22 @@ export default function ResponsesPage() {
     }
   }
 
+  async function handleGenerateReplyDraft(messageId: string) {
+    setGeneratingReplyDraftId(messageId);
+    try {
+      await generateReplyAssistantDraft(messageId);
+      await loadInboxData();
+    } catch (nextError) {
+      setError(
+        nextError instanceof Error
+          ? nextError.message
+          : "No se pudo generar el draft sugerido."
+      );
+    } finally {
+      setGeneratingReplyDraftId(null);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -251,8 +269,10 @@ export default function ResponsesPage() {
             <div className="space-y-3">
               {filteredMessages.map((message) => {
                 const lead = message.lead_id ? leadById.get(message.lead_id) : null;
-                const draft = message.draft_id ? draftById.get(message.draft_id) : null;
+                const outboundDraft = message.draft_id ? draftById.get(message.draft_id) : null;
                 const thread = message.thread_id ? threadById.get(message.thread_id) : null;
+                const replyDraft = message.reply_assistant_draft ?? null;
+                const isGeneratingDraft = generatingReplyDraftId === message.id;
 
                 return (
                   <article key={message.id} className="rounded-2xl border border-slate-100 p-4">
@@ -290,7 +310,7 @@ export default function ResponsesPage() {
                           {lead.business_name}
                         </Link>
                       )}
-                      {draft && <span>Draft: {draft.subject}</span>}
+                      {outboundDraft && <span>Draft outbound: {outboundDraft.subject}</span>}
                       {thread && (
                         <span>
                           {INBOUND_MATCH_VIA_LABELS[thread.matched_via] || thread.matched_via}
@@ -318,6 +338,72 @@ export default function ResponsesPage() {
                         {message.body_snippet}
                       </p>
                     )}
+
+                    <div className="mt-3 rounded-2xl border border-violet-100 bg-violet-50/30 p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium text-slate-900">
+                            Draft de respuesta sugerido
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Generado con executor sobre el contexto real del reply, thread y lead.
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {replyDraft?.should_escalate_reviewer && (
+                            <span className="inline-flex items-center rounded-full bg-fuchsia-50 px-2.5 py-0.5 text-xs font-medium text-fuchsia-700">
+                              Conviene reviewer
+                            </span>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-xl gap-1.5"
+                            onClick={() => void handleGenerateReplyDraft(message.id)}
+                            disabled={isGeneratingDraft}
+                          >
+                            <Sparkles className="h-3.5 w-3.5" />
+                            {isGeneratingDraft
+                              ? "Generando..."
+                              : replyDraft
+                                ? "Regenerar draft"
+                                : "Generar draft"}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {replyDraft ? (
+                        <>
+                          <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500">
+                            {replyDraft.suggested_tone && (
+                              <span>Tono sugerido: {replyDraft.suggested_tone}</span>
+                            )}
+                            <span>
+                              {replyDraft.generator_role} · {replyDraft.generator_model}
+                            </span>
+                            <span className="font-data">
+                              <RelativeTime date={replyDraft.updated_at} />
+                            </span>
+                          </div>
+                          {replyDraft.summary && (
+                            <p className="mt-3 text-sm text-slate-700">{replyDraft.summary}</p>
+                          )}
+                          <div className="mt-3 rounded-xl bg-white/80 px-3 py-3 shadow-sm">
+                            <p className="text-sm font-medium text-slate-900">
+                              {replyDraft.subject}
+                            </p>
+                            <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-700">
+                              {replyDraft.body}
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <p className="mt-3 text-sm text-slate-600">
+                          Todavía no hay draft sugerido para esta reply. Generalo cuando
+                          quieras preparar una respuesta asistida.
+                        </p>
+                      )}
+                    </div>
 
                     <div className="mt-3 flex items-center justify-between gap-3">
                       <div className="text-xs text-slate-400 font-data">
