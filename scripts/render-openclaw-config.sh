@@ -138,7 +138,7 @@ json.loads(tmp_path.read_text(encoding="utf-8"))
 PY
 
 if [[ -f "$CONFIG_PATH" ]]; then
-  BACKUP_PATH="${CONFIG_PATH}.bak.$(date '+%Y%m%d_%H%M%S')"
+  BACKUP_PATH="$(mktemp "${CONFIG_PATH}.bak.$(date '+%Y%m%d_%H%M%S').XXXXXX")"
   cp "$CONFIG_PATH" "$BACKUP_PATH"
   log "Backup creado en $BACKUP_PATH"
 fi

@@ -30,6 +30,28 @@ Validated on WSL2 / Ubuntu with the repo cloned into `~/src/ClawScout`.
 
 ## C. Comandos de arranque
 
+### 0. Preparación guiada del stack local
+
+Para validar prerequisitos, regenerar la config local de OpenClaw y obtener los comandos exactos de arranque:
+
+```bash
+cd ~/src/ClawScout
+./scripts/start-local-stack.sh
+```
+
+Si querés que además intente levantar servicios en `tmux` sin duplicar procesos ya vivos:
+
+```bash
+cd ~/src/ClawScout
+./scripts/start-local-stack.sh --launch
+```
+
+También acepta selección puntual:
+
+```bash
+./scripts/start-local-stack.sh --launch --service backend --service worker
+```
+
 ### 1. Infraestructura base
 
 Estado validado actual:
