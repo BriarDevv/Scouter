@@ -87,9 +87,15 @@ python scripts/seed.py
 
 ## LLM Defaults
 
-- Active default model: `qwen3.5:9b` via `OLLAMA_MODEL`
-- Prepared catalog for future switching: `qwen3.5:4b`, `qwen3.5:9b`, `qwen3.5:27b` via `OLLAMA_SUPPORTED_MODELS`
-- The app still uses a single active model today; role-specific model routing is intentionally deferred
+- Supported catalog: `qwen3.5:4b`, `qwen3.5:9b`, `qwen3.5:27b` via `OLLAMA_SUPPORTED_MODELS`
+- Role defaults:
+  - `leader` -> `qwen3.5:4b`
+  - `executor` -> `qwen3.5:9b`
+  - `reviewer` -> `qwen3.5:27b`
+- Backward compatibility:
+  - `OLLAMA_MODEL` remains supported as the legacy executor fallback
+  - if `OLLAMA_EXECUTOR_MODEL` is unset, the system resolves executor to `OLLAMA_MODEL`
+- The client layer still behaves like a single-provider Ollama setup today; role-aware resolution is prepared for the next step
 
 ## Playwright On Linux / WSL
 

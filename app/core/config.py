@@ -1,11 +1,8 @@
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
-DEFAULT_OLLAMA_SUPPORTED_MODELS = (
-    "qwen3.5:4b",
-    "qwen3.5:9b",
-    "qwen3.5:27b",
-)
+from app.llm.catalog import DEFAULT_ROLE_MODEL_MAP, DEFAULT_SUPPORTED_MODELS, parse_supported_models
+from app.llm.roles import LLMRole
 
 
 class Settings(BaseSettings):
@@ -30,10 +27,13 @@ class Settings(BaseSettings):
 
     # Ollama / LLM
     OLLAMA_BASE_URL: str = "http://localhost:11434"
-    # Current default runtime model. Future role-based routing can override this.
-    OLLAMA_MODEL: str = "qwen3.5:9b"
-    # Reserved for future model selection by role, kept simple as CSV for now.
-    OLLAMA_SUPPORTED_MODELS: str = ",".join(DEFAULT_OLLAMA_SUPPORTED_MODELS)
+    # Legacy default runtime model, kept as executor fallback for backward compatibility.
+    OLLAMA_MODEL: str = DEFAULT_ROLE_MODEL_MAP[LLMRole.EXECUTOR]
+    # Supported local models available for role assignment.
+    OLLAMA_SUPPORTED_MODELS: str = ",".join(DEFAULT_SUPPORTED_MODELS)
+    OLLAMA_LEADER_MODEL: str = DEFAULT_ROLE_MODEL_MAP[LLMRole.LEADER]
+    OLLAMA_EXECUTOR_MODEL: str | None = None
+    OLLAMA_REVIEWER_MODEL: str | None = DEFAULT_ROLE_MODEL_MAP[LLMRole.REVIEWER]
     OLLAMA_TIMEOUT: int = 120
     OLLAMA_MAX_RETRIES: int = 3
 
@@ -50,13 +50,51 @@ class Settings(BaseSettings):
     API_RATE_LIMIT: str = "60/minute"
     API_CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
 
+    @model_validator(mode="after")
+    def validate_ollama_models(self):
+        supported_models = set(self.ollama_supported_models)
+
+        configured_models = {
+            "OLLAMA_MODEL": self.OLLAMA_MODEL.strip(),
+            "OLLAMA_LEADER_MODEL": self.ollama_leader_model,
+            "OLLAMA_EXECUTOR_MODEL": self.ollama_executor_model,
+            "OLLAMA_REVIEWER_MODEL": self.ollama_reviewer_model,
+        }
+
+        for field_name, model_name in configured_models.items():
+            if model_name is None:
+                continue
+            if model_name not in supported_models:
+                raise ValueError(
+                    f"{field_name} must be one of {sorted(supported_models)}, got {model_name!r}"
+                )
+        return self
+
     @property
     def ollama_supported_models(self) -> tuple[str, ...]:
-        return tuple(
-            model.strip()
-            for model in self.OLLAMA_SUPPORTED_MODELS.split(",")
-            if model.strip()
-        )
+        return parse_supported_models(self.OLLAMA_SUPPORTED_MODELS)
+
+    @property
+    def ollama_leader_model(self) -> str:
+        return self.OLLAMA_LEADER_MODEL.strip()
+
+    @property
+    def ollama_executor_model(self) -> str:
+        configured = (self.OLLAMA_EXECUTOR_MODEL or "").strip()
+        return configured or self.OLLAMA_MODEL.strip()
+
+    @property
+    def ollama_reviewer_model(self) -> str | None:
+        configured = (self.OLLAMA_REVIEWER_MODEL or "").strip()
+        return configured or None
+
+    @property
+    def ollama_models_by_role(self) -> dict[LLMRole, str | None]:
+        return {
+            LLMRole.LEADER: self.ollama_leader_model,
+            LLMRole.EXECUTOR: self.ollama_executor_model,
+            LLMRole.REVIEWER: self.ollama_reviewer_model,
+        }
 
     @property
     def api_cors_origins(self) -> tuple[str, ...]:
