@@ -76,7 +76,12 @@ class Settings(BaseSettings):
 
     # Rate limiting (API)
     API_RATE_LIMIT: str = "60/minute"
-    API_CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
+    API_CORS_ORIGINS: str = (
+        "http://localhost:3000,"
+        "http://127.0.0.1:3000,"
+        "http://localhost:3001,"
+        "http://127.0.0.1:3001"
+    )
 
     @model_validator(mode="after")
     def validate_ollama_models(self):
