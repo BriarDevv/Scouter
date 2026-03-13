@@ -60,6 +60,7 @@
   "agents": {
     "defaults": {
       "workspace": "__WORKSPACE_PATH__",
+      "timeoutSeconds": __OPENCLAW_TIMEOUT_SECONDS__,
       "model": {
         "primary": "ollama/__LEADER_MODEL_ID__"
       },

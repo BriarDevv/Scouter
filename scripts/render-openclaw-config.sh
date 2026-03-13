@@ -21,6 +21,7 @@ TEMPLATE_PATH="${OPENCLAW_TEMPLATE_PATH:-$REPO_ROOT/infra/openclaw/openclaw.temp
 CONFIG_PATH="${OPENCLAW_CONFIG_PATH:-$HOME/.openclaw/openclaw.json}"
 CONFIG_DIR="$(dirname -- "$CONFIG_PATH")"
 WORKSPACE_PATH="${OPENCLAW_WORKSPACE:-$REPO_ROOT}"
+OPENCLAW_TIMEOUT_SECONDS="${OPENCLAW_TIMEOUT_SECONDS:-180}"
 
 LEADER_MODEL_ID="${OPENCLAW_LEADER_MODEL:-qwen3.5:4b}"
 EXECUTOR_MODEL_ID="${OPENCLAW_EXECUTOR_MODEL:-qwen3.5:9b}"
@@ -69,6 +70,7 @@ export OLLAMA_BASE_URL_RENDERED
 export LEADER_MODEL_ID
 export EXECUTOR_MODEL_ID
 export REVIEWER_MODEL_ID
+export OPENCLAW_TIMEOUT_SECONDS
 
 python3 - <<'PY'
 import json
@@ -86,6 +88,7 @@ placeholders = {
     "__LEADER_MODEL_ID__": os.environ["LEADER_MODEL_ID"],
     "__EXECUTOR_MODEL_ID__": os.environ["EXECUTOR_MODEL_ID"],
     "__REVIEWER_MODEL_ID__": os.environ["REVIEWER_MODEL_ID"],
+    "__OPENCLAW_TIMEOUT_SECONDS__": os.environ["OPENCLAW_TIMEOUT_SECONDS"],
 }
 
 template = template_path.read_text(encoding="utf-8")
@@ -151,6 +154,7 @@ log "Ollama base URL: $OLLAMA_BASE_URL_RENDERED"
 log "Leader model: $LEADER_MODEL_ID"
 log "Executor model: $EXECUTOR_MODEL_ID"
 log "Reviewer model: $REVIEWER_MODEL_ID"
+log "Agent timeout seconds: $OPENCLAW_TIMEOUT_SECONDS"
 
 if [[ -x "$HOME/.openclaw/bin/openclaw" ]]; then
   if [[ "$CONFIG_PATH" == "$HOME/.openclaw/openclaw.json" ]]; then

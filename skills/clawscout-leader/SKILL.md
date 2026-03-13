@@ -70,6 +70,8 @@ python3 scripts/clawscoutctl.py wait-task --task-id <task_id>
 python3 scripts/clawscoutctl.py review-lead --lead-id <lead_id> --wait
 python3 scripts/clawscoutctl.py review-draft --draft-id <draft_id> --wait
 python3 scripts/clawscoutctl.py review-reply --message-id <message_id>
+python3 scripts/clawscoutctl.py review-reply --message-id <message_id> --wait
+python3 scripts/clawscoutctl.py review-reply --message-id <message_id> --sync
 python3 scripts/browserctl.py inspect-url --url <public_url>
 python3 scripts/browserctl.py inspect-url --url <public_url> --screenshot
 python3 scripts/browserctl.py inspect-business-site --lead-id <lead_id>
@@ -130,7 +132,9 @@ Prefer one wrapper command per question unless the user explicitly asks for a mu
 - Reviewer second opinion on a draft:
   - run `python3 scripts/clawscoutctl.py review-draft --draft-id <draft_id> --wait`
 - Reviewer second opinion on an inbound reply:
-  - run `python3 scripts/clawscoutctl.py review-reply --message-id <message_id>`
+  - by default run `python3 scripts/clawscoutctl.py review-reply --message-id <message_id>` to queue it asynchronously
+  - if the user explicitly wants to wait for the reviewer result now, run `python3 scripts/clawscoutctl.py review-reply --message-id <message_id> --wait`
+  - only use `python3 scripts/clawscoutctl.py review-reply --message-id <message_id> --sync` as an escape hatch when the user explicitly wants an inline review and accepts that it may be slow on this machine
 - Public website inspection by URL:
   - run `python3 scripts/browserctl.py inspect-url --url <public_url>`
   - add `--screenshot` only when the user asked for visual evidence or a screenshot would materially help
@@ -188,6 +192,7 @@ Prefer one wrapper command per question unless the user explicitly asks for a mu
   - when `--wait` succeeds, answer with the wrapper `summary` fields rather than free-form narration
 - For reviewer:
   - only use `review-lead --wait`, `review-draft --wait`, or `review-reply` when the user explicitly asks for deeper review, second opinion, or reviewer
+  - prefer `review-reply` async by default on this machine because reviewer is materially slower than executor
   - always mention that reviewer used the premium second-opinion path and report the returned `role` and `model`
 
 ## Grounding rules

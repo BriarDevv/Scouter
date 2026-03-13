@@ -45,7 +45,8 @@ COMMAND_SPECS: dict[str, CommandSpec] = {
     "task-status": CommandSpec("GET", "/tasks/{task_id}/status"),
     "review-lead": CommandSpec("POST", "/reviews/leads/{lead_id}/async", mutating=True),
     "review-draft": CommandSpec("POST", "/reviews/drafts/{draft_id}/async", mutating=True),
-    "review-reply": CommandSpec("POST", "/reviews/inbound/messages/{message_id}", timeout_seconds=240),
+    "review-reply": CommandSpec("POST", "/reviews/inbound/messages/{message_id}/async", mutating=True),
+    "review-reply-sync": CommandSpec("POST", "/reviews/inbound/messages/{message_id}", mutating=True, timeout_seconds=300),
 }
 
 
@@ -274,6 +275,7 @@ def parse_args() -> argparse.Namespace:
 
     review_reply = subparsers.add_parser("review-reply")
     review_reply.add_argument("--message-id", required=True)
+    review_reply.add_argument("--sync", action="store_true")
     _add_wait_args(review_reply)
 
     return parser.parse_args()
@@ -923,32 +925,94 @@ def handle_review_draft(client: APIClient, args: argparse.Namespace) -> tuple[di
 
 
 def handle_review_reply(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
-    response, exit_code = client.request(
-        "review-reply",
-        path=COMMAND_SPECS["review-reply"].path_template.format(message_id=args.message_id),
-        method="POST",
-        timeout_seconds=COMMAND_SPECS["review-reply"].timeout_seconds,
-    )
-    if exit_code != 0:
-        return response, exit_code
-
     try:
         settings = fetch_settings(client)
     except APIClientError as exc:
         return exc.response, exc.exit_code
 
+    if args.sync:
+        response, exit_code = client.request(
+            "review-reply",
+            path=COMMAND_SPECS["review-reply-sync"].path_template.format(message_id=args.message_id),
+            method="POST",
+            timeout_seconds=COMMAND_SPECS["review-reply-sync"].timeout_seconds,
+        )
+        if exit_code != 0:
+            return response, exit_code
+
+        data = {
+            "mode": "sync",
+            "result": response["data"],
+            "summary": {
+                "workflow": "review-reply",
+                "mode": "sync",
+                "configured_role": "reviewer",
+                "configured_model": settings["reviewer_model"],
+                "inbound_message_id": response["data"].get("inbound_message_id"),
+                "lead_id": response["data"].get("lead_id"),
+                "classification_label": response["data"].get("classification_label"),
+                "verdict": response["data"].get("verdict"),
+                "confidence": response["data"].get("confidence"),
+                "recommended_action": response["data"].get("recommended_action"),
+            },
+        }
+        return make_success("review-reply", data=data, request_meta=response["request"], status_code=response["status_code"])
+
+    response, exit_code = client.request(
+        "review-reply",
+        path=COMMAND_SPECS["review-reply"].path_template.format(message_id=args.message_id),
+        method="POST",
+    )
+    if exit_code != 0 or not args.wait:
+        if exit_code != 0:
+            return response, exit_code
+        data = {
+            "mode": "async",
+            "enqueued": response["data"],
+            "summary": {
+                "workflow": "review-reply",
+                "mode": "async",
+                "configured_role": "reviewer",
+                "configured_model": settings["reviewer_model"],
+                "task_id": response["data"].get("task_id"),
+                "lead_id": response["data"].get("lead_id"),
+                "current_step": response["data"].get("current_step"),
+            },
+        }
+        return make_success("review-reply", data=data, request_meta=response["request"], status_code=response["status_code"])
+
+    try:
+        wait_data = wait_for_task(
+            client,
+            task_id=response["data"]["task_id"],
+            interval=args.interval,
+            max_attempts=args.max_attempts,
+        )
+    except APIClientError as exc:
+        return exc.response, exc.exit_code
+
+    final = wait_data.get("final") or {}
+    result = final.get("result") or {}
     data = {
-        "result": response["data"],
+        "mode": "async",
+        "enqueued": response["data"],
+        "wait": wait_data,
         "summary": {
             "workflow": "review-reply",
+            "mode": "async",
             "configured_role": "reviewer",
             "configured_model": settings["reviewer_model"],
-            "inbound_message_id": response["data"].get("inbound_message_id"),
-            "lead_id": response["data"].get("lead_id"),
-            "classification_label": response["data"].get("classification_label"),
-            "verdict": response["data"].get("verdict"),
-            "confidence": response["data"].get("confidence"),
-            "recommended_action": response["data"].get("recommended_action"),
+            "task_status": final.get("status"),
+            "task_id": final.get("task_id"),
+            "lead_id": final.get("lead_id"),
+            "current_step": final.get("current_step"),
+            "error": final.get("error"),
+            "inbound_message_id": result.get("inbound_message_id"),
+            "classification_label": result.get("classification_label"),
+            "verdict": result.get("verdict"),
+            "confidence": result.get("confidence"),
+            "recommended_action": result.get("recommended_action"),
+            "result": result,
         },
     }
     return make_success("review-reply", data=data, request_meta=response["request"], status_code=response["status_code"])
