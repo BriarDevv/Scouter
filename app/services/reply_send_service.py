@@ -127,7 +127,15 @@ def send_reply_assistant_draft(db: Session, message_id: uuid.UUID) -> ReplyAssis
     if latest_send and latest_send.status == ReplyAssistantSendStatus.SENT:
         raise ReplyDraftAlreadySentError(blocked_reason or "Reply draft has already been sent.")
     if latest_send and latest_send.status == ReplyAssistantSendStatus.SENDING:
-        raise ReplyDraftAlreadySendingError(blocked_reason or "Reply draft is already being sent.")
+        # Auto-recover stuck SENDING after 5 minutes
+        from datetime import timedelta
+        if latest_send.created_at and (datetime.now(UTC) - latest_send.created_at) > timedelta(minutes=5):
+            latest_send.status = ReplyAssistantSendStatus.FAILED
+            latest_send.error = "Send timed out after 5 minutes."
+            db.commit()
+            db.refresh(latest_send)
+        else:
+            raise ReplyDraftAlreadySendingError(blocked_reason or "Reply draft is already being sent.")
     if blocked_reason:
         raise ReplyDraftValidationError(blocked_reason)
 
@@ -244,7 +252,13 @@ def _compute_send_blocked_reason(draft: ReplyAssistantDraft) -> str | None:
     if latest_send and latest_send.status == ReplyAssistantSendStatus.SENT:
         return "Reply draft has already been sent."
     if latest_send and latest_send.status == ReplyAssistantSendStatus.SENDING:
-        return "Reply draft is already being sent."
+        # Auto-recover stuck SENDING after 5 minutes
+        from datetime import timedelta
+        if latest_send.created_at and (datetime.now(UTC) - latest_send.created_at) > timedelta(minutes=5):
+            latest_send.status = ReplyAssistantSendStatus.FAILED
+            latest_send.error = "Send timed out after 5 minutes."
+        else:
+            return "Reply draft is already being sent."
 
     review = draft.review
     if review and review.status == ReplyAssistantReviewStatus.PENDING:
@@ -291,6 +305,8 @@ def _resolve_reply_subject(draft_subject: str | None, inbound_subject: str | Non
     candidate = (draft_subject or "").strip() or (inbound_subject or "").strip()
     if not candidate:
         return None
+    # Strip CRLF to prevent header injection
+    candidate = candidate.replace("\r", "").replace("\n", "")
     if candidate.lower().startswith("re:"):
         return candidate
     return f"Re: {candidate}"

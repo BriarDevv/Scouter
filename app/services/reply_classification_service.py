@@ -68,6 +68,14 @@ def classify_inbound_message(db: Session, message_id: uuid.UUID) -> InboundMessa
     if not message:
         return None
 
+    if message.classification_status != InboundMailClassificationStatus.PENDING.value:
+        logger.info(
+            "inbound_message_classification_skipped",
+            inbound_message_id=str(message.id),
+            classification_status=message.classification_status,
+        )
+        return message
+
     role = LLMRole.EXECUTOR
     model = resolve_model_for_role(role)
     try:

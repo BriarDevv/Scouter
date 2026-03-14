@@ -4,6 +4,7 @@ import uuid
 from dataclasses import dataclass
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -181,7 +182,15 @@ def send_draft(db: Session, draft_id: uuid.UUID) -> OutreachDelivery | None:
         status=OutreachDeliveryStatus.SENDING,
     )
     db.add(delivery)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        # Re-check state after rollback
+        db.refresh(draft)
+        if draft.status == DraftStatus.SENT:
+            raise DraftAlreadySentError("Draft has already been sent.")
+        raise DraftAlreadySentError("Draft send is already in progress.")
     db.refresh(delivery)
 
     request = build_mail_send_request(

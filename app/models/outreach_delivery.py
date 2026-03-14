@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text, Uuid, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text, Uuid, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -21,6 +21,13 @@ class OutreachDelivery(Base):
         Index("ix_outreach_deliveries_lead_id", "lead_id"),
         Index("ix_outreach_deliveries_status", "status"),
         Index("ix_outreach_deliveries_provider_message_id", "provider_message_id"),
+        Index(
+            "uq_outreach_deliveries_active_or_sent_per_draft",
+            "draft_id",
+            unique=True,
+            postgresql_where=text("status IN ('sending', 'sent')"),
+            sqlite_where=text("status IN ('sending', 'sent')"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)

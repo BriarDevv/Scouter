@@ -8,6 +8,26 @@ from email.utils import formataddr, make_msgid
 from app.mail.provider import MailProviderError, MailSendRequest, MailSendResult
 
 
+
+def _sanitize_smtp_error(msg: str) -> str:
+    """Sanitize SMTP error messages to avoid leaking server details."""
+    low = msg.lower()
+    if "authentication" in low:
+        return "Error de autenticación SMTP. Verificá las credenciales."
+    if "name or service not known" in low or "getaddrinfo" in low:
+        return "No se pudo resolver el servidor SMTP. Verificá el host."
+    if "connection refused" in low:
+        return "Conexión SMTP rechazada. Verificá el host y puerto."
+    if "timed out" in low:
+        return "Tiempo de espera agotado en la conexión SMTP."
+    if "ssl" in low or "certificate" in low:
+        return "Error SSL/TLS en la conexión SMTP."
+    # Generic fallback - strip potential server details
+    if len(msg) > 200:
+        return "Error SMTP. Revisá la configuración de envío."
+    return msg
+
+
 class SMTPMailProvider:
     name = "smtp"
 
@@ -30,7 +50,7 @@ class SMTPMailProvider:
         message = EmailMessage()
         message["From"] = formataddr((request.from_name, request.from_email))
         message["To"] = request.recipient_email
-        message["Subject"] = request.subject
+        message["Subject"] = request.subject.replace("\r", "").replace("\n", "")
         if request.reply_to:
             message["Reply-To"] = request.reply_to
         if request.in_reply_to:
@@ -64,7 +84,7 @@ class SMTPMailProvider:
                     self._login(server, request)
                     server.send_message(message)
         except (OSError, smtplib.SMTPException) as exc:
-            raise MailProviderError(str(exc)) from exc
+            raise MailProviderError(_sanitize_smtp_error(str(exc))) from exc
 
         return MailSendResult(
             provider=self.name,

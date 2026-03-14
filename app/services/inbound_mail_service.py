@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import settings
@@ -284,7 +285,12 @@ def _persist_inbound_message(
             )
         )
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        logger.info("inbound_message_deduplicated_on_commit", dedupe_key=dedupe_key)
+        return None, "deduplicated"
     db.refresh(message)
     db.refresh(thread)
 

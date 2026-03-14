@@ -1,4 +1,7 @@
-"""Ollama LLM client that resolves the configured model by role."""
+"""Ollama LLM client that resolves the configured model by role.
+
+Uses /api/chat with system/user message separation for prompt injection defense.
+"""
 
 import json
 import re
@@ -9,15 +12,24 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.llm.prompts import (
-    CLASSIFY_INBOUND_REPLY,
-    EVALUATE_LEAD_QUALITY,
-    GENERATE_REPLY_ASSISTANT_DRAFT,
-    GENERATE_OUTREACH_EMAIL,
-    REVIEW_REPLY_ASSISTANT_DRAFT,
-    REVIEW_INBOUND_REPLY,
-    REVIEW_LEAD,
-    REVIEW_OUTREACH_DRAFT,
-    SUMMARIZE_BUSINESS,
+    CLASSIFY_INBOUND_REPLY_DATA,
+    CLASSIFY_INBOUND_REPLY_SYSTEM,
+    EVALUATE_LEAD_QUALITY_DATA,
+    EVALUATE_LEAD_QUALITY_SYSTEM,
+    GENERATE_OUTREACH_EMAIL_DATA,
+    GENERATE_OUTREACH_EMAIL_SYSTEM,
+    GENERATE_REPLY_ASSISTANT_DRAFT_DATA,
+    GENERATE_REPLY_ASSISTANT_DRAFT_SYSTEM,
+    REVIEW_INBOUND_REPLY_DATA,
+    REVIEW_INBOUND_REPLY_SYSTEM,
+    REVIEW_LEAD_DATA,
+    REVIEW_LEAD_SYSTEM,
+    REVIEW_OUTREACH_DRAFT_DATA,
+    REVIEW_OUTREACH_DRAFT_SYSTEM,
+    REVIEW_REPLY_ASSISTANT_DRAFT_DATA,
+    REVIEW_REPLY_ASSISTANT_DRAFT_SYSTEM,
+    SUMMARIZE_BUSINESS_DATA,
+    SUMMARIZE_BUSINESS_SYSTEM,
 )
 from app.llm.resolver import normalize_role, resolve_model_for_role
 from app.llm.roles import LLMRole
@@ -89,16 +101,22 @@ def _timeout_for_role(role: LLMRole | str) -> float:
     wait=wait_exponential(multiplier=1, min=2, max=30),
     reraise=True,
 )
-def _call_ollama(prompt: str, role: LLMRole | str = LLMRole.EXECUTOR) -> str:
-    """Call Ollama API with the configured model for a given role."""
+def _call_ollama_chat(
+    system_prompt: str,
+    user_prompt: str,
+    role: LLMRole | str = LLMRole.EXECUTOR,
+) -> str:
+    """Call Ollama /api/chat with system/user message separation."""
     normalized_role, model = _resolve_role_model(role)
     timeout_seconds = _timeout_for_role(normalized_role)
-    url = f"{settings.OLLAMA_BASE_URL}/api/generate"
+    url = f"{settings.OLLAMA_BASE_URL}/api/chat"
     payload = {
         "model": model,
-        "prompt": prompt,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
         "stream": False,
-        "think": False,
         "options": {
             "temperature": 0.3,
             "num_predict": 1024,
@@ -109,7 +127,8 @@ def _call_ollama(prompt: str, role: LLMRole | str = LLMRole.EXECUTOR) -> str:
         "ollama_request",
         role=normalized_role.value,
         model=model,
-        prompt_len=len(prompt),
+        system_len=len(system_prompt),
+        user_len=len(user_prompt),
         timeout_seconds=timeout_seconds,
     )
 
@@ -118,11 +137,8 @@ def _call_ollama(prompt: str, role: LLMRole | str = LLMRole.EXECUTOR) -> str:
         resp.raise_for_status()
 
     data = resp.json()
-    response_text = data.get("response", "")
-
-    # Fallback: some models (Qwen 3+) put content in "thinking" field
-    if not response_text.strip():
-        response_text = data.get("thinking", "")
+    message = data.get("message", {})
+    response_text = message.get("content", "")
 
     if not response_text.strip():
         raise LLMError("Empty response from Ollama")
@@ -137,7 +153,7 @@ def _call_ollama(prompt: str, role: LLMRole | str = LLMRole.EXECUTOR) -> str:
 
 
 def _format_signals(signals: list) -> str:
-    """Format lead signals for prompt injection."""
+    """Format lead signals for prompt context."""
     if not signals:
         return "None detected"
     return ", ".join(f"{s.signal_type.value}: {s.detail or 'N/A'}" for s in signals)
@@ -153,7 +169,7 @@ def summarize_business(
     role: LLMRole | str = LLMRole.EXECUTOR,
 ) -> str:
     """Generate a business summary using the local LLM."""
-    prompt = SUMMARIZE_BUSINESS.format(
+    user_prompt = SUMMARIZE_BUSINESS_DATA.format(
         business_name=business_name,
         industry=industry or "Unknown",
         city=city or "Unknown",
@@ -163,7 +179,7 @@ def summarize_business(
     )
 
     try:
-        raw = _call_ollama(prompt, role=role)
+        raw = _call_ollama_chat(SUMMARIZE_BUSINESS_SYSTEM, user_prompt, role=role)
         data = _extract_json(raw)
         return data.get("summary", raw)
     except Exception as e:
@@ -182,7 +198,7 @@ def evaluate_lead_quality(
     role: LLMRole | str = LLMRole.EXECUTOR,
 ) -> dict:
     """Evaluate lead quality using the local LLM. Returns dict with quality, reasoning, suggested_angle."""
-    prompt = EVALUATE_LEAD_QUALITY.format(
+    user_prompt = EVALUATE_LEAD_QUALITY_DATA.format(
         business_name=business_name,
         industry=industry or "Unknown",
         city=city or "Unknown",
@@ -199,7 +215,7 @@ def evaluate_lead_quality(
     }
 
     try:
-        raw = _call_ollama(prompt, role=role)
+        raw = _call_ollama_chat(EVALUATE_LEAD_QUALITY_SYSTEM, user_prompt, role=role)
         data = _extract_json(raw)
         return {
             "quality": data.get("quality", "unknown"),
@@ -225,7 +241,7 @@ def generate_outreach_draft(
 ) -> dict:
     """Generate an outreach email draft. Returns dict with subject and body."""
     bc = brand_context or {}
-    prompt = GENERATE_OUTREACH_EMAIL.format(
+    user_prompt = GENERATE_OUTREACH_EMAIL_DATA.format(
         business_name=business_name,
         industry=industry or "Unknown",
         city=city or "Unknown",
@@ -252,7 +268,7 @@ def generate_outreach_draft(
     }
 
     try:
-        raw = _call_ollama(prompt, role=role)
+        raw = _call_ollama_chat(GENERATE_OUTREACH_EMAIL_SYSTEM, user_prompt, role=role)
         data = _extract_json(raw)
         subject = data.get("subject")
         body = data.get("body")
@@ -277,7 +293,7 @@ def review_lead(
     role: LLMRole | str = LLMRole.REVIEWER,
 ) -> dict:
     """Run a reviewer pass on a lead. Returns verdict, confidence, reasoning, recommended_action, watchouts."""
-    prompt = REVIEW_LEAD.format(
+    user_prompt = REVIEW_LEAD_DATA.format(
         business_name=business_name,
         industry=industry or "Unknown",
         city=city or "Unknown",
@@ -298,7 +314,7 @@ def review_lead(
     }
 
     try:
-        raw = _call_ollama(prompt, role=role)
+        raw = _call_ollama_chat(REVIEW_LEAD_SYSTEM, user_prompt, role=role)
         data = _extract_json(raw)
         return {
             "verdict": data.get("verdict", "worth_follow_up"),
@@ -326,7 +342,7 @@ def review_outreach_draft(
     role: LLMRole | str = LLMRole.REVIEWER,
 ) -> dict:
     """Run a reviewer pass on an outreach draft."""
-    prompt = REVIEW_OUTREACH_DRAFT.format(
+    user_prompt = REVIEW_OUTREACH_DRAFT_DATA.format(
         business_name=business_name,
         industry=industry or "Unknown",
         city=city or "Unknown",
@@ -351,7 +367,7 @@ def review_outreach_draft(
     }
 
     try:
-        raw = _call_ollama(prompt, role=role)
+        raw = _call_ollama_chat(REVIEW_OUTREACH_DRAFT_SYSTEM, user_prompt, role=role)
         data = _extract_json(raw)
         return {
             "verdict": data.get("verdict", "revise"),
@@ -383,7 +399,7 @@ def classify_inbound_reply(
     role: LLMRole | str = LLMRole.EXECUTOR,
 ) -> dict:
     """Classify an inbound reply with the executor model."""
-    prompt = CLASSIFY_INBOUND_REPLY.format(
+    user_prompt = CLASSIFY_INBOUND_REPLY_DATA.format(
         business_name=business_name or "Unknown",
         industry=industry or "Unknown",
         city=city or "Unknown",
@@ -397,7 +413,7 @@ def classify_inbound_reply(
     )
 
     try:
-        raw = _call_ollama(prompt, role=role)
+        raw = _call_ollama_chat(CLASSIFY_INBOUND_REPLY_SYSTEM, user_prompt, role=role)
         return _extract_json(raw)
     except Exception as e:
         logger.error("llm_classify_inbound_failed", role=_role_value(role), error=str(e))
@@ -423,7 +439,7 @@ def review_inbound_reply(
     role: LLMRole | str = LLMRole.REVIEWER,
 ) -> dict:
     """Run a reviewer pass on an inbound reply."""
-    prompt = REVIEW_INBOUND_REPLY.format(
+    user_prompt = REVIEW_INBOUND_REPLY_DATA.format(
         business_name=business_name or "Unknown",
         industry=industry or "Unknown",
         city=city or "Unknown",
@@ -450,7 +466,7 @@ def review_inbound_reply(
     }
 
     try:
-        raw = _call_ollama(prompt, role=role)
+        raw = _call_ollama_chat(REVIEW_INBOUND_REPLY_SYSTEM, user_prompt, role=role)
         data = _extract_json(raw)
         return {
             "verdict": data.get("verdict", "consider_reply"),
@@ -487,7 +503,7 @@ def generate_reply_assistant_draft(
 ) -> dict:
     """Generate a grounded response draft for a real inbound reply."""
     bc = brand_context or {}
-    prompt = GENERATE_REPLY_ASSISTANT_DRAFT.format(
+    user_prompt = GENERATE_REPLY_ASSISTANT_DRAFT_DATA.format(
         business_name=business_name or "Unknown",
         industry=industry or "Unknown",
         city=city or "Unknown",
@@ -521,7 +537,7 @@ def generate_reply_assistant_draft(
     }
 
     try:
-        raw = _call_ollama(prompt, role=role)
+        raw = _call_ollama_chat(GENERATE_REPLY_ASSISTANT_DRAFT_SYSTEM, user_prompt, role=role)
         data = _extract_json(raw)
         subject_value = data.get("subject")
         body_value = data.get("body")
@@ -563,7 +579,7 @@ def review_reply_assistant_draft(
     role: LLMRole | str = LLMRole.REVIEWER,
 ) -> dict:
     """Review an existing assisted reply draft without regenerating it."""
-    prompt = REVIEW_REPLY_ASSISTANT_DRAFT.format(
+    user_prompt = REVIEW_REPLY_ASSISTANT_DRAFT_DATA.format(
         business_name=business_name or "Unknown",
         industry=industry or "Unknown",
         city=city or "Unknown",
@@ -596,7 +612,7 @@ def review_reply_assistant_draft(
     }
 
     try:
-        raw = _call_ollama(prompt, role=role)
+        raw = _call_ollama_chat(REVIEW_REPLY_ASSISTANT_DRAFT_SYSTEM, user_prompt, role=role)
         data = _extract_json(raw)
         return {
             "summary": str(data.get("summary", "")).strip() or fallback["summary"],

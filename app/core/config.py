@@ -103,6 +103,17 @@ class Settings(BaseSettings):
                 )
         return self
 
+    @model_validator(mode="after")
+    def warn_default_secret_key(self):
+        if self.SECRET_KEY == "change-me-to-a-random-secret-key" and self.APP_ENV != "development":
+            import warnings
+            warnings.warn(
+                "SECRET_KEY is still set to the default placeholder. "
+                'Generate a secure key with: python -c "import secrets; print(secrets.token_urlsafe(64))"',
+                stacklevel=2,
+            )
+        return self
+
     @property
     def ollama_supported_models(self) -> tuple[str, ...]:
         return parse_supported_models(self.OLLAMA_SUPPORTED_MODELS)

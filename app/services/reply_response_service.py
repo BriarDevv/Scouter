@@ -123,6 +123,19 @@ def generate_reply_assistant_draft(
 
     if existing:
         draft = existing
+        # Guard: block regeneration if a send is active or completed
+        from app.models.reply_assistant_send import ReplyAssistantSendStatus
+        latest_send = draft.latest_send if hasattr(draft, 'latest_send') and draft.sends else None
+        if latest_send and latest_send.status in (
+            ReplyAssistantSendStatus.SENDING,
+            ReplyAssistantSendStatus.SENT,
+        ):
+            logger.warning(
+                "reply_draft_regeneration_blocked",
+                draft_id=str(draft.id),
+                send_status=latest_send.status.value,
+            )
+            return draft
     else:
         draft = ReplyAssistantDraft(inbound_message_id=message.id)
         db.add(draft)
