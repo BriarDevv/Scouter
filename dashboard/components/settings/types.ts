@@ -7,7 +7,8 @@ export type TabId =
   | "credentials"
   | "llm"
   | "notifications"
-  | "whatsapp";
+  | "whatsapp"
+  | "ai-workspace";
 
 export const TABS: Array<{ id: TabId; label: string }> = [
   { id: "setup", label: "Inicio" },
@@ -19,4 +20,5 @@ export const TABS: Array<{ id: TabId; label: string }> = [
   { id: "llm", label: "LLM" },
   { id: "notifications", label: "Notificaciones" },
   { id: "whatsapp", label: "WhatsApp" },
+  { id: "ai-workspace", label: "IA / Workspace" },
 ];

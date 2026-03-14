@@ -197,3 +197,63 @@ def patch_whatsapp_credentials(body: WhatsAppCredentialsUpdate, db=Depends(get_s
 @router.post('/test/whatsapp', response_model=WhatsAppTestResult)
 def test_whatsapp_connection(db=Depends(get_session)):
     return test_whatsapp(db)
+
+
+# ── AI Workspace (OpenClaw config files) ──────────────────────────────
+
+from app.schemas.ai_workspace import (
+    AIWorkspaceFileContent,
+    AIWorkspaceFileResetResponse,
+    AIWorkspaceFileUpdate,
+    AIWorkspaceStatusResponse,
+)
+from app.services.ai_workspace_service import (
+    get_file_content as _ws_get_file,
+    get_workspace_status as _ws_status,
+    reset_file_to_template as _ws_reset,
+    update_file_content as _ws_update,
+    EDITABLE_KEYS,
+    WORKSPACE_FILES,
+)
+
+
+@router.get("/ai-workspace", response_model=AIWorkspaceStatusResponse)
+def ai_workspace_status():
+    """Return status of all AI workspace configuration files."""
+    return _ws_status()
+
+
+@router.get("/ai-workspace/{key}", response_model=AIWorkspaceFileContent)
+def ai_workspace_get_file(key: str):
+    """Return the full content of an AI workspace file."""
+    if key not in WORKSPACE_FILES:
+        raise HTTPException(status_code=404, detail=f"Unknown workspace file key: {key}")
+    if key not in EDITABLE_KEYS:
+        raise HTTPException(status_code=403, detail=f"File '{key}' is not editable (framework-managed)")
+    return _ws_get_file(key)
+
+
+@router.put("/ai-workspace/{key}", response_model=AIWorkspaceFileContent)
+def ai_workspace_update_file(key: str, body: AIWorkspaceFileUpdate):
+    """Write content to an AI workspace file."""
+    if key not in WORKSPACE_FILES:
+        raise HTTPException(status_code=404, detail=f"Unknown workspace file key: {key}")
+    if key not in EDITABLE_KEYS:
+        raise HTTPException(status_code=403, detail=f"File '{key}' is not editable (framework-managed)")
+    try:
+        return _ws_update(key, body.content)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+
+
+@router.post("/ai-workspace/{key}/reset", response_model=AIWorkspaceFileResetResponse)
+def ai_workspace_reset_file(key: str):
+    """Reset an AI workspace file to its default template."""
+    if key not in WORKSPACE_FILES:
+        raise HTTPException(status_code=404, detail=f"Unknown workspace file key: {key}")
+    if key not in EDITABLE_KEYS:
+        raise HTTPException(status_code=403, detail=f"File '{key}' is not editable (framework-managed)")
+    try:
+        return _ws_reset(key)
+    except (PermissionError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc))

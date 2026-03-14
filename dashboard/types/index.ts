@@ -688,3 +688,47 @@ export interface WhatsAppCredentials {
   last_test_error: string | null;
   updated_at: string | null;
 }
+
+// ─── AI Workspace ──────────────────────────────────────
+
+export interface AIWorkspaceFileStatus {
+  key: string;
+  filename: string;
+  exists: boolean;
+  size_bytes: number | null;
+  last_modified: string | null;
+  is_empty: boolean;
+  has_valid_structure: boolean;
+  warnings: string[];
+  preview: string | null;
+  editable: boolean;
+}
+
+export interface AIWorkspaceSkill {
+  name: string;
+  description: string | null;
+  path: string;
+  exists: boolean;
+}
+
+export interface AIWorkspaceModels {
+  leader: string;
+  executor: string;
+  reviewer: string;
+}
+
+export interface AIWorkspaceStatus {
+  files: AIWorkspaceFileStatus[];
+  skills: AIWorkspaceSkill[];
+  models: AIWorkspaceModels;
+  workspace_path: string;
+  openclaw_installed: boolean;
+  onboarding_completed: boolean;
+}
+
+export interface AIWorkspaceFileContent {
+  key: string;
+  filename: string;
+  content: string;
+  exists: boolean;
+}

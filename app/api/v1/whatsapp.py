@@ -6,7 +6,7 @@ import os
 import time
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_session
@@ -24,8 +24,8 @@ router = APIRouter(prefix="/whatsapp", tags=["whatsapp"])
 
 
 class InboundMessageBody(BaseModel):
-    phone: str
-    message: str
+    phone: str = Field(..., max_length=50)
+    message: str = Field(..., max_length=4096)
     provider: str = "callmebot"
 
 

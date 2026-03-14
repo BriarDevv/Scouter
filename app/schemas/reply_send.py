@@ -8,7 +8,7 @@ from app.models.reply_assistant_send import ReplyAssistantSendStatus
 
 class ReplyAssistantDraftUpdateRequest(BaseModel):
     subject: str | None = Field(None, max_length=500)
-    body: str | None = None
+    body: str | None = Field(None, max_length=65535)
     edited_by: str | None = Field(default=None, max_length=100)
 
 

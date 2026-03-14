@@ -463,12 +463,13 @@ def inspect_url(
         screenshot_path: str | None = None
         if screenshot:
             directory = Path(screenshot_dir).expanduser()
-            directory.mkdir(parents=True, exist_ok=True)
+            directory.mkdir(parents=True, exist_ok=True, mode=0o700)
             safe_name = re.sub(r"[^a-zA-Z0-9._-]+", "-", parse.urlparse(final_url).netloc or "site").strip("-")
             screenshot_path = str(
                 directory / f"{safe_name or 'site'}-{time.strftime('%Y%m%d_%H%M%S')}.png"
             )
             page.screenshot(path=screenshot_path, full_page=True)
+            os.chmod(screenshot_path, 0o600)
 
         title = snapshot["title"] or None
         meta_description = snapshot["metaDescription"] or None

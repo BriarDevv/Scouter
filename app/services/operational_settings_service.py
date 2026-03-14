@@ -25,6 +25,17 @@ def get_or_create(db: Session) -> OperationalSettings:
     return row
 
 
+def get_cached_settings(db: Session) -> OperationalSettings:
+    """Return settings cached for this DB session to avoid repeated lookups."""
+    cache_key = "_operational_settings_cache"
+    cached = db.info.get(cache_key)
+    if cached is not None:
+        return cached
+    settings = get_or_create(db)
+    db.info[cache_key] = settings
+    return settings
+
+
 def update_operational_settings(db: Session, updates: dict) -> OperationalSettings:
     """Partial update. Only touches fields present in updates."""
     row = get_or_create(db)

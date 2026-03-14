@@ -90,8 +90,8 @@ def _load_sent_drafts(db: Session, since: datetime | None = None) -> list[Outrea
     return list(db.execute(stmt.order_by(OutreachDraft.sent_at.desc())).scalars().all())
 
 
-def get_dashboard_stats(db: Session) -> dict:
-    leads = _load_leads(db)
+def get_dashboard_stats(db: Session, *, leads: list[Lead] | None = None) -> dict:
+    leads = leads if leads is not None else _load_leads(db)
     today = _now_utc().date()
 
     total_leads = len(leads)
@@ -188,9 +188,10 @@ def get_time_series(db: Session, days: int = 30) -> list[dict]:
     return [timeline[key] for key in sorted(timeline)]
 
 
-def get_industry_breakdown(db: Session) -> list[dict]:
+def get_industry_breakdown(db: Session, *, leads: list[Lead] | None = None) -> list[dict]:
+    leads = leads if leads is not None else _load_leads(db)
     buckets: dict[str, list[Lead]] = defaultdict(list)
-    for lead in _load_leads(db):
+    for lead in leads:
         buckets[lead.industry or "Sin rubro"].append(lead)
 
     result = []
@@ -209,9 +210,10 @@ def get_industry_breakdown(db: Session) -> list[dict]:
     return sorted(result, key=lambda item: (-item["conversion_rate"], -item["count"], item["industry"]))
 
 
-def get_city_breakdown(db: Session) -> list[dict]:
+def get_city_breakdown(db: Session, *, leads: list[Lead] | None = None) -> list[dict]:
+    leads = leads if leads is not None else _load_leads(db)
     buckets: dict[str, list[Lead]] = defaultdict(list)
-    for lead in _load_leads(db):
+    for lead in leads:
         buckets[lead.city or "Sin ciudad"].append(lead)
 
     result = []
@@ -230,9 +232,10 @@ def get_city_breakdown(db: Session) -> list[dict]:
     return sorted(result, key=lambda item: (-item["reply_rate"], -item["count"], item["city"]))
 
 
-def get_source_performance(db: Session) -> list[dict]:
+def get_source_performance(db: Session, *, leads: list[Lead] | None = None) -> list[dict]:
+    leads = leads if leads is not None else _load_leads(db)
     buckets: dict[str, list[Lead]] = defaultdict(list)
-    for lead in _load_leads(db):
+    for lead in leads:
         source_name = lead.source.name if lead.source else "Unattributed"
         buckets[source_name].append(lead)
 

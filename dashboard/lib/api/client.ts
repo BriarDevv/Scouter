@@ -637,3 +637,24 @@ export async function testWhatsApp() {
     { method: "POST" }
   );
 }
+
+// ─── AI Workspace ──────────────────────────────────────
+
+export async function getAIWorkspaceStatus(): Promise<import('@/types').AIWorkspaceStatus> {
+  return apiFetch('/settings/ai-workspace');
+}
+
+export async function getAIWorkspaceFile(key: string): Promise<import('@/types').AIWorkspaceFileContent> {
+  return apiFetch(`/settings/ai-workspace/${key}`);
+}
+
+export async function updateAIWorkspaceFile(key: string, content: string): Promise<{ key: string; filename: string; updated: boolean }> {
+  return apiFetch(`/settings/ai-workspace/${key}`, {
+    method: 'PUT',
+    body: JSON.stringify({ content }),
+  });
+}
+
+export async function resetAIWorkspaceFile(key: string): Promise<{ key: string; filename: string; reset: boolean }> {
+  return apiFetch(`/settings/ai-workspace/${key}/reset`, { method: 'POST' });
+}

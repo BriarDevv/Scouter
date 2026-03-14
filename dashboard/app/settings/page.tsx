@@ -32,6 +32,7 @@ import { RulesSection } from "@/components/settings/rules-section";
 import { CredentialsSection } from "@/components/settings/credentials-section";
 import { NotificationsSection } from "@/components/settings/notifications-section";
 import { WhatsAppSection } from "@/components/settings/whatsapp-section";
+import { AIWorkspaceSection } from "@/components/settings/ai-workspace-section";
 import type { WhatsAppCredentials } from "@/components/settings/whatsapp-section";
 
 async function getWhatsAppCredentials(): Promise<WhatsAppCredentials> {
@@ -189,6 +190,9 @@ export default function SettingsPage() {
           {waCredsData ? (
             <WhatsAppSection data={waCredsData} onSaved={handleSavedWACreds} />
           ) : <NoDataNotice />}
+        </TabsContent>
+        <TabsContent value="ai-workspace">
+          <AIWorkspaceSection />
         </TabsContent>
       </Tabs>
 
