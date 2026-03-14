@@ -2,6 +2,10 @@ from app.core.config import settings
 from app.llm.catalog import DEFAULT_ROLE_MODEL_MAP
 from app.llm.roles import LLMRole
 from app.services.inbound_mail_service import get_inbound_sync_status
+from app.services.mail_credentials_service import (
+    get_effective_imap,
+    get_effective_smtp,
+)
 from app.services.operational_settings_service import (
     get_effective_mail_inbound,
     get_effective_mail_outbound,
@@ -39,23 +43,26 @@ def get_mail_settings(db) -> dict:
     outbound = get_effective_mail_outbound(op)
     inbound = get_effective_mail_inbound(op)
 
-    # Credential presence (sensitive env vars)
+    # Credential presence — check effective config (DB > env)
+    smtp_cfg = get_effective_smtp(db)
+    imap_cfg = get_effective_imap(db)
+
     outbound_missing = []
-    if not (settings.MAIL_FROM_EMAIL or "").strip() and not outbound["from_email"]:
+    if not (outbound["from_email"] or "").strip():
         outbound_missing.append("MAIL_FROM_EMAIL")
-    if not (settings.MAIL_SMTP_HOST or "").strip():
+    if not smtp_cfg.host:
         outbound_missing.append("MAIL_SMTP_HOST")
-    if not (settings.MAIL_SMTP_USERNAME or "").strip():
+    if not smtp_cfg.username:
         outbound_missing.append("MAIL_SMTP_USERNAME")
-    if not (settings.MAIL_SMTP_PASSWORD or "").strip():
+    if not smtp_cfg.password:
         outbound_missing.append("MAIL_SMTP_PASSWORD")
 
     inbound_missing = []
-    if not (settings.MAIL_IMAP_HOST or "").strip():
+    if not imap_cfg.host:
         inbound_missing.append("MAIL_IMAP_HOST")
-    if not (settings.MAIL_IMAP_USERNAME or "").strip():
+    if not imap_cfg.username:
         inbound_missing.append("MAIL_IMAP_USERNAME")
-    if not (settings.MAIL_IMAP_PASSWORD or "").strip():
+    if not imap_cfg.password:
         inbound_missing.append("MAIL_IMAP_PASSWORD")
 
     outbound_configured = not outbound_missing
@@ -98,7 +105,7 @@ def get_mail_settings(db) -> dict:
             "provider": settings.MAIL_INBOUND_PROVIDER.lower(),
             "configured": inbound_configured,
             "ready": inbound_ready,
-            "account": (settings.MAIL_IMAP_USERNAME or "").strip() or None,
+            "account": imap_cfg.username or None,
             "mailbox": inbound["mailbox"].strip(),
             "sync_limit": inbound["sync_limit"],
             "timeout_seconds": inbound["timeout_seconds"],

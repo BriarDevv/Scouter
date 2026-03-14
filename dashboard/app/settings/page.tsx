@@ -1488,6 +1488,15 @@ export default function SettingsPage() {
     }
   }, []);
 
+  const refreshMail = useCallback(async () => {
+    try {
+      const m = await getMailSettings();
+      setMailData(m);
+    } catch {
+      // non-critical
+    }
+  }, []);
+
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -1524,11 +1533,13 @@ export default function SettingsPage() {
   const handleSavedOps = (updated: OperationalSettings) => {
     setOpData(updated);
     void refreshSetup();
+    void refreshMail();
   };
 
   const handleSavedCreds = (updated: MailCredentials) => {
     setCredsData(updated);
     void refreshSetup();
+    void refreshMail();
   };
 
   const noData =
