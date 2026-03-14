@@ -86,6 +86,8 @@ class ReplyAssistantDraft(Base):
     should_escalate_reviewer: Mapped[bool] = mapped_column(nullable=False, default=False)
     generator_role: Mapped[str] = mapped_column(String(50), nullable=False)
     generator_model: Mapped[str] = mapped_column(String(255), nullable=False)
+    edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    edited_by: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -110,6 +112,29 @@ class ReplyAssistantDraft(Base):
         cascade="all, delete-orphan",
         uselist=False,
     )
+    sends: Mapped[list["ReplyAssistantSend"]] = relationship(  # noqa: F821
+        "ReplyAssistantSend",
+        back_populates="draft",
+        cascade="all, delete-orphan",
+        order_by="ReplyAssistantSend.created_at.desc()",
+    )
+
+    @property
+    def latest_send(self):
+        return self.sends[0] if self.sends else None
+
+    @property
+    def review_is_stale(self) -> bool:
+        return bool(
+            self.review
+            and self.review.reviewed_at
+            and self.edited_at
+            and self.edited_at > self.review.reviewed_at
+        )
+
+    @property
+    def send_blocked_reason(self) -> str | None:
+        return getattr(self, "_send_blocked_reason", None)
 
 
 class ReplyAssistantReview(Base):

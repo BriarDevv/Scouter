@@ -23,6 +23,7 @@ from app.models.inbound_mail import (
 from app.models.outreach import LogAction, OutreachDraft, OutreachLog
 from app.models.outreach_delivery import OutreachDelivery, OutreachDeliveryStatus
 from app.models.reply_assistant import ReplyAssistantDraft
+from app.models.reply_assistant_send import ReplyAssistantSend, ReplyAssistantSendStatus
 
 logger = get_logger(__name__)
 
@@ -43,10 +44,13 @@ class DeliveryMatch:
     delivery: OutreachDelivery | None
     matched_via: str
     match_confidence: float
+    reply_send: ReplyAssistantSend | None = None
 
     @property
     def lead_id(self) -> uuid.UUID | None:
-        return self.delivery.lead_id if self.delivery else None
+        if self.delivery:
+            return self.delivery.lead_id
+        return self.reply_send.lead_id if self.reply_send else None
 
     @property
     def draft_id(self) -> uuid.UUID | None:
@@ -55,6 +59,10 @@ class DeliveryMatch:
     @property
     def delivery_id(self) -> uuid.UUID | None:
         return self.delivery.id if self.delivery else None
+
+    @property
+    def thread_id(self) -> uuid.UUID | None:
+        return self.reply_send.thread_id if self.reply_send else None
 
 
 def get_inbound_provider() -> IMAPInboundMailProvider:
@@ -78,6 +86,7 @@ def list_inbound_messages(
         .options(
             selectinload(InboundMessage.thread),
             selectinload(InboundMessage.reply_assistant_draft).selectinload(ReplyAssistantDraft.review),
+            selectinload(InboundMessage.reply_assistant_draft).selectinload(ReplyAssistantDraft.sends),
         )
         .order_by(InboundMessage.received_at.desc(), InboundMessage.created_at.desc())
         .limit(limit)
@@ -97,6 +106,7 @@ def get_inbound_message(db: Session, message_id: uuid.UUID) -> InboundMessage | 
         .options(
             selectinload(InboundMessage.thread),
             selectinload(InboundMessage.reply_assistant_draft).selectinload(ReplyAssistantDraft.review),
+            selectinload(InboundMessage.reply_assistant_draft).selectinload(ReplyAssistantDraft.sends),
         )
         .where(InboundMessage.id == message_id)
     )
@@ -111,7 +121,10 @@ def list_email_threads(
         .options(
             selectinload(EmailThread.messages)
             .selectinload(InboundMessage.reply_assistant_draft)
-            .selectinload(ReplyAssistantDraft.review)
+            .selectinload(ReplyAssistantDraft.review),
+            selectinload(EmailThread.messages)
+            .selectinload(InboundMessage.reply_assistant_draft)
+            .selectinload(ReplyAssistantDraft.sends),
         )
         .order_by(EmailThread.last_message_at.desc(), EmailThread.updated_at.desc())
         .limit(limit)
@@ -127,7 +140,10 @@ def get_email_thread(db: Session, thread_id: uuid.UUID) -> EmailThread | None:
         .options(
             selectinload(EmailThread.messages)
             .selectinload(InboundMessage.reply_assistant_draft)
-            .selectinload(ReplyAssistantDraft.review)
+            .selectinload(ReplyAssistantDraft.review),
+            selectinload(EmailThread.messages)
+            .selectinload(InboundMessage.reply_assistant_draft)
+            .selectinload(ReplyAssistantDraft.sends),
         )
         .where(EmailThread.id == thread_id)
     )
@@ -283,10 +299,17 @@ def _persist_inbound_message(
         match_confidence=thread.match_confidence,
         classification_status=message.classification_status,
     )
-    return message, "matched" if match.delivery else "unmatched"
+    return message, "matched" if (match.delivery or match.reply_send) else "unmatched"
 
 
 def _resolve_thread(db: Session, payload: InboundMailMessage, match: DeliveryMatch) -> EmailThread:
+    if match.thread_id:
+        thread = db.get(EmailThread, match.thread_id)
+        if thread:
+            _merge_thread_match(thread, payload, match, _resolve_external_thread_id(payload))
+            db.flush()
+            return thread
+
     external_thread_id = _resolve_external_thread_id(payload)
     thread_key = _build_thread_key(payload, match, external_thread_id)
 
@@ -336,6 +359,12 @@ def _merge_thread_match(
         thread.delivery_id = match.delivery_id
         thread.matched_via = match.matched_via
         thread.match_confidence = match.match_confidence
+    elif match.reply_send and (
+        thread.match_confidence is None or match.match_confidence >= thread.match_confidence
+    ):
+        thread.lead_id = match.lead_id
+        thread.matched_via = match.matched_via
+        thread.match_confidence = match.match_confidence
 
 
 def _match_delivery(db: Session, payload: InboundMailMessage) -> DeliveryMatch:
@@ -347,11 +376,27 @@ def _match_delivery(db: Session, payload: InboundMailMessage) -> DeliveryMatch:
         delivery = _find_delivery_by_message_ids(db, direct_candidates)
         if delivery:
             return DeliveryMatch(delivery=delivery, matched_via="message_id", match_confidence=1.0)
+        reply_send = _find_reply_send_by_message_ids(db, direct_candidates)
+        if reply_send:
+            return DeliveryMatch(
+                delivery=None,
+                reply_send=reply_send,
+                matched_via="message_id",
+                match_confidence=1.0,
+            )
 
     if references:
         delivery = _find_delivery_by_message_ids(db, references)
         if delivery:
             return DeliveryMatch(delivery=delivery, matched_via="references", match_confidence=0.9)
+        reply_send = _find_reply_send_by_message_ids(db, references)
+        if reply_send:
+            return DeliveryMatch(
+                delivery=None,
+                reply_send=reply_send,
+                matched_via="references",
+                match_confidence=0.9,
+            )
 
     fallback_delivery = _find_delivery_by_subject_fallback(db, payload)
     if fallback_delivery:
@@ -361,7 +406,7 @@ def _match_delivery(db: Session, payload: InboundMailMessage) -> DeliveryMatch:
             match_confidence=0.55,
         )
 
-    return DeliveryMatch(delivery=None, matched_via="unmatched", match_confidence=0.0)
+    return DeliveryMatch(delivery=None, reply_send=None, matched_via="unmatched", match_confidence=0.0)
 
 
 def _find_delivery_by_message_ids(
@@ -388,6 +433,34 @@ def _find_delivery_by_message_ids(
         delivery = by_message_id.get(candidate)
         if delivery:
             return delivery
+    return None
+
+
+def _find_reply_send_by_message_ids(
+    db: Session, message_ids: list[str]
+) -> ReplyAssistantSend | None:
+    normalized_ids = [message_id for message_id in message_ids if message_id]
+    if not normalized_ids:
+        return None
+    stmt = (
+        select(ReplyAssistantSend)
+        .where(
+            ReplyAssistantSend.provider_message_id.is_not(None),
+            ReplyAssistantSend.provider_message_id.in_(normalized_ids),
+            ReplyAssistantSend.status == ReplyAssistantSendStatus.SENT,
+        )
+        .order_by(ReplyAssistantSend.sent_at.desc(), ReplyAssistantSend.created_at.desc())
+    )
+    sends = list(db.execute(stmt).scalars().all())
+    if not sends:
+        return None
+    by_message_id = {
+        _normalize_message_id(send.provider_message_id): send for send in sends
+    }
+    for candidate in normalized_ids:
+        reply_send = by_message_id.get(candidate)
+        if reply_send:
+            return reply_send
     return None
 
 
@@ -474,12 +547,18 @@ def _extract_reference_ids(raw_references: str | None) -> list[str]:
         return []
     matches = [match.strip() for match in MESSAGE_ID_RE.findall(raw_references)]
     if matches:
-        return [_normalize_message_id(match) for match in matches if _normalize_message_id(match)]
-    return [
-        _normalize_message_id(token)
-        for token in raw_references.split()
-        if _normalize_message_id(token)
-    ]
+        normalized_matches: list[str] = []
+        for match in matches:
+            normalized = _normalize_message_id(match)
+            if normalized:
+                normalized_matches.append(normalized)
+        return normalized_matches
+    normalized_tokens: list[str] = []
+    for token in raw_references.split():
+        normalized = _normalize_message_id(token)
+        if normalized:
+            normalized_tokens.append(normalized)
+    return normalized_tokens
 
 
 def _normalize_message_id(value: str | None) -> str | None:

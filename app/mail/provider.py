@@ -14,6 +14,14 @@ class MailSendRequest:
     from_name: str
     reply_to: str | None
     timeout_seconds: int
+    smtp_host: str | None = None
+    smtp_port: int | None = None
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_ssl: bool | None = None
+    smtp_starttls: bool | None = None
+    in_reply_to: str | None = None
+    references_raw: str | None = None
 
 
 @dataclass(frozen=True)

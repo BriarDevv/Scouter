@@ -2,10 +2,12 @@ from datetime import UTC, datetime
 
 from app.core.config import settings
 from app.mail.inbound_provider import InboundMailMessage
-from app.models.inbound_mail import InboundMailClassificationStatus
+from app.models.inbound_mail import EmailThread, InboundMailClassificationStatus, InboundMessage
 from app.models.lead import Lead, LeadStatus
 from app.models.outreach import DraftStatus, OutreachDraft
 from app.models.outreach_delivery import OutreachDelivery, OutreachDeliveryStatus
+from app.models.reply_assistant import ReplyAssistantDraft
+from app.models.reply_assistant_send import ReplyAssistantSend, ReplyAssistantSendStatus
 
 
 def _create_sent_delivery(
@@ -47,6 +49,88 @@ def _create_sent_delivery(
     db.add(delivery)
     db.commit()
     return lead, draft, delivery
+
+
+def _create_sent_reply_send(db, *, recipient_email: str = "owner@example.com"):
+    lead, draft, delivery = _create_sent_delivery(db, recipient_email=recipient_email)
+    thread = EmailThread(
+        lead_id=lead.id,
+        draft_id=draft.id,
+        delivery_id=delivery.id,
+        provider="imap",
+        provider_mailbox="INBOX",
+        external_thread_id="thread-reply-send",
+        thread_key="thread-reply-send-key",
+        matched_via="message_id",
+        match_confidence=1.0,
+        last_message_at=datetime(2026, 3, 13, 11, 0, tzinfo=UTC),
+    )
+    db.add(thread)
+    db.flush()
+
+    inbound = InboundMessage(
+        dedupe_key="imap:INBOX:reply-origin-001",
+        thread_id=thread.id,
+        lead_id=lead.id,
+        draft_id=draft.id,
+        delivery_id=delivery.id,
+        provider="imap",
+        provider_mailbox="INBOX",
+        provider_message_id="reply-origin-001",
+        message_id="<reply-origin-001@example.com>",
+        in_reply_to="<out-123>",
+        references_raw="<out-123>",
+        from_email=recipient_email,
+        from_name="Owner",
+        to_email="ops@clawscout.local",
+        subject="Re: Approved subject",
+        body_text="Hola, gracias.",
+        body_snippet="Hola, gracias.",
+        received_at=datetime(2026, 3, 13, 11, 0, tzinfo=UTC),
+        raw_metadata_json={"uid": "reply-origin-001"},
+        classification_status=InboundMailClassificationStatus.PENDING.value,
+    )
+    db.add(inbound)
+    db.flush()
+
+    reply_draft = ReplyAssistantDraft(
+        inbound_message_id=inbound.id,
+        thread_id=thread.id,
+        lead_id=lead.id,
+        related_delivery_id=delivery.id,
+        related_outbound_draft_id=draft.id,
+        status="generated",
+        subject="Re: Approved subject",
+        body="Gracias por responder.",
+        summary="Draft reply.",
+        suggested_tone="warm",
+        should_escalate_reviewer=False,
+        generator_role="executor",
+        generator_model="qwen3.5:9b",
+    )
+    db.add(reply_draft)
+    db.flush()
+
+    reply_send = ReplyAssistantSend(
+        reply_assistant_draft_id=reply_draft.id,
+        inbound_message_id=inbound.id,
+        thread_id=thread.id,
+        lead_id=lead.id,
+        status=ReplyAssistantSendStatus.SENT,
+        provider="smtp",
+        provider_message_id="reply-send-anchor-001",
+        recipient_email=recipient_email,
+        from_email_snapshot="ops@clawscout.local",
+        reply_to_snapshot="reply@clawscout.local",
+        subject_snapshot="Re: Approved subject",
+        body_snapshot="Gracias por responder.",
+        in_reply_to="reply-origin-001@example.com",
+        references_raw="out-123 reply-origin-001@example.com",
+        sent_at=datetime(2026, 3, 13, 12, 0, tzinfo=UTC),
+    )
+    db.add(reply_send)
+    db.commit()
+    return lead, draft, delivery, thread, inbound, reply_draft, reply_send
 
 
 def _message_payload(
@@ -243,3 +327,37 @@ def test_inbound_status_and_detail_endpoints(client, db, monkeypatch):
     thread_detail_resp = client.get(f"/api/v1/mail/inbound/threads/{thread['id']}")
     assert thread_detail_resp.status_code == 200
     assert len(thread_detail_resp.json()["messages"]) == 1
+
+
+def test_inbound_sync_matches_reply_assistant_send_message_ids(client, db, monkeypatch):
+    lead, _, _, thread, _, _, reply_send = _create_sent_reply_send(db)
+    payload = _message_payload(
+        provider_message_id="imap-reply-followup-001",
+        message_id="<followup-001@example.com>",
+        in_reply_to=f"<{reply_send.provider_message_id}>",
+        subject="Re: Approved subject",
+        from_email=lead.email,
+    )
+
+    class FakeProvider:
+        name = "imap"
+
+        def list_messages(self, *, limit: int):
+            return [payload]
+
+    monkeypatch.setattr(settings, "MAIL_INBOUND_ENABLED", True)
+    monkeypatch.setattr("app.services.inbound_mail_service.get_inbound_provider", lambda: FakeProvider())
+
+    resp = client.post("/api/v1/mail/inbound/sync")
+    assert resp.status_code == 200
+    assert resp.json()["matched_count"] == 1
+
+    messages = client.get("/api/v1/mail/inbound/messages").json()
+    matched = next(item for item in messages if item["provider_message_id"] == "imap-reply-followup-001")
+    assert matched["thread_id"] == str(thread.id)
+    assert matched["lead_id"] == str(lead.id)
+    assert matched["delivery_id"] is None
+
+    thread_payload = client.get("/api/v1/mail/inbound/threads").json()[0]
+    assert thread_payload["id"] == str(thread.id)
+    assert thread_payload["matched_via"] == "message_id"

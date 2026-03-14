@@ -82,6 +82,9 @@ class EmailThread(Base):
     reply_assistant_drafts: Mapped[list["ReplyAssistantDraft"]] = relationship(  # noqa: F821
         "ReplyAssistantDraft", back_populates="thread"
     )
+    reply_assistant_sends: Mapped[list["ReplyAssistantSend"]] = relationship(  # noqa: F821
+        "ReplyAssistantSend", back_populates="thread"
+    )
 
     @property
     def message_count(self) -> int:
@@ -160,6 +163,9 @@ class InboundMessage(Base):
         back_populates="inbound_message",
         cascade="all, delete-orphan",
         uselist=False,
+    )
+    reply_assistant_sends: Mapped[list["ReplyAssistantSend"]] = relationship(  # noqa: F821
+        "ReplyAssistantSend", back_populates="inbound_message"
     )
 
 

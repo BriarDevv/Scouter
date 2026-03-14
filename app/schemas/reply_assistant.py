@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from app.llm.roles import LLMRole
 from app.models.reply_assistant import ReplyAssistantDraftStatus, ReplyAssistantReviewStatus
+from app.schemas.reply_send import ReplyAssistantSendResponse
 
 
 class ReplyAssistantDraftReviewResponse(BaseModel):
@@ -49,6 +50,11 @@ class ReplyAssistantDraftResponse(BaseModel):
     should_escalate_reviewer: bool
     generator_role: LLMRole | str
     generator_model: str
+    edited_at: datetime | None
+    edited_by: str | None
+    review_is_stale: bool = False
+    send_blocked_reason: str | None = None
+    latest_send: ReplyAssistantSendResponse | None = None
     review: ReplyAssistantDraftReviewResponse | None = None
     created_at: datetime
     updated_at: datetime

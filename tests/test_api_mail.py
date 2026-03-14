@@ -4,6 +4,8 @@ import uuid
 from app.core.config import settings
 from app.mail.provider import MailProviderError, MailSendResult
 from app.models.lead import Lead, LeadStatus
+from app.models.mail_credentials import MailCredentials
+from app.models.settings import OperationalSettings
 from app.models.outreach import DraftStatus, OutreachDraft
 from app.models.outreach_delivery import OutreachDelivery, OutreachDeliveryStatus
 
@@ -27,6 +29,31 @@ def _create_approved_draft(db, *, email: str | None = "owner@example.com"):
     db.add(draft)
     db.commit()
     return lead, draft
+
+
+def _configure_db_mail(db):
+    db.merge(
+        OperationalSettings(
+            id=1,
+            mail_enabled=True,
+            mail_from_email="ops@clawscout.local",
+            mail_from_name="ClawScout Ops",
+            mail_reply_to="reply@clawscout.local",
+            mail_send_timeout_seconds=45,
+        )
+    )
+    db.merge(
+        MailCredentials(
+            id=1,
+            smtp_host="smtp.local",
+            smtp_port=587,
+            smtp_username="ops@clawscout.local",
+            smtp_password="super-secret",
+            smtp_starttls=True,
+            smtp_ssl=False,
+        )
+    )
+    db.commit()
 
 
 def test_get_draft_detail_endpoint(client, db):
@@ -67,7 +94,7 @@ def test_send_draft_blocked_when_not_approved(client, db, monkeypatch):
     db.add(draft)
     db.commit()
 
-    monkeypatch.setattr(settings, "MAIL_ENABLED", True)
+    _configure_db_mail(db)
 
     resp = client.post(f"/api/v1/outreach/drafts/{draft.id}/send")
     assert resp.status_code == 409
@@ -76,6 +103,7 @@ def test_send_draft_blocked_when_not_approved(client, db, monkeypatch):
 
 def test_send_draft_success_persists_delivery_and_updates_state(client, db, monkeypatch):
     lead, draft = _create_approved_draft(db)
+    _configure_db_mail(db)
 
     class FakeProvider:
         def send_email(self, request):
@@ -86,8 +114,9 @@ def test_send_draft_success_persists_delivery_and_updates_state(client, db, monk
                 sent_at=datetime(2026, 3, 13, 6, 15, tzinfo=UTC),
             )
 
-    monkeypatch.setattr(settings, "MAIL_ENABLED", True)
-    monkeypatch.setattr(settings, "MAIL_FROM_EMAIL", "ops@clawscout.local")
+    monkeypatch.setattr(settings, "MAIL_ENABLED", False)
+    monkeypatch.setattr(settings, "MAIL_FROM_EMAIL", None)
+    monkeypatch.setattr(settings, "MAIL_SMTP_HOST", None)
     monkeypatch.setattr("app.services.mail_service.get_mail_provider", lambda: FakeProvider())
 
     resp = client.post(f"/api/v1/outreach/drafts/{draft.id}/send")
@@ -120,13 +149,15 @@ def test_send_draft_success_persists_delivery_and_updates_state(client, db, monk
 
 def test_send_draft_failure_persists_failed_delivery(client, db, monkeypatch):
     _, draft = _create_approved_draft(db)
+    _configure_db_mail(db)
 
     class BrokenProvider:
         def send_email(self, request):
             raise MailProviderError("smtp unavailable")
 
-    monkeypatch.setattr(settings, "MAIL_ENABLED", True)
-    monkeypatch.setattr(settings, "MAIL_FROM_EMAIL", "ops@clawscout.local")
+    monkeypatch.setattr(settings, "MAIL_ENABLED", False)
+    monkeypatch.setattr(settings, "MAIL_FROM_EMAIL", None)
+    monkeypatch.setattr(settings, "MAIL_SMTP_HOST", None)
     monkeypatch.setattr("app.services.mail_service.get_mail_provider", lambda: BrokenProvider())
 
     resp = client.post(f"/api/v1/outreach/drafts/{draft.id}/send")

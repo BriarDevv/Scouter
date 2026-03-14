@@ -17,6 +17,7 @@ from app.models.reply_assistant import (
     ReplyAssistantReview,
     ReplyAssistantReviewStatus,
 )
+from app.services.reply_send_service import attach_reply_send_metadata
 
 logger = get_logger(__name__)
 
@@ -26,6 +27,7 @@ def get_reply_assistant_review_for_message(
 ) -> ReplyAssistantReview | None:
     stmt = (
         select(ReplyAssistantReview)
+        .execution_options(populate_existing=True)
         .options(joinedload(ReplyAssistantReview.draft))
         .where(ReplyAssistantReview.inbound_message_id == message_id)
     )
@@ -37,6 +39,7 @@ def get_inbound_message_with_review_context(
 ) -> InboundMessage | None:
     stmt = (
         select(InboundMessage)
+        .execution_options(populate_existing=True)
         .options(
             joinedload(InboundMessage.thread),
             joinedload(InboundMessage.lead),
@@ -146,6 +149,7 @@ def review_reply_assistant_draft_with_reviewer(
 
     db.commit()
     db.refresh(review)
+    attach_reply_send_metadata(draft)
 
     payload = {
         "review_id": review.id,

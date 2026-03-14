@@ -46,6 +46,13 @@ COMMAND_SPECS: dict[str, CommandSpec] = {
     "task-status": CommandSpec("GET", "/tasks/{task_id}/status"),
     "reply-response-draft": CommandSpec("GET", "/replies/{message_id}/draft-response"),
     "reply-response-draft-generate": CommandSpec("POST", "/replies/{message_id}/draft-response", mutating=True),
+    "reply-response-draft-edit": CommandSpec("PATCH", "/replies/{message_id}/draft-response", mutating=True),
+    "reply-response-draft-send": CommandSpec(
+        "POST", "/replies/{message_id}/draft-response/send", mutating=True
+    ),
+    "reply-response-draft-send-status": CommandSpec(
+        "GET", "/replies/{message_id}/draft-response/send-status"
+    ),
     "reply-response-draft-review": CommandSpec(
         "POST", "/replies/{message_id}/draft-response/review", mutating=True
     ),
@@ -289,6 +296,18 @@ def parse_args() -> argparse.Namespace:
     )
     reply_response_draft_generate.add_argument("--message-id", required=True)
 
+    reply_response_draft_edit = subparsers.add_parser("reply-response-draft-edit")
+    reply_response_draft_edit.add_argument("--message-id", required=True)
+    reply_response_draft_edit.add_argument("--subject")
+    reply_response_draft_edit.add_argument("--body")
+    reply_response_draft_edit.add_argument("--edited-by")
+
+    reply_response_draft_send = subparsers.add_parser("reply-response-draft-send")
+    reply_response_draft_send.add_argument("--message-id", required=True)
+
+    reply_response_draft_send_status = subparsers.add_parser("reply-response-draft-send-status")
+    reply_response_draft_send_status.add_argument("--message-id", required=True)
+
     reply_response_draft_review = subparsers.add_parser("reply-response-draft-review")
     reply_response_draft_review.add_argument("--message-id", required=True)
     _add_wait_args(reply_response_draft_review)
@@ -323,8 +342,9 @@ def _add_wait_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--max-attempts", type=int, default=DEFAULT_MAX_ATTEMPTS)
 
 
-def build_request(args: argparse.Namespace) -> tuple[str, str, dict[str, Any] | None]:
-    command = args.command
+def build_request(args: argparse.Namespace) -> tuple[str, str, str, dict[str, Any] | None]:
+    command_value = args.command
+    command = command_value if isinstance(command_value, str) else ""
     direct_command = {
         "best-leads": "top-leads",
         "drafts-ready": "recent-drafts",
@@ -378,6 +398,12 @@ def build_request(args: argparse.Namespace) -> tuple[str, str, dict[str, Any] | 
     elif direct_command == "reply-response-draft":
         path = spec.path_template.format(message_id=args.message_id)
     elif direct_command == "reply-response-draft-generate":
+        path = spec.path_template.format(message_id=args.message_id)
+    elif direct_command == "reply-response-draft-edit":
+        path = spec.path_template.format(message_id=args.message_id)
+    elif direct_command == "reply-response-draft-send":
+        path = spec.path_template.format(message_id=args.message_id)
+    elif direct_command == "reply-response-draft-send-status":
         path = spec.path_template.format(message_id=args.message_id)
     elif direct_command == "reply-response-draft-review":
         path = spec.path_template.format(message_id=args.message_id)
@@ -946,6 +972,70 @@ def handle_reply_response_draft_review(
     )
 
 
+def handle_reply_response_draft_edit(
+    client: APIClient, args: argparse.Namespace
+) -> tuple[dict[str, Any], int]:
+    payload: dict[str, Any] = {}
+    if args.subject is not None:
+        payload["subject"] = args.subject
+    if args.body is not None:
+        payload["body"] = args.body
+    if args.edited_by is not None:
+        payload["edited_by"] = args.edited_by
+    if not payload:
+        return make_success(
+            "reply-response-draft-edit",
+            data={
+                "message": "No draft fields provided; nothing to update.",
+                "message_id": args.message_id,
+            },
+        )
+    return client.request(
+        "reply-response-draft-edit",
+        path=COMMAND_SPECS["reply-response-draft-edit"].path_template.format(message_id=args.message_id),
+        method="PATCH",
+        payload=payload,
+    )
+
+
+def handle_reply_response_draft_send(
+    client: APIClient, args: argparse.Namespace
+) -> tuple[dict[str, Any], int]:
+    response, exit_code = client.request(
+        "reply-response-draft-send",
+        path=COMMAND_SPECS["reply-response-draft-send"].path_template.format(message_id=args.message_id),
+        method="POST",
+    )
+    if exit_code != 0:
+        return response, exit_code
+    send_record = response["data"] or {}
+    response["data"] = {
+        "send": send_record,
+        "summary": {
+            "message_id": args.message_id,
+            "send_id": send_record.get("id"),
+            "status": send_record.get("status"),
+            "recipient_email": send_record.get("recipient_email"),
+            "provider_message_id": send_record.get("provider_message_id"),
+            "sent_at": send_record.get("sent_at"),
+            "error": send_record.get("error"),
+        },
+    }
+    return response, 0
+
+
+def handle_reply_response_draft_send_status(
+    client: APIClient, args: argparse.Namespace
+) -> tuple[dict[str, Any], int]:
+    return client.request(
+        "reply-response-draft-send-status",
+        path=COMMAND_SPECS["reply-response-draft-send-status"].path_template.format(
+            message_id=args.message_id
+        ),
+        method="GET",
+    )
+
+
 def handle_run_pipeline(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
     response, exit_code = client.request(
         "run-pipeline",
@@ -1172,6 +1262,9 @@ def main() -> int:
         "failed-tasks": handle_failed_tasks,
         "wait-task": handle_wait_task,
         "generate-draft": handle_generate_draft,
+        "reply-response-draft-edit": handle_reply_response_draft_edit,
+        "reply-response-draft-send": handle_reply_response_draft_send,
+        "reply-response-draft-send-status": handle_reply_response_draft_send_status,
         "reply-response-draft-review": handle_reply_response_draft_review,
         "run-pipeline": handle_run_pipeline,
         "review-lead": handle_review_lead,

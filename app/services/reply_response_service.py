@@ -4,11 +4,12 @@ import uuid
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core.logging import get_logger
 from app.llm.client import generate_reply_assistant_draft as llm_generate_reply_assistant_draft
 from app.services.operational_settings_service import get_brand_context
+from app.services.reply_send_service import attach_reply_send_metadata
 from app.llm.resolver import resolve_model_for_role
 from app.llm.roles import LLMRole
 from app.models.inbound_mail import InboundMessage
@@ -40,6 +41,8 @@ def _apply_generated_reply_draft(
     draft.should_escalate_reviewer = should_escalate_reviewer
     draft.generator_role = role.value
     draft.generator_model = model
+    draft.edited_at = None
+    draft.edited_by = None
 
 
 def get_reply_assistant_draft_for_message(
@@ -47,6 +50,7 @@ def get_reply_assistant_draft_for_message(
 ) -> ReplyAssistantDraft | None:
     stmt = (
         select(ReplyAssistantDraft)
+        .execution_options(populate_existing=True)
         .options(
             joinedload(ReplyAssistantDraft.inbound_message),
             joinedload(ReplyAssistantDraft.thread),
@@ -54,10 +58,11 @@ def get_reply_assistant_draft_for_message(
             joinedload(ReplyAssistantDraft.related_delivery),
             joinedload(ReplyAssistantDraft.related_outbound_draft),
             joinedload(ReplyAssistantDraft.review),
+            selectinload(ReplyAssistantDraft.sends),
         )
         .where(ReplyAssistantDraft.inbound_message_id == message_id)
     )
-    return db.execute(stmt).scalars().first()
+    return attach_reply_send_metadata(db.execute(stmt).scalars().first())
 
 
 def get_inbound_message_with_reply_context(
@@ -65,11 +70,14 @@ def get_inbound_message_with_reply_context(
 ) -> InboundMessage | None:
     stmt = (
         select(InboundMessage)
+        .execution_options(populate_existing=True)
         .options(
             joinedload(InboundMessage.thread),
             joinedload(InboundMessage.lead),
             joinedload(InboundMessage.delivery).joinedload(OutreachDelivery.draft),
             joinedload(InboundMessage.draft),
+            selectinload(InboundMessage.reply_assistant_draft).joinedload(ReplyAssistantDraft.review),
+            selectinload(InboundMessage.reply_assistant_draft).selectinload(ReplyAssistantDraft.sends),
         )
         .where(InboundMessage.id == message_id)
     )
@@ -84,7 +92,7 @@ def generate_reply_assistant_draft(
         return None
 
     role = LLMRole.EXECUTOR
-    model = resolve_model_for_role(role)
+    model = resolve_model_for_role(role) or "unknown"
     existing = get_reply_assistant_draft_for_message(db, message_id)
     related_outbound_draft = message.draft or (message.delivery.draft if message.delivery else None)
 
@@ -157,6 +165,7 @@ def generate_reply_assistant_draft(
         db.commit()
 
     db.refresh(draft)
+    attach_reply_send_metadata(draft)
 
     logger.info(
         "reply_assistant_draft_generated",

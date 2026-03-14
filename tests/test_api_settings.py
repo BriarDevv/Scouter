@@ -85,8 +85,8 @@ def test_mail_settings_endpoint_returns_non_sensitive_mail_state(client, db, mon
     assert response.status_code == 200
 
     payload = response.json()
-    assert payload["read_only"] is True
-    assert payload["editable"] is False
+    assert payload["read_only"] is False
+    assert payload["editable"] is True
     assert payload["outbound"]["enabled"] is True
     assert payload["outbound"]["provider"] == "smtp"
     assert payload["outbound"]["from_email"] == "sales@clawscout.local"

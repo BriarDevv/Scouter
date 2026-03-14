@@ -62,7 +62,7 @@ def get_effective_mail_inbound(row: OperationalSettings) -> dict:
         "timeout_seconds": _eff(row.mail_inbound_timeout_seconds, env.MAIL_INBOUND_TIMEOUT),
         "search_criteria": _eff(row.mail_inbound_search_criteria, env.MAIL_IMAP_SEARCH_CRITERIA),
         "auto_classify_inbound": row.auto_classify_inbound,
-        "use_reviewer_for_labels": row.use_reviewer_for_labels or [],
+        "use_reviewer_for_labels": row.use_reviewer_for_labels or list(env.mail_use_reviewer_for_labels),
     }
 
 

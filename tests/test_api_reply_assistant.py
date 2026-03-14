@@ -4,6 +4,8 @@ import uuid
 from sqlalchemy.exc import IntegrityError
 
 from app.db.session import SessionLocal
+from app.mail.provider import MailSendResult
+from app.models.mail_credentials import MailCredentials
 from app.models.inbound_mail import (
     EmailThread,
     InboundMailClassificationStatus,
@@ -13,6 +15,8 @@ from app.models.lead import Lead, LeadStatus
 from app.models.outreach import DraftStatus, OutreachDraft
 from app.models.outreach_delivery import OutreachDelivery, OutreachDeliveryStatus
 from app.models.reply_assistant import ReplyAssistantDraft
+from app.models.reply_assistant_send import ReplyAssistantSend, ReplyAssistantSendStatus
+from app.models.settings import OperationalSettings
 
 
 def _seed_inbound_reply(db):
@@ -97,6 +101,31 @@ def _seed_inbound_reply(db):
     db.add(message)
     db.commit()
     return lead, outbound_draft, delivery, thread, message
+
+
+def _configure_reply_send_mail(db):
+    db.merge(
+        OperationalSettings(
+            id=1,
+            mail_enabled=True,
+            mail_from_email="ops@clawscout.local",
+            mail_from_name="ClawScout Ops",
+            mail_reply_to="reply@clawscout.local",
+            mail_send_timeout_seconds=30,
+        )
+    )
+    db.merge(
+        MailCredentials(
+            id=1,
+            smtp_host="smtp.local",
+            smtp_port=587,
+            smtp_username="ops@clawscout.local",
+            smtp_password="super-secret",
+            smtp_starttls=True,
+            smtp_ssl=False,
+        )
+    )
+    db.commit()
 
 
 def test_generate_reply_assistant_draft_persists_result(client, db, monkeypatch):
@@ -260,6 +289,7 @@ def test_generate_reply_assistant_draft_handles_concurrent_insert(client, db, mo
             raise IntegrityError("insert", {}, Exception("duplicate"))
         return original_commit()
 
+    monkeypatch.setattr("app.services.reply_response_service.get_brand_context", lambda db: {})
     monkeypatch.setattr(db, "commit", flaky_commit)
 
     resp = client.post(f"/api/v1/replies/{message.id}/draft-response")
@@ -268,3 +298,165 @@ def test_generate_reply_assistant_draft_handles_concurrent_insert(client, db, mo
     assert payload["body"] == "Versión final después del race."
     assert payload["subject"] == "Re: Seguimiento sitio web"
     assert db.query(ReplyAssistantDraft).count() == 1
+
+
+def test_patch_reply_assistant_draft_persists_edit_metadata(client, db, monkeypatch):
+    _, _, _, _, message = _seed_inbound_reply(db)
+    monkeypatch.setattr(
+        "app.services.reply_response_service.llm_generate_reply_assistant_draft",
+        lambda **kwargs: {
+            "subject": "Re: Seguimiento sitio web",
+            "body": "Versión inicial.",
+            "summary": "Draft base.",
+            "suggested_tone": "consultative",
+            "should_escalate_reviewer": False,
+        },
+    )
+    create_resp = client.post(f"/api/v1/replies/{message.id}/draft-response")
+    assert create_resp.status_code == 200
+
+    patch_resp = client.patch(
+        f"/api/v1/replies/{message.id}/draft-response",
+        json={
+            "subject": "Re: Seguimiento sitio web - propuesta breve",
+            "body": "Te comparto una propuesta breve con siguientes pasos.",
+            "edited_by": "ops-user",
+        },
+    )
+    assert patch_resp.status_code == 200
+    payload = patch_resp.json()
+    assert payload["subject"] == "Re: Seguimiento sitio web - propuesta breve"
+    assert payload["edited_by"] == "ops-user"
+    assert payload["edited_at"] is not None
+
+
+def test_send_reply_assistant_draft_persists_send_and_threading_headers(client, db, monkeypatch):
+    _, _, _, thread, message = _seed_inbound_reply(db)
+    _configure_reply_send_mail(db)
+
+    monkeypatch.setattr(
+        "app.services.reply_response_service.llm_generate_reply_assistant_draft",
+        lambda **kwargs: {
+            "subject": "Seguimiento sitio web",
+            "body": "Claro, te comparto una propuesta breve.",
+            "summary": "Respuesta con propuesta.",
+            "suggested_tone": "consultative",
+            "should_escalate_reviewer": False,
+        },
+    )
+
+    sent_requests = []
+
+    class FakeProvider:
+        def send_email(self, request):
+            sent_requests.append(request)
+            return MailSendResult(
+                provider="smtp",
+                provider_message_id="reply-send-001",
+                recipient_email=request.recipient_email,
+                sent_at=datetime(2026, 3, 14, 14, 0, tzinfo=UTC),
+            )
+
+    monkeypatch.setattr("app.services.mail_service.get_mail_provider", lambda: FakeProvider())
+
+    create_resp = client.post(f"/api/v1/replies/{message.id}/draft-response")
+    assert create_resp.status_code == 200
+
+    send_resp = client.post(f"/api/v1/replies/{message.id}/draft-response/send")
+    assert send_resp.status_code == 200
+    payload = send_resp.json()
+    assert payload["thread_id"] == str(thread.id)
+    assert payload["status"] == ReplyAssistantSendStatus.SENT.value
+    assert payload["provider_message_id"] == "reply-send-001"
+    assert payload["recipient_email"] == "owner@example.com"
+    assert payload["in_reply_to"] == "msg-001@example.com"
+    assert payload["references_raw"] == "provider-msg-001 msg-001@example.com"
+    assert sent_requests[0].in_reply_to == "msg-001@example.com"
+    assert sent_requests[0].references_raw == "provider-msg-001 msg-001@example.com"
+    assert sent_requests[0].subject == "Re: Seguimiento sitio web"
+
+    status_resp = client.get(f"/api/v1/replies/{message.id}/draft-response/send-status")
+    assert status_resp.status_code == 200
+    status_payload = status_resp.json()
+    assert status_payload["sent"] is True
+    assert status_payload["latest_send"]["provider_message_id"] == "reply-send-001"
+    assert status_payload["send_blocked_reason"] == "Reply draft has already been sent."
+
+    saved_send = db.query(ReplyAssistantSend).one()
+    assert saved_send.thread_id == thread.id
+    assert saved_send.status == ReplyAssistantSendStatus.SENT
+
+
+def test_send_reply_assistant_draft_blocks_when_review_requires_edits(client, db, monkeypatch):
+    _, _, _, _, message = _seed_inbound_reply(db)
+    _configure_reply_send_mail(db)
+
+    monkeypatch.setattr(
+        "app.services.reply_response_service.llm_generate_reply_assistant_draft",
+        lambda **kwargs: {
+            "subject": "Re: Seguimiento sitio web",
+            "body": "Borrador sin editar.",
+            "summary": "Draft base.",
+            "suggested_tone": "consultative",
+            "should_escalate_reviewer": False,
+        },
+    )
+    client.post(f"/api/v1/replies/{message.id}/draft-response")
+
+    monkeypatch.setattr(
+        "app.services.reply_draft_review_service.llm_review_reply_assistant_draft",
+        lambda **kwargs: {
+            "summary": "Necesita una edición.",
+            "feedback": "Conviene editar antes de enviar.",
+            "suggested_edits": ["Ajustar el CTA."],
+            "recommended_action": "edit_before_sending",
+            "should_use_as_is": False,
+            "should_edit": True,
+            "should_escalate": False,
+        },
+    )
+    monkeypatch.setattr(
+        "app.services.reply_draft_review_service.resolve_model_for_role",
+        lambda role: "qwen3.5:27b",
+    )
+    from app.services.reply_draft_review_service import review_reply_assistant_draft_with_reviewer
+
+    review_reply_assistant_draft_with_reviewer(db, message.id)
+
+    send_resp = client.post(f"/api/v1/replies/{message.id}/draft-response/send")
+    assert send_resp.status_code == 400
+    assert "editing before sending" in send_resp.json()["detail"].lower()
+
+
+def test_send_reply_assistant_draft_is_idempotent_under_duplicate_clicks(client, db, monkeypatch):
+    _, _, _, _, message = _seed_inbound_reply(db)
+    _configure_reply_send_mail(db)
+
+    monkeypatch.setattr(
+        "app.services.reply_response_service.llm_generate_reply_assistant_draft",
+        lambda **kwargs: {
+            "subject": "Re: Seguimiento sitio web",
+            "body": "Respuesta lista.",
+            "summary": "Draft listo.",
+            "suggested_tone": "consultative",
+            "should_escalate_reviewer": False,
+        },
+    )
+
+    class FakeProvider:
+        def send_email(self, request):
+            return MailSendResult(
+                provider="smtp",
+                provider_message_id="reply-send-unique",
+                recipient_email=request.recipient_email,
+                sent_at=datetime(2026, 3, 14, 14, 0, tzinfo=UTC),
+            )
+
+    monkeypatch.setattr("app.services.mail_service.get_mail_provider", lambda: FakeProvider())
+    client.post(f"/api/v1/replies/{message.id}/draft-response")
+
+    first = client.post(f"/api/v1/replies/{message.id}/draft-response/send")
+    second = client.post(f"/api/v1/replies/{message.id}/draft-response/send")
+    assert first.status_code == 200
+    assert second.status_code == 409
+    assert db.query(ReplyAssistantSend).count() == 1
