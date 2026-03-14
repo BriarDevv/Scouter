@@ -20,14 +20,13 @@ import {
   InboundReplyLabelBadge,
 } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
+import { ReplyDraftPanel } from "@/components/shared/reply-draft-panel";
 import {
   getDrafts,
   getInboundMailStatus,
   getInboundMessages,
   getInboundThreads,
   getLeads,
-  generateReplyAssistantDraft,
-  requestReplyAssistantDraftReview,
   classifyInboundMessage,
   classifyPendingInboundMessages,
   syncInboundMail,
@@ -60,8 +59,6 @@ export default function ResponsesPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isClassifying, setIsClassifying] = useState(false);
   const [classifyingMessageId, setClassifyingMessageId] = useState<string | null>(null);
-  const [generatingReplyDraftId, setGeneratingReplyDraftId] = useState<string | null>(null);
-  const [reviewingReplyDraftId, setReviewingReplyDraftId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "pending" | "classified" | "failed">("all");
 
   async function loadInboxData() {
@@ -161,37 +158,7 @@ export default function ResponsesPage() {
     }
   }
 
-  async function handleGenerateReplyDraft(messageId: string) {
-    setGeneratingReplyDraftId(messageId);
-    try {
-      await generateReplyAssistantDraft(messageId);
-      await loadInboxData();
-    } catch (nextError) {
-      setError(
-        nextError instanceof Error
-          ? nextError.message
-          : "No se pudo generar el draft sugerido."
-      );
-    } finally {
-      setGeneratingReplyDraftId(null);
-    }
-  }
 
-  async function handleReviewReplyDraft(messageId: string) {
-    setReviewingReplyDraftId(messageId);
-    try {
-      await requestReplyAssistantDraftReview(messageId);
-      await loadInboxData();
-    } catch (nextError) {
-      setError(
-        nextError instanceof Error
-          ? nextError.message
-          : "No se pudo pedir la review del draft sugerido."
-      );
-    } finally {
-      setReviewingReplyDraftId(null);
-    }
-  }
 
   return (
     <div className="space-y-6">
@@ -289,8 +256,6 @@ export default function ResponsesPage() {
                 const lead = message.lead_id ? leadById.get(message.lead_id) : null;
                 const outboundDraft = message.draft_id ? draftById.get(message.draft_id) : null;
                 const thread = message.thread_id ? threadById.get(message.thread_id) : null;
-                const replyDraft = message.reply_assistant_draft ?? null;
-                const isGeneratingDraft = generatingReplyDraftId === message.id;
 
                 return (
                   <article key={message.id} className="rounded-2xl border border-slate-100 p-4">
@@ -357,149 +322,11 @@ export default function ResponsesPage() {
                       </p>
                     )}
 
-                    <div className="mt-3 rounded-2xl border border-violet-100 bg-violet-50/30 p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-medium text-slate-900">
-                            Draft de respuesta sugerido
-                          </p>
-                          <p className="mt-1 text-xs text-slate-500">
-                            Generado con executor sobre el contexto real del reply, thread y lead.
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          {replyDraft?.should_escalate_reviewer && (
-                            <span className="inline-flex items-center rounded-full bg-fuchsia-50 px-2.5 py-0.5 text-xs font-medium text-fuchsia-700">
-                              Conviene reviewer
-                            </span>
-                          )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-xl gap-1.5"
-                            onClick={() => void handleGenerateReplyDraft(message.id)}
-                            disabled={isGeneratingDraft}
-                          >
-                            <Sparkles className="h-3.5 w-3.5" />
-                            {isGeneratingDraft
-                              ? "Generando..."
-                              : replyDraft
-                                ? "Regenerar draft"
-                                : "Generar draft"}
-                          </Button>
-                          {replyDraft && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="rounded-xl gap-1.5"
-                              onClick={() => void handleReviewReplyDraft(message.id)}
-                              disabled={reviewingReplyDraftId === message.id}
-                            >
-                              <LifeBuoy className="h-3.5 w-3.5" />
-                              {reviewingReplyDraftId === message.id
-                                ? "Pidiendo review..."
-                                : replyDraft.review
-                                  ? "Pedir review otra vez"
-                                  : "Pedir review"}
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-
-                      {replyDraft ? (
-                        <>
-                          <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500">
-                            {replyDraft.suggested_tone && (
-                              <span>Tono sugerido: {replyDraft.suggested_tone}</span>
-                            )}
-                            <span>
-                              {replyDraft.generator_role} · {replyDraft.generator_model}
-                            </span>
-                            <span className="font-data">
-                              <RelativeTime date={replyDraft.updated_at} />
-                            </span>
-                          </div>
-                          {replyDraft.summary && (
-                            <p className="mt-3 text-sm text-slate-700">{replyDraft.summary}</p>
-                          )}
-                          <div className="mt-3 rounded-xl bg-white/80 px-3 py-3 shadow-sm">
-                            <p className="text-sm font-medium text-slate-900">
-                              {replyDraft.subject}
-                            </p>
-                            <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-700">
-                              {replyDraft.body}
-                            </p>
-                          </div>
-                          {replyDraft.review && (
-                            <div className="mt-3 rounded-xl border border-fuchsia-100 bg-fuchsia-50/40 px-3 py-3">
-                              <div className="flex flex-wrap items-start justify-between gap-3">
-                                <div>
-                                  <p className="text-sm font-medium text-slate-900">
-                                    Review opcional del draft
-                                  </p>
-                                  <p className="mt-1 text-xs text-slate-500">
-                                    {replyDraft.review.reviewer_role || "reviewer"} ·{" "}
-                                    {replyDraft.review.reviewer_model || "modelo no informado"}
-                                  </p>
-                                </div>
-                                <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-slate-600">
-                                  {replyDraft.review.status}
-                                </span>
-                              </div>
-                              {replyDraft.review.summary && (
-                                <p className="mt-3 text-sm text-slate-700">
-                                  {replyDraft.review.summary}
-                                </p>
-                              )}
-                              {replyDraft.review.feedback && (
-                                <p className="mt-2 text-sm text-slate-600">
-                                  <span className="font-medium text-slate-700">Feedback:</span>{" "}
-                                  {replyDraft.review.feedback}
-                                </p>
-                              )}
-                              {replyDraft.review.recommended_action && (
-                                <p className="mt-2 text-sm text-slate-600">
-                                  <span className="font-medium text-slate-700">Acción recomendada:</span>{" "}
-                                  {replyDraft.review.recommended_action}
-                                </p>
-                              )}
-                              {replyDraft.review.suggested_edits && replyDraft.review.suggested_edits.length > 0 && (
-                                <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-600">
-                                  {replyDraft.review.suggested_edits.map((edit, index) => (
-                                    <li key={`${replyDraft.review?.id}-edit-${index}`}>{edit}</li>
-                                  ))}
-                                </ul>
-                              )}
-                              <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                                {replyDraft.review.should_use_as_is && (
-                                  <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 font-medium text-emerald-700">
-                                    Usable tal cual
-                                  </span>
-                                )}
-                                {replyDraft.review.should_edit && (
-                                  <span className="rounded-full bg-amber-50 px-2.5 py-0.5 font-medium text-amber-700">
-                                    Conviene editar
-                                  </span>
-                                )}
-                                {replyDraft.review.should_escalate && (
-                                  <span className="rounded-full bg-fuchsia-50 px-2.5 py-0.5 font-medium text-fuchsia-700">
-                                    Mejor escalar
-                                  </span>
-                                )}
-                              </div>
-                              {replyDraft.review.error && (
-                                <p className="mt-2 text-sm text-rose-600">{replyDraft.review.error}</p>
-                              )}
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <p className="mt-3 text-sm text-slate-600">
-                          Todavía no hay draft sugerido para esta reply. Generalo cuando
-                          quieras preparar una respuesta asistida.
-                        </p>
-                      )}
-                    </div>
+                    <ReplyDraftPanel
+                      messageId={message.id}
+                      draft={message.reply_assistant_draft ?? null}
+                      onRefresh={loadInboxData}
+                    />
 
                     <div className="mt-3 flex items-center justify-between gap-3">
                       <div className="text-xs text-slate-400 font-data">

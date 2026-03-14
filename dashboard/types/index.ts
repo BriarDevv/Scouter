@@ -147,6 +147,11 @@ export interface ReplyAssistantDraft {
   should_escalate_reviewer: boolean;
   generator_role: string;
   generator_model: string;
+  edited_at: string | null;
+  edited_by: string | null;
+  review_is_stale: boolean;
+  send_blocked_reason: string | null;
+  latest_send: ReplyAssistantSend | null;
   review?: ReplyAssistantDraftReview | null;
   created_at: string;
   updated_at: string;
@@ -173,6 +178,39 @@ export interface ReplyAssistantDraftReview {
   reviewed_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export type ReplyAssistantSendStatus = "pending" | "sending" | "sent" | "failed";
+
+export interface ReplyAssistantSend {
+  id: string;
+  reply_assistant_draft_id: string;
+  inbound_message_id: string;
+  thread_id: string | null;
+  lead_id: string | null;
+  status: ReplyAssistantSendStatus;
+  provider: string;
+  provider_message_id: string | null;
+  recipient_email: string;
+  from_email_snapshot: string | null;
+  reply_to_snapshot: string | null;
+  subject_snapshot: string;
+  body_snapshot: string;
+  in_reply_to: string | null;
+  references_raw: string | null;
+  error: string | null;
+  sent_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReplyAssistantSendStatusResponse {
+  draft_id: string;
+  inbound_message_id: string;
+  review_is_stale: boolean;
+  send_blocked_reason: string | null;
+  latest_send: ReplyAssistantSend | null;
+  sent: boolean;
 }
 
 export interface OutreachLog {

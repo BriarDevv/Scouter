@@ -30,6 +30,8 @@ import type {
   MailSettings,
   ReplyAssistantDraft,
   ReplyAssistantDraftReview,
+  ReplyAssistantSend,
+  ReplyAssistantSendStatusResponse,
   OperationalSettings,
   CredentialsStatus,
   MailCredentials,
@@ -450,6 +452,26 @@ export async function getReplyAssistantDraftReview(
 
 export async function requestReplyAssistantDraftReview(messageId: string): Promise<TaskResponse> {
   return apiFetch(`/replies/${messageId}/draft-response/review`, { method: "POST" });
+}
+
+export async function updateReplyAssistantDraft(
+  messageId: string,
+  data: { subject?: string; body?: string; edited_by?: string }
+): Promise<ReplyAssistantDraft> {
+  return apiFetch(`/replies/${messageId}/draft-response`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function sendReplyAssistantDraft(messageId: string): Promise<ReplyAssistantSend> {
+  return apiFetch(`/replies/${messageId}/draft-response/send`, { method: "POST" });
+}
+
+export async function getReplyAssistantSendStatus(
+  messageId: string
+): Promise<ReplyAssistantSendStatusResponse> {
+  return apiFetch(`/replies/${messageId}/draft-response/send-status`);
 }
 
 export async function classifyInboundMessage(messageId: string): Promise<InboundMessage> {
