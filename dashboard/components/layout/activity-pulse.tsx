@@ -169,6 +169,13 @@ export function ActivityPulse() {
           ))}
         </div>
       )}
+
+      <Link
+        href="/activity"
+        className="mt-1.5 flex items-center gap-1 pl-1 text-[10px] font-medium text-muted-foreground/60 hover:text-violet-400 transition-colors"
+      >
+        Ver todo <ChevronRight className="h-2.5 w-2.5" />
+      </Link>
     </div>
   );
 }
