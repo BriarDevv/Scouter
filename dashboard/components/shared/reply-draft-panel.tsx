@@ -247,11 +247,11 @@ export function ReplyDraftPanel({
   if (!draft) {
     return (
       <div className={cn(
-        "mt-3 rounded-2xl border border-violet-100 dark:border-violet-900/40 bg-violet-50/30 dark:bg-violet-950/20 p-4",
-        compact && "p-3"
+        "rounded-2xl border border-violet-100 dark:border-violet-900/40 bg-violet-50/30 dark:bg-violet-950/20",
+        compact ? "p-4" : "p-5"
       )}>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className={cn("text-sm font-medium text-foreground", compact && "text-xs")}>
+          <p className={cn("font-semibold text-foreground font-heading", compact ? "text-xs" : "text-sm")}>
             Draft de respuesta sugerido
           </p>
           <div className="flex items-center gap-2">
@@ -274,7 +274,7 @@ export function ReplyDraftPanel({
             </button>
           </div>
         </div>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-3 text-sm text-muted-foreground">
           Todavía no hay draft sugerido para esta reply.
         </p>
       </div>
@@ -284,13 +284,13 @@ export function ReplyDraftPanel({
   // ─── Draft exists ────────────────────────────────────
   return (
     <div className={cn(
-      "mt-3 rounded-2xl border border-violet-100 dark:border-violet-900/40 bg-violet-50/30 dark:bg-violet-950/20 p-4",
-      compact && "p-3"
+      "rounded-2xl border border-violet-100 dark:border-violet-900/40 bg-violet-50/30 dark:bg-violet-950/20",
+      compact ? "p-4" : "p-5"
     )}>
-      {/* Header */}
+      {/* ── HEADER ── */}
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <p className={cn("text-sm font-medium text-foreground", compact && "text-xs")}>
+        <div className="space-y-2">
+          <p className={cn("font-semibold text-foreground font-heading", compact ? "text-xs" : "text-sm")}>
             Draft de respuesta sugerido
           </p>
           <div className="flex flex-wrap items-center gap-2">
@@ -301,7 +301,7 @@ export function ReplyDraftPanel({
               </span>
             )}
             {draft.edited_at && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-700">
+              <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 dark:bg-sky-950/30 px-2.5 py-0.5 text-xs font-medium text-sky-700 dark:text-sky-300">
                 <Edit3 className="h-3 w-3" /> Editado
               </span>
             )}
@@ -349,14 +349,14 @@ export function ReplyDraftPanel({
         </div>
       </div>
 
-      {/* Meta line */}
+      {/* ── META (smaller, de-emphasized) ── */}
       {!compact && (
-        <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
+        <div className="mt-3 flex flex-wrap gap-3 text-[11px] text-muted-foreground/60 font-data">
           {draft.suggested_tone && <span>Tono: {draft.suggested_tone}</span>}
           <span>{draft.generator_role} · {draft.generator_model}</span>
-          <span className="font-data"><RelativeTime date={draft.updated_at} /></span>
+          <span><RelativeTime date={draft.updated_at} /></span>
           {draft.edited_at && (
-            <span className="font-data">
+            <span>
               Editado <RelativeTime date={draft.edited_at} />
               {draft.edited_by && <> por {draft.edited_by}</>}
             </span>
@@ -364,13 +364,13 @@ export function ReplyDraftPanel({
         </div>
       )}
 
-      {/* Summary */}
+      {/* ── SUMMARY ── */}
       {draft.summary && !compact && (
-        <p className="mt-3 text-sm text-foreground/80">{draft.summary}</p>
+        <p className="mt-4 text-sm leading-relaxed text-foreground/80">{draft.summary}</p>
       )}
 
-      {/* Subject/Body — edit or view */}
-      <div className={cn("mt-3 rounded-xl bg-card/80 px-3 py-3 shadow-sm", compact && "mt-2")}>
+      {/* ── SUBJECT / BODY — edit or view ── */}
+      <div className={cn("rounded-xl bg-card/80 px-4 py-4 shadow-sm", compact ? "mt-3" : "mt-4")}>
         {isEditing ? (
           <div className="space-y-3">
             <div>
@@ -468,7 +468,7 @@ export function ReplyDraftPanel({
 
       {/* Send action */}
       {!isEditing && (
-        <div className="mt-3 flex items-center gap-3">
+        <div className="mt-4 flex items-center gap-3">
           <Button
             size="sm"
             className={cn(
@@ -504,13 +504,13 @@ export function ReplyDraftPanel({
         </div>
       )}
 
-      {/* Review section — only in full mode */}
+      {/* ── REVIEW SECTION — only in full mode ── */}
       {!compact && draft.review && (
-        <div className="mt-4 rounded-xl border border-fuchsia-100 bg-fuchsia-50/40 px-3 py-3">
+        <div className="mt-5 rounded-xl border border-fuchsia-100 dark:border-fuchsia-900/30 bg-fuchsia-50/40 dark:bg-fuchsia-950/10 p-4 space-y-3">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-medium text-foreground">Review del draft</p>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="text-sm font-semibold text-foreground font-heading">Review del draft</p>
+              <p className="mt-1 text-[11px] text-muted-foreground/60 font-data">
                 {draft.review.reviewer_role || "reviewer"} ·{" "}
                 {draft.review.reviewer_model || "modelo no informado"}
               </p>
@@ -520,46 +520,49 @@ export function ReplyDraftPanel({
             </span>
           </div>
           {draft.review.summary && (
-            <p className="mt-3 text-sm text-foreground/80">{draft.review.summary}</p>
+            <p className="text-sm leading-relaxed text-foreground/80">{draft.review.summary}</p>
           )}
           {draft.review.feedback && (
-            <p className="mt-2 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground/80">Feedback:</span>{" "}
-              {draft.review.feedback}
-            </p>
+            <div className="rounded-lg bg-card/60 px-3 py-2.5">
+              <p className="text-xs font-semibold text-foreground/70 mb-1">Feedback</p>
+              <p className="text-sm text-foreground/80">{draft.review.feedback}</p>
+            </div>
           )}
           {draft.review.recommended_action && (
-            <p className="mt-2 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground/80">Acción recomendada:</span>{" "}
-              {draft.review.recommended_action}
-            </p>
+            <div className="rounded-lg bg-card/60 px-3 py-2.5">
+              <p className="text-xs font-semibold text-foreground/70 mb-1">Acción recomendada</p>
+              <p className="text-sm text-foreground/80">{draft.review.recommended_action}</p>
+            </div>
           )}
           {draft.review.suggested_edits && draft.review.suggested_edits.length > 0 && (
-            <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-              {draft.review.suggested_edits.map((edit, index) => (
-                <li key={`${draft.review?.id}-edit-${index}`}>{edit}</li>
-              ))}
-            </ul>
+            <div className="rounded-lg bg-card/60 px-3 py-2.5">
+              <p className="text-xs font-semibold text-foreground/70 mb-2">Sugerencias de edición</p>
+              <ul className="list-disc space-y-1 pl-4 text-sm text-foreground/80">
+                {draft.review.suggested_edits.map((edit, index) => (
+                  <li key={`${draft.review?.id}-edit-${index}`}>{edit}</li>
+                ))}
+              </ul>
+            </div>
           )}
-          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+          <div className="flex flex-wrap gap-2 text-xs pt-1">
             {draft.review.should_use_as_is && (
-              <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-0.5 font-medium text-emerald-700">
+              <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-0.5 font-medium text-emerald-700 dark:text-emerald-300">
                 Usable tal cual
               </span>
             )}
             {draft.review.should_edit && (
-              <span className="rounded-full bg-amber-50 dark:bg-amber-950/30 px-2.5 py-0.5 font-medium text-amber-700">
+              <span className="rounded-full bg-amber-50 dark:bg-amber-950/30 px-2.5 py-0.5 font-medium text-amber-700 dark:text-amber-300">
                 Conviene editar
               </span>
             )}
             {draft.review.should_escalate && (
-              <span className="rounded-full bg-fuchsia-50 dark:bg-fuchsia-950/30 px-2.5 py-0.5 font-medium text-fuchsia-700">
+              <span className="rounded-full bg-fuchsia-50 dark:bg-fuchsia-950/30 px-2.5 py-0.5 font-medium text-fuchsia-700 dark:text-fuchsia-300">
                 Mejor escalar
               </span>
             )}
           </div>
           {draft.review.error && (
-            <p className="mt-2 text-sm text-rose-600">{draft.review.error}</p>
+            <p className="text-sm text-rose-600">{draft.review.error}</p>
           )}
         </div>
       )}

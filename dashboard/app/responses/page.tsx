@@ -271,17 +271,18 @@ export default function ResponsesPage() {
               className="py-10"
             />
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-5">
               {filteredMessages.map((message) => {
                 const lead = message.lead_id ? leadById.get(message.lead_id) : null;
                 const outboundDraft = message.draft_id ? draftById.get(message.draft_id) : null;
                 const thread = message.thread_id ? threadById.get(message.thread_id) : null;
 
                 return (
-                  <article key={message.id} className="rounded-2xl border border-border p-4">
-                    {/* 4C: Metadata block */}
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="space-y-2">
+                  <article key={message.id} className="rounded-2xl border border-border p-5 space-y-0">
+                    {/* ── HEADER: Badges + Sender + Timestamp ── */}
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="space-y-3">
+                        {/* Badges row */}
                         <div className="flex flex-wrap items-center gap-2">
                           <InboundClassificationStatusBadge status={message.classification_status} />
                           <InboundReplyLabelBadge label={message.classification_label} />
@@ -291,97 +292,105 @@ export default function ResponsesPage() {
                             </span>
                           )}
                         </div>
+                        {/* Sender — larger and bolder */}
                         <div>
-                          <p className="text-sm font-medium text-foreground">
+                          <p className="text-base font-semibold text-foreground">
                             {message.from_name || message.from_email || "Reply sin remitente"}
                           </p>
-                          <p className="text-xs text-muted-foreground font-data">
+                          <p className="mt-0.5 text-sm text-muted-foreground font-data">
                             {message.subject || "(sin asunto)"}
                           </p>
                         </div>
                       </div>
-                      <div className="text-right text-xs text-muted-foreground font-data">
+                      {/* Timestamp — right side */}
+                      <div className="text-right text-xs text-muted-foreground font-data shrink-0 pt-1">
                         <div>{formatDateTime(message.received_at || message.created_at)}</div>
-                        <div className="mt-1">
+                        <div className="mt-0.5">
                           <RelativeTime date={message.received_at || message.created_at} />
                         </div>
                       </div>
                     </div>
 
-                    <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                      {lead && (
-                        <Link href={`/leads/${lead.id}`} className="text-violet-600 dark:text-violet-400 hover:underline">
-                          {lead.business_name}
-                        </Link>
-                      )}
-                      {outboundDraft && <span>Draft outbound: {outboundDraft.subject}</span>}
-                      {thread && (
-                        <span>
-                          {INBOUND_MATCH_VIA_LABELS[thread.matched_via] || thread.matched_via}
-                          {thread.match_confidence !== null ? ` · ${thread.match_confidence.toFixed(2)}` : ""}
-                          {" · "}
-                          {thread.message_count} mensaje(s)
-                        </span>
-                      )}
-                    </div>
+                    {/* ── CONTEXT: Lead link + thread match (smaller, muted) ── */}
+                    {(lead || outboundDraft || thread) && (
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground/70">
+                        {lead && (
+                          <Link href={`/leads/${lead.id}`} className="rounded-md bg-violet-50 dark:bg-violet-950/20 px-2 py-0.5 text-violet-600 dark:text-violet-400 hover:underline font-medium">
+                            {lead.business_name}
+                          </Link>
+                        )}
+                        {outboundDraft && <span className="text-muted-foreground">Draft: {outboundDraft.subject}</span>}
+                        {thread && (
+                          <span className="text-muted-foreground">
+                            {INBOUND_MATCH_VIA_LABELS[thread.matched_via] || thread.matched_via}
+                            {thread.match_confidence !== null ? ` · ${thread.match_confidence.toFixed(2)}` : ""}
+                            {" · "}
+                            {thread.message_count} msg
+                          </span>
+                        )}
+                      </div>
+                    )}
 
-                    {/* 4C: Visual separator between metadata and content */}
-                    <div className="border-t border-border/50 mt-3 pt-3">
+                    {/* ── CONTENT: Summary + Next step + Body snippet ── */}
+                    <div className="mt-4 space-y-3 border-t border-border/40 pt-4">
                       {message.summary && (
-                        <p className="text-sm text-foreground/80">{message.summary}</p>
+                        <p className="text-sm leading-relaxed text-foreground">{message.summary}</p>
                       )}
                       {message.next_action_suggestion && (
-                        <p className="mt-2 text-sm text-muted-foreground">
-                          <span className="font-medium text-foreground/80">Siguiente paso:</span>{" "}
-                          {message.next_action_suggestion}
-                        </p>
+                        <div className="flex items-start gap-2 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/10 px-3 py-2.5">
+                          <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 shrink-0 mt-0.5">Siguiente paso:</span>
+                          <span className="text-sm text-foreground/80">{message.next_action_suggestion}</span>
+                        </div>
                       )}
                       {message.classification_error && (
-                        <p className="mt-2 text-sm text-rose-600">{message.classification_error}</p>
+                        <p className="text-sm text-rose-600">{message.classification_error}</p>
                       )}
                       {message.body_snippet && (
-                        <p className="mt-3 line-clamp-2 border-l-2 border-muted-foreground/30 pl-3 text-sm text-muted-foreground">
+                        <p className="line-clamp-2 border-l-2 border-muted-foreground/20 pl-3 text-sm text-muted-foreground italic">
                           {message.body_snippet}
                         </p>
                       )}
+                    </div>
 
+                    {/* ── DRAFT PANEL ── */}
+                    <div className="mt-4">
                       <ReplyDraftPanel
                         messageId={message.id}
                         draft={message.reply_assistant_draft ?? null}
                         defaultCollapsed
                         onRefresh={loadInboxData}
                       />
+                    </div>
 
-                      <div className="mt-3 flex items-center justify-between gap-3">
-                        {/* 4C: Classification model info in tooltip */}
-                        <div className="text-xs text-muted-foreground font-data">
-                          {message.classification_model ? (
-                            <Tooltip>
-                              <TooltipTrigger className="inline-flex items-center gap-1 cursor-default">
-                                <Info className="h-3 w-3" />
-                                <span>Clasificado</span>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {message.classification_role} · {message.classification_model}
-                              </TooltipContent>
-                            </Tooltip>
-                          ) : (
-                            "Sin clasificación aún"
-                          )}
-                        </div>
-                        {(message.classification_status === "pending" || message.classification_status === "failed") && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-xl gap-1.5"
-                            onClick={() => void handleClassifyMessage(message.id)}
-                            disabled={classifyingMessageId === message.id}
-                          >
-                            <Sparkles className="h-3.5 w-3.5" />
-                            {classifyingMessageId === message.id ? "Clasificando..." : "Clasificar"}
-                          </Button>
+                    {/* ── FOOTER: Classification info + Classify button ── */}
+                    <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/40 pt-3">
+                      <div className="text-xs text-muted-foreground/60 font-data">
+                        {message.classification_model ? (
+                          <Tooltip>
+                            <TooltipTrigger className="inline-flex items-center gap-1 cursor-default">
+                              <Info className="h-3 w-3" />
+                              <span>Clasificado</span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {message.classification_role} · {message.classification_model}
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          "Sin clasificación aún"
                         )}
                       </div>
+                      {(message.classification_status === "pending" || message.classification_status === "failed") && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="rounded-xl gap-1.5"
+                          onClick={() => void handleClassifyMessage(message.id)}
+                          disabled={classifyingMessageId === message.id}
+                        >
+                          <Sparkles className="h-3.5 w-3.5" />
+                          {classifyingMessageId === message.id ? "Clasificando..." : "Clasificar"}
+                        </Button>
+                      )}
                     </div>
                   </article>
                 );
