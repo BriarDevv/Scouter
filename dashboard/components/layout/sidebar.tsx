@@ -19,9 +19,9 @@ import {
 
 const NAV_ITEMS = [
   { href: "/",            label: "Panel general", icon: LayoutDashboard },
+  { href: "/activity",    label: "Actividad IA",  icon: BrainCircuit },
   { href: "/leads",       label: "Leads",         icon: Users },
   { href: "/outreach",    label: "Outreach",      icon: Mail },
-  { href: "/activity",    label: "Actividad IA",  icon: BrainCircuit },
   { href: "/responses",   label: "Respuestas",    icon: Inbox },
   { href: "/performance", label: "Rendimiento",   icon: BarChart3 },
   { href: "/suppression", label: "Supresión",     icon: ShieldOff },
