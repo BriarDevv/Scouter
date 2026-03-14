@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # ============================================================================
-# ClawScout — Script de gestion
+# ClawScout — Script de gestion unificado
 # Uso: ./scripts/clawscout.sh {start|stop|restart|status|logs|preflight|seed|nuke}
+#      o via Make: make up | make down | make status | make logs
 # ============================================================================
 
 set -euo pipefail
@@ -15,10 +16,10 @@ BOLD='\033[1m'
 DIM='\033[2m'
 NC='\033[0m'
 
-# Detectar directorio del proyecto (donde esta este script)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 LOG_DIR="$PROJECT_DIR/logs"
+RUNTIME_DIR="$PROJECT_DIR/.dev-runtime"
 PID_DIR="$PROJECT_DIR/.pids"
 
 mkdir -p "$LOG_DIR" "$PID_DIR"
@@ -48,22 +49,6 @@ get_pid() {
     [[ -f "$pidfile" ]] && cat "$pidfile"
 }
 
-wait_for_port() {
-    local port=$1
-    local name=$2
-    local timeout=${3:-30}
-    local elapsed=0
-    while ! ss -tlnp 2>/dev/null | grep -q ":${port} " && [[ $elapsed -lt $timeout ]]; do
-        sleep 1
-        ((elapsed++))
-    done
-    if [[ $elapsed -ge $timeout ]]; then
-        log_warn "$name no respondio en ${timeout}s (puerto $port)"
-        return 1
-    fi
-    return 0
-}
-
 # ─── Start ─────────────────────────────────────────────────────────────────
 
 cmd_start() {
@@ -75,7 +60,7 @@ cmd_start() {
     else
         log_info "Levantando Postgres + Redis..."
         docker compose -f "$PROJECT_DIR/docker-compose.yml" up -d postgres redis >/dev/null 2>&1
-        sleep 2
+        sleep 3
         if docker compose -f "$PROJECT_DIR/docker-compose.yml" ps --status running 2>/dev/null | grep -q postgres; then
             log_ok "Postgres + Redis levantados"
         else
@@ -84,45 +69,18 @@ cmd_start() {
         fi
     fi
 
-    # 2. Activar venv
-    if [[ ! -f "$PROJECT_DIR/.venv/bin/activate" ]]; then
-        log_fail "No se encontro .venv — ejecutar: python3 -m venv .venv && pip install -e '.[dev]'"
-        return 1
-    fi
-    # shellcheck disable=SC1091
-    source "$PROJECT_DIR/.venv/bin/activate"
-
-    # 3. Migraciones
-    log_info "Verificando migraciones..."
-    cd "$PROJECT_DIR"
-    if alembic check 2>/dev/null; then
-        log_ok "Migraciones al dia"
-    else
-        log_info "Aplicando migraciones..."
-        alembic upgrade head 2>>"$LOG_DIR/alembic.log"
-        log_ok "Migraciones aplicadas"
-    fi
-
-    # 4. API (uvicorn)
-    if is_running api; then
-        log_ok "API ya esta corriendo (PID $(get_pid api))"
-    else
-        log_info "Iniciando API en :8000..."
-        cd "$PROJECT_DIR"
-        nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 \
-            >>"$LOG_DIR/api.log" 2>&1 &
-        echo $! > "$PID_DIR/api.pid"
-        if wait_for_port 8000 "API" 15; then
-            log_ok "API corriendo en :8000 (PID $(get_pid api))"
-        fi
-    fi
-
-    # 5. Celery worker
+    # 2. Celery worker
     if is_running worker; then
         log_ok "Worker ya esta corriendo (PID $(get_pid worker))"
     else
+        if [[ ! -f "$PROJECT_DIR/.venv/bin/activate" ]]; then
+            log_fail "No se encontro .venv — ejecutar: python3 -m venv .venv && pip install -e '.[dev]'"
+            return 1
+        fi
         log_info "Iniciando Celery worker..."
         cd "$PROJECT_DIR"
+        # shellcheck disable=SC1091
+        source "$PROJECT_DIR/.venv/bin/activate"
         nohup celery -A app.workers.celery_app worker \
             --loglevel=info --concurrency=2 \
             >>"$LOG_DIR/worker.log" 2>&1 &
@@ -135,29 +93,16 @@ cmd_start() {
         fi
     fi
 
-    # 6. Dashboard (Next.js)
-    if is_running dashboard; then
-        log_ok "Dashboard ya esta corriendo (PID $(get_pid dashboard))"
-    else
-        if [[ ! -d "$PROJECT_DIR/dashboard/node_modules" ]]; then
-            log_warn "node_modules no encontrado — ejecutar: cd dashboard && npm ci"
-        else
-            log_info "Iniciando Dashboard en :3000..."
-            cd "$PROJECT_DIR/dashboard"
-            nohup npm run dev \
-                >>"$LOG_DIR/dashboard.log" 2>&1 &
-            echo $! > "$PID_DIR/dashboard.pid"
-            if wait_for_port 3000 "Dashboard" 20; then
-                log_ok "Dashboard corriendo en :3000 (PID $(get_pid dashboard))"
-            fi
-        fi
-    fi
+    # 3. API + Dashboard via dev-up.sh (maneja migraciones, puertos, PIDs)
+    log_info "Levantando API + Dashboard (via dev-up.sh)..."
+    echo ""
+    bash "$SCRIPT_DIR/dev-up.sh"
 
     echo ""
-    echo -e "${BOLD}Servicios:${NC}"
-    echo -e "  Dashboard:  ${CYAN}http://localhost:3000${NC}"
-    echo -e "  API/Swagger: ${CYAN}http://localhost:8000/docs${NC}"
-    echo -e "  Health:      ${CYAN}http://localhost:8000/health/detailed${NC}"
+    echo -e "${BOLD}Todo encendido.${NC} Servicios:"
+    echo -e "  Dashboard:   ${CYAN}http://localhost:3000${NC}"
+    echo -e "  API/Swagger:  ${CYAN}http://localhost:8000/docs${NC}"
+    echo -e "  Health:       ${CYAN}http://localhost:8000/health/detailed${NC}"
     echo ""
 }
 
@@ -166,26 +111,28 @@ cmd_start() {
 cmd_stop() {
     echo -e "\n${BOLD}🛑 Apagando ClawScout${NC}\n"
 
-    for svc in dashboard worker api; do
-        if is_running "$svc"; then
-            local pid
-            pid=$(get_pid "$svc")
-            # Kill the process tree (para npm/node children)
-            kill -- -"$(ps -o pgid= -p "$pid" 2>/dev/null | tr -d ' ')" 2>/dev/null || kill "$pid" 2>/dev/null || true
-            rm -f "$PID_DIR/$svc.pid"
-            log_ok "$svc detenido (was PID $pid)"
-        else
-            log_info "$svc no estaba corriendo"
-        fi
-    done
+    # 1. API + Dashboard via dev-down.sh
+    log_info "Deteniendo API + Dashboard (via dev-down.sh)..."
+    bash "$SCRIPT_DIR/dev-down.sh"
 
-    # Docker infra
+    # 2. Celery worker
+    if is_running worker; then
+        local pid
+        pid=$(get_pid worker)
+        kill "$pid" 2>/dev/null || true
+        rm -f "$PID_DIR/worker.pid"
+        log_ok "Worker detenido (was PID $pid)"
+    else
+        log_info "Worker no estaba corriendo"
+    fi
+
+    # 3. Docker infra
     log_info "Deteniendo Postgres + Redis..."
     docker compose -f "$PROJECT_DIR/docker-compose.yml" stop postgres redis >/dev/null 2>&1 || true
     log_ok "Infraestructura detenida"
 
     echo ""
-    echo -e "${DIM}Datos de Postgres/Redis conservados. Usar './scripts/clawscout.sh nuke' para borrarlos.${NC}"
+    echo -e "${DIM}Datos de Postgres/Redis conservados. Usar '$0 nuke' para borrarlos.${NC}"
     echo ""
 }
 
@@ -203,36 +150,16 @@ cmd_status() {
         fi
     done
 
-    # App services
-    for svc in api worker dashboard; do
-        if is_running "$svc"; then
-            local pid
-            pid=$(get_pid "$svc")
-            local port=""
-            case $svc in
-                api) port=":8000" ;;
-                dashboard) port=":3000" ;;
-            esac
-            log_ok "$svc corriendo (PID $pid)${port:+ en $port}"
-        else
-            log_fail "$svc no esta corriendo"
-        fi
-    done
-
-    # Health check
-    echo ""
-    if curl -sf http://localhost:8000/health >/dev/null 2>&1; then
-        log_ok "API respondiendo en /health"
-        # Try detailed health
-        local health
-        health=$(curl -sf http://localhost:8000/health/detailed 2>/dev/null || echo "")
-        if [[ -n "$health" ]]; then
-            echo -e "\n  ${DIM}Health detallado:${NC}"
-            echo "$health" | python3 -m json.tool 2>/dev/null | sed 's/^/    /'
-        fi
+    # Celery worker
+    if is_running worker; then
+        log_ok "worker corriendo (PID $(get_pid worker))"
     else
-        log_warn "API no responde"
+        log_fail "worker no esta corriendo"
     fi
+
+    # API + Dashboard via dev-status.sh
+    echo ""
+    bash "$SCRIPT_DIR/dev-status.sh"
 
     echo ""
 }
@@ -242,19 +169,43 @@ cmd_status() {
 cmd_logs() {
     local service="${1:-all}"
 
-    if [[ "$service" == "all" ]]; then
-        echo -e "${DIM}Mostrando todos los logs (Ctrl+C para salir)${NC}\n"
-        tail -f "$LOG_DIR"/*.log 2>/dev/null || echo "No hay logs todavia"
-    else
-        local logfile="$LOG_DIR/$service.log"
-        if [[ -f "$logfile" ]]; then
-            echo -e "${DIM}Logs de $service (Ctrl+C para salir)${NC}\n"
-            tail -f "$logfile"
-        else
-            log_fail "No se encontro $logfile"
-            echo -e "  Servicios disponibles: api, worker, dashboard, alembic"
-        fi
-    fi
+    case "$service" in
+        api|backend)
+            local logfile="$RUNTIME_DIR/backend.log"
+            [[ -f "$logfile" ]] || logfile="$LOG_DIR/api.log"
+            if [[ -f "$logfile" ]]; then
+                echo -e "${DIM}Logs de API (Ctrl+C para salir)${NC}\n"
+                tail -f "$logfile"
+            else
+                log_fail "No hay logs de API todavia"
+            fi
+            ;;
+        dashboard)
+            local logfile="$RUNTIME_DIR/dashboard.log"
+            [[ -f "$logfile" ]] || logfile="$LOG_DIR/dashboard.log"
+            if [[ -f "$logfile" ]]; then
+                echo -e "${DIM}Logs de Dashboard (Ctrl+C para salir)${NC}\n"
+                tail -f "$logfile"
+            else
+                log_fail "No hay logs de Dashboard todavia"
+            fi
+            ;;
+        worker)
+            if [[ -f "$LOG_DIR/worker.log" ]]; then
+                echo -e "${DIM}Logs de Worker (Ctrl+C para salir)${NC}\n"
+                tail -f "$LOG_DIR/worker.log"
+            else
+                log_fail "No hay logs de Worker todavia"
+            fi
+            ;;
+        all)
+            echo -e "${DIM}Mostrando todos los logs (Ctrl+C para salir)${NC}\n"
+            tail -f "$RUNTIME_DIR"/*.log "$LOG_DIR"/*.log 2>/dev/null || echo "No hay logs todavia"
+            ;;
+        *)
+            echo "Servicios: api, worker, dashboard, all"
+            ;;
+    esac
 }
 
 # ─── Preflight ─────────────────────────────────────────────────────────────
@@ -262,6 +213,7 @@ cmd_logs() {
 cmd_preflight() {
     cd "$PROJECT_DIR"
     if [[ -f "$PROJECT_DIR/.venv/bin/activate" ]]; then
+        # shellcheck disable=SC1091
         source "$PROJECT_DIR/.venv/bin/activate"
     fi
     python3 scripts/preflight.py
@@ -271,6 +223,7 @@ cmd_preflight() {
 
 cmd_seed() {
     cd "$PROJECT_DIR"
+    # shellcheck disable=SC1091
     source "$PROJECT_DIR/.venv/bin/activate"
     python3 scripts/seed.py
 }
@@ -291,7 +244,7 @@ cmd_nuke() {
     log_ok "Volumenes borrados"
 
     log_info "Limpiando logs y PIDs..."
-    rm -rf "$LOG_DIR"/* "$PID_DIR"/*
+    rm -rf "$LOG_DIR"/* "$PID_DIR"/* "$RUNTIME_DIR"/*
     log_ok "Limpio"
 
     echo ""
@@ -320,6 +273,13 @@ usage() {
     echo "  preflight   Verificar que todo esta configurado"
     echo "  seed        Cargar datos de prueba"
     echo "  nuke        Parar todo Y borrar datos (pide confirmacion)"
+    echo ""
+    echo "Atajos via Make:"
+    echo "  make up       = ./scripts/clawscout.sh start"
+    echo "  make down     = ./scripts/clawscout.sh stop"
+    echo "  make status   = ./scripts/clawscout.sh status"
+    echo "  make logs     = ./scripts/clawscout.sh logs"
+    echo "  make restart  = ./scripts/clawscout.sh restart"
     echo ""
 }
 

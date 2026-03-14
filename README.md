@@ -72,43 +72,55 @@ chmod +x scripts/clawscout.sh
 
 ## Uso diario
 
-### Encender (un solo comando)
+### Encender
 
 ```bash
-# Desde WSL, en la carpeta del proyecto:
 cd ~/src/ClawScout
-./scripts/clawscout.sh start
-```
-
-Esto levanta todo en background: Postgres, Redis, API, Celery worker y Dashboard.
-Los logs se guardan en `logs/` y se pueden ver con:
-
-```bash
-./scripts/clawscout.sh logs              # Ver todos los logs en vivo
-./scripts/clawscout.sh logs api          # Solo logs del API
-./scripts/clawscout.sh logs worker       # Solo logs de Celery
-./scripts/clawscout.sh logs dashboard    # Solo logs del dashboard
-```
-
-### Ver estado
-
-```bash
-./scripts/clawscout.sh status            # Muestra que esta corriendo y en que puerto
+make up                                  # Levanta TODO: Postgres, Redis, API, Worker, Dashboard
 ```
 
 ### Apagar
 
 ```bash
-./scripts/clawscout.sh stop              # Para todo (mantiene datos de Postgres/Redis)
+make down                                # Para todo (mantiene datos de Postgres/Redis)
 ```
 
-### Otros comandos utiles
+### Ver estado
 
 ```bash
-./scripts/clawscout.sh restart           # Apagar + encender
-./scripts/clawscout.sh preflight         # Verificar que todo este configurado
-./scripts/clawscout.sh seed              # Cargar datos de prueba
-./scripts/clawscout.sh nuke              # Parar todo Y borrar datos (postgres, redis)
+make status                              # Muestra que esta corriendo y en que puerto
+```
+
+### Logs
+
+```bash
+make logs                                # Todos los logs en vivo (Ctrl+C para salir)
+./scripts/clawscout.sh logs api          # Solo API
+./scripts/clawscout.sh logs worker       # Solo Celery worker
+./scripts/clawscout.sh logs dashboard    # Solo Dashboard
+```
+
+### Todos los comandos
+
+| Comando | Atajo | Que hace |
+|---------|-------|----------|
+| `make up` | `./scripts/clawscout.sh start` | Encender todo |
+| `make down` | `./scripts/clawscout.sh stop` | Apagar todo (mantiene datos) |
+| `make restart` | `./scripts/clawscout.sh restart` | Apagar + encender |
+| `make status` | `./scripts/clawscout.sh status` | Ver estado de cada servicio |
+| `make logs` | `./scripts/clawscout.sh logs` | Ver logs en vivo |
+| `make preflight` | `./scripts/clawscout.sh preflight` | Verificar configuracion |
+| `make seed` | `./scripts/clawscout.sh seed` | Cargar datos de prueba |
+| `make nuke` | `./scripts/clawscout.sh nuke` | Parar + borrar datos (pide confirmacion) |
+
+### Solo API + Dashboard (sin Docker ni Celery)
+
+Si Postgres y Redis ya estan corriendo y no necesitas el worker:
+
+```bash
+make dev-up                              # Solo levanta API :8000 + Dashboard :3000
+make dev-down                            # Solo para API + Dashboard
+make dev-status                          # Estado de API + Dashboard
 ```
 
 ### Servicios disponibles (cuando esta encendido)
@@ -117,7 +129,7 @@ Los logs se guardan en `logs/` y se pueden ver con:
 |----------|-----|
 | Dashboard | http://localhost:3000 |
 | API + Swagger | http://localhost:8000/docs |
-| Health check | http://localhost:8000/health/detailed |
+| Health detallado | http://localhost:8000/health/detailed |
 | Flower (opcional) | http://localhost:5555 |
 
 ### Modo manual (4 terminales)
