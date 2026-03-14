@@ -51,7 +51,9 @@ function getStepConfig(step: string | null | undefined) {
 }
 
 function getModelForStep(step: string | null | undefined, llm: LLMSettings | null): string | null {
-  if (!step || !llm || NO_LLM_STEPS.has(step)) return null;
+  if (!step) return null;
+  if (NO_LLM_STEPS.has(step)) return "_system";
+  if (!llm) return null;
   if (REVIEWER_STEPS.has(step)) return llm.reviewer_model;
   return llm.executor_model;
 }
@@ -64,6 +66,20 @@ function formatModelShort(model: string): string {
 
 function ModelBadge({ model, size = "sm" }: { model: string | null; size?: "sm" | "md" }) {
   if (!model) return null;
+  if (model === "_system") {
+    return (
+      <span
+        className={cn(
+          "inline-flex items-center rounded font-bold font-data leading-tight",
+          size === "md" ? "px-1.5 py-0.5 text-[10px]" : "px-1 py-px text-[9px]",
+          "bg-zinc-100 dark:bg-zinc-800/60 text-zinc-500 dark:text-zinc-400"
+        )}
+        title="Sistema (sin LLM)"
+      >
+        SIS
+      </span>
+    );
+  }
   const short = formatModelShort(model);
   const isReviewer = model.includes("27b") || model.includes("14b");
   return (
