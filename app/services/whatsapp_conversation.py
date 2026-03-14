@@ -320,6 +320,8 @@ def _help_message(unknown_cmd: str | None = None) -> str:
         "*rechazar #<id>* \u2014 Rechazar borrador",
         "*generar draft <nombre>* \u2014 Generar borrador para un lead",
         "*ayuda* \u2014 Mostrar este mensaje",
+        "",
+        "O escribi cualquier pregunta y OpenClaw te responde (si esta activado).",
     ])
     return "\n".join(lines)
 
@@ -490,8 +492,17 @@ def handle_inbound_message(db: Session, phone: str, message: str) -> str:
     if intent == Intent.QUERY_STATS:
         return _query_stats(db)
 
-    # HELP or fallback
-    unknown = None
-    if intent == Intent.HELP and clean.lower() not in ("help", "ayuda", "?"):
-        unknown = clean
-    return _help_message(unknown)
+    # HELP — explicit help request
+    if intent == Intent.HELP and clean.lower() in ("help", "ayuda", "?", "comandos"):
+        return _help_message()
+
+    # OpenClaw chat fallback — route unknown messages to AI
+    from app.models.settings import OperationalSettings
+    ops = db.get(OperationalSettings, 1)
+    if ops and getattr(ops, "whatsapp_openclaw_enrichment", False):
+        from app.services.openclaw_chat_service import chat_with_openclaw
+        logger.info("wa_routing_to_openclaw", phone=phone[:6] + "***")
+        return chat_with_openclaw(db, phone, clean)
+
+    # Final fallback — show help with unknown command hint
+    return _help_message(clean)

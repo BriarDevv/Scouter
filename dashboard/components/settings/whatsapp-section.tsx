@@ -9,6 +9,7 @@ import {
   TextInput,
   PasswordInput,
   SaveButton,
+  Toggle,
   ConnectionTestBadge,
   TestButton,
 } from "./settings-primitives";
@@ -176,5 +177,107 @@ export function WhatsAppSection({ data, onSaved }: WhatsAppSectionProps) {
         <SaveButton onClick={handleSave} saving={saving} />
       </div>
     </div>
+  );
+}
+
+// ─── OpenClaw Conversational Section ──────────────────────────────────
+
+import type { OperationalSettings } from "@/types";
+
+interface OpenClawWhatsAppProps {
+  data: OperationalSettings;
+  onSaved: (updated: OperationalSettings) => void;
+}
+
+export function OpenClawWhatsAppSection({ data, onSaved }: OpenClawWhatsAppProps) {
+  const [form, setForm] = useState({
+    whatsapp_conversational_enabled: data.whatsapp_conversational_enabled ?? false,
+    whatsapp_openclaw_enrichment: data.whatsapp_openclaw_enrichment ?? false,
+    whatsapp_actions_enabled: data.whatsapp_actions_enabled ?? false,
+  });
+
+  const [saving, setSaving] = useState(false);
+
+  const toggle = (k: string) => (v: boolean) =>
+    setForm((prev) => ({ ...prev, [k]: v }));
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/settings/operational`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      const updated = await res.json();
+      sileo.success({ title: "Configuracion de OpenClaw actualizada" });
+      onSaved(updated);
+    } catch (err) {
+      sileo.error({
+        title: "Error al guardar",
+        description: err instanceof Error ? err.message : "Error desconocido.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <SettingsSectionCard
+      title="OpenClaw por WhatsApp"
+      description="Conecta OpenClaw a WhatsApp para chatear con tu IA, consultar datos del sistema y ejecutar acciones por mensaje."
+      icon={MessageCircle}
+    >
+      <div className="grid gap-0 lg:grid-cols-2 lg:gap-x-8">
+        <div>
+          <FieldRow
+            label="WhatsApp conversacional"
+            hint="Permite recibir y responder mensajes por WhatsApp (comandos como leads, stats, etc)"
+          >
+            <Toggle
+              checked={form.whatsapp_conversational_enabled}
+              onChange={toggle("whatsapp_conversational_enabled")}
+              label={form.whatsapp_conversational_enabled ? "Activo" : "Inactivo"}
+            />
+          </FieldRow>
+          <FieldRow
+            label="OpenClaw IA"
+            hint="Cuando un mensaje no es un comando, OpenClaw responde usando el modelo leader (4b)"
+          >
+            <Toggle
+              checked={form.whatsapp_openclaw_enrichment}
+              onChange={toggle("whatsapp_openclaw_enrichment")}
+              label={form.whatsapp_openclaw_enrichment ? "Activo" : "Inactivo"}
+              disabled={!form.whatsapp_conversational_enabled}
+            />
+          </FieldRow>
+          <FieldRow
+            label="Acciones por WhatsApp"
+            hint="Permite ejecutar acciones (aprobar drafts, resolver notificaciones) via WhatsApp con confirmacion"
+          >
+            <Toggle
+              checked={form.whatsapp_actions_enabled}
+              onChange={toggle("whatsapp_actions_enabled")}
+              label={form.whatsapp_actions_enabled ? "Activo" : "Inactivo"}
+              disabled={!form.whatsapp_conversational_enabled}
+            />
+          </FieldRow>
+        </div>
+        <div>
+          <div className="rounded-xl bg-muted/50 p-4 text-xs text-muted-foreground space-y-2">
+            <p className="font-medium text-foreground text-sm">Como funciona</p>
+            <p>1. Configura el webhook secret en <code className="text-violet-400">.env</code>: <code className="text-violet-400">WHATSAPP_WEBHOOK_SECRET</code></p>
+            <p>2. Apunta tu proveedor de WhatsApp al endpoint: <code className="text-violet-400">POST /api/v1/whatsapp/webhook</code></p>
+            <p>3. Los mensajes que son comandos (leads, stats, etc) devuelven datos del sistema</p>
+            <p>4. Si OpenClaw IA esta activo, los mensajes libres los responde la IA con contexto del sistema</p>
+            <p className="pt-1 text-muted-foreground/60">Modelo usado: qwen3.5:4b (leader) — requiere Ollama corriendo</p>
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 flex justify-end">
+        <SaveButton onClick={handleSave} saving={saving} />
+      </div>
+    </SettingsSectionCard>
   );
 }

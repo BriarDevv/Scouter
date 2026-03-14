@@ -183,16 +183,19 @@ export function Toggle({
   checked,
   onChange,
   label,
+  disabled,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
   label?: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
-      onClick={() => onChange(!checked)}
-      className="flex items-center gap-2 text-sm text-foreground/80"
+      onClick={() => !disabled && onChange(!checked)}
+      disabled={disabled}
+      className={`flex items-center gap-2 text-sm ${disabled ? "opacity-40 cursor-not-allowed text-muted-foreground" : "text-foreground/80"}`}
     >
       {checked ? (
         <ToggleRight className="h-5 w-5 text-emerald-600" />
