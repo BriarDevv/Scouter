@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import {
   AlertTriangle,
   Check,
+  ChevronDown,
+  ChevronUp,
   Edit3,
   Loader2,
   Lock,
@@ -71,7 +73,38 @@ interface ReplyDraftPanelProps {
   messageId: string;
   draft: ReplyAssistantDraft | null;
   compact?: boolean;
+  defaultCollapsed?: boolean;
   onRefresh: () => void | Promise<void>;
+}
+
+// ─── Collapsed summary line ──────────────────────────────
+
+function CollapsedSummary({
+  draft,
+  onExpand,
+}: {
+  draft: ReplyAssistantDraft | null;
+  onExpand: () => void;
+}) {
+  let statusText: string;
+  if (!draft) {
+    statusText = "Sin draft";
+  } else if (draft.latest_send?.status === "sent") {
+    statusText = "Enviado";
+  } else {
+    statusText = "Draft pendiente · No enviado";
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onExpand}
+      className="mt-3 flex w-full items-center justify-between gap-3 rounded-xl border border-violet-100 dark:border-violet-900/40 bg-violet-50/30 dark:bg-violet-950/20 px-3 py-2 text-left transition-colors hover:bg-violet-50/60 dark:hover:bg-violet-950/40"
+    >
+      <span className="text-xs font-medium text-foreground/70">{statusText}</span>
+      <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+    </button>
+  );
 }
 
 // ─── Panel ─────────────────────────────────────────────
@@ -80,8 +113,11 @@ export function ReplyDraftPanel({
   messageId,
   draft,
   compact = false,
+  defaultCollapsed = true,
   onRefresh,
 }: ReplyDraftPanelProps) {
+  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
+
   const [isEditing, setIsEditing] = useState(false);
   const [editSubject, setEditSubject] = useState("");
   const [editBody, setEditBody] = useState("");
@@ -202,27 +238,41 @@ export function ReplyDraftPanel({
   const isAlreadySent = draft?.latest_send?.status === "sent";
   const isSendDisabled = sending || !!blockedReason || isAlreadySent || isEditing;
 
+  // ─── Collapsed mode ─────────────────────────────────
+  if (isCollapsed) {
+    return <CollapsedSummary draft={draft} onExpand={() => setIsCollapsed(false)} />;
+  }
+
   // ─── No draft yet ────────────────────────────────────
   if (!draft) {
     return (
       <div className={cn(
-        "rounded-2xl border border-violet-100 bg-violet-50/30 p-4",
+        "mt-3 rounded-2xl border border-violet-100 dark:border-violet-900/40 bg-violet-50/30 dark:bg-violet-950/20 p-4",
         compact && "p-3"
       )}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className={cn("text-sm font-medium text-foreground", compact && "text-xs")}>
             Draft de respuesta sugerido
           </p>
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-xl gap-1.5"
-            onClick={() => void handleGenerate()}
-            disabled={generating}
-          >
-            <Sparkles className="h-3.5 w-3.5" />
-            {generating ? "Generando..." : "Generar draft"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl gap-1.5"
+              onClick={() => void handleGenerate()}
+              disabled={generating}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              {generating ? "Generando..." : "Generar draft"}
+            </Button>
+            <button
+              type="button"
+              onClick={() => setIsCollapsed(true)}
+              className="rounded-lg p-1 text-muted-foreground hover:bg-muted transition-colors"
+            >
+              <ChevronUp className="h-4 w-4" />
+            </button>
+          </div>
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
           Todavía no hay draft sugerido para esta reply.
@@ -234,7 +284,7 @@ export function ReplyDraftPanel({
   // ─── Draft exists ────────────────────────────────────
   return (
     <div className={cn(
-      "rounded-2xl border border-violet-100 bg-violet-50/30 p-4",
+      "mt-3 rounded-2xl border border-violet-100 dark:border-violet-900/40 bg-violet-50/30 dark:bg-violet-950/20 p-4",
       compact && "p-3"
     )}>
       {/* Header */}
@@ -289,6 +339,13 @@ export function ReplyDraftPanel({
                   : "Pedir review"}
             </Button>
           )}
+          <button
+            type="button"
+            onClick={() => setIsCollapsed(true)}
+            className="rounded-lg p-1 text-muted-foreground hover:bg-muted transition-colors"
+          >
+            <ChevronUp className="h-4 w-4" />
+          </button>
         </div>
       </div>
 

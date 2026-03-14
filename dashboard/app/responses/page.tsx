@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
-  AlertTriangle,
   Inbox,
+  Info,
   LifeBuoy,
-  MailSearch,
   MessagesSquare,
   RefreshCw,
   Sparkles,
@@ -15,10 +14,16 @@ import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { RelativeTime } from "@/components/shared/relative-time";
 import { StatCard } from "@/components/shared/stat-card";
+import { CollapsibleSection } from "@/components/shared/collapsible-section";
 import {
   InboundClassificationStatusBadge,
   InboundReplyLabelBadge,
 } from "@/components/shared/status-badge";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
 import { ReplyDraftPanel } from "@/components/shared/reply-draft-panel";
@@ -45,10 +50,6 @@ import type {
   OutreachDraft,
 } from "@/types";
 
-function safeDate(value: string | null | undefined) {
-  return value ?? new Date(0).toISOString();
-}
-
 export default function ResponsesPage() {
   const [messages, setMessages] = useState<InboundMessage[]>([]);
   const [threads, setThreads] = useState<EmailThreadSummary[]>([]);
@@ -56,7 +57,6 @@ export default function ResponsesPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [drafts, setDrafts] = useState<OutreachDraft[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isClassifying, setIsClassifying] = useState(false);
   const [classifyingMessageId, setClassifyingMessageId] = useState<string | null>(null);
@@ -64,7 +64,6 @@ export default function ResponsesPage() {
 
   async function loadInboxData() {
     setLoading(true);
-    setError(null);
     try {
       const [nextMessages, nextThreads, nextStatus, nextLeads, nextDrafts] = await Promise.all([
         getInboundMessages({ limit: 100 }),
@@ -78,8 +77,11 @@ export default function ResponsesPage() {
       setStatus(nextStatus);
       setLeads(nextLeads.items);
       setDrafts(nextDrafts);
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "No se pudo cargar el inbox.");
+    } catch (err) {
+      sileo.error({
+        title: "Error de carga",
+        description: err instanceof Error ? err.message : "No se pudo cargar el inbox.",
+      });
     } finally {
       setLoading(false);
     }
@@ -103,33 +105,36 @@ export default function ResponsesPage() {
   );
 
   const filteredMessages = useMemo(() => {
-    if (filter === "all") {
-      return messages;
-    }
+    if (filter === "all") return messages;
     return messages.filter((message) => message.classification_status === filter);
   }, [filter, messages]);
 
   const recentRepliesCount = messages.length;
-  const repliedLeadsCount = new Set(messages.map((message) => message.lead_id).filter(Boolean)).size;
+  const repliedLeadsCount = new Set(messages.map((m) => m.lead_id).filter(Boolean)).size;
   const positiveRepliesCount = messages.filter(
-    (message) => message.classification_label && POSITIVE_REPLY_LABELS.includes(message.classification_label)
+    (m) => m.classification_label && POSITIVE_REPLY_LABELS.includes(m.classification_label)
   ).length;
   const quoteRepliesCount = messages.filter(
-    (message) => message.classification_label === "asked_for_quote"
+    (m) => m.classification_label === "asked_for_quote"
   ).length;
   const meetingRepliesCount = messages.filter(
-    (message) => message.classification_label === "asked_for_meeting"
+    (m) => m.classification_label === "asked_for_meeting"
   ).length;
-  const pendingCount = messages.filter((message) => message.classification_status === "pending").length;
-  const escalatedCount = messages.filter((message) => message.should_escalate_reviewer).length;
+  const pendingCount = messages.filter((m) => m.classification_status === "pending").length;
+  const escalatedCount = messages.filter((m) => m.should_escalate_reviewer).length;
 
   async function handleSync() {
     setIsSyncing(true);
     try {
-      await syncInboundMail();
+      await sileo.promise(syncInboundMail(), {
+        loading: { title: "Sincronizando inbox…" },
+        success: { title: "Inbox sincronizado" },
+        error: (err: unknown) => ({
+          title: "Error de sincronización",
+          description: err instanceof Error ? err.message : "No se pudo sincronizar el inbox.",
+        }),
+      });
       await loadInboxData();
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "No se pudo sincronizar el inbox.");
     } finally {
       setIsSyncing(false);
     }
@@ -138,10 +143,15 @@ export default function ResponsesPage() {
   async function handleClassifyPending() {
     setIsClassifying(true);
     try {
-      await classifyPendingInboundMessages(25);
+      await sileo.promise(classifyPendingInboundMessages(25), {
+        loading: { title: "Clasificando pendientes…" },
+        success: { title: "Clasificación completada" },
+        error: (err: unknown) => ({
+          title: "Error de clasificación",
+          description: err instanceof Error ? err.message : "No se pudieron clasificar los replies.",
+        }),
+      });
       await loadInboxData();
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "No se pudieron clasificar los replies.");
     } finally {
       setIsClassifying(false);
     }
@@ -150,16 +160,19 @@ export default function ResponsesPage() {
   async function handleClassifyMessage(messageId: string) {
     setClassifyingMessageId(messageId);
     try {
-      await classifyInboundMessage(messageId);
+      await sileo.promise(classifyInboundMessage(messageId), {
+        loading: { title: "Clasificando reply…" },
+        success: { title: "Reply clasificado" },
+        error: (err: unknown) => ({
+          title: "Error de clasificación",
+          description: err instanceof Error ? err.message : "No se pudo clasificar el reply.",
+        }),
+      });
       await loadInboxData();
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "No se pudo clasificar el reply.");
     } finally {
       setClassifyingMessageId(null);
     }
   }
-
-
 
   return (
     <div className="space-y-6">
@@ -187,25 +200,19 @@ export default function ResponsesPage() {
         </Button>
       </PageHeader>
 
-      {error && (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 dark:bg-rose-950/30 px-4 py-4 text-sm text-rose-700">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            <div>
-              <p className="font-medium">No se pudo cargar el canal inbound</p>
-              <p className="mt-1 text-rose-600">{error}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-6">
-        <StatCard label="Replies recientes" value={recentRepliesCount} icon={Inbox} iconBg="bg-violet-50" iconColor="text-violet-600" />
-        <StatCard label="Leads que respondieron" value={repliedLeadsCount} icon={MessagesSquare} iconBg="bg-emerald-50" iconColor="text-emerald-600" />
-        <StatCard label="Replies positivas" value={positiveRepliesCount} icon={Sparkles} iconBg="bg-cyan-50" iconColor="text-cyan-600" />
-        <StatCard label="Pidieron cotización" value={quoteRepliesCount} icon={MailSearch} iconBg="bg-blue-50" iconColor="text-blue-600" />
-        <StatCard label="Pidieron reunión" value={meetingRepliesCount} icon={MessagesSquare} iconBg="bg-teal-50" iconColor="text-teal-600" />
-        <StatCard label="Sugeridas a reviewer" value={escalatedCount} icon={LifeBuoy} iconBg="bg-fuchsia-50" iconColor="text-fuchsia-600" />
+      {/* 4B: Reduced stat cards — 6 → 4, with subtitle breakdown on positives */}
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        <StatCard label="Replies recientes" value={recentRepliesCount} icon={Inbox} iconBg="bg-violet-50 dark:bg-violet-950/30" iconColor="text-violet-600 dark:text-violet-400" />
+        <StatCard label="Leads que respondieron" value={repliedLeadsCount} icon={MessagesSquare} iconBg="bg-emerald-50 dark:bg-emerald-950/30" iconColor="text-emerald-600 dark:text-emerald-400" />
+        <StatCard
+          label="Replies positivas"
+          value={positiveRepliesCount}
+          icon={Sparkles}
+          iconBg="bg-cyan-50 dark:bg-cyan-950/30"
+          iconColor="text-cyan-600 dark:text-cyan-400"
+          subtitle={`${quoteRepliesCount} cotización · ${meetingRepliesCount} reunión`}
+        />
+        <StatCard label="Sugeridas a reviewer" value={escalatedCount} icon={LifeBuoy} iconBg="bg-fuchsia-50 dark:bg-fuchsia-950/30" iconColor="text-fuchsia-600 dark:text-fuchsia-400" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.5fr,0.9fr]">
@@ -224,7 +231,7 @@ export default function ResponsesPage() {
                   onClick={() => setFilter(value)}
                   className={`rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
                     filter === value
-                      ? "bg-violet-100 text-violet-700"
+                      ? "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
                       : "border border-border bg-card text-muted-foreground hover:bg-muted"
                   }`}
                 >
@@ -252,7 +259,7 @@ export default function ResponsesPage() {
               className="py-10"
             />
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {filteredMessages.map((message) => {
                 const lead = message.lead_id ? leadById.get(message.lead_id) : null;
                 const outboundDraft = message.draft_id ? draftById.get(message.draft_id) : null;
@@ -260,13 +267,14 @@ export default function ResponsesPage() {
 
                 return (
                   <article key={message.id} className="rounded-2xl border border-border p-4">
+                    {/* 4C: Metadata block */}
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
                           <InboundClassificationStatusBadge status={message.classification_status} />
                           <InboundReplyLabelBadge label={message.classification_label} />
                           {message.should_escalate_reviewer && (
-                            <span className="inline-flex items-center rounded-full bg-fuchsia-50 dark:bg-fuchsia-950/30 px-2.5 py-0.5 text-xs font-medium text-fuchsia-700">
+                            <span className="inline-flex items-center rounded-full bg-fuchsia-50 dark:bg-fuchsia-950/30 px-2.5 py-0.5 text-xs font-medium text-fuchsia-700 dark:text-fuchsia-300">
                               Sugerir reviewer
                             </span>
                           )}
@@ -290,7 +298,7 @@ export default function ResponsesPage() {
 
                     <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
                       {lead && (
-                        <Link href={`/leads/${lead.id}`} className="text-violet-600 hover:underline">
+                        <Link href={`/leads/${lead.id}`} className="text-violet-600 dark:text-violet-400 hover:underline">
                           {lead.business_name}
                         </Link>
                       )}
@@ -305,48 +313,63 @@ export default function ResponsesPage() {
                       )}
                     </div>
 
-                    {message.summary && (
-                      <p className="mt-3 text-sm text-foreground/80">{message.summary}</p>
-                    )}
-                    {message.next_action_suggestion && (
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        <span className="font-medium text-foreground/80">Siguiente paso:</span>{" "}
-                        {message.next_action_suggestion}
-                      </p>
-                    )}
-                    {message.classification_error && (
-                      <p className="mt-2 text-sm text-rose-600">{message.classification_error}</p>
-                    )}
-                    {message.body_snippet && (
-                      <p className="mt-3 rounded-xl bg-muted px-3 py-2 text-sm text-muted-foreground">
-                        {message.body_snippet}
-                      </p>
-                    )}
-
-                    <ReplyDraftPanel
-                      messageId={message.id}
-                      draft={message.reply_assistant_draft ?? null}
-                      onRefresh={loadInboxData}
-                    />
-
-                    <div className="mt-3 flex items-center justify-between gap-3">
-                      <div className="text-xs text-muted-foreground font-data">
-                        {message.classification_model
-                          ? `${message.classification_role} · ${message.classification_model}`
-                          : "Sin clasificación aún"}
-                      </div>
-                      {(message.classification_status === "pending" || message.classification_status === "failed") && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="rounded-xl gap-1.5"
-                          onClick={() => void handleClassifyMessage(message.id)}
-                          disabled={classifyingMessageId === message.id}
-                        >
-                          <Sparkles className="h-3.5 w-3.5" />
-                          {classifyingMessageId === message.id ? "Clasificando..." : "Clasificar"}
-                        </Button>
+                    {/* 4C: Visual separator between metadata and content */}
+                    <div className="border-t border-border/50 mt-3 pt-3">
+                      {message.summary && (
+                        <p className="text-sm text-foreground/80">{message.summary}</p>
                       )}
+                      {message.next_action_suggestion && (
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          <span className="font-medium text-foreground/80">Siguiente paso:</span>{" "}
+                          {message.next_action_suggestion}
+                        </p>
+                      )}
+                      {message.classification_error && (
+                        <p className="mt-2 text-sm text-rose-600">{message.classification_error}</p>
+                      )}
+                      {message.body_snippet && (
+                        <p className="mt-3 line-clamp-2 rounded-xl bg-muted px-3 py-2 text-sm text-muted-foreground">
+                          {message.body_snippet}
+                        </p>
+                      )}
+
+                      <ReplyDraftPanel
+                        messageId={message.id}
+                        draft={message.reply_assistant_draft ?? null}
+                        defaultCollapsed
+                        onRefresh={loadInboxData}
+                      />
+
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        {/* 4C: Classification model info in tooltip */}
+                        <div className="text-xs text-muted-foreground font-data">
+                          {message.classification_model ? (
+                            <Tooltip>
+                              <TooltipTrigger className="inline-flex items-center gap-1 cursor-default">
+                                <Info className="h-3 w-3" />
+                                <span>Clasificado</span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {message.classification_role} · {message.classification_model}
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            "Sin clasificación aún"
+                          )}
+                        </div>
+                        {(message.classification_status === "pending" || message.classification_status === "failed") && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-xl gap-1.5"
+                            onClick={() => void handleClassifyMessage(message.id)}
+                            disabled={classifyingMessageId === message.id}
+                          >
+                            <Sparkles className="h-3.5 w-3.5" />
+                            {classifyingMessageId === message.id ? "Clasificando..." : "Clasificar"}
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </article>
                 );
@@ -402,9 +425,20 @@ export default function ResponsesPage() {
             )}
           </section>
 
-          <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <h2 className="font-heading text-base font-semibold text-foreground">Threads activos</h2>
-            <div className="mt-4 space-y-3">
+          {/* 4E: CollapsibleSection for threads */}
+          <CollapsibleSection
+            title="Threads activos"
+            icon={MessagesSquare}
+            badge={
+              threads.length > 0 ? (
+                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                  {threads.length}
+                </span>
+              ) : undefined
+            }
+            defaultOpen={threads.length <= 5}
+          >
+            <div className="space-y-3">
               {threads.slice(0, 8).map((thread) => {
                 const lead = thread.lead_id ? leadById.get(thread.lead_id) : null;
                 return (
@@ -442,7 +476,7 @@ export default function ResponsesPage() {
                 />
               )}
             </div>
-          </section>
+          </CollapsibleSection>
         </div>
       </div>
     </div>
