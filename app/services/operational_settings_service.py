@@ -111,6 +111,14 @@ def get_effective_rules(db: Session) -> dict:
         "allow_openclaw_briefs": row.allow_openclaw_briefs,
         "allow_reply_assistant_generation": row.allow_reply_assistant_generation,
         "use_reviewer_for_labels": row.use_reviewer_for_labels or [],
+        "notifications_enabled": row.notifications_enabled,
+        "notification_score_threshold": row.notification_score_threshold,
+        "whatsapp_alerts_enabled": row.whatsapp_alerts_enabled,
+        "whatsapp_min_severity": row.whatsapp_min_severity,
+        "whatsapp_categories": row.whatsapp_categories or [],
+        "whatsapp_openclaw_enrichment": row.whatsapp_openclaw_enrichment,
+        "whatsapp_conversational_enabled": row.whatsapp_conversational_enabled,
+        "whatsapp_actions_enabled": row.whatsapp_actions_enabled,
     }
 
 
@@ -151,5 +159,13 @@ def to_response_dict(row: OperationalSettings) -> dict:
         "allow_openclaw_briefs": row.allow_openclaw_briefs,
         "allow_reply_assistant_generation": row.allow_reply_assistant_generation,
         "use_reviewer_for_labels": row.use_reviewer_for_labels or [],
+        "notifications_enabled": row.notifications_enabled,
+        "notification_score_threshold": row.notification_score_threshold,
+        "whatsapp_alerts_enabled": row.whatsapp_alerts_enabled,
+        "whatsapp_min_severity": row.whatsapp_min_severity,
+        "whatsapp_categories": row.whatsapp_categories or [],
+        "whatsapp_openclaw_enrichment": row.whatsapp_openclaw_enrichment,
+        "whatsapp_conversational_enabled": row.whatsapp_conversational_enabled,
+        "whatsapp_actions_enabled": row.whatsapp_actions_enabled,
         "updated_at": row.updated_at.isoformat() if row.updated_at else None,
     }

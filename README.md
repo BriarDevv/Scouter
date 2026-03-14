@@ -160,6 +160,48 @@ docker compose logs -f                   # Ver logs
 docker compose down                      # Apagar
 ```
 
+## Que es automatico y que es manual
+
+En ClawScout v1, **casi todo es manual**. No hay tareas programadas, no hay
+auto-crawl, no hay Celery Beat. Todo se dispara cuando vos lo pedis.
+
+| Componente | Automatico? | Como se controla |
+|---|---|---|
+| Crawlers | No — se corren a mano | Nada que apagar |
+| Enrichment / Scoring / Drafts | No — se disparan por API | Nada que apagar |
+| Reviewer (modelo 27b) | No — vos lo pedis | Nada que apagar |
+| Reply assistant | Toggle en Settings | `reply_assistant_enabled` |
+| Auto-classify inbound | Toggle en Settings | `auto_classify_inbound` |
+| Reviewer automatico | Toggle en Settings | `reviewer_enabled` |
+| Mail inbound sync | Toggle en Settings | `mail_inbound_sync_enabled` |
+| WhatsApp alerts | Toggle en Settings | `whatsapp_alerts_enabled` |
+| OpenClaw | Proceso separado | No se toca con make up/down |
+
+Los modelos de Ollama (4b, 9b, 27b) solo consumen VRAM cuando los usas.
+Ollama los descarga de memoria automaticamente despues de unos minutos de
+inactividad.
+
+### Modo "solo OpenClaw" (estacionar el sistema)
+
+Si queres dejar solo OpenClaw funcionando y apagar todo lo demas:
+
+```bash
+make down                                # Apaga API, Worker, Dashboard, Postgres, Redis
+```
+
+OpenClaw sigue funcionando porque es un proceso independiente.
+Cuando quieras volver: `make up`.
+
+### Apagar features de IA sin apagar el sistema
+
+Desde el dashboard en **Settings > Reglas**, podes desactivar:
+- **Reply assistant** — genera respuestas automaticas a emails entrantes
+- **Reviewer** — revisa automaticamente drafts y mensajes
+- **Auto-classify inbound** — clasifica emails entrantes con IA
+
+Todos estos toggles estan en `false` por default, asi que la IA automatica
+no corre salvo que la enciendas explicitamente.
+
 ## Configuracion de LLM
 
 El sistema usa Ollama con modelos qwen3.5 asignados por rol:
