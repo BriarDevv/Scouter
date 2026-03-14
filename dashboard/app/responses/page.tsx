@@ -19,6 +19,7 @@ import {
   InboundClassificationStatusBadge,
   InboundReplyLabelBadge,
 } from "@/components/shared/status-badge";
+import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
 import { ReplyDraftPanel } from "@/components/shared/reply-draft-panel";
 import {
@@ -163,7 +164,7 @@ export default function ResponsesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Responses"
+        title="Respuestas"
         description="Inbox comercial grounded sobre inbound mail real, matching a deliveries y clasificación con executor."
       >
         <Button
@@ -187,7 +188,7 @@ export default function ResponsesPage() {
       </PageHeader>
 
       {error && (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-700">
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 dark:bg-rose-950/30 px-4 py-4 text-sm text-rose-700">
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
@@ -208,11 +209,11 @@ export default function ResponsesPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.5fr,0.9fr]">
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-4">
             <div>
-              <h2 className="font-heading text-base font-semibold text-slate-900">Replies recientes</h2>
-              <p className="mt-1 text-sm text-slate-500">
+              <h2 className="font-heading text-base font-semibold text-foreground">Replies recientes</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
                 Estado real del inbox inbound, con clasificación persistida y matching al hilo comercial.
               </p>
             </div>
@@ -224,10 +225,10 @@ export default function ResponsesPage() {
                   className={`rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
                     filter === value
                       ? "bg-violet-100 text-violet-700"
-                      : "border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                      : "border border-border bg-card text-muted-foreground hover:bg-muted"
                   }`}
                 >
-                  {value === "all" ? "Todos" : value}
+                  {value === "all" ? "Todos" : value === "pending" ? "Pendientes" : value === "classified" ? "Clasificados" : "Fallidos"}
                 </button>
               ))}
             </div>
@@ -236,10 +237,10 @@ export default function ResponsesPage() {
           {loading ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, index) => (
-                <div key={index} className="animate-pulse rounded-2xl border border-slate-100 p-4">
-                  <div className="h-4 w-40 rounded bg-slate-200" />
-                  <div className="mt-3 h-3 w-full rounded bg-slate-100" />
-                  <div className="mt-2 h-3 w-2/3 rounded bg-slate-100" />
+                <div key={index} className="animate-pulse rounded-2xl border border-border p-4">
+                  <div className="h-4 w-40 rounded bg-muted" />
+                  <div className="mt-3 h-3 w-full rounded bg-muted" />
+                  <div className="mt-2 h-3 w-2/3 rounded bg-muted" />
                 </div>
               ))}
             </div>
@@ -258,28 +259,28 @@ export default function ResponsesPage() {
                 const thread = message.thread_id ? threadById.get(message.thread_id) : null;
 
                 return (
-                  <article key={message.id} className="rounded-2xl border border-slate-100 p-4">
+                  <article key={message.id} className="rounded-2xl border border-border p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
                           <InboundClassificationStatusBadge status={message.classification_status} />
                           <InboundReplyLabelBadge label={message.classification_label} />
                           {message.should_escalate_reviewer && (
-                            <span className="inline-flex items-center rounded-full bg-fuchsia-50 px-2.5 py-0.5 text-xs font-medium text-fuchsia-700">
+                            <span className="inline-flex items-center rounded-full bg-fuchsia-50 dark:bg-fuchsia-950/30 px-2.5 py-0.5 text-xs font-medium text-fuchsia-700">
                               Sugerir reviewer
                             </span>
                           )}
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-slate-900">
+                          <p className="text-sm font-medium text-foreground">
                             {message.from_name || message.from_email || "Reply sin remitente"}
                           </p>
-                          <p className="text-xs text-slate-500 font-data">
+                          <p className="text-xs text-muted-foreground font-data">
                             {message.subject || "(sin asunto)"}
                           </p>
                         </div>
                       </div>
-                      <div className="text-right text-xs text-slate-400 font-data">
+                      <div className="text-right text-xs text-muted-foreground font-data">
                         <div>{formatDateTime(message.received_at || message.created_at)}</div>
                         <div className="mt-1">
                           <RelativeTime date={message.received_at || message.created_at} />
@@ -287,7 +288,7 @@ export default function ResponsesPage() {
                       </div>
                     </div>
 
-                    <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500">
+                    <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
                       {lead && (
                         <Link href={`/leads/${lead.id}`} className="text-violet-600 hover:underline">
                           {lead.business_name}
@@ -305,11 +306,11 @@ export default function ResponsesPage() {
                     </div>
 
                     {message.summary && (
-                      <p className="mt-3 text-sm text-slate-700">{message.summary}</p>
+                      <p className="mt-3 text-sm text-foreground/80">{message.summary}</p>
                     )}
                     {message.next_action_suggestion && (
-                      <p className="mt-2 text-sm text-slate-600">
-                        <span className="font-medium text-slate-700">Siguiente paso:</span>{" "}
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        <span className="font-medium text-foreground/80">Siguiente paso:</span>{" "}
                         {message.next_action_suggestion}
                       </p>
                     )}
@@ -317,7 +318,7 @@ export default function ResponsesPage() {
                       <p className="mt-2 text-sm text-rose-600">{message.classification_error}</p>
                     )}
                     {message.body_snippet && (
-                      <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                      <p className="mt-3 rounded-xl bg-muted px-3 py-2 text-sm text-muted-foreground">
                         {message.body_snippet}
                       </p>
                     )}
@@ -329,7 +330,7 @@ export default function ResponsesPage() {
                     />
 
                     <div className="mt-3 flex items-center justify-between gap-3">
-                      <div className="text-xs text-slate-400 font-data">
+                      <div className="text-xs text-muted-foreground font-data">
                         {message.classification_model
                           ? `${message.classification_role} · ${message.classification_model}`
                           : "Sin clasificación aún"}
@@ -355,30 +356,30 @@ export default function ResponsesPage() {
         </section>
 
         <div className="space-y-6">
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="font-heading text-base font-semibold text-slate-900">Estado del inbox</h2>
+          <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <h2 className="font-heading text-base font-semibold text-foreground">Estado del inbox</h2>
             {status ? (
-              <div className="mt-4 space-y-3 text-sm text-slate-600">
+              <div className="mt-4 space-y-3 text-sm text-muted-foreground">
                 <div className="flex items-center justify-between gap-3">
                   <span>Provider</span>
-                  <span className="font-medium text-slate-900">{status.provider}</span>
+                  <span className="font-medium text-foreground">{status.provider}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <span>Mailbox</span>
-                  <code className="rounded-md bg-slate-100 px-2 py-1 text-xs">{status.mailbox}</code>
+                  <code className="rounded-md bg-muted px-2 py-1 text-xs">{status.mailbox}</code>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <span>Auto classify</span>
-                  <span className="font-medium text-slate-900">{status.auto_classify_inbound ? "Activo" : "Manual"}</span>
+                  <span className="font-medium text-foreground">{status.auto_classify_inbound ? "Activo" : "Manual"}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <span>Última sync</span>
-                  <span className="font-medium text-slate-900">
+                  <span className="font-medium text-foreground">
                     {status.last_sync ? status.last_sync.status : "Sin corridas"}
                   </span>
                 </div>
                 {status.last_sync && (
-                  <div className="rounded-xl bg-slate-50 px-3 py-3 text-xs text-slate-500">
+                  <div className="rounded-xl bg-muted px-3 py-3 text-xs text-muted-foreground">
                     <p>
                       {status.last_sync.new_count} nuevos · {status.last_sync.deduplicated_count} deduplicados
                     </p>
@@ -397,32 +398,32 @@ export default function ResponsesPage() {
                 )}
               </div>
             ) : (
-              <p className="mt-4 text-sm text-slate-500">No se pudo leer el estado del inbox.</p>
+              <p className="mt-4 text-sm text-muted-foreground">No se pudo leer el estado del inbox.</p>
             )}
           </section>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="font-heading text-base font-semibold text-slate-900">Threads activos</h2>
+          <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <h2 className="font-heading text-base font-semibold text-foreground">Threads activos</h2>
             <div className="mt-4 space-y-3">
               {threads.slice(0, 8).map((thread) => {
                 const lead = thread.lead_id ? leadById.get(thread.lead_id) : null;
                 return (
-                  <div key={thread.id} className="rounded-xl border border-slate-100 px-3 py-3">
+                  <div key={thread.id} className="rounded-xl border border-border px-3 py-3">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-sm font-medium text-slate-900">
+                        <p className="text-sm font-medium text-foreground">
                           {lead ? lead.business_name : "Thread sin lead"}
                         </p>
-                        <p className="mt-1 text-xs text-slate-500">
+                        <p className="mt-1 text-xs text-muted-foreground">
                           {INBOUND_MATCH_VIA_LABELS[thread.matched_via] || thread.matched_via}
                           {thread.match_confidence !== null ? ` · ${thread.match_confidence.toFixed(2)}` : ""}
                         </p>
                       </div>
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                         {thread.message_count} msg
                       </span>
                     </div>
-                    <p className="mt-2 text-xs text-slate-400 font-data">
+                    <p className="mt-2 text-xs text-muted-foreground font-data">
                       {thread.last_message_at ? (
                         <RelativeTime date={thread.last_message_at} />
                       ) : (

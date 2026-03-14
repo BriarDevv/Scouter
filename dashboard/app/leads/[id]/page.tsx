@@ -47,14 +47,14 @@ function InfoRow({ icon: Icon, label, value, href }: { icon: typeof Globe; label
   if (!value) return null;
   return (
     <div className="flex items-center gap-3 py-2">
-      <Icon className="h-4 w-4 shrink-0 text-slate-400" />
-      <span className="text-sm text-slate-500 w-24 shrink-0">{label}</span>
+      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <span className="text-sm text-muted-foreground w-24 shrink-0">{label}</span>
       {href ? (
         <a href={href} target="_blank" rel="noopener noreferrer" className="text-sm text-violet-600 hover:underline truncate font-data">
           {value}
         </a>
       ) : (
-        <span className="text-sm text-slate-900 truncate font-data">{value}</span>
+        <span className="text-sm text-foreground truncate font-data">{value}</span>
       )}
     </div>
   );
@@ -70,19 +70,19 @@ function SignalsList({ signals }: { signals: LeadSignal[] }) {
             key={s.id}
             className={cn(
               "flex items-center gap-3 rounded-xl px-3 py-2 text-sm",
-              config?.severity === "positive" ? "bg-emerald-50/60" : "bg-slate-50"
+              config?.severity === "positive" ? "bg-emerald-50/60" : "bg-muted"
             )}
           >
             <span className="text-base">{config?.emoji || "?"}</span>
             <div>
-              <span className="font-medium text-slate-700">{config?.label || s.signal_type}</span>
-              {s.detail && <span className="text-slate-500"> — {s.detail}</span>}
+              <span className="font-medium text-foreground/80">{config?.label || s.signal_type}</span>
+              {s.detail && <span className="text-muted-foreground"> — {s.detail}</span>}
             </div>
           </div>
         );
       })}
       {signals.length === 0 && (
-        <p className="text-sm text-slate-400 py-4 text-center">Sin señales detectadas. Ejecutá el enrichment.</p>
+        <p className="text-sm text-muted-foreground py-4 text-center">Sin señales detectadas. Ejecutá el enrichment.</p>
       )}
     </div>
   );
@@ -225,11 +225,11 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   if (!lead || isMissing) {
     return (
       <div className="space-y-6">
-        <Link href="/leads" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
+        <Link href="/leads" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground/80">
           <ArrowLeft className="h-4 w-4" /> Volver a leads
         </Link>
-        <div className="rounded-2xl border border-slate-100 bg-white p-12 text-center">
-          <p className="text-slate-500">Lead no encontrado</p>
+        <div className="rounded-2xl border border-border bg-card p-12 text-center">
+          <p className="text-muted-foreground">Lead no encontrado</p>
         </div>
       </div>
     );
@@ -241,18 +241,18 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   return (
     <div className="space-y-6">
       {/* Back + Header */}
-      <Link href="/leads" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
+      <Link href="/leads" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground/80">
         <ArrowLeft className="h-4 w-4" /> Volver a leads
       </Link>
 
       <div className="flex items-start justify-between">
         <div className="space-y-2">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-slate-900 font-heading">{lead.business_name}</h1>
+            <h1 className="text-2xl font-semibold text-foreground font-heading">{lead.business_name}</h1>
             <StatusBadge status={lead.status} />
             <QualityBadge quality={lead.quality} />
           </div>
-          <div className="flex items-center gap-4 text-sm text-slate-500">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
             {lead.industry && <span>{lead.industry}</span>}
             {lead.city && <span>{lead.city}{lead.zone ? `, ${lead.zone}` : ""}</span>}
             <span>
@@ -298,8 +298,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         {/* Left column: Info + Signals */}
         <div className="space-y-6 lg:col-span-1">
           {/* Contact Info */}
-          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-            <h3 className="text-sm font-semibold text-slate-900 mb-3 font-heading">Datos de contacto</h3>
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <h3 className="text-sm font-semibold text-foreground mb-3 font-heading">Datos de contacto</h3>
             <div className="divide-y divide-slate-50">
               <InfoRow icon={Globe} label="Website" value={extractDomain(lead.website_url)} href={lead.website_url || undefined} />
               <InfoRow icon={Instagram} label="Instagram" value={lead.instagram_url ? "@" + lead.instagram_url.split("/").pop() : null} href={lead.instagram_url || undefined} />
@@ -311,22 +311,22 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           </div>
 
           {/* Score */}
-          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-            <h3 className="text-sm font-semibold text-slate-900 mb-3 font-heading">Score</h3>
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <h3 className="text-sm font-semibold text-foreground mb-3 font-heading">Score</h3>
             <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-50">
-                <span className="text-2xl font-bold text-slate-900 font-data">{lead.score !== null ? lead.score.toFixed(0) : "—"}</span>
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
+                <span className="text-2xl font-bold text-foreground font-data">{lead.score !== null ? lead.score.toFixed(0) : "—"}</span>
               </div>
               <div>
                 <ScoreBadge score={lead.score} />
-                <p className="mt-1 text-xs text-slate-500">de 100 puntos posibles</p>
+                <p className="mt-1 text-xs text-muted-foreground">de 100 puntos posibles</p>
               </div>
             </div>
           </div>
 
           {/* Signals */}
-          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-            <h3 className="text-sm font-semibold text-slate-900 mb-3 font-heading">Señales Detectadas</h3>
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <h3 className="text-sm font-semibold text-foreground mb-3 font-heading">Señales Detectadas</h3>
             <SignalsList signals={lead.signals ?? []} />
           </div>
         </div>
@@ -340,29 +340,29 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 <Sparkles className="h-4 w-4 text-violet-600" />
                 <h3 className="text-sm font-semibold text-violet-900 font-heading">Análisis IA</h3>
               </div>
-              <p className="text-sm text-slate-700 leading-relaxed">{lead.llm_summary}</p>
+              <p className="text-sm text-foreground/80 leading-relaxed">{lead.llm_summary}</p>
 
               {lead.llm_quality_assessment && (
-                <div className="mt-4 rounded-xl bg-white/60 p-3">
-                  <p className="text-xs font-medium text-slate-500 mb-1">Evaluación de calidad</p>
-                  <p className="text-sm text-slate-700">{lead.llm_quality_assessment}</p>
+                <div className="mt-4 rounded-xl bg-card/60 p-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Evaluación de calidad</p>
+                  <p className="text-sm text-foreground/80">{lead.llm_quality_assessment}</p>
                 </div>
               )}
 
               {lead.llm_suggested_angle && (
-                <div className="mt-3 rounded-xl bg-white/60 p-3">
-                  <p className="text-xs font-medium text-slate-500 mb-1">Ángulo comercial sugerido</p>
-                  <p className="text-sm text-slate-700">{lead.llm_suggested_angle}</p>
+                <div className="mt-3 rounded-xl bg-card/60 p-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Ángulo comercial sugerido</p>
+                  <p className="text-sm text-foreground/80">{lead.llm_suggested_angle}</p>
                 </div>
               )}
             </div>
           )}
 
           {!lead.llm_summary && (
-            <div className="rounded-2xl border border-slate-100 bg-white p-8 text-center shadow-sm">
-              <Sparkles className="mx-auto h-8 w-8 text-slate-300" />
-              <p className="mt-3 text-sm font-medium text-slate-600">Análisis IA no disponible</p>
-              <p className="mt-1 text-xs text-slate-400">Ejecuta el pipeline para generar el analisis con el modelo configurado en Ollama</p>
+            <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+              <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/50" />
+              <p className="mt-3 text-sm font-medium text-muted-foreground">Análisis IA no disponible</p>
+              <p className="mt-1 text-xs text-muted-foreground">Ejecuta el pipeline para generar el analisis con el modelo configurado en Ollama</p>
               <Button variant="outline" size="sm" className="mt-4 rounded-xl gap-1.5">
                 <RefreshCw className="h-3.5 w-3.5" /> Ejecutar Análisis
               </Button>
@@ -370,25 +370,25 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           )}
 
           {/* Drafts */}
-          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-            <h3 className="text-sm font-semibold text-slate-900 mb-4 font-heading">Borradores de Outreach</h3>
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <h3 className="text-sm font-semibold text-foreground mb-4 font-heading">Borradores de Outreach</h3>
             {drafts.length > 0 ? (
               <div className="space-y-3">
                 {drafts.map((draft) => (
-                  <div key={draft.id} className="rounded-xl border border-slate-100 p-4">
+                  <div key={draft.id} className="rounded-xl border border-border p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-slate-900">{draft.subject}</span>
+                      <span className="text-sm font-medium text-foreground">{draft.subject}</span>
                       <span className={cn(
                         "rounded-full px-2 py-0.5 text-xs font-medium",
-                        draft.status === "pending_review" && "bg-amber-50 text-amber-700",
-                        draft.status === "approved" && "bg-emerald-50 text-emerald-700",
-                        draft.status === "sent" && "bg-blue-50 text-blue-700",
-                        draft.status === "rejected" && "bg-red-50 text-red-700",
+                        draft.status === "pending_review" && "bg-amber-50 dark:bg-amber-950/30 text-amber-700",
+                        draft.status === "approved" && "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700",
+                        draft.status === "sent" && "bg-blue-50 dark:bg-blue-950/30 text-blue-700",
+                        draft.status === "rejected" && "bg-red-50 dark:bg-red-950/30 text-red-700",
                       )}>
                         {draft.status === "pending_review" ? "Pendiente" : draft.status === "approved" ? "Aprobado" : draft.status === "sent" ? "Enviado" : "Rechazado"}
                       </span>
                     </div>
-                    <p className="text-sm text-slate-600 whitespace-pre-line leading-relaxed">{draft.body}</p>
+                    <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{draft.body}</p>
                     {draft.status === "pending_review" && (
                       <div className="mt-3 flex gap-2">
                         <Button
@@ -414,44 +414,44 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-slate-400 text-center py-6">No hay borradores generados</p>
+              <p className="text-sm text-muted-foreground text-center py-6">No hay borradores generados</p>
             )}
           </div>
 
           {/* Pipeline Runs */}
-          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
             <div className="flex items-center justify-between gap-3 mb-4">
-              <h3 className="text-sm font-semibold text-slate-900 font-heading">Pipeline Async</h3>
+              <h3 className="text-sm font-semibold text-foreground font-heading">Pipeline Async</h3>
               {latestTask?.task_id && (
-                <span className="text-xs text-slate-400 font-data">task {latestTask.task_id.slice(0, 8)}</span>
+                <span className="text-xs text-muted-foreground font-data">task {latestTask.task_id.slice(0, 8)}</span>
               )}
             </div>
             {latestTask && (
               <div className="mb-4 rounded-xl border border-violet-100 bg-violet-50/40 p-3">
                 <p className="text-xs font-medium text-violet-700">Última task</p>
-                <p className="mt-1 text-sm text-slate-700">
+                <p className="mt-1 text-sm text-foreground/80">
                   {latestTask.status} {latestTask.current_step ? `· ${latestTask.current_step}` : ""}
                 </p>
                 {latestTask.pipeline_run_id && (
-                  <p className="mt-1 text-xs text-slate-500 font-data">run {latestTask.pipeline_run_id.slice(0, 8)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground font-data">run {latestTask.pipeline_run_id.slice(0, 8)}</p>
                 )}
               </div>
             )}
             {pipelineRuns.length > 0 ? (
               <div className="space-y-3">
                 {pipelineRuns.map((run) => (
-                  <div key={run.id} className="rounded-xl border border-slate-100 p-4">
+                  <div key={run.id} className="rounded-xl border border-border p-4">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-sm font-medium text-slate-900">
+                        <p className="text-sm font-medium text-foreground">
                           {run.status} {run.current_step ? `· ${run.current_step}` : ""}
                         </p>
-                        <p className="mt-1 text-xs text-slate-500 font-data">
+                        <p className="mt-1 text-xs text-muted-foreground font-data">
                           run {run.id.slice(0, 8)} · <RelativeTime date={run.updated_at} />
                         </p>
                       </div>
                       {run.root_task_id && (
-                        <span className="text-xs text-slate-400 font-data">{run.root_task_id.slice(0, 8)}</span>
+                        <span className="text-xs text-muted-foreground font-data">{run.root_task_id.slice(0, 8)}</span>
                       )}
                     </div>
                     {run.error && <p className="mt-2 text-xs text-red-600">{run.error}</p>}
@@ -459,19 +459,19 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-slate-400 text-center py-6">Sin ejecuciones async registradas</p>
+              <p className="text-sm text-muted-foreground text-center py-6">Sin ejecuciones async registradas</p>
             )}
           </div>
 
-          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-sm font-semibold text-slate-900 font-heading">Replies del lead</h3>
-                <p className="mt-1 text-xs text-slate-500">
+                <h3 className="text-sm font-semibold text-foreground font-heading">Replies del lead</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
                   Inbound real vinculado por delivery/thread y clasificado por el executor.
                 </p>
               </div>
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
+              <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
                 {inboundMessages.length} replies
               </span>
             </div>
@@ -482,19 +482,19 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   <InboundReplyLabelBadge label={latestInboundMessage.classification_label} />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-slate-900">
+                  <p className="text-sm font-medium text-foreground">
                     Última reply: {latestInboundMessage.from_name || latestInboundMessage.from_email || "Remitente desconocido"}
                   </p>
-                  <p className="text-xs text-slate-500 font-data">
+                  <p className="text-xs text-muted-foreground font-data">
                     {latestInboundMessage.subject || "(sin asunto)"}
                   </p>
                 </div>
                 {latestInboundMessage.summary && (
-                  <p className="text-sm text-slate-700">{latestInboundMessage.summary}</p>
+                  <p className="text-sm text-foreground/80">{latestInboundMessage.summary}</p>
                 )}
                 {latestInboundMessage.next_action_suggestion && (
-                  <p className="text-sm text-slate-600">
-                    <span className="font-medium text-slate-700">Siguiente paso:</span>{" "}
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium text-foreground/80">Siguiente paso:</span>{" "}
                     {latestInboundMessage.next_action_suggestion}
                   </p>
                 )}
@@ -511,28 +511,28 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 {inboundMessages.map((message) => {
                   const thread = message.thread_id ? threadById.get(message.thread_id) : undefined;
                   return (
-                    <div key={message.id} className="rounded-xl border border-slate-100 p-4">
+                    <div key={message.id} className="rounded-xl border border-border p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="space-y-2">
                           <div className="flex flex-wrap items-center gap-2">
                             <InboundClassificationStatusBadge status={message.classification_status} />
                             <InboundReplyLabelBadge label={message.classification_label} />
                             {message.should_escalate_reviewer && (
-                              <span className="inline-flex items-center rounded-full bg-fuchsia-50 px-2.5 py-0.5 text-xs font-medium text-fuchsia-700">
+                              <span className="inline-flex items-center rounded-full bg-fuchsia-50 dark:bg-fuchsia-950/30 px-2.5 py-0.5 text-xs font-medium text-fuchsia-700">
                                 Sugerir reviewer
                               </span>
                             )}
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-slate-900">
+                            <p className="text-sm font-medium text-foreground">
                               {message.from_name || message.from_email || "Remitente desconocido"}
                             </p>
-                            <p className="text-xs text-slate-500 font-data">
+                            <p className="text-xs text-muted-foreground font-data">
                               {message.subject || "(sin asunto)"}
                             </p>
                           </div>
                         </div>
-                        <div className="text-right text-xs text-slate-400 font-data">
+                        <div className="text-right text-xs text-muted-foreground font-data">
                           <div>{formatDateTime(message.received_at || message.created_at)}</div>
                           <div className="mt-1">
                             <RelativeTime date={message.received_at || message.created_at} />
@@ -541,11 +541,11 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                       </div>
 
                       {message.summary && (
-                        <p className="mt-3 text-sm text-slate-700">{message.summary}</p>
+                        <p className="mt-3 text-sm text-foreground/80">{message.summary}</p>
                       )}
                       {message.next_action_suggestion && (
-                        <p className="mt-2 text-sm text-slate-600">
-                          <span className="font-medium text-slate-700">Siguiente paso:</span>{" "}
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          <span className="font-medium text-foreground/80">Siguiente paso:</span>{" "}
                           {message.next_action_suggestion}
                         </p>
                       )}
@@ -553,12 +553,12 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                         <p className="mt-2 text-sm text-rose-600">{message.classification_error}</p>
                       )}
                       {message.body_snippet && (
-                        <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                        <p className="mt-3 rounded-xl bg-muted px-3 py-2 text-sm text-muted-foreground">
                           {message.body_snippet}
                         </p>
                       )}
 
-                      <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500">
+                      <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
                         {thread && (
                           <span>
                             {INBOUND_MATCH_VIA_LABELS[thread.matched_via] || thread.matched_via}
@@ -578,26 +578,26 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 })}
               </div>
             ) : (
-              <p className="text-sm text-slate-400 text-center py-6">
+              <p className="text-sm text-muted-foreground text-center py-6">
                 Este lead todavía no tiene replies inbound vinculadas.
               </p>
             )}
           </div>
 
           {/* Timeline */}
-          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-            <h3 className="text-sm font-semibold text-slate-900 mb-4 font-heading">Timeline</h3>
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <h3 className="text-sm font-semibold text-foreground mb-4 font-heading">Timeline</h3>
             {logs.length > 0 ? (
               <div className="space-y-3">
                 {logs.map((log) => (
                   <div key={log.id} className="flex items-start gap-3">
                     <div className="mt-0.5 h-2 w-2 rounded-full bg-slate-300 shrink-0" />
                     <div>
-                      <p className="text-sm text-slate-700">
+                      <p className="text-sm text-foreground/80">
                         <span className="font-medium capitalize">{log.action}</span>
-                        {log.detail && <span className="text-slate-500"> — {log.detail}</span>}
+                        {log.detail && <span className="text-muted-foreground"> — {log.detail}</span>}
                       </p>
-                      <p className="text-xs text-slate-400 flex items-center gap-1 font-data">
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 font-data">
                         <Clock className="h-3 w-3" />
                         {formatDateTime(log.created_at)} · {log.actor}
                       </p>
@@ -606,15 +606,15 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-slate-400 text-center py-6">Sin actividad registrada</p>
+              <p className="text-sm text-muted-foreground text-center py-6">Sin actividad registrada</p>
             )}
           </div>
 
           {/* Notes */}
           {lead.notes && (
-            <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-              <h3 className="text-sm font-semibold text-slate-900 mb-2 font-heading">Notas</h3>
-              <p className="text-sm text-slate-600">{lead.notes}</p>
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+              <h3 className="text-sm font-semibold text-foreground mb-2 font-heading">Notas</h3>
+              <p className="text-sm text-muted-foreground">{lead.notes}</p>
             </div>
           )}
         </div>

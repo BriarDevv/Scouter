@@ -98,7 +98,7 @@ export default function SuppressionPage() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div>
-                <label className="text-sm font-medium text-slate-700">Email</label>
+                <label className="text-sm font-medium text-foreground/80">Email</label>
                 <Input
                   placeholder="email@ejemplo.com"
                   className="mt-1 rounded-xl"
@@ -107,7 +107,7 @@ export default function SuppressionPage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-700">Dominio</label>
+                <label className="text-sm font-medium text-foreground/80">Dominio</label>
                 <Input
                   placeholder="ejemplo.com"
                   className="mt-1 rounded-xl"
@@ -116,7 +116,7 @@ export default function SuppressionPage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-700">Motivo</label>
+                <label className="text-sm font-medium text-foreground/80">Motivo</label>
                 <Input
                   placeholder="Ej: pidió no ser contactado"
                   className="mt-1 rounded-xl"
@@ -143,21 +143,21 @@ export default function SuppressionPage() {
 
       {/* Search */}
       <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder="Buscar por email, dominio o negocio..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 h-9 rounded-xl border-slate-200 bg-white text-sm"
+          className="pl-9 h-9 rounded-xl border-border bg-card text-sm"
         />
       </div>
 
       {/* Table */}
       {filtered.length > 0 ? (
-        <div className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+        <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="border-slate-100 hover:bg-transparent">
+              <TableRow className="border-border hover:bg-transparent">
                 <TableHead className="text-xs font-medium font-heading">Email</TableHead>
                 <TableHead className="text-xs font-medium font-heading">Dominio</TableHead>
                 <TableHead className="text-xs font-medium font-heading">Negocio</TableHead>
@@ -168,17 +168,17 @@ export default function SuppressionPage() {
             </TableHeader>
             <TableBody>
               {filtered.map((entry) => (
-                <TableRow key={entry.id} className="border-slate-50 hover:bg-slate-50/50">
-                  <TableCell className="text-sm text-slate-900 font-data">{entry.email || "—"}</TableCell>
-                  <TableCell className="text-sm text-slate-600 font-data">{entry.domain || "—"}</TableCell>
-                  <TableCell className="text-sm text-slate-600">{entry.business_name || "—"}</TableCell>
-                  <TableCell className="text-sm text-slate-500">{entry.reason || "—"}</TableCell>
-                  <TableCell className="text-sm text-slate-500 font-data">{formatDate(entry.added_at)}</TableCell>
+                <TableRow key={entry.id} className="border-border/50 hover:bg-muted/50">
+                  <TableCell className="text-sm text-foreground font-data">{entry.email || "—"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground font-data">{entry.domain || "—"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{entry.business_name || "—"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{entry.reason || "—"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground font-data">{formatDate(entry.added_at)}</TableCell>
                   <TableCell>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-slate-400 hover:text-red-600"
+                      className="h-8 w-8 text-muted-foreground hover:text-red-600"
                       title="Restaurar (remover de supresión)"
                       onClick={() => void handleRemove(entry.id)}
                       disabled={removingId === entry.id}
@@ -191,8 +191,8 @@ export default function SuppressionPage() {
             </TableBody>
           </Table>
 
-          <div className="border-t border-slate-100 px-4 py-3">
-            <span className="text-xs text-slate-500">{filtered.length} entradas</span>
+          <div className="border-t border-border px-4 py-3">
+            <span className="text-xs text-muted-foreground">{filtered.length} entradas</span>
           </div>
         </div>
       ) : (

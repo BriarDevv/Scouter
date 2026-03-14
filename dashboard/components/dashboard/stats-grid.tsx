@@ -16,8 +16,8 @@ export function StatsGrid({ stats }: { stats: DashboardStats }) {
         change={`+${stats.new_today} hoy`}
         changeType="positive"
         icon={Users}
-        iconBg="bg-slate-100"
-        iconColor="text-slate-600"
+        iconBg="bg-muted"
+        iconColor="text-muted-foreground"
       />
       <StatCard
         label="Calificados"

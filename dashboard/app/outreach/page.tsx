@@ -38,7 +38,7 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 
 const ACTION_CONFIG: Record<string, { icon: typeof FileText; label: string; color: string }> = {
-  generated: { icon: FileText, label: "Draft generado", color: "text-slate-500" },
+  generated: { icon: FileText, label: "Draft generado", color: "text-muted-foreground" },
   approved: { icon: CheckCircle, label: "Aprobado", color: "text-emerald-600" },
   rejected: { icon: XCircle, label: "Rechazado", color: "text-red-500" },
   sent: { icon: Send, label: "Enviado", color: "text-blue-600" },
@@ -177,7 +177,7 @@ export default function OutreachPage() {
                   "rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors",
                   filter === s
                     ? "bg-violet-100 text-violet-700"
-                    : "bg-white text-slate-500 hover:bg-slate-50 border border-slate-200"
+                    : "bg-card text-muted-foreground hover:bg-muted border border-border"
                 )}
               >
                 {s === "all" ? "Todos" : DRAFT_STATUS_CONFIG[s].label}
@@ -194,8 +194,8 @@ export default function OutreachPage() {
                   key={draft.id}
                   onClick={() => setSelectedDraft(draft)}
                   className={cn(
-                    "cursor-pointer rounded-2xl border bg-white p-5 shadow-sm transition-all hover:shadow-md",
-                    selectedDraft?.id === draft.id ? "border-violet-200 ring-1 ring-violet-100" : "border-slate-100"
+                    "cursor-pointer rounded-2xl border bg-card p-5 shadow-sm transition-all hover:shadow-md",
+                    selectedDraft?.id === draft.id ? "border-violet-200 ring-1 ring-violet-100" : "border-border"
                   )}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -203,22 +203,22 @@ export default function OutreachPage() {
                       <div className="flex items-center gap-2 mb-1.5">
                         <DraftStatusBadge status={draft.status} />
                         {lead && (
-                          <Link href={`/leads/${lead.id}`} className="text-xs text-slate-500 hover:text-violet-600 transition-colors">
+                          <Link href={`/leads/${lead.id}`} className="text-xs text-muted-foreground hover:text-violet-600 transition-colors">
                             {lead.business_name}
                           </Link>
                         )}
                       </div>
-                      <h4 className="text-sm font-medium text-slate-900 font-heading">{draft.subject}</h4>
-                      <p className="mt-1 text-sm text-slate-500 line-clamp-2">{draft.body}</p>
+                      <h4 className="text-sm font-medium text-foreground font-heading">{draft.subject}</h4>
+                      <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{draft.body}</p>
                     </div>
                     <RelativeTime
                       date={draft.generated_at}
-                      className="shrink-0 text-xs text-slate-400 font-data"
+                      className="shrink-0 text-xs text-muted-foreground font-data"
                     />
                   </div>
 
                   {draft.status === "pending_review" && (
-                    <div className="mt-3 flex gap-2 border-t border-slate-50 pt-3">
+                    <div className="mt-3 flex gap-2 border-t border-border/50 pt-3">
                       <Button
                         size="sm"
                         className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 gap-1.5 h-8"
@@ -243,9 +243,9 @@ export default function OutreachPage() {
             })}
 
             {filteredDrafts.length === 0 && (
-              <div className="rounded-2xl border border-slate-100 bg-white p-12 text-center">
-                <Mail className="mx-auto h-8 w-8 text-slate-300" />
-                <p className="mt-3 text-sm text-slate-500">No hay drafts con este filtro</p>
+              <div className="rounded-2xl border border-border bg-card p-12 text-center">
+                <Mail className="mx-auto h-8 w-8 text-muted-foreground/50" />
+                <p className="mt-3 text-sm text-muted-foreground">No hay drafts con este filtro</p>
               </div>
             )}
           </div>
@@ -253,11 +253,11 @@ export default function OutreachPage() {
 
         {/* Right: Thread + Activity */}
         <div className="space-y-4">
-          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-sm font-semibold text-slate-900 font-heading">Hilo del draft</h3>
-                <p className="mt-1 text-xs text-slate-500">
+                <h3 className="text-sm font-semibold text-foreground font-heading">Hilo del draft</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
                   Delivery real y replies inbound vinculadas al borrador seleccionado.
                 </p>
               </div>
@@ -266,45 +266,45 @@ export default function OutreachPage() {
 
             {selectedDraft ? (
               <div className="mt-4 space-y-4">
-                <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
-                  <p className="text-sm font-medium text-slate-900">{selectedDraft.subject}</p>
-                  <p className="mt-1 text-xs text-slate-500 line-clamp-3">{selectedDraft.body}</p>
-                  <p className="mt-2 text-xs text-slate-400 font-data">
+                <div className="rounded-xl border border-border bg-muted/60 p-3">
+                  <p className="text-sm font-medium text-foreground">{selectedDraft.subject}</p>
+                  <p className="mt-1 text-xs text-muted-foreground line-clamp-3">{selectedDraft.body}</p>
+                  <p className="mt-2 text-xs text-muted-foreground font-data">
                     Generado <RelativeTime date={selectedDraft.generated_at} />
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Deliveries</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Deliveries</p>
                   {selectedDeliveries.length > 0 ? (
                     <div className="mt-2 space-y-2">
                       {selectedDeliveries.map((delivery) => (
-                        <div key={delivery.id} className="rounded-xl border border-slate-100 px-3 py-3">
+                        <div key={delivery.id} className="rounded-xl border border-border px-3 py-3">
                           <div className="flex items-center justify-between gap-3">
                             <span className={cn(
                               "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-                              delivery.status === "sent" && "bg-blue-50 text-blue-700",
-                              delivery.status === "sending" && "bg-amber-50 text-amber-700",
-                              delivery.status === "failed" && "bg-rose-50 text-rose-700"
+                              delivery.status === "sent" && "bg-blue-50 dark:bg-blue-950/30 text-blue-700",
+                              delivery.status === "sending" && "bg-amber-50 dark:bg-amber-950/30 text-amber-700",
+                              delivery.status === "failed" && "bg-rose-50 dark:bg-rose-950/30 text-rose-700"
                             )}>
                               {delivery.status}
                             </span>
-                            <span className="text-xs text-slate-400 font-data">
+                            <span className="text-xs text-muted-foreground font-data">
                               {delivery.sent_at ? <RelativeTime date={delivery.sent_at} /> : "Sin envío"}
                             </span>
                           </div>
-                          <p className="mt-2 text-sm text-slate-700">{delivery.recipient_email}</p>
+                          <p className="mt-2 text-sm text-foreground/80">{delivery.recipient_email}</p>
                           {delivery.error && <p className="mt-1 text-xs text-rose-600">{delivery.error}</p>}
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="mt-2 text-sm text-slate-400">Este draft todavía no tiene deliveries registradas.</p>
+                    <p className="mt-2 text-sm text-muted-foreground">Este draft todavía no tiene deliveries registradas.</p>
                   )}
                 </div>
 
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Replies vinculadas</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Replies vinculadas</p>
                   {mailError && (
                     <p className="mt-2 text-xs text-rose-600">{mailError}</p>
                   )}
@@ -313,26 +313,26 @@ export default function OutreachPage() {
                       {selectedReplies.map((message) => {
                         const thread = selectedThreads.find((item) => item.id === message.thread_id);
                         return (
-                          <div key={message.id} className="rounded-xl border border-slate-100 px-3 py-3">
+                          <div key={message.id} className="rounded-xl border border-border px-3 py-3">
                             <div className="flex flex-wrap items-center gap-2">
                               <InboundClassificationStatusBadge status={message.classification_status} />
                               <InboundReplyLabelBadge label={message.classification_label} />
                               {message.should_escalate_reviewer && (
-                                <span className="inline-flex items-center rounded-full bg-fuchsia-50 px-2.5 py-0.5 text-xs font-medium text-fuchsia-700">
+                                <span className="inline-flex items-center rounded-full bg-fuchsia-50 dark:bg-fuchsia-950/30 px-2.5 py-0.5 text-xs font-medium text-fuchsia-700">
                                   Sugerir reviewer
                                 </span>
                               )}
                             </div>
-                            <p className="mt-2 text-sm text-slate-900">
+                            <p className="mt-2 text-sm text-foreground">
                               {message.from_name || message.from_email || "Reply sin remitente"}
                             </p>
-                            {message.summary && <p className="mt-1 text-sm text-slate-700">{message.summary}</p>}
+                            {message.summary && <p className="mt-1 text-sm text-foreground/80">{message.summary}</p>}
                             {message.next_action_suggestion && (
-                              <p className="mt-1 text-xs text-slate-500">
+                              <p className="mt-1 text-xs text-muted-foreground">
                                 Siguiente paso: {message.next_action_suggestion}
                               </p>
                             )}
-                            <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-400 font-data">
+                            <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground font-data">
                               <span>
                                 <RelativeTime date={message.received_at || message.created_at} />
                               </span>
@@ -348,18 +348,18 @@ export default function OutreachPage() {
                       })}
                     </div>
                   ) : (
-                    <p className="mt-2 text-sm text-slate-400">Todavía no hay replies vinculadas a este draft.</p>
+                    <p className="mt-2 text-sm text-muted-foreground">Todavía no hay replies vinculadas a este draft.</p>
                   )}
                 </div>
               </div>
             ) : (
-              <p className="mt-4 text-sm text-slate-400">Seleccioná un draft para ver su hilo.</p>
+              <p className="mt-4 text-sm text-muted-foreground">Seleccioná un draft para ver su hilo.</p>
             )}
           </div>
 
-          <h3 className="text-sm font-semibold text-slate-900 font-heading">Actividad Reciente</h3>
+          <h3 className="text-sm font-semibold text-foreground font-heading">Actividad Reciente</h3>
 
-          <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
             <div className="space-y-1">
               {logs.map((log) => {
                 const config = ACTION_CONFIG[log.action] || ACTION_CONFIG.generated;
@@ -367,15 +367,15 @@ export default function OutreachPage() {
                 const lead = leads.find((item) => item.id === log.lead_id);
 
                 return (
-                  <div key={log.id} className="flex items-start gap-3 rounded-xl px-2 py-2.5 hover:bg-slate-50 transition-colors">
+                  <div key={log.id} className="flex items-start gap-3 rounded-xl px-2 py-2.5 hover:bg-muted transition-colors">
                     <Icon className={cn("h-4 w-4 mt-0.5 shrink-0", config.color)} />
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm text-slate-700">
+                      <p className="text-sm text-foreground/80">
                         <span className="font-medium">{config.label}</span>
-                        {lead && <span className="text-slate-500"> — {lead.business_name}</span>}
+                        {lead && <span className="text-muted-foreground"> — {lead.business_name}</span>}
                       </p>
-                      {log.detail && <p className="text-xs text-slate-500 mt-0.5">{log.detail}</p>}
-                      <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1 font-data">
+                      {log.detail && <p className="text-xs text-muted-foreground mt-0.5">{log.detail}</p>}
+                      <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1 font-data">
                         <Clock className="h-3 w-3" />
                         <RelativeTime date={log.created_at} />
                       </p>

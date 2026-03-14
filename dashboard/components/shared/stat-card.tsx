@@ -25,11 +25,11 @@ export function StatCard({
   subtitle,
 }: StatCardProps) {
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
       <div className="flex items-start justify-between">
         <div className="space-y-2">
-          <p className="text-sm font-medium text-slate-500">{label}</p>
-          <p className="font-data text-2xl font-semibold tracking-tight text-slate-900">{value}</p>
+          <p className="text-sm font-medium text-muted-foreground">{label}</p>
+          <p className="font-data text-2xl font-semibold tracking-tight text-foreground">{value}</p>
           {(change || subtitle) && (
             <div className="flex items-center gap-1.5">
               {change && (
@@ -38,13 +38,13 @@ export function StatCard({
                     "text-xs font-medium",
                     changeType === "positive" && "text-emerald-600",
                     changeType === "negative" && "text-red-500",
-                    changeType === "neutral" && "text-slate-500"
+                    changeType === "neutral" && "text-muted-foreground"
                   )}
                 >
                   {change}
                 </span>
               )}
-              {subtitle && <span className="text-xs text-slate-400">{subtitle}</span>}
+              {subtitle && <span className="text-xs text-muted-foreground">{subtitle}</span>}
             </div>
           )}
         </div>

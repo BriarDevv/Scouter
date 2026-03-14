@@ -6,6 +6,7 @@ import { StatCard } from "@/components/shared/stat-card";
 import { AreaChartCard } from "@/components/charts/area-chart-card";
 import { PipelineFunnel } from "@/components/dashboard/pipeline-funnel";
 import { formatPercent, formatDays } from "@/lib/formatters";
+import { CHART_TOOLTIP_STYLE } from "@/lib/constants";
 import {
   getCityBreakdown,
   getDashboardStats,
@@ -37,8 +38,8 @@ const CONVERSION_COLORS = ["#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444"
 function SectionTitle({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="mb-4">
-      <h2 className="text-lg font-semibold text-slate-900 font-heading">{title}</h2>
-      {subtitle && <p className="text-sm text-slate-500">{subtitle}</p>}
+      <h2 className="text-lg font-semibold text-foreground font-heading">{title}</h2>
+      {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
     </div>
   );
 }
@@ -53,14 +54,14 @@ function MetricTable({
   data: Record<string, any>[];
 }) {
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-      <h3 className="text-sm font-semibold text-slate-900 mb-4 font-heading">{title}</h3>
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <h3 className="text-sm font-semibold text-foreground mb-4 font-heading">{title}</h3>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-100">
+            <tr className="border-b border-border">
               {columns.map((col) => (
-                <th key={col.key} className="px-3 py-2 text-left text-xs font-medium text-slate-500 font-heading">
+                <th key={col.key} className="px-3 py-2 text-left text-xs font-medium text-muted-foreground font-heading">
                   {col.label}
                 </th>
               ))}
@@ -68,9 +69,9 @@ function MetricTable({
           </thead>
           <tbody>
             {data.map((row, i) => (
-              <tr key={i} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+              <tr key={i} className="border-b border-border/50 hover:bg-muted/50 transition-colors">
                 {columns.map((col) => (
-                  <td key={col.key} className="px-3 py-2.5 text-slate-700">
+                  <td key={col.key} className="px-3 py-2.5 text-foreground/80">
                     {col.format ? col.format(row[col.key]) : row[col.key]}
                   </td>
                 ))}
@@ -183,15 +184,15 @@ export default function PerformancePage() {
             ]}
             data={[...industryBreakdown].sort((a, b) => b.conversion_rate - a.conversion_rate)}
           />
-          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-            <h3 className="text-sm font-semibold text-slate-900 mb-4 font-heading">Conversión por Rubro</h3>
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <h3 className="text-sm font-semibold text-foreground mb-4 font-heading">Conversión por Rubro</h3>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={[...industryBreakdown].sort((a, b) => b.conversion_rate - a.conversion_rate)} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 11, fill: "#94a3b8" }} tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} tickLine={false} axisLine={false} />
                   <YAxis type="category" dataKey="industry" tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} width={90} />
-                  <Tooltip formatter={(v) => formatPercent(Number(v))} contentStyle={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "12px", fontSize: 12 }} />
+                  <Tooltip formatter={(v) => formatPercent(Number(v))} contentStyle={CHART_TOOLTIP_STYLE} />
                   <Bar dataKey="conversion_rate" radius={[0, 6, 6, 0]} barSize={18}>
                     {[...industryBreakdown].sort((a, b) => b.conversion_rate - a.conversion_rate).map((_, i) => (
                       <Cell key={i} fill={CONVERSION_COLORS[i % CONVERSION_COLORS.length]} />
@@ -244,7 +245,7 @@ export default function PerformancePage() {
               <TrendingUp className="h-4 w-4 text-emerald-600" />
               <h4 className="text-sm font-semibold text-emerald-800 font-heading">Mayor conversión</h4>
             </div>
-            <p className="text-sm text-slate-700">Los leads <strong>referidos</strong> convierten 3x mejor que los de crawler. Los rubros <strong>Inmobiliaria</strong> y <strong>Salud</strong> tienen las mejores tasas.</p>
+            <p className="text-sm text-foreground/80">Los leads <strong>referidos</strong> convierten 3x mejor que los de crawler. Los rubros <strong>Inmobiliaria</strong> y <strong>Salud</strong> tienen las mejores tasas.</p>
           </div>
 
           <div className="rounded-2xl border border-amber-100 bg-amber-50/30 p-5">
@@ -252,7 +253,7 @@ export default function PerformancePage() {
               <AlertTriangle className="h-4 w-4 text-amber-600" />
               <h4 className="text-sm font-semibold text-amber-800 font-heading">Cuello de botella</h4>
             </div>
-            <p className="text-sm text-slate-700">La mayor caída está entre <strong>Contactado → Abierto</strong> (62% drop-off). Revisar subject lines y timing de envío.</p>
+            <p className="text-sm text-foreground/80">La mayor caída está entre <strong>Contactado → Abierto</strong> (62% drop-off). Revisar subject lines y timing de envío.</p>
           </div>
 
           <div className="rounded-2xl border border-violet-100 bg-violet-50/30 p-5">
@@ -260,7 +261,7 @@ export default function PerformancePage() {
               <Zap className="h-4 w-4 text-violet-600" />
               <h4 className="text-sm font-semibold text-violet-800 font-heading">Oportunidad</h4>
             </div>
-            <p className="text-sm text-slate-700"><strong>Bahía Blanca</strong> tiene el reply rate más alto (52%). Considerar aumentar prospección en ciudades medianas.</p>
+            <p className="text-sm text-foreground/80"><strong>Bahía Blanca</strong> tiene el reply rate más alto (52%). Considerar aumentar prospección en ciudades medianas.</p>
           </div>
         </div>
       </section>

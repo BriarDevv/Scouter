@@ -98,12 +98,12 @@ export function LeadsTable({ leads }: LeadsTableProps) {
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[240px]">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Buscar por nombre, rubro, ciudad, email..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="pl-9 h-9 rounded-xl border-slate-200 bg-white text-sm"
+            className="pl-9 h-9 rounded-xl border-border bg-card text-sm"
           />
         </div>
 
@@ -116,7 +116,7 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                 "shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors",
                 statusFilter === s
                   ? "bg-violet-100 text-violet-700"
-                  : "bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700 border border-slate-200"
+                  : "bg-card text-muted-foreground hover:bg-muted hover:text-foreground/80 border border-border"
               )}
             >
               {s === "all" ? "Todos" : STATUS_CONFIG[s].label}
@@ -126,10 +126,10 @@ export function LeadsTable({ leads }: LeadsTableProps) {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+      <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow className="hover:bg-transparent border-slate-100">
+            <TableRow className="hover:bg-transparent border-border">
               <TableHead className="w-[250px]">
                 <button onClick={() => toggleSort("business_name")} className="flex items-center gap-1 text-xs font-medium font-heading">
                   Negocio <ArrowUpDown className="h-3 w-3" />
@@ -155,33 +155,33 @@ export function LeadsTable({ leads }: LeadsTableProps) {
           </TableHeader>
           <TableBody>
             {paginated.map((lead) => (
-              <TableRow key={lead.id} className="border-slate-50 hover:bg-slate-50/50 transition-colors">
+              <TableRow key={lead.id} className="border-border/50 hover:bg-muted/50 transition-colors">
                 <TableCell>
                   <Link href={`/leads/${lead.id}`} className="group flex items-center gap-2">
-                    <span className="font-medium text-slate-900 group-hover:text-violet-700 transition-colors">
+                    <span className="font-medium text-foreground group-hover:text-violet-700 transition-colors">
                       {truncate(lead.business_name, 30)}
                     </span>
                   </Link>
                 </TableCell>
-                <TableCell className="text-sm text-slate-600">{lead.industry || "—"}</TableCell>
-                <TableCell className="text-sm text-slate-600">{lead.city || "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{lead.industry || "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{lead.city || "—"}</TableCell>
                 <TableCell>
                   {lead.website_url ? (
-                    <span className="text-xs text-slate-500 font-data">{extractDomain(lead.website_url)}</span>
+                    <span className="text-xs text-muted-foreground font-data">{extractDomain(lead.website_url)}</span>
                   ) : (
-                    <span className="text-xs text-slate-400">Sin web</span>
+                    <span className="text-xs text-muted-foreground">Sin web</span>
                   )}
                 </TableCell>
                 <TableCell><ScoreBadge score={lead.score} /></TableCell>
                 <TableCell><QualityBadge quality={lead.quality} /></TableCell>
                 <TableCell><StatusBadge status={lead.status} /></TableCell>
-                <TableCell className="text-xs text-slate-500 font-data">
+                <TableCell className="text-xs text-muted-foreground font-data">
                   <RelativeTime date={lead.created_at} />
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />}>
-                      <MoreHorizontal className="h-4 w-4 text-slate-400" />
+                      <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
                       <DropdownMenuItem render={<Link href={`/leads/${lead.id}`} />}>
@@ -200,8 +200,8 @@ export function LeadsTable({ leads }: LeadsTableProps) {
         </Table>
 
         {/* Pagination */}
-        <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
-          <span className="text-xs text-slate-500">
+        <div className="flex items-center justify-between border-t border-border px-4 py-3">
+          <span className="text-xs text-muted-foreground">
             <span className="font-data">{filtered.length}</span> leads{statusFilter !== "all" && ` (${STATUS_CONFIG[statusFilter].label})`}
           </span>
           <div className="flex items-center gap-1">
@@ -214,7 +214,7 @@ export function LeadsTable({ leads }: LeadsTableProps) {
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="px-2 text-xs text-slate-600 font-data">
+            <span className="px-2 text-xs text-muted-foreground font-data">
               {page} / {totalPages || 1}
             </span>
             <Button

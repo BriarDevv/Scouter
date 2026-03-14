@@ -85,16 +85,16 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
       <div className="mb-5 flex items-start gap-3">
         {Icon && (
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-foreground text-white">
             <Icon className="h-4 w-4" />
           </div>
         )}
         <div>
-          <h2 className="font-heading text-base font-semibold text-slate-900">{title}</h2>
-          {description && <p className="mt-0.5 text-sm text-slate-500">{description}</p>}
+          <h2 className="font-heading text-base font-semibold text-foreground">{title}</h2>
+          {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
         </div>
       </div>
       {children}
@@ -104,9 +104,9 @@ function SectionCard({
 
 function MetaRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-slate-100 py-3 last:border-b-0">
-      <span className="text-sm text-slate-500">{label}</span>
-      <div className="text-right text-sm font-medium text-slate-900">{value}</div>
+    <div className="flex items-center justify-between gap-4 border-b border-border py-3 last:border-b-0">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <div className="text-right text-sm font-medium text-foreground">{value}</div>
     </div>
   );
 }
@@ -119,10 +119,10 @@ function StatusPill({
   tone: "positive" | "warning" | "neutral" | "danger";
 }) {
   const styles = {
-    positive: "bg-emerald-50 text-emerald-700",
-    warning: "bg-amber-50 text-amber-700",
-    neutral: "bg-slate-100 text-slate-600",
-    danger: "bg-rose-50 text-rose-700",
+    positive: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700",
+    warning: "bg-amber-50 dark:bg-amber-950/30 text-amber-700",
+    neutral: "bg-muted text-muted-foreground",
+    danger: "bg-rose-50 dark:bg-rose-950/30 text-rose-700",
   };
   return (
     <span
@@ -143,9 +143,9 @@ function FieldRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-1.5 border-b border-slate-100 py-3 last:border-b-0">
-      <label className="text-sm font-medium text-slate-700">{label}</label>
-      {hint && <p className="text-xs text-slate-400">{hint}</p>}
+    <div className="flex flex-col gap-1.5 border-b border-border py-3 last:border-b-0">
+      <label className="text-sm font-medium text-foreground/80">{label}</label>
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
       {children}
     </div>
   );
@@ -171,7 +171,7 @@ function TextInput({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       disabled={disabled}
-      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white disabled:opacity-50"
+      className="w-full rounded-xl border border-border bg-muted px-3 py-2 text-sm text-foreground outline-none transition focus:border-border focus:bg-card disabled:opacity-50"
     />
   );
 }
@@ -200,7 +200,7 @@ function PasswordInput({
             ? "••••••••  (ya configurado)"
             : (placeholder ?? "Nueva contraseña")
         }
-        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 pr-20 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
+        className="w-full rounded-xl border border-border bg-muted px-3 py-2 pr-20 text-sm text-foreground outline-none transition focus:border-border focus:bg-card"
       />
       <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
         {alreadySet && isEmpty && (
@@ -209,7 +209,7 @@ function PasswordInput({
         <button
           type="button"
           onClick={() => setVisible((v) => !v)}
-          className="rounded p-1 text-slate-400 hover:text-slate-600"
+          className="rounded p-1 text-muted-foreground hover:text-muted-foreground"
           tabIndex={-1}
         >
           {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -232,12 +232,12 @@ function Toggle({
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className="flex items-center gap-2 text-sm text-slate-700"
+      className="flex items-center gap-2 text-sm text-foreground/80"
     >
       {checked ? (
         <ToggleRight className="h-5 w-5 text-emerald-600" />
       ) : (
-        <ToggleLeft className="h-5 w-5 text-slate-400" />
+        <ToggleLeft className="h-5 w-5 text-muted-foreground" />
       )}
       {label && <span>{label}</span>}
     </button>
@@ -259,7 +259,7 @@ function SaveButton({
     <button
       onClick={onClick}
       disabled={saving || disabled}
-      className="flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:opacity-50"
+      className="flex items-center gap-2 rounded-xl bg-foreground px-4 py-2 text-sm font-medium text-white transition hover:bg-foreground/80 disabled:opacity-50"
     >
       {saving ? (
         <Loader2 className="h-4 w-4 animate-spin" />
@@ -325,8 +325,8 @@ function ProviderPicker({
           onClick={() => onChange(opt.id)}
           className={`rounded-xl border px-4 py-2 text-sm font-medium transition ${
             value === opt.id
-              ? "border-slate-900 bg-slate-900 text-white"
-              : "border-slate-200 bg-white text-slate-600 hover:border-slate-400"
+              ? "border-slate-900 bg-foreground text-white"
+              : "border-border bg-card text-muted-foreground hover:border-border"
           }`}
         >
           {opt.label}
@@ -348,7 +348,7 @@ function ConnectionTestBadge({
   lastError: string | null;
 }) {
   if (!lastAt) {
-    return <span className="text-xs text-slate-400">Sin prueba realizada</span>;
+    return <span className="text-xs text-muted-foreground">Sin prueba realizada</span>;
   }
   return (
     <div className="flex flex-col gap-1">
@@ -363,12 +363,12 @@ function ConnectionTestBadge({
         >
           {lastOk ? "Conexión exitosa" : "Falló"}
         </span>
-        <span className="text-xs text-slate-400">
+        <span className="text-xs text-muted-foreground">
           &middot; <RelativeTime date={lastAt} />
         </span>
       </div>
       {!lastOk && lastError && (
-        <p className="rounded-lg bg-rose-50 px-2 py-1 text-xs text-rose-600">{lastError}</p>
+        <p className="rounded-lg bg-rose-50 dark:bg-rose-950/30 px-2 py-1 text-xs text-rose-600">{lastError}</p>
       )}
     </div>
   );
@@ -405,7 +405,7 @@ function TestButton({
         type="button"
         onClick={run}
         disabled={testing}
-        className="flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 disabled:opacity-50"
+        className="flex w-fit items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium text-foreground/80 transition hover:border-border disabled:opacity-50"
       >
         {testing ? (
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -445,7 +445,7 @@ function SetupChecklist({
     if (s === "complete") return <CheckCircle2 className="h-5 w-5 text-emerald-500" />;
     if (s === "warning") return <TriangleAlert className="h-5 w-5 text-amber-500" />;
     if (s === "incomplete") return <XCircle className="h-5 w-5 text-rose-400" />;
-    return <div className="h-5 w-5 rounded-full border-2 border-slate-200" />;
+    return <div className="h-5 w-5 rounded-full border-2 border-border" />;
   };
 
   const actionTabMap: Record<string, TabId> = {
@@ -457,10 +457,10 @@ function SetupChecklist({
 
   const overallBg =
     data.overall === "ready"
-      ? "bg-emerald-50 border-emerald-200"
+      ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200"
       : data.overall === "warning"
-        ? "bg-amber-50 border-amber-200"
-        : "bg-slate-50 border-slate-200";
+        ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200"
+        : "bg-muted border-border";
 
   const overallLabel =
     data.overall === "ready"
@@ -474,7 +474,7 @@ function SetupChecklist({
       ? "text-emerald-700"
       : data.overall === "warning"
         ? "text-amber-700"
-        : "text-slate-600";
+        : "text-muted-foreground";
 
   return (
     <div className="space-y-6">
@@ -490,10 +490,10 @@ function SetupChecklist({
           <div>
             <p className={`font-semibold ${overallText}`}>{overallLabel}</p>
             <div className="mt-1 flex gap-3 text-xs">
-              <span className={data.ready_to_send ? "text-emerald-600" : "text-slate-400"}>
+              <span className={data.ready_to_send ? "text-emerald-600" : "text-muted-foreground"}>
                 {data.ready_to_send ? "✓" : "○"} Envío listo
               </span>
-              <span className={data.ready_to_receive ? "text-emerald-600" : "text-slate-400"}>
+              <span className={data.ready_to_receive ? "text-emerald-600" : "text-muted-foreground"}>
                 {data.ready_to_receive ? "✓" : "○"} Recepción lista
               </span>
             </div>
@@ -504,20 +504,20 @@ function SetupChecklist({
         {data.steps.map((step) => (
           <div
             key={step.id}
-            className="flex items-start gap-4 rounded-2xl border border-slate-100 bg-white p-4"
+            className="flex items-start gap-4 rounded-2xl border border-border bg-card p-4"
           >
             <div className="mt-0.5 shrink-0">{statusIcon(step.status)}</div>
             <div className="flex-1">
-              <p className="text-sm font-semibold text-slate-900">{step.label}</p>
+              <p className="text-sm font-semibold text-foreground">{step.label}</p>
               {step.detail && (
-                <p className="mt-0.5 text-xs text-slate-500">{step.detail}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{step.detail}</p>
               )}
             </div>
             {step.action && actionTabMap[step.id] && (
               <button
                 type="button"
                 onClick={() => onTabChange(actionTabMap[step.id])}
-                className="shrink-0 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-400 hover:text-slate-900"
+                className="shrink-0 rounded-xl border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-border hover:text-foreground"
               >
                 {step.action}
               </button>
@@ -549,29 +549,29 @@ function SignaturePreview({
   const hasContent = form.signature_name || form.signature_role || form.signature_company;
   if (!hasContent) {
     return (
-      <div className="flex items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8">
-        <p className="text-sm text-slate-400">
+      <div className="flex items-center justify-center rounded-2xl border border-dashed border-border bg-muted p-8">
+        <p className="text-sm text-muted-foreground">
           Completá los datos para ver la preview
         </p>
       </div>
     );
   }
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-400">
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         Preview de firma
       </p>
-      <div className="border-t border-slate-200 pt-4 font-mono text-sm text-slate-700">
+      <div className="border-t border-border pt-4 font-mono text-sm text-foreground/80">
         {form.default_closing_line && (
-          <p className="mb-3 text-slate-600">{form.default_closing_line}</p>
+          <p className="mb-3 text-muted-foreground">{form.default_closing_line}</p>
         )}
         {form.signature_name && (
-          <p className="font-semibold text-slate-900">{form.signature_name}</p>
+          <p className="font-semibold text-foreground">{form.signature_name}</p>
         )}
-        {form.signature_role && <p className="text-slate-600">{form.signature_role}</p>}
-        {form.signature_company && <p className="text-slate-600">{form.signature_company}</p>}
+        {form.signature_role && <p className="text-muted-foreground">{form.signature_role}</p>}
+        {form.signature_company && <p className="text-muted-foreground">{form.signature_company}</p>}
         {(form.website_url || form.portfolio_url) && (
-          <div className="mt-2 flex flex-col gap-0.5 text-xs text-slate-500">
+          <div className="mt-2 flex flex-col gap-0.5 text-xs text-muted-foreground">
             {form.website_url && (
               <span className="flex items-center gap-1">
                 <Globe className="h-3 w-3" />
@@ -585,14 +585,14 @@ function SignaturePreview({
               </span>
             )}
             {form.calendar_url && (
-              <span className="flex items-center gap-1 text-slate-400">
+              <span className="flex items-center gap-1 text-muted-foreground">
                 {form.calendar_url}
               </span>
             )}
           </div>
         )}
         {form.signature_cta && (
-          <p className="mt-3 italic text-slate-500">{form.signature_cta}</p>
+          <p className="mt-3 italic text-muted-foreground">{form.signature_cta}</p>
         )}
       </div>
     </div>
@@ -617,15 +617,15 @@ function LLMSection({ data }: { data: LLMSettings }) {
           ].map(({ label, model, Icon }) => (
             <div
               key={label}
-              className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3"
+              className="flex items-center justify-between rounded-2xl border border-border bg-muted/70 px-4 py-3"
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-foreground text-white">
                   <Icon className="h-4 w-4" />
                 </div>
-                <span className="text-sm font-medium text-slate-900">{label}</span>
+                <span className="text-sm font-medium text-foreground">{label}</span>
               </div>
-              <code className="rounded-lg bg-white px-3 py-1.5 text-sm text-slate-700 shadow-sm">
+              <code className="rounded-lg bg-card px-3 py-1.5 text-sm text-foreground/80 shadow-sm">
                 {model ?? "No configurado"}
               </code>
             </div>
@@ -644,7 +644,7 @@ function LLMSection({ data }: { data: LLMSettings }) {
               {data.supported_models.map((m) => (
                 <code
                   key={m}
-                  className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs text-slate-700"
+                  className="rounded-lg bg-muted px-2 py-0.5 text-xs text-foreground/80"
                 >
                   {m}
                 </code>
@@ -785,7 +785,7 @@ function BrandSection({
               <select
                 value={form.default_outreach_tone}
                 onChange={(e) => set("default_outreach_tone")(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
+                className="w-full rounded-xl border border-border bg-muted px-3 py-2 text-sm text-foreground outline-none focus:border-border focus:bg-card"
               >
                 {["profesional", "cercano", "consultivo", "breve", "empático"].map((t) => (
                   <option key={t} value={t}>
@@ -798,7 +798,7 @@ function BrandSection({
               <select
                 value={form.default_reply_tone}
                 onChange={(e) => set("default_reply_tone")(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
+                className="w-full rounded-xl border border-border bg-muted px-3 py-2 text-sm text-foreground outline-none focus:border-border focus:bg-card"
               >
                 {["profesional", "cercano", "consultivo", "breve", "empático"].map((t) => (
                   <option key={t} value={t}>
@@ -1028,8 +1028,8 @@ function MailInboundSection({
         />
       </FieldRow>
       {mailData.inbound.last_sync && (
-        <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
-          <p className="mb-3 text-xs font-medium text-slate-500">
+        <div className="mt-4 rounded-2xl border border-border bg-muted/70 p-4">
+          <p className="mb-3 text-xs font-medium text-muted-foreground">
             Última sync persistida
           </p>
           <div className="grid grid-cols-3 gap-2 text-sm">
@@ -1040,14 +1040,14 @@ function MailInboundSection({
                 ["Matched", mailData.inbound.last_sync.counts.matched],
               ] as [string, number][]
             ).map(([k, v]) => (
-              <div key={k} className="rounded-xl bg-white px-3 py-2">
-                <p className="text-xs text-slate-400">{k}</p>
-                <p className="font-semibold text-slate-900">{v}</p>
+              <div key={k} className="rounded-xl bg-card px-3 py-2">
+                <p className="text-xs text-muted-foreground">{k}</p>
+                <p className="font-semibold text-foreground">{v}</p>
               </div>
             ))}
           </div>
           {mailData.inbound.last_sync.at && (
-            <p className="mt-2 text-xs text-slate-400">
+            <p className="mt-2 text-xs text-muted-foreground">
               <RelativeTime date={mailData.inbound.last_sync.at} />
             </p>
           )}
@@ -1289,7 +1289,7 @@ function CredentialsSectionNew({
         icon={KeyRound}
       >
         <div className="mb-5">
-          <p className="mb-2 text-xs font-medium text-slate-500">Proveedor</p>
+          <p className="mb-2 text-xs font-medium text-muted-foreground">Proveedor</p>
           <ProviderPicker value={smtpProvider} onChange={applySmtpPreset} />
         </div>
         <div className="grid gap-0 lg:grid-cols-2 lg:gap-x-8">
@@ -1345,10 +1345,10 @@ function CredentialsSectionNew({
             </FieldRow>
           </div>
         </div>
-        <div className="mt-4 rounded-2xl bg-slate-50 p-4">
+        <div className="mt-4 rounded-2xl bg-muted p-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="mb-2 text-xs font-medium text-slate-500">
+              <p className="mb-2 text-xs font-medium text-muted-foreground">
                 Último test de conexión
               </p>
               <ConnectionTestBadge
@@ -1368,7 +1368,7 @@ function CredentialsSectionNew({
         icon={KeyRound}
       >
         <div className="mb-5">
-          <p className="mb-2 text-xs font-medium text-slate-500">Proveedor</p>
+          <p className="mb-2 text-xs font-medium text-muted-foreground">Proveedor</p>
           <ProviderPicker value={imapProvider} onChange={applyImapPreset} />
         </div>
         <div className="grid gap-0 lg:grid-cols-2 lg:gap-x-8">
@@ -1417,10 +1417,10 @@ function CredentialsSectionNew({
             </FieldRow>
           </div>
         </div>
-        <div className="mt-4 rounded-2xl bg-slate-50 p-4">
+        <div className="mt-4 rounded-2xl bg-muted p-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="mb-2 text-xs font-medium text-slate-500">
+              <p className="mb-2 text-xs font-medium text-muted-foreground">
                 Último test de conexión
               </p>
               <ConnectionTestBadge
@@ -1434,11 +1434,11 @@ function CredentialsSectionNew({
         </div>
       </SectionCard>
 
-      <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-4">
+      <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-4">
         {saveError ? (
           <p className="text-sm text-rose-600">{saveError}</p>
         ) : (
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted-foreground">
             Las contraseñas se guardan de forma segura. Dejar el campo vacío mantiene la contraseña actual.
           </p>
         )}
@@ -1559,7 +1559,7 @@ export default function SettingsPage() {
       />
 
       {loading && (
-        <div className="flex items-center gap-3 text-sm text-slate-500">
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           Cargando configuración…
         </div>
@@ -1575,15 +1575,15 @@ export default function SettingsPage() {
 
       {!loading && !loadError && (
         <>
-          <div className="flex flex-wrap gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1">
+          <div className="flex flex-wrap gap-1 rounded-2xl border border-border bg-muted p-1">
             {TABS.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
                   activeTab === tab.id
-                    ? "bg-white text-slate-900 shadow-sm"
-                    : "text-slate-500 hover:text-slate-700"
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground/80"
                 }`}
               >
                 {tab.label}
@@ -1621,7 +1621,7 @@ export default function SettingsPage() {
             {activeTab === "llm" && llmData && <LLMSection data={llmData} />}
 
             {noData && (
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
+              <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <TriangleAlert className="h-4 w-4 text-amber-500" />
                   No se pudieron cargar los datos para esta sección.
@@ -1631,7 +1631,7 @@ export default function SettingsPage() {
           </div>
 
           {opData?.updated_at && (
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-muted-foreground">
               Última actualización: <RelativeTime date={opData.updated_at} />
             </p>
           )}

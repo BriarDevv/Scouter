@@ -9,6 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { CHART_TOOLTIP_STYLE } from "@/lib/constants";
 import type { TimeSeriesPoint } from "@/types";
 
 interface AreaChartCardProps {
@@ -22,9 +23,9 @@ interface AreaChartCardProps {
 
 export function AreaChartCard({ title, subtitle, data, dataKey, color, gradientId }: AreaChartCardProps) {
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-      <h3 className="text-sm font-semibold text-slate-900 font-heading">{title}</h3>
-      {subtitle && <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>}
+    <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+      <h3 className="text-sm font-semibold text-foreground font-heading">{title}</h3>
+      {subtitle && <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>}
 
       <div className="mt-4 h-[200px]">
         <ResponsiveContainer width="100%" height="100%">
@@ -45,13 +46,7 @@ export function AreaChartCard({ title, subtitle, data, dataKey, color, gradientI
             />
             <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
             <Tooltip
-              contentStyle={{
-                background: "white",
-                border: "1px solid #e2e8f0",
-                borderRadius: "12px",
-                boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05)",
-                fontSize: 12,
-              }}
+              contentStyle={CHART_TOOLTIP_STYLE}
               labelFormatter={(v) => new Date(v).toLocaleDateString("es-AR", { day: "2-digit", month: "long" })}
             />
             <Area

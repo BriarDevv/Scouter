@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Inter, Geist_Mono } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Sidebar } from "@/components/layout/sidebar";
+import { Toaster } from "sileo";
 import "./globals.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -27,18 +29,21 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <body
-        className={`${plusJakarta.variable} ${inter.variable} ${geistMono.variable} antialiased bg-slate-50/50`}
+        className={`${plusJakarta.variable} ${inter.variable} ${geistMono.variable} antialiased bg-background`}
       >
-        <TooltipProvider>
-          <Sidebar />
-          <main className="ml-64 min-h-screen">
-            <div className="mx-auto max-w-[1400px] px-8 py-8">
-              {children}
-            </div>
-          </main>
-        </TooltipProvider>
+        <ThemeProvider>
+          <TooltipProvider>
+            <Sidebar />
+            <main className="ml-64 min-h-screen">
+              <div className="mx-auto max-w-[1400px] px-8 py-8">
+                {children}
+              </div>
+            </main>
+            <Toaster position="top-right" />
+          </TooltipProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

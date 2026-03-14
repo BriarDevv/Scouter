@@ -34,12 +34,12 @@ export function QualityBadge({ quality }: { quality: LeadQuality }) {
 }
 
 export function ScoreBadge({ score }: { score: number | null }) {
-  if (score === null) return <span className="text-xs text-slate-400">—</span>;
+  if (score === null) return <span className="text-xs text-muted-foreground">—</span>;
   const level = score >= 60 ? "high" : score >= 30 ? "medium" : "low";
   const styles = {
-    high: "bg-emerald-50 text-emerald-700",
-    medium: "bg-amber-50 text-amber-700",
-    low: "bg-red-50 text-red-700",
+    high: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700",
+    medium: "bg-amber-50 dark:bg-amber-950/30 text-amber-700",
+    low: "bg-red-50 dark:bg-red-950/30 text-red-700",
   };
   return (
     <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold font-data", styles[level])}>
@@ -83,7 +83,7 @@ export function InboundReplyLabelBadge({
 }) {
   if (!label) {
     return (
-      <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">
+      <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
         Sin label
       </span>
     );

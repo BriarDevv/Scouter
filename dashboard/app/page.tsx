@@ -100,7 +100,7 @@ export default function OverviewPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Overview"
+        title="Panel general"
         description="Estado general del sistema de prospección"
       />
 
@@ -109,13 +109,13 @@ export default function OverviewPage() {
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="font-heading text-base font-semibold text-slate-900">Canal mail</h2>
-            <p className="mt-1 text-sm text-slate-500">
+            <h2 className="font-heading text-base font-semibold text-foreground">Canal mail</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
               Replies inbound reales y clasificados sobre el inbox comercial.
             </p>
           </div>
           {inboundError && (
-            <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-rose-700">
+            <span className="rounded-full bg-rose-50 dark:bg-rose-950/30 px-3 py-1 text-xs font-medium text-rose-700">
               Inbox no disponible
             </span>
           )}
