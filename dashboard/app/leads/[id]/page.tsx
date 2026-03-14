@@ -14,6 +14,14 @@ import { INBOUND_MATCH_VIA_LABELS } from "@/lib/constants";
 import { SIGNAL_CONFIG } from "@/lib/constants";
 import { RelativeTime } from "@/components/shared/relative-time";
 import { ReplyDraftPanel } from "@/components/shared/reply-draft-panel";
+import { CollapsibleSection } from "@/components/shared/collapsible-section";
+import { Skeleton, SkeletonCard } from "@/components/shared/skeleton";
+import { EmptyState } from "@/components/shared/empty-state";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import { formatDateTime, extractDomain } from "@/lib/formatters";
 import { MOCK_LEADS, MOCK_DRAFTS, MOCK_LOGS } from "@/data/mock";
 import {
@@ -40,8 +48,10 @@ import type {
 import {
   ArrowLeft, Globe, Instagram, Mail, Phone, MapPin, Building2,
   RefreshCw, FileText, CheckCircle, XCircle, Sparkles, Clock,
+  MessageSquare, GitBranch, StickyNote, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { sileo } from "sileo";
 
 function InfoRow({ icon: Icon, label, value, href }: { icon: typeof Globe; label: string; value: string | null; href?: string }) {
   if (!value) return null;
@@ -60,7 +70,7 @@ function InfoRow({ icon: Icon, label, value, href }: { icon: typeof Globe; label
   );
 }
 
-function SignalsList({ signals }: { signals: LeadSignal[] }) {
+function SignalsList({ signals, onRunPipeline, isRunning }: { signals: LeadSignal[]; onRunPipeline: () => void; isRunning: boolean }) {
   return (
     <div className="space-y-2">
       {signals.map((s) => {
@@ -70,7 +80,9 @@ function SignalsList({ signals }: { signals: LeadSignal[] }) {
             key={s.id}
             className={cn(
               "flex items-center gap-3 rounded-xl px-3 py-2 text-sm",
-              config?.severity === "positive" ? "bg-emerald-50/60" : "bg-muted"
+              config?.severity === "positive"
+                ? "bg-emerald-50/60 dark:bg-emerald-950/20"
+                : "bg-muted"
             )}
           >
             <span className="text-base">{config?.emoji || "?"}</span>
@@ -82,8 +94,56 @@ function SignalsList({ signals }: { signals: LeadSignal[] }) {
         );
       })}
       {signals.length === 0 && (
-        <p className="text-sm text-muted-foreground py-4 text-center">Sin señales detectadas. Ejecutá el enrichment.</p>
+        <EmptyState
+          icon={Sparkles}
+          title="Sin señales detectadas"
+          description="Ejecutá el pipeline para detectar señales."
+          className="py-6"
+        >
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-xl gap-1.5"
+            onClick={onRunPipeline}
+            disabled={isRunning}
+          >
+            {isRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            Ejecutar Pipeline
+          </Button>
+        </EmptyState>
       )}
+    </div>
+  );
+}
+
+function LeadDetailSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Skeleton className="h-8 w-32" />
+      <div className="flex items-start justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-9 w-24 rounded-xl" />
+          <Skeleton className="h-9 w-32 rounded-xl" />
+          <Skeleton className="h-9 w-24 rounded-xl" />
+        </div>
+      </div>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-1">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+        <div className="space-y-6 lg:col-span-2">
+          <SkeletonCard className="h-40" />
+          <SkeletonCard className="h-48" />
+          <SkeletonCard className="h-32" />
+          <SkeletonCard className="h-32" />
+        </div>
+      </div>
     </div>
   );
 }
@@ -98,6 +158,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [inboundThreads, setInboundThreads] = useState<EmailThreadSummary[]>([]);
   const [latestTask, setLatestTask] = useState<TaskStatusRecord | null>(null);
   const [isMissing, setIsMissing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isRunningPipeline, setIsRunningPipeline] = useState(false);
   const [isGeneratingDraft, setIsGeneratingDraft] = useState(false);
   const [isApprovingLead, setIsApprovingLead] = useState(false);
@@ -117,9 +178,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           getInboundThreads({ lead_id: id, limit: 10 }).catch(() => []),
         ]);
 
-        if (!active) {
-          return;
-        }
+        if (!active) return;
 
         setLead(nextLead);
         setDrafts(nextDrafts);
@@ -130,9 +189,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         setLatestTask(null);
         setIsMissing(false);
       } catch {
-        if (!active) {
-          return;
-        }
+        if (!active) return;
         setLead(null);
         setDrafts([]);
         setLogs([]);
@@ -141,6 +198,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         setInboundThreads([]);
         setLatestTask(null);
         setIsMissing(true);
+      } finally {
+        if (active) setIsLoading(false);
       }
     }
 
@@ -170,67 +229,116 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   async function handleRunPipeline() {
-    if (!lead) {
-      return;
-    }
+    if (!lead) return;
     setIsRunningPipeline(true);
     try {
-      const task = await runFullPipeline(lead.id);
-      const taskStatus = await getTaskStatus(task.task_id);
-      setLatestTask(taskStatus);
-      await refreshLeadContext();
+      await sileo.promise(
+        (async () => {
+          const task = await runFullPipeline(lead.id);
+          const taskStatus = await getTaskStatus(task.task_id);
+          setLatestTask(taskStatus);
+          await refreshLeadContext();
+        })(),
+        {
+          loading: { title: "Ejecutando pipeline..." },
+          success: { title: "Pipeline completado" },
+          error: (err: unknown) => ({
+            title: "Error en pipeline",
+            description: err instanceof Error ? err.message : "No se pudo ejecutar.",
+          }),
+        }
+      );
     } finally {
       setIsRunningPipeline(false);
     }
   }
 
   async function handleGenerateDraft() {
-    if (!lead) {
-      return;
-    }
+    if (!lead) return;
     setIsGeneratingDraft(true);
     try {
-      await generateDraft(lead.id);
-      await refreshLeadContext();
+      await sileo.promise(
+        (async () => {
+          await generateDraft(lead.id);
+          await refreshLeadContext();
+        })(),
+        {
+          loading: { title: "Generando borrador..." },
+          success: { title: "Borrador generado" },
+          error: (err: unknown) => ({
+            title: "Error al generar borrador",
+            description: err instanceof Error ? err.message : "No se pudo generar.",
+          }),
+        }
+      );
     } finally {
       setIsGeneratingDraft(false);
     }
   }
 
   async function handleApproveLead() {
-    if (!lead) {
-      return;
-    }
+    if (!lead) return;
     setIsApprovingLead(true);
     try {
-      await updateLeadStatus(lead.id, "approved");
-      await refreshLeadContext();
+      await sileo.promise(
+        (async () => {
+          await updateLeadStatus(lead.id, "approved");
+          await refreshLeadContext();
+        })(),
+        {
+          loading: { title: "Aprobando lead..." },
+          success: { title: "Lead aprobado" },
+          error: (err: unknown) => ({
+            title: "Error al aprobar",
+            description: err instanceof Error ? err.message : "No se pudo aprobar.",
+          }),
+        }
+      );
     } finally {
       setIsApprovingLead(false);
     }
   }
 
-
-
   async function handleReviewDraft(draftId: string, approved: boolean) {
     setIsReviewingDraftId(draftId);
     try {
-      await reviewDraft(draftId, approved);
-      await refreshLeadContext();
+      await sileo.promise(
+        (async () => {
+          await reviewDraft(draftId, approved);
+          await refreshLeadContext();
+        })(),
+        {
+          loading: { title: approved ? "Aprobando draft..." : "Rechazando draft..." },
+          success: { title: approved ? "Draft aprobado" : "Draft rechazado" },
+          error: (err: unknown) => ({
+            title: "Error al revisar draft",
+            description: err instanceof Error ? err.message : "No se pudo revisar.",
+          }),
+        }
+      );
     } finally {
       setIsReviewingDraftId(null);
     }
   }
 
+  // Loading skeleton
+  if (isLoading && !lead) {
+    return <LeadDetailSkeleton />;
+  }
+
   if (!lead || isMissing) {
     return (
       <div className="space-y-6">
-        <Link href="/leads" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground/80">
-          <ArrowLeft className="h-4 w-4" /> Volver a leads
+        <Link href="/leads">
+          <Button variant="ghost" size="sm" className="gap-1.5 rounded-xl">
+            <ArrowLeft className="h-4 w-4" /> Volver a leads
+          </Button>
         </Link>
-        <div className="rounded-2xl border border-border bg-card p-12 text-center">
-          <p className="text-muted-foreground">Lead no encontrado</p>
-        </div>
+        <EmptyState
+          icon={FileText}
+          title="Lead no encontrado"
+          description="El lead que buscás no existe o fue eliminado."
+        />
       </div>
     );
   }
@@ -240,11 +348,14 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="space-y-6">
-      {/* Back + Header */}
-      <Link href="/leads" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground/80">
-        <ArrowLeft className="h-4 w-4" /> Volver a leads
+      {/* Back button */}
+      <Link href="/leads">
+        <Button variant="ghost" size="sm" className="gap-1.5 rounded-xl">
+          <ArrowLeft className="h-4 w-4" /> Volver a leads
+        </Button>
       </Link>
 
+      {/* Header */}
       <div className="flex items-start justify-between">
         <div className="space-y-2">
           <div className="flex items-center gap-3">
@@ -261,46 +372,71 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
 
-        {/* Actions */}
+        {/* Actions with tooltips */}
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-xl gap-1.5"
-            onClick={() => void handleRunPipeline()}
-            disabled={isRunningPipeline}
-          >
-            <RefreshCw className="h-3.5 w-3.5" /> Pipeline
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-xl gap-1.5"
-            onClick={() => void handleGenerateDraft()}
-            disabled={isGeneratingDraft}
-          >
-            <FileText className="h-3.5 w-3.5" /> Generar Draft
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-xl gap-1.5 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
-            onClick={() => void handleApproveLead()}
-            disabled={isApprovingLead}
-          >
-            <CheckCircle className="h-3.5 w-3.5" /> Aprobar
-          </Button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl gap-1.5"
+                  onClick={() => void handleRunPipeline()}
+                  disabled={isRunningPipeline}
+                />
+              }
+            >
+              {isRunningPipeline ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+              Pipeline
+            </TooltipTrigger>
+            <TooltipContent>Ejecutar enrichment, scoring y análisis IA</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl gap-1.5"
+                  onClick={() => void handleGenerateDraft()}
+                  disabled={isGeneratingDraft}
+                />
+              }
+            >
+              {isGeneratingDraft ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+              Generar Draft
+            </TooltipTrigger>
+            <TooltipContent>Generar borrador de email con IA</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl gap-1.5 text-emerald-700 border-emerald-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+                  onClick={() => void handleApproveLead()}
+                  disabled={isApprovingLead}
+                />
+              }
+            >
+              {isApprovingLead ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
+              Aprobar
+            </TooltipTrigger>
+            <TooltipContent>Aprobar lead para outreach</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
       {/* Main grid */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left column: Info + Signals */}
+        {/* Left column: Info + Score + Signals */}
         <div className="space-y-6 lg:col-span-1">
-          {/* Contact Info */}
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
             <h3 className="text-sm font-semibold text-foreground mb-3 font-heading">Datos de contacto</h3>
-            <div className="divide-y divide-slate-50">
+            <div className="divide-y divide-border/50">
               <InfoRow icon={Globe} label="Website" value={extractDomain(lead.website_url)} href={lead.website_url || undefined} />
               <InfoRow icon={Instagram} label="Instagram" value={lead.instagram_url ? "@" + lead.instagram_url.split("/").pop() : null} href={lead.instagram_url || undefined} />
               <InfoRow icon={Mail} label="Email" value={lead.email} href={lead.email ? `mailto:${lead.email}` : undefined} />
@@ -310,7 +446,6 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             </div>
           </div>
 
-          {/* Score */}
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
             <h3 className="text-sm font-semibold text-foreground mb-3 font-heading">Score</h3>
             <div className="flex items-center gap-4">
@@ -324,69 +459,92 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             </div>
           </div>
 
-          {/* Signals */}
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
             <h3 className="text-sm font-semibold text-foreground mb-3 font-heading">Señales Detectadas</h3>
-            <SignalsList signals={lead.signals ?? []} />
+            <SignalsList
+              signals={lead.signals ?? []}
+              onRunPipeline={() => void handleRunPipeline()}
+              isRunning={isRunningPipeline}
+            />
           </div>
         </div>
 
-        {/* Right column: LLM Analysis + Drafts + Timeline */}
+        {/* Right column: Collapsible sections */}
         <div className="space-y-6 lg:col-span-2">
-          {/* LLM Summary */}
-          {lead.llm_summary && (
-            <div className="rounded-2xl border border-violet-100 bg-violet-50/30 p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="h-4 w-4 text-violet-600" />
-                <h3 className="text-sm font-semibold text-violet-900 font-heading">Análisis IA</h3>
+          {/* LLM Summary — always open */}
+          <CollapsibleSection
+            title="Análisis IA"
+            icon={Sparkles}
+            defaultOpen
+          >
+            {lead.llm_summary ? (
+              <div className="space-y-3">
+                <p className="text-sm text-foreground/80 leading-relaxed">{lead.llm_summary}</p>
+                {lead.llm_quality_assessment && (
+                  <div className="rounded-xl bg-muted/60 p-3">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Evaluación de calidad</p>
+                    <p className="text-sm text-foreground/80">{lead.llm_quality_assessment}</p>
+                  </div>
+                )}
+                {lead.llm_suggested_angle && (
+                  <div className="rounded-xl bg-muted/60 p-3">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Ángulo comercial sugerido</p>
+                    <p className="text-sm text-foreground/80">{lead.llm_suggested_angle}</p>
+                  </div>
+                )}
               </div>
-              <p className="text-sm text-foreground/80 leading-relaxed">{lead.llm_summary}</p>
+            ) : (
+              <EmptyState
+                icon={Sparkles}
+                title="Análisis IA no disponible"
+                description="Ejecutá el pipeline para generar el análisis con el modelo configurado en Ollama."
+                className="py-6"
+              >
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl gap-1.5"
+                  onClick={() => void handleRunPipeline()}
+                  disabled={isRunningPipeline}
+                >
+                  {isRunningPipeline ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                  Ejecutar Análisis
+                </Button>
+              </EmptyState>
+            )}
+          </CollapsibleSection>
 
-              {lead.llm_quality_assessment && (
-                <div className="mt-4 rounded-xl bg-card/60 p-3">
-                  <p className="text-xs font-medium text-muted-foreground mb-1">Evaluación de calidad</p>
-                  <p className="text-sm text-foreground/80">{lead.llm_quality_assessment}</p>
-                </div>
-              )}
-
-              {lead.llm_suggested_angle && (
-                <div className="mt-3 rounded-xl bg-card/60 p-3">
-                  <p className="text-xs font-medium text-muted-foreground mb-1">Ángulo comercial sugerido</p>
-                  <p className="text-sm text-foreground/80">{lead.llm_suggested_angle}</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {!lead.llm_summary && (
-            <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
-              <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/50" />
-              <p className="mt-3 text-sm font-medium text-muted-foreground">Análisis IA no disponible</p>
-              <p className="mt-1 text-xs text-muted-foreground">Ejecuta el pipeline para generar el analisis con el modelo configurado en Ollama</p>
-              <Button variant="outline" size="sm" className="mt-4 rounded-xl gap-1.5">
-                <RefreshCw className="h-3.5 w-3.5" /> Ejecutar Análisis
-              </Button>
-            </div>
-          )}
-
-          {/* Drafts */}
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <h3 className="text-sm font-semibold text-foreground mb-4 font-heading">Borradores de Outreach</h3>
+          {/* Drafts — always open */}
+          <CollapsibleSection
+            title="Borradores de Outreach"
+            icon={FileText}
+            defaultOpen
+            badge={
+              drafts.length > 0 ? (
+                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{drafts.length}</span>
+              ) : undefined
+            }
+          >
             {drafts.length > 0 ? (
               <div className="space-y-3">
                 {drafts.map((draft) => (
                   <div key={draft.id} className="rounded-xl border border-border p-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium text-foreground">{draft.subject}</span>
-                      <span className={cn(
-                        "rounded-full px-2 py-0.5 text-xs font-medium",
-                        draft.status === "pending_review" && "bg-amber-50 dark:bg-amber-950/30 text-amber-700",
-                        draft.status === "approved" && "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700",
-                        draft.status === "sent" && "bg-blue-50 dark:bg-blue-950/30 text-blue-700",
-                        draft.status === "rejected" && "bg-red-50 dark:bg-red-950/30 text-red-700",
-                      )}>
-                        {draft.status === "pending_review" ? "Pendiente" : draft.status === "approved" ? "Aprobado" : draft.status === "sent" ? "Enviado" : "Rechazado"}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground font-data">
+                          <RelativeTime date={draft.generated_at} />
+                        </span>
+                        <span className={cn(
+                          "rounded-full px-2 py-0.5 text-xs font-medium",
+                          draft.status === "pending_review" && "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300",
+                          draft.status === "approved" && "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300",
+                          draft.status === "sent" && "bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300",
+                          draft.status === "rejected" && "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300",
+                        )}>
+                          {draft.status === "pending_review" ? "Pendiente" : draft.status === "approved" ? "Aprobado" : draft.status === "sent" ? "Enviado" : "Rechazado"}
+                        </span>
+                      </div>
                     </div>
                     <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{draft.body}</p>
                     {draft.status === "pending_review" && (
@@ -397,12 +555,13 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                           onClick={() => void handleReviewDraft(draft.id, true)}
                           disabled={isReviewingDraftId === draft.id}
                         >
-                          <CheckCircle className="h-3.5 w-3.5" /> Aprobar
+                          {isReviewingDraftId === draft.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
+                          Aprobar
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="rounded-xl gap-1.5 text-red-600 border-red-200 hover:bg-red-50"
+                          className="rounded-xl gap-1.5 text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-950/20"
                           onClick={() => void handleReviewDraft(draft.id, false)}
                           disabled={isReviewingDraftId === draft.id}
                         >
@@ -414,21 +573,40 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-6">No hay borradores generados</p>
+              <EmptyState
+                icon={FileText}
+                title="Sin borradores"
+                description="Generá un borrador de outreach para este lead."
+                className="py-6"
+              >
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl gap-1.5"
+                  onClick={() => void handleGenerateDraft()}
+                  disabled={isGeneratingDraft}
+                >
+                  {isGeneratingDraft ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+                  Generar Draft
+                </Button>
+              </EmptyState>
             )}
-          </div>
+          </CollapsibleSection>
 
-          {/* Pipeline Runs */}
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <div className="flex items-center justify-between gap-3 mb-4">
-              <h3 className="text-sm font-semibold text-foreground font-heading">Pipeline Async</h3>
-              {latestTask?.task_id && (
+          {/* Pipeline Runs — collapsed by default */}
+          <CollapsibleSection
+            title="Pipeline Async"
+            icon={GitBranch}
+            defaultOpen={false}
+            badge={
+              latestTask?.task_id ? (
                 <span className="text-xs text-muted-foreground font-data">task {latestTask.task_id.slice(0, 8)}</span>
-              )}
-            </div>
+              ) : undefined
+            }
+          >
             {latestTask && (
-              <div className="mb-4 rounded-xl border border-violet-100 bg-violet-50/40 p-3">
-                <p className="text-xs font-medium text-violet-700">Última task</p>
+              <div className="mb-4 rounded-xl border border-violet-100 dark:border-violet-900/30 bg-violet-50/40 dark:bg-violet-950/20 p-3">
+                <p className="text-xs font-medium text-violet-700 dark:text-violet-300">Última task</p>
                 <p className="mt-1 text-sm text-foreground/80">
                   {latestTask.status} {latestTask.current_step ? `· ${latestTask.current_step}` : ""}
                 </p>
@@ -461,20 +639,20 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             ) : (
               <p className="text-sm text-muted-foreground text-center py-6">Sin ejecuciones async registradas</p>
             )}
-          </div>
+          </CollapsibleSection>
 
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground font-heading">Replies del lead</h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Inbound real vinculado por delivery/thread y clasificado por el executor.
-                </p>
-              </div>
+          {/* Inbound Replies — open by default */}
+          <CollapsibleSection
+            title="Replies del lead"
+            subtitle="Inbound real vinculado por delivery/thread y clasificado por el executor."
+            icon={MessageSquare}
+            defaultOpen
+            badge={
               <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
                 {inboundMessages.length} replies
               </span>
-            </div>
+            }
+          >
             {latestInboundMessage && (
               <div className="mb-4 space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
@@ -518,7 +696,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                             <InboundClassificationStatusBadge status={message.classification_status} />
                             <InboundReplyLabelBadge label={message.classification_label} />
                             {message.should_escalate_reviewer && (
-                              <span className="inline-flex items-center rounded-full bg-fuchsia-50 dark:bg-fuchsia-950/30 px-2.5 py-0.5 text-xs font-medium text-fuchsia-700">
+                              <span className="inline-flex items-center rounded-full bg-fuchsia-50 dark:bg-fuchsia-950/30 px-2.5 py-0.5 text-xs font-medium text-fuchsia-700 dark:text-fuchsia-300">
                                 Sugerir reviewer
                               </span>
                             )}
@@ -553,7 +731,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                         <p className="mt-2 text-sm text-rose-600">{message.classification_error}</p>
                       )}
                       {message.body_snippet && (
-                        <p className="mt-3 rounded-xl bg-muted px-3 py-2 text-sm text-muted-foreground">
+                        <p className="mt-3 border-l-2 border-muted-foreground/30 pl-3 text-sm text-muted-foreground">
                           {message.body_snippet}
                         </p>
                       )}
@@ -578,20 +756,31 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 })}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-6">
-                Este lead todavía no tiene replies inbound vinculadas.
-              </p>
+              <EmptyState
+                icon={MessageSquare}
+                title="Sin replies inbound"
+                description="Este lead todavía no tiene replies inbound vinculadas."
+                className="py-6"
+              />
             )}
-          </div>
+          </CollapsibleSection>
 
-          {/* Timeline */}
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <h3 className="text-sm font-semibold text-foreground mb-4 font-heading">Timeline</h3>
+          {/* Timeline — collapsed by default */}
+          <CollapsibleSection
+            title="Timeline"
+            icon={Clock}
+            defaultOpen={false}
+            badge={
+              logs.length > 0 ? (
+                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{logs.length}</span>
+              ) : undefined
+            }
+          >
             {logs.length > 0 ? (
               <div className="space-y-3">
                 {logs.map((log) => (
                   <div key={log.id} className="flex items-start gap-3">
-                    <div className="mt-0.5 h-2 w-2 rounded-full bg-slate-300 shrink-0" />
+                    <div className="mt-0.5 h-2 w-2 rounded-full bg-muted-foreground/30 shrink-0" />
                     <div>
                       <p className="text-sm text-foreground/80">
                         <span className="font-medium capitalize">{log.action}</span>
@@ -608,14 +797,17 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             ) : (
               <p className="text-sm text-muted-foreground text-center py-6">Sin actividad registrada</p>
             )}
-          </div>
+          </CollapsibleSection>
 
-          {/* Notes */}
+          {/* Notes — open only if notes exist */}
           {lead.notes && (
-            <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-              <h3 className="text-sm font-semibold text-foreground mb-2 font-heading">Notas</h3>
+            <CollapsibleSection
+              title="Notas"
+              icon={StickyNote}
+              defaultOpen
+            >
               <p className="text-sm text-muted-foreground">{lead.notes}</p>
-            </div>
+            </CollapsibleSection>
           )}
         </div>
       </div>

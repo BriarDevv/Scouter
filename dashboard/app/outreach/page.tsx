@@ -3,14 +3,14 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/shared/empty-state";
+import { Skeleton, SkeletonStatCard, SkeletonCard } from "@/components/shared/skeleton";
 import {
   DraftStatusBadge,
   InboundClassificationStatusBadge,
   InboundReplyLabelBadge,
-  StatusBadge,
 } from "@/components/shared/status-badge";
 import { RelativeTime } from "@/components/shared/relative-time";
-import { formatDate, truncate } from "@/lib/formatters";
 import { MOCK_DRAFTS, MOCK_LOGS, MOCK_LEADS } from "@/data/mock";
 import {
   getDraftDeliveries,
@@ -27,28 +27,14 @@ import type {
   InboundMessage,
   OutreachDelivery,
   OutreachDraft,
-  OutreachLog,
 } from "@/types";
 import { DRAFT_STATUS_CONFIG, INBOUND_MATCH_VIA_LABELS } from "@/lib/constants";
 import {
-  Mail, CheckCircle, XCircle, Send, Eye, MessageSquare,
-  CalendarCheck, Trophy, FileText, Clock,
+  Mail, CheckCircle, XCircle, Loader2, FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-
-const ACTION_CONFIG: Record<string, { icon: typeof FileText; label: string; color: string }> = {
-  generated: { icon: FileText, label: "Draft generado", color: "text-muted-foreground" },
-  approved: { icon: CheckCircle, label: "Aprobado", color: "text-emerald-600" },
-  rejected: { icon: XCircle, label: "Rechazado", color: "text-red-500" },
-  sent: { icon: Send, label: "Enviado", color: "text-blue-600" },
-  opened: { icon: Eye, label: "Abierto", color: "text-amber-600" },
-  replied: { icon: MessageSquare, label: "Respondió", color: "text-emerald-600" },
-  meeting: { icon: CalendarCheck, label: "Reunión", color: "text-teal-600" },
-  won: { icon: Trophy, label: "Ganado", color: "text-green-600" },
-  lost: { icon: XCircle, label: "Perdido", color: "text-red-500" },
-  reviewed: { icon: Eye, label: "Revisado", color: "text-indigo-600" },
-};
+import { sileo } from "sileo";
 
 const FILTER_OPTIONS: (DraftStatus | "all")[] = ["all", "pending_review", "approved", "sent", "rejected"];
 
@@ -56,32 +42,28 @@ export default function OutreachPage() {
   const [filter, setFilter] = useState<DraftStatus | "all">("all");
   const [selectedDraft, setSelectedDraft] = useState<OutreachDraft | null>(null);
   const [drafts, setDrafts] = useState(MOCK_DRAFTS);
-  const [logs, setLogs] = useState(MOCK_LOGS);
   const [leads, setLeads] = useState(MOCK_LEADS);
   const [inboundMessages, setInboundMessages] = useState<InboundMessage[]>([]);
   const [inboundThreads, setInboundThreads] = useState<EmailThreadSummary[]>([]);
   const [selectedDeliveries, setSelectedDeliveries] = useState<OutreachDelivery[]>([]);
   const [mailError, setMailError] = useState<string | null>(null);
   const [isReviewingDraftId, setIsReviewingDraftId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
 
     async function loadOutreachData() {
-      const [nextDrafts, nextLogs, nextLeads, nextInboundMessages, nextInboundThreads] = await Promise.all([
+      const [nextDrafts, nextLeads, nextInboundMessages, nextInboundThreads] = await Promise.all([
         getDrafts(),
-        getOutreachLogs({ limit: 50 }),
         getLeads({ page: 1, page_size: 200 }),
         getInboundMessages({ limit: 100 }).catch(() => null),
         getInboundThreads({ limit: 50 }).catch(() => null),
       ]);
 
-      if (!active) {
-        return;
-      }
+      if (!active) return;
 
       setDrafts(nextDrafts);
-      setLogs(nextLogs);
       setLeads(nextLeads.items);
       if (nextInboundMessages && nextInboundThreads) {
         setInboundMessages(nextInboundMessages);
@@ -95,6 +77,7 @@ export default function OutreachPage() {
       setSelectedDraft((current) =>
         current ? nextDrafts.find((draft) => draft.id === current.id) ?? null : nextDrafts[0] ?? null
       );
+      setLoading(false);
     }
 
     void loadOutreachData();
@@ -115,14 +98,10 @@ export default function OutreachPage() {
 
       try {
         const deliveries = await getDraftDeliveries(selectedDraft.id);
-        if (!active) {
-          return;
-        }
+        if (!active) return;
         setSelectedDeliveries(deliveries);
       } catch {
-        if (!active) {
-          return;
-        }
+        if (!active) return;
         setSelectedDeliveries([]);
       }
     }
@@ -144,17 +123,48 @@ export default function OutreachPage() {
     ? inboundThreads.filter((thread) => thread.draft_id === selectedDraft.id)
     : [];
 
+  // Tab counts
+  const countByStatus = (status: DraftStatus) => drafts.filter((d) => d.status === status).length;
+
   async function handleReview(draftId: string, approved: boolean) {
     setIsReviewingDraftId(draftId);
     try {
-      const updated = await reviewDraft(draftId, approved);
-      setDrafts((current) =>
-        current.map((draft) => (draft.id === draftId ? { ...draft, ...updated } : draft))
+      await sileo.promise(
+        (async () => {
+          const updated = await reviewDraft(draftId, approved);
+          setDrafts((current) =>
+            current.map((draft) => (draft.id === draftId ? { ...draft, ...updated } : draft))
+          );
+        })(),
+        {
+          loading: { title: approved ? "Aprobando draft..." : "Rechazando draft..." },
+          success: { title: approved ? "Draft aprobado" : "Draft rechazado" },
+          error: (err: unknown) => ({
+            title: "Error al revisar",
+            description: err instanceof Error ? err.message : "No se pudo revisar el draft.",
+          }),
+        }
       );
-      setLogs(await getOutreachLogs({ limit: 50 }));
     } finally {
       setIsReviewingDraftId(null);
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Outreach" description="Gestión de borradores y actividad comercial" />
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2 space-y-4">
+            <Skeleton className="h-9 w-full max-w-md" />
+            {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
+          </div>
+          <div>
+            <SkeletonCard className="h-64" />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -167,35 +177,51 @@ export default function OutreachPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left: Drafts list */}
         <div className="lg:col-span-2 space-y-4">
-          {/* Filters */}
-          <div className="flex items-center gap-1.5">
-            {FILTER_OPTIONS.map((s) => (
-              <button
-                key={s}
-                onClick={() => setFilter(s)}
-                className={cn(
-                  "rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors",
-                  filter === s
-                    ? "bg-violet-100 text-violet-700"
-                    : "bg-card text-muted-foreground hover:bg-muted border border-border"
-                )}
-              >
-                {s === "all" ? "Todos" : DRAFT_STATUS_CONFIG[s].label}
-              </button>
-            ))}
+          {/* Tab-style filters with counts */}
+          <div className="flex items-center gap-0 border-b border-border">
+            {FILTER_OPTIONS.map((s) => {
+              const isActive = filter === s;
+              const count = s === "all" ? drafts.length : countByStatus(s);
+              return (
+                <button
+                  key={s}
+                  onClick={() => setFilter(s)}
+                  className={cn(
+                    "relative px-3 py-2.5 text-sm font-medium transition-colors",
+                    isActive
+                      ? "text-violet-700 dark:text-violet-300"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {s === "all" ? "Todos" : DRAFT_STATUS_CONFIG[s].label}
+                  <span className={cn(
+                    "ml-1.5 rounded-full px-1.5 py-0.5 text-xs",
+                    isActive ? "bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300" : "bg-muted text-muted-foreground"
+                  )}>
+                    {count}
+                  </span>
+                  {isActive && (
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-600 dark:bg-violet-400 rounded-full" />
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           {/* Drafts */}
           <div className="space-y-3">
             {filteredDrafts.map((draft) => {
               const lead = draft.lead ?? leads.find((item) => item.id === draft.lead_id);
+              const isSelected = selectedDraft?.id === draft.id;
               return (
                 <div
                   key={draft.id}
                   onClick={() => setSelectedDraft(draft)}
                   className={cn(
                     "cursor-pointer rounded-2xl border bg-card p-5 shadow-sm transition-all hover:shadow-md",
-                    selectedDraft?.id === draft.id ? "border-violet-200 ring-1 ring-violet-100" : "border-border"
+                    isSelected
+                      ? "border-l-4 border-l-violet-500 border-violet-200 dark:border-violet-800"
+                      : "border-border"
                   )}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -222,16 +248,17 @@ export default function OutreachPage() {
                       <Button
                         size="sm"
                         className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 gap-1.5 h-8"
-                        onClick={() => void handleReview(draft.id, true)}
+                        onClick={(e) => { e.stopPropagation(); void handleReview(draft.id, true); }}
                         disabled={isReviewingDraftId === draft.id}
                       >
-                        <CheckCircle className="h-3.5 w-3.5" /> Aprobar
+                        {isReviewingDraftId === draft.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
+                        Aprobar
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="rounded-xl gap-1.5 h-8 text-red-600 border-red-200 hover:bg-red-50"
-                        onClick={() => void handleReview(draft.id, false)}
+                        className="rounded-xl gap-1.5 h-8 text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-950/20"
+                        onClick={(e) => { e.stopPropagation(); void handleReview(draft.id, false); }}
                         disabled={isReviewingDraftId === draft.id}
                       >
                         <XCircle className="h-3.5 w-3.5" /> Rechazar
@@ -243,16 +270,17 @@ export default function OutreachPage() {
             })}
 
             {filteredDrafts.length === 0 && (
-              <div className="rounded-2xl border border-border bg-card p-12 text-center">
-                <Mail className="mx-auto h-8 w-8 text-muted-foreground/50" />
-                <p className="mt-3 text-sm text-muted-foreground">No hay drafts con este filtro</p>
-              </div>
+              <EmptyState
+                icon={Mail}
+                title="Sin drafts"
+                description="No hay drafts con este filtro."
+              />
             )}
           </div>
         </div>
 
-        {/* Right: Thread + Activity */}
-        <div className="space-y-4">
+        {/* Right: Thread details only */}
+        <div>
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -283,9 +311,9 @@ export default function OutreachPage() {
                           <div className="flex items-center justify-between gap-3">
                             <span className={cn(
                               "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-                              delivery.status === "sent" && "bg-blue-50 dark:bg-blue-950/30 text-blue-700",
-                              delivery.status === "sending" && "bg-amber-50 dark:bg-amber-950/30 text-amber-700",
-                              delivery.status === "failed" && "bg-rose-50 dark:bg-rose-950/30 text-rose-700"
+                              delivery.status === "sent" && "bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300",
+                              delivery.status === "sending" && "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300",
+                              delivery.status === "failed" && "bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300"
                             )}>
                               {delivery.status}
                             </span>
@@ -318,7 +346,7 @@ export default function OutreachPage() {
                               <InboundClassificationStatusBadge status={message.classification_status} />
                               <InboundReplyLabelBadge label={message.classification_label} />
                               {message.should_escalate_reviewer && (
-                                <span className="inline-flex items-center rounded-full bg-fuchsia-50 dark:bg-fuchsia-950/30 px-2.5 py-0.5 text-xs font-medium text-fuchsia-700">
+                                <span className="inline-flex items-center rounded-full bg-fuchsia-50 dark:bg-fuchsia-950/30 px-2.5 py-0.5 text-xs font-medium text-fuchsia-700 dark:text-fuchsia-300">
                                   Sugerir reviewer
                                 </span>
                               )}
@@ -353,37 +381,13 @@ export default function OutreachPage() {
                 </div>
               </div>
             ) : (
-              <p className="mt-4 text-sm text-muted-foreground">Seleccioná un draft para ver su hilo.</p>
+              <EmptyState
+                icon={FileText}
+                title="Seleccioná un draft"
+                description="Elegí un borrador de la lista para ver su hilo de delivery y replies."
+                className="py-8 mt-4"
+              />
             )}
-          </div>
-
-          <h3 className="text-sm font-semibold text-foreground font-heading">Actividad Reciente</h3>
-
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-            <div className="space-y-1">
-              {logs.map((log) => {
-                const config = ACTION_CONFIG[log.action] || ACTION_CONFIG.generated;
-                const Icon = config.icon;
-                const lead = leads.find((item) => item.id === log.lead_id);
-
-                return (
-                  <div key={log.id} className="flex items-start gap-3 rounded-xl px-2 py-2.5 hover:bg-muted transition-colors">
-                    <Icon className={cn("h-4 w-4 mt-0.5 shrink-0", config.color)} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm text-foreground/80">
-                        <span className="font-medium">{config.label}</span>
-                        {lead && <span className="text-muted-foreground"> — {lead.business_name}</span>}
-                      </p>
-                      {log.detail && <p className="text-xs text-muted-foreground mt-0.5">{log.detail}</p>}
-                      <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1 font-data">
-                        <Clock className="h-3 w-3" />
-                        <RelativeTime date={log.created_at} />
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
           </div>
         </div>
       </div>

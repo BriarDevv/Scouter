@@ -44,9 +44,13 @@ interface LeadsTableProps {
 
 const PAGE_SIZE = 10;
 
-const STATUS_FILTER_OPTIONS: (LeadStatus | "all")[] = [
-  "all", "new", "enriched", "scored", "qualified", "draft_ready",
-  "approved", "contacted", "opened", "replied", "meeting", "won", "lost", "suppressed",
+const QUICK_FILTER_OPTIONS: (LeadStatus | "all")[] = [
+  "all", "qualified", "contacted", "replied",
+];
+
+const MORE_FILTER_OPTIONS: LeadStatus[] = [
+  "new", "enriched", "scored", "draft_ready",
+  "approved", "opened", "meeting", "won", "lost", "suppressed",
 ];
 
 export function LeadsTable({ leads }: LeadsTableProps) {
@@ -107,21 +111,39 @@ export function LeadsTable({ leads }: LeadsTableProps) {
           />
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto">
-          {STATUS_FILTER_OPTIONS.map((s) => (
+        <div className="flex items-center gap-1.5">
+          {QUICK_FILTER_OPTIONS.map((s) => (
             <button
               key={s}
               onClick={() => { setStatusFilter(s); setPage(1); }}
               className={cn(
                 "shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors",
                 statusFilter === s
-                  ? "bg-violet-100 text-violet-700"
+                  ? "bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
                   : "bg-card text-muted-foreground hover:bg-muted hover:text-foreground/80 border border-border"
               )}
             >
               {s === "all" ? "Todos" : STATUS_CONFIG[s].label}
             </button>
           ))}
+          <select
+            value={MORE_FILTER_OPTIONS.includes(statusFilter as LeadStatus) ? statusFilter : ""}
+            onChange={(e) => {
+              const val = e.target.value as LeadStatus;
+              if (val) { setStatusFilter(val); setPage(1); }
+            }}
+            className={cn(
+              "rounded-lg px-2.5 py-1.5 text-xs font-medium border transition-colors bg-card text-muted-foreground cursor-pointer",
+              MORE_FILTER_OPTIONS.includes(statusFilter as LeadStatus)
+                ? "border-violet-200 bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
+                : "border-border hover:bg-muted"
+            )}
+          >
+            <option value="">Más filtros</option>
+            {MORE_FILTER_OPTIONS.map((s) => (
+              <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>
+            ))}
+          </select>
         </div>
       </div>
 

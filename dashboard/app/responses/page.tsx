@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Sparkles,
 } from "lucide-react";
+import { Skeleton, SkeletonCard } from "@/components/shared/skeleton";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { RelativeTime } from "@/components/shared/relative-time";
@@ -202,17 +203,16 @@ export default function ResponsesPage() {
 
       {/* 4B: Reduced stat cards — 6 → 4, with subtitle breakdown on positives */}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <StatCard label="Replies recientes" value={recentRepliesCount} icon={Inbox} iconBg="bg-violet-50 dark:bg-violet-950/30" iconColor="text-violet-600 dark:text-violet-400" />
-        <StatCard label="Leads que respondieron" value={repliedLeadsCount} icon={MessagesSquare} iconBg="bg-emerald-50 dark:bg-emerald-950/30" iconColor="text-emerald-600 dark:text-emerald-400" />
+        <StatCard label="Replies recientes" value={recentRepliesCount} icon={Inbox} colorScheme="violet" />
+        <StatCard label="Leads que respondieron" value={repliedLeadsCount} icon={MessagesSquare} colorScheme="emerald" />
         <StatCard
           label="Replies positivas"
           value={positiveRepliesCount}
           icon={Sparkles}
-          iconBg="bg-cyan-50 dark:bg-cyan-950/30"
-          iconColor="text-cyan-600 dark:text-cyan-400"
+          colorScheme="cyan"
           subtitle={`${quoteRepliesCount} cotización · ${meetingRepliesCount} reunión`}
         />
-        <StatCard label="Sugeridas a reviewer" value={escalatedCount} icon={LifeBuoy} iconBg="bg-fuchsia-50 dark:bg-fuchsia-950/30" iconColor="text-fuchsia-600 dark:text-fuchsia-400" />
+        <StatCard label="Sugeridas a reviewer" value={escalatedCount} icon={LifeBuoy} colorScheme="fuchsia" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.5fr,0.9fr]">
@@ -244,10 +244,22 @@ export default function ResponsesPage() {
           {loading ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, index) => (
-                <div key={index} className="animate-pulse rounded-2xl border border-border p-4">
-                  <div className="h-4 w-40 rounded bg-muted" />
-                  <div className="mt-3 h-3 w-full rounded bg-muted" />
-                  <div className="mt-2 h-3 w-2/3 rounded bg-muted" />
+                <div key={index} className="rounded-2xl border border-border p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-2 flex-1">
+                      <div className="flex gap-2">
+                        <Skeleton className="h-5 w-20 rounded-full" />
+                        <Skeleton className="h-5 w-24 rounded-full" />
+                      </div>
+                      <Skeleton className="h-4 w-48" />
+                      <Skeleton className="h-3 w-32" />
+                    </div>
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                  <div className="mt-3 border-t border-border/50 pt-3 space-y-2">
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-4/5" />
+                  </div>
                 </div>
               ))}
             </div>
@@ -328,7 +340,7 @@ export default function ResponsesPage() {
                         <p className="mt-2 text-sm text-rose-600">{message.classification_error}</p>
                       )}
                       {message.body_snippet && (
-                        <p className="mt-3 line-clamp-2 rounded-xl bg-muted px-3 py-2 text-sm text-muted-foreground">
+                        <p className="mt-3 line-clamp-2 border-l-2 border-muted-foreground/30 pl-3 text-sm text-muted-foreground">
                           {message.body_snippet}
                         </p>
                       )}

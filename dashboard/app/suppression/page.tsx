@@ -1,62 +1,66 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { formatDate } from "@/lib/formatters";
-import { MOCK_SUPPRESSION } from "@/data/mock";
-import { addToSuppression, getSuppressionList, removeFromSuppression } from "@/lib/api/client";
-import { ShieldOff, Plus, Search, Undo2 } from "lucide-react";
-import { EmptyState } from "@/components/shared/empty-state";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose,
 } from "@/components/ui/dialog";
+import { SkeletonTable } from "@/components/shared/skeleton";
+import { EmptyState } from "@/components/shared/empty-state";
+import { formatDate } from "@/lib/formatters";
+import { usePageData } from "@/lib/hooks/use-page-data";
+import { MOCK_SUPPRESSION } from "@/data/mock";
+import { addToSuppression, getSuppressionList, removeFromSuppression } from "@/lib/api/client";
+import { ShieldOff, Plus, Search, Trash2 } from "lucide-react";
+import { sileo } from "sileo";
 
 export default function SuppressionPage() {
   const [search, setSearch] = useState("");
-  const [items, setItems] = useState(MOCK_SUPPRESSION);
+  const { data: items, loading, refresh } = usePageData(
+    () => getSuppressionList(),
+    { fallback: MOCK_SUPPRESSION }
+  );
+  const [localItems, setLocalItems] = useState<typeof items | null>(null);
   const [email, setEmail] = useState("");
   const [domain, setDomain] = useState("");
   const [reason, setReason] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
-
-    async function loadSuppression() {
-      const entries = await getSuppressionList();
-      if (!active) {
-        return;
-      }
-      setItems(entries);
-    }
-
-    void loadSuppression();
-
-    return () => {
-      active = false;
-    };
-  }, []);
+  const displayItems = localItems ?? items;
 
   async function handleAdd() {
     setIsSubmitting(true);
     try {
-      const entry = await addToSuppression({
-        email: email || undefined,
-        domain: domain || undefined,
-        reason: reason || undefined,
-      });
-      setItems((current) => [entry, ...current]);
-      setEmail("");
-      setDomain("");
-      setReason("");
-      setIsDialogOpen(false);
+      await sileo.promise(
+        (async () => {
+          const entry = await addToSuppression({
+            email: email || undefined,
+            domain: domain || undefined,
+            reason: reason || undefined,
+          });
+          setLocalItems((current) => [entry, ...(current ?? items)]);
+          setEmail("");
+          setDomain("");
+          setReason("");
+          setIsDialogOpen(false);
+        })(),
+        {
+          loading: { title: "Agregando a supresión..." },
+          success: { title: "Agregado a supresión" },
+          error: (err: unknown) => ({
+            title: "Error al agregar",
+            description: err instanceof Error ? err.message : "No se pudo agregar.",
+          }),
+        }
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -65,21 +69,34 @@ export default function SuppressionPage() {
   async function handleRemove(id: string) {
     setRemovingId(id);
     try {
-      await removeFromSuppression(id);
-      setItems((current) => current.filter((entry) => entry.id !== id));
+      await sileo.promise(
+        (async () => {
+          await removeFromSuppression(id);
+          setLocalItems((current) => (current ?? items).filter((entry) => entry.id !== id));
+        })(),
+        {
+          loading: { title: "Removiendo de supresión..." },
+          success: { title: "Removido de supresión" },
+          error: (err: unknown) => ({
+            title: "Error al remover",
+            description: err instanceof Error ? err.message : "No se pudo remover.",
+          }),
+        }
+      );
     } finally {
       setRemovingId(null);
+      setConfirmRemoveId(null);
     }
   }
 
   const filtered = search
-    ? items.filter(
+    ? displayItems.filter(
         (s) =>
           s.email?.toLowerCase().includes(search.toLowerCase()) ||
           s.domain?.toLowerCase().includes(search.toLowerCase()) ||
           s.business_name?.toLowerCase().includes(search.toLowerCase())
       )
-    : items;
+    : displayItems;
 
   return (
     <div className="space-y-6">
@@ -152,8 +169,34 @@ export default function SuppressionPage() {
         />
       </div>
 
+      {/* Confirmation dialog for delete */}
+      <Dialog open={!!confirmRemoveId} onOpenChange={(open) => !open && setConfirmRemoveId(null)}>
+        <DialogContent className="rounded-2xl sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Confirmar eliminación</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground py-2">
+            ¿Estás seguro de que querés remover esta entrada de la lista de supresión?
+          </p>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" className="rounded-xl" />}>
+              Cancelar
+            </DialogClose>
+            <Button
+              className="rounded-xl bg-red-600 text-white hover:bg-red-700"
+              onClick={() => confirmRemoveId && void handleRemove(confirmRemoveId)}
+              disabled={removingId === confirmRemoveId}
+            >
+              Remover
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Table */}
-      {filtered.length > 0 ? (
+      {loading ? (
+        <SkeletonTable rows={5} />
+      ) : filtered.length > 0 ? (
         <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
           <Table>
             <TableHeader>
@@ -179,11 +222,11 @@ export default function SuppressionPage() {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 text-muted-foreground hover:text-red-600"
-                      title="Restaurar (remover de supresión)"
-                      onClick={() => void handleRemove(entry.id)}
+                      title="Remover de la lista"
+                      onClick={() => setConfirmRemoveId(entry.id)}
                       disabled={removingId === entry.id}
                     >
-                      <Undo2 className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </TableCell>
                 </TableRow>
