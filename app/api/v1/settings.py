@@ -166,3 +166,34 @@ def credentials_status():
         all_smtp_ready=all(item.set for item in smtp_items if item.required),
         all_imap_ready=all(item.set for item in imap_items if item.required),
     )
+
+
+# ── WhatsApp credentials and test ─────────────────────────────────────
+
+from app.schemas.whatsapp import WhatsAppCredentialsResponse, WhatsAppCredentialsUpdate, WhatsAppTestResult
+from app.services.whatsapp_service import (
+    get_credentials as get_wa_creds,
+    update_credentials as update_wa_creds,
+    to_response_dict as wa_to_dict,
+    test_whatsapp,
+)
+
+
+@router.get('/whatsapp-credentials', response_model=WhatsAppCredentialsResponse)
+def get_whatsapp_credentials(db=Depends(get_session)):
+    row = get_wa_creds(db)
+    return wa_to_dict(row)
+
+
+@router.patch('/whatsapp-credentials', response_model=WhatsAppCredentialsResponse)
+def patch_whatsapp_credentials(body: WhatsAppCredentialsUpdate, db=Depends(get_session)):
+    updates = body.to_update_dict()
+    if not updates:
+        raise HTTPException(status_code=422, detail='No fields to update provided.')
+    row = update_wa_creds(db, updates)
+    return wa_to_dict(row)
+
+
+@router.post('/test/whatsapp', response_model=WhatsAppTestResult)
+def test_whatsapp_connection(db=Depends(get_session)):
+    return test_whatsapp(db)

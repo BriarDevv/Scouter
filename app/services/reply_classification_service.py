@@ -112,6 +112,20 @@ def classify_inbound_message(db: Session, message_id: uuid.UUID) -> InboundMessa
         message.classified_at = datetime.now(UTC)
         db.commit()
         db.refresh(message)
+       # Emit notification for actionable classification results
+        try:
+            from app.services.notification_emitter import on_reply_classified
+            on_reply_classified(
+                db,
+                message_id=message.id,
+                label=message.classification_label,
+                business_name=message.lead.business_name if message.lead else None,
+                from_email=message.from_email,
+                confidence=message.confidence,
+                should_escalate=message.should_escalate_reviewer,
+            )
+        except Exception:
+            pass  # notification failure must not break classification
 
         logger.info(
             "inbound_message_classified",

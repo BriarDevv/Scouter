@@ -40,6 +40,16 @@ class OperationalSettingsUpdate(BaseModel):
     allow_reply_assistant_generation: bool | None = None
     use_reviewer_for_labels: list[str] | None = None
 
+    # Notifications & WhatsApp
+    notifications_enabled: bool | None = None
+    notification_score_threshold: int | None = None
+    whatsapp_alerts_enabled: bool | None = None
+    whatsapp_min_severity: str | None = None
+    whatsapp_categories: list[str] | None = None
+    whatsapp_openclaw_enrichment: bool | None = None
+    whatsapp_conversational_enabled: bool | None = None
+    whatsapp_actions_enabled: bool | None = None
+
     @field_validator("reviewer_confidence_threshold")
     @classmethod
     def validate_threshold(cls, v):
@@ -53,15 +63,18 @@ class OperationalSettingsUpdate(BaseModel):
         "reviewer_enabled", "signature_include_portfolio", "prioritize_quote_replies",
         "prioritize_meeting_replies", "allow_openclaw_briefs", "allow_reply_assistant_generation",
         "reviewer_confidence_threshold",
+        "notifications_enabled", "notification_score_threshold",
+        "whatsapp_alerts_enabled", "whatsapp_openclaw_enrichment",
+        "whatsapp_conversational_enabled", "whatsapp_actions_enabled",
     })
 
     def to_update_dict(self) -> dict:
         """Return fields explicitly included in the request body.
 
         Uses model_fields_set (Pydantic v2) so that:
-        - field not sent → excluded (no accidental overwrite)
-        - field sent as null → included as None (allows clearing nullable string fields)
-        - field sent as false/0/[] → included (correct for booleans and numbers)
+        - field not sent -> excluded (no accidental overwrite)
+        - field sent as null -> included as None (allows clearing nullable string fields)
+        - field sent as false/0/[] -> included (correct for booleans and numbers)
         Non-nullable DB columns (bool/float with DB defaults) skip null assignments.
         """
         dumped = self.model_dump()
@@ -107,6 +120,14 @@ class OperationalSettingsResponse(BaseModel):
     allow_openclaw_briefs: bool
     allow_reply_assistant_generation: bool
     use_reviewer_for_labels: list[str]
+    notifications_enabled: bool
+    notification_score_threshold: int
+    whatsapp_alerts_enabled: bool
+    whatsapp_min_severity: str
+    whatsapp_categories: list[str]
+    whatsapp_openclaw_enrichment: bool
+    whatsapp_conversational_enabled: bool
+    whatsapp_actions_enabled: bool
     updated_at: str | None
 
 

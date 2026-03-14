@@ -14,6 +14,7 @@ from app.api.v1.scoring import router as scoring_router
 from app.api.v1.settings import router as settings_router
 from app.api.v1.suppression import router as suppression_router
 from app.api.v1.tasks import router as tasks_router
+from app.api.v1.notifications import router as notifications_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -31,3 +32,4 @@ api_router.include_router(tasks_router)
 api_router.include_router(pipelines_router)
 api_router.include_router(reviews_router)
 api_router.include_router(replies_router)
+api_router.include_router(notifications_router)

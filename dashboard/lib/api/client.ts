@@ -37,6 +37,10 @@ import type {
   MailCredentials,
   ConnectionTestResult,
   SetupStatus,
+  NotificationItem,
+  NotificationListResponse,
+  NotificationCounts,
+  WhatsAppCredentials,
 } from "@/types";
 import { API_BASE_URL } from "@/lib/constants";
 import {
@@ -569,4 +573,67 @@ export async function testImapConnection(): Promise<ConnectionTestResult> {
 
 export async function getSetupStatus(): Promise<SetupStatus> {
   return apiFetch("/settings/setup-status");
+}
+
+// ─── Notifications ─────────────────────────────────────
+
+export async function getNotifications(params?: {
+  page?: number;
+  page_size?: number;
+  category?: string;
+  severity?: string;
+  status?: string;
+  type?: string;
+}) {
+  const searchParams = new URLSearchParams();
+  if (params?.page) searchParams.set("page", String(params.page));
+  if (params?.page_size) searchParams.set("page_size", String(params.page_size));
+  if (params?.category) searchParams.set("category", params.category);
+  if (params?.severity) searchParams.set("severity", params.severity);
+  if (params?.status) searchParams.set("status", params.status);
+  if (params?.type) searchParams.set("type", params.type);
+  const qs = searchParams.toString();
+  return apiFetch<NotificationListResponse>(`/notifications${qs ? "?" + qs : ""}`);
+}
+
+export async function getNotificationCounts() {
+  return apiFetch<NotificationCounts>("/notifications/counts");
+}
+
+export async function updateNotificationStatus(id: string, status: string) {
+  return apiFetch<NotificationItem>(`/notifications/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function bulkUpdateNotifications(
+  action: string,
+  category?: string,
+  ids?: string[]
+) {
+  return apiFetch<{ affected: number }>("/notifications/bulk", {
+    method: "POST",
+    body: JSON.stringify({ action, category, ids }),
+  });
+}
+
+// ─── WhatsApp ──────────────────────────────────────────
+
+export async function getWhatsAppCredentials() {
+  return apiFetch<WhatsAppCredentials>("/settings/whatsapp-credentials");
+}
+
+export async function updateWhatsAppCredentials(updates: Record<string, any>) {
+  return apiFetch<WhatsAppCredentials>("/settings/whatsapp-credentials", {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+}
+
+export async function testWhatsApp() {
+  return apiFetch<{ ok: boolean; error?: string; provider?: string }>(
+    "/settings/test/whatsapp",
+    { method: "POST" }
+  );
 }

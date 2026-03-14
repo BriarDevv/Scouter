@@ -497,6 +497,15 @@ export interface InboundMailSettings {
   search_criteria: string;
   auto_classify_inbound: boolean;
   use_reviewer_for_labels: string[];
+  // Notifications & WhatsApp
+  notifications_enabled: boolean;
+  notification_score_threshold: number;
+  whatsapp_alerts_enabled: boolean;
+  whatsapp_min_severity: string;
+  whatsapp_categories: string[];
+  whatsapp_openclaw_enrichment: boolean;
+  whatsapp_conversational_enabled: boolean;
+  whatsapp_actions_enabled: boolean;
   last_sync: MailLastSync | null;
   missing_requirements: string[];
 }
@@ -559,6 +568,15 @@ export interface OperationalSettings {
   allow_openclaw_briefs: boolean;
   allow_reply_assistant_generation: boolean;
   use_reviewer_for_labels: string[];
+  // Notifications & WhatsApp
+  notifications_enabled: boolean;
+  notification_score_threshold: number;
+  whatsapp_alerts_enabled: boolean;
+  whatsapp_min_severity: string;
+  whatsapp_categories: string[];
+  whatsapp_openclaw_enrichment: boolean;
+  whatsapp_conversational_enabled: boolean;
+  whatsapp_actions_enabled: boolean;
   updated_at: string | null;
 }
 
@@ -618,4 +636,55 @@ export interface SetupStatus {
   overall: "ready" | "incomplete" | "warning";
   ready_to_send: boolean;
   ready_to_receive: boolean;
+}
+
+// ─── Notifications ─────────────────────────────────────
+
+export interface NotificationItem {
+  id: string;
+  type: string;
+  category: "business" | "system" | "security";
+  severity: "info" | "warning" | "high" | "critical";
+  title: string;
+  message: string;
+  source_kind: string | null;
+  source_id: string | null;
+  metadata: Record<string, any> | null;
+  status: "unread" | "read" | "acknowledged" | "resolved";
+  read_at: string | null;
+  acknowledged_at: string | null;
+  resolved_at: string | null;
+  channel_state: Record<string, any> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NotificationListResponse {
+  items: NotificationItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  unread_count: number;
+}
+
+export interface NotificationCounts {
+  total_unread: number;
+  business: number;
+  system: number;
+  security: number;
+  critical: number;
+  high: number;
+}
+
+// ─── WhatsApp ──────────────────────────────────────────
+
+export interface WhatsAppCredentials {
+  provider: string;
+  phone_number: string | null;
+  api_key_set: boolean;
+  webhook_url: string | null;
+  last_test_at: string | null;
+  last_test_ok: boolean | null;
+  last_test_error: string | null;
+  updated_at: string | null;
 }

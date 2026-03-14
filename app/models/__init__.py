@@ -10,6 +10,8 @@ from app.models.reply_assistant_send import ReplyAssistantSend
 from app.models.settings import OperationalSettings
 from app.models.suppression import SuppressionEntry
 from app.models.task_tracking import PipelineRun, TaskRun
+from app.models.notification import Notification
+from app.models.whatsapp_credentials import WhatsAppCredentials
 
 __all__ = [
     "EmailThread",
@@ -28,4 +30,6 @@ __all__ = [
     "SuppressionEntry",
     "PipelineRun",
     "TaskRun",
+    "Notification",
+    "WhatsAppCredentials",
 ]

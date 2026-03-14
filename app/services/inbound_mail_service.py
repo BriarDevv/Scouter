@@ -215,6 +215,11 @@ def sync_inbound_messages(db: Session, *, limit: int | None = None) -> InboundMa
         sync_run.completed_at = datetime.now(UTC)
         db.commit()
         db.refresh(sync_run)
+        try:
+            from app.services.notification_emitter import on_sync_failed
+            on_sync_failed(db, sync_run_id=sync_run.id, error=sync_run.error)
+        except Exception:
+            pass
         logger.warning(
             "inbound_mail_sync_failed",
             sync_run_id=str(sync_run.id),

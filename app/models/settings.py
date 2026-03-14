@@ -64,3 +64,15 @@ class OperationalSettings(Base):
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
+
+    # ── Notifications
+    notifications_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    notification_score_threshold: Mapped[int] = mapped_column(Integer, default=70, nullable=False)
+
+    # ── WhatsApp alerts (non-secret config only; secrets in WhatsAppCredentials)
+    whatsapp_alerts_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    whatsapp_min_severity: Mapped[str] = mapped_column(String, default='high', nullable=False)
+    whatsapp_categories: Mapped[list] = mapped_column(JSON, default=lambda: ['business', 'security'], nullable=False)
+    whatsapp_openclaw_enrichment: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    whatsapp_conversational_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    whatsapp_actions_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

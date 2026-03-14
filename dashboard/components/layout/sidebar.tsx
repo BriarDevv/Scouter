@@ -2,16 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { ActivityPulse } from "@/components/layout/activity-pulse";
+import { API_BASE_URL } from "@/lib/constants";
 import {
+  Bell,
   BrainCircuit,
   Inbox,
   LayoutDashboard,
   Users,
   Mail,
   BarChart3,
+  ShieldAlert,
   ShieldOff,
   Radar,
   Settings,
@@ -27,8 +31,33 @@ const NAV_ITEMS = [
   { href: "/suppression", label: "Supresión",     icon: ShieldOff },
 ];
 
+const EXTRA_NAV_ITEMS = [
+  { href: "/notifications", label: "Notificaciones", icon: Bell,        badge: true },
+  { href: "/security",      label: "Seguridad",      icon: ShieldAlert, badge: false },
+];
+
 export function Sidebar() {
   const pathname = usePathname();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    async function fetchNotificationCounts() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/notifications/counts`);
+        if (res.ok) {
+          const data = await res.json();
+          if (active) {
+            setUnreadCount(data.unread ?? 0);
+          }
+        }
+      } catch {
+        // Non-critical — silently ignore fetch errors
+      }
+    }
+    fetchNotificationCounts();
+    return () => { active = false; };
+  }, []);
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-sidebar-border bg-sidebar">
@@ -60,6 +89,31 @@ export function Sidebar() {
             >
               <item.icon className={cn("h-[18px] w-[18px]", isActive ? "text-violet-600 dark:text-violet-400" : "")} />
               {item.label}
+            </Link>
+          );
+        })}
+
+        {/* Notifications & Security */}
+        {EXTRA_NAV_ITEMS.map((item) => {
+          const isActive = pathname.startsWith(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium font-heading transition-all duration-150",
+                isActive
+                  ? "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              <item.icon className={cn("h-[18px] w-[18px]", isActive ? "text-violet-600 dark:text-violet-400" : "")} />
+              <span className="flex-1">{item.label}</span>
+              {item.badge && unreadCount > 0 && (
+                <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
             </Link>
           );
         })}

@@ -13,6 +13,7 @@ import {
   getOperationalSettings,
   getSetupStatus,
 } from "@/lib/api/client";
+import { API_BASE_URL } from "@/lib/constants";
 import type {
   LLMSettings,
   MailCredentials,
@@ -29,6 +30,15 @@ import { MailOutboundSection } from "@/components/settings/mail-outbound-section
 import { MailInboundSection } from "@/components/settings/mail-inbound-section";
 import { RulesSection } from "@/components/settings/rules-section";
 import { CredentialsSection } from "@/components/settings/credentials-section";
+import { NotificationsSection } from "@/components/settings/notifications-section";
+import { WhatsAppSection } from "@/components/settings/whatsapp-section";
+import type { WhatsAppCredentials } from "@/components/settings/whatsapp-section";
+
+async function getWhatsAppCredentials(): Promise<WhatsAppCredentials> {
+  const res = await fetch(`${API_BASE_URL}/settings/whatsapp-credentials`);
+  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+  return res.json();
+}
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabId>("setup");
@@ -37,6 +47,7 @@ export default function SettingsPage() {
   const [opData, setOpData] = useState<OperationalSettings | null>(null);
   const [credsData, setCredsData] = useState<MailCredentials | null>(null);
   const [setupData, setSetupData] = useState<SetupStatus | null>(null);
+  const [waCredsData, setWaCredsData] = useState<WhatsAppCredentials | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -63,13 +74,15 @@ export default function SettingsPage() {
       getOperationalSettings(),
       getMailCredentials(),
       getSetupStatus(),
-    ]).then(([llm, mail, op, creds, setup]) => {
+      getWhatsAppCredentials(),
+    ]).then(([llm, mail, op, creds, setup, waCreds]) => {
       if (!active) return;
       if (llm.status === "fulfilled") setLlmData(llm.value);
       if (mail.status === "fulfilled") setMailData(mail.value);
       if (op.status === "fulfilled") setOpData(op.value);
       if (creds.status === "fulfilled") setCredsData(creds.value);
       if (setup.status === "fulfilled") setSetupData(setup.value);
+      if (waCreds.status === "fulfilled") setWaCredsData(waCreds.value);
       if (
         llm.status === "rejected" &&
         mail.status === "rejected" &&
@@ -93,6 +106,11 @@ export default function SettingsPage() {
     setCredsData(updated);
     void refreshSetup();
     void refreshMail();
+  };
+
+  const handleSavedWACreds = (updated: WhatsAppCredentials) => {
+    setWaCredsData(updated);
+    void refreshSetup();
   };
 
   if (loading) {
@@ -161,6 +179,16 @@ export default function SettingsPage() {
         </TabsContent>
         <TabsContent value="llm">
           {llmData ? <LLMSection data={llmData} /> : <NoDataNotice />}
+        </TabsContent>
+        <TabsContent value="notifications">
+          {opData ? (
+            <NotificationsSection data={opData} onSaved={handleSavedOps} />
+          ) : <NoDataNotice />}
+        </TabsContent>
+        <TabsContent value="whatsapp">
+          {waCredsData ? (
+            <WhatsAppSection data={waCredsData} onSaved={handleSavedWACreds} />
+          ) : <NoDataNotice />}
         </TabsContent>
       </Tabs>
 
