@@ -52,7 +52,7 @@ export function StatCard({
 
   const content = (
     <div className={cn(
-      "rounded-2xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md",
+      "rounded-2xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md h-full",
       href && "cursor-pointer"
     )}>
       <div className="flex items-start justify-between">
