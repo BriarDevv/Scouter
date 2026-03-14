@@ -23,42 +23,111 @@ Detecta negocios que necesitan desarrollo/rediseno web, enriquece leads, los pun
 | PostgreSQL | `:5432` | Base de datos principal |
 | Redis | `:6379` | Broker de Celery + cache |
 
-## Quick Start (5 pasos)
-
-```bash
-# 1. Clonar y configurar entorno
-git clone <repo-url> && cd ClawScout
-cp .env.example .env        # Editar con tus valores
-
-# 2. Levantar infraestructura
-docker compose up -d postgres redis
-
-# 3. Backend
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-alembic upgrade head
-
-# 4. Dashboard
-cd dashboard && npm ci && cd ..
-
-# 5. Ejecutar
-uvicorn app.main:app --reload &          # API en :8000
-cd dashboard && npm run dev              # Dashboard en :3000
-```
-
-O con Docker Compose completo:
-
-```bash
-cp .env.example .env
-docker compose up -d
-```
-
 ## Prerequisitos
 
 - Python 3.14+
 - Node.js v24+
-- Docker Desktop + Docker Compose
+- Docker + Docker Compose
 - Ollama (para funciones LLM)
+
+## Instalacion (una sola vez)
+
+```bash
+# 1. Clonar y configurar
+git clone <repo-url> && cd ClawScout
+cp .env.example .env                     # Editar con tus valores
+
+# 2. Backend
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+
+# 3. Dashboard
+cd dashboard && npm ci && cd ..
+
+# 4. Modelos de Ollama
+ollama pull qwen3.5:4b
+ollama pull qwen3.5:9b
+ollama pull qwen3.5:27b
+```
+
+## Encender el sistema
+
+### Opcion A: Desarrollo local (recomendado)
+
+Abrir 4 terminales en WSL:
+
+```bash
+# Terminal 1 — Infraestructura (Postgres + Redis)
+docker compose up postgres redis
+
+# Terminal 2 — API backend
+source .venv/bin/activate
+alembic upgrade head                     # Solo la primera vez o si hay migraciones nuevas
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+# Terminal 3 — Worker de Celery (procesa tareas async)
+source .venv/bin/activate
+celery -A app.workers.celery_app worker --loglevel=info --concurrency=2
+
+# Terminal 4 — Dashboard frontend
+cd dashboard
+npm run dev
+```
+
+Servicios disponibles:
+- API + Swagger: http://localhost:8000/docs
+- Dashboard: http://localhost:3000
+- Health check: http://localhost:8000/health
+- Health detallado: http://localhost:8000/health/detailed
+
+**Opcional** — Monitor de Celery (Flower):
+```bash
+# Terminal 5
+source .venv/bin/activate
+celery -A app.workers.celery_app flower --port=5555
+# Flower: http://localhost:5555
+```
+
+**Opcional** — Preflight (verificar que todo este listo):
+```bash
+source .venv/bin/activate
+python scripts/preflight.py
+```
+
+### Opcion B: Docker Compose completo
+
+```bash
+cp .env.example .env                     # Si no existe
+docker compose up -d                     # Levanta todo: postgres, redis, api, worker, flower, dashboard
+docker compose logs -f                   # Ver logs en tiempo real
+```
+
+Servicios: mismos puertos que arriba.
+
+## Apagar el sistema
+
+### Desarrollo local
+
+```bash
+# Ctrl+C en cada terminal, o desde cualquier terminal:
+# Parar infraestructura Docker
+docker compose down                      # Mantiene los datos
+docker compose down -v                   # Borra volumenes (datos de postgres/redis)
+```
+
+### Docker Compose completo
+
+```bash
+docker compose down                      # Parar todo, mantener datos
+docker compose down -v                   # Parar todo y borrar datos
+```
+
+## Seedear datos de prueba
+
+```bash
+source .venv/bin/activate
+python scripts/seed.py                   # Crea leads de ejemplo + territorios
+```
 
 ## Configuracion de LLM
 
