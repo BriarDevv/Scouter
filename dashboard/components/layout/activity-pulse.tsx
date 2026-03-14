@@ -145,8 +145,8 @@ export function ActivityPulse() {
 
   const activeTasks = tasks.filter((t) => isActive(t.status));
   const recentDone = tasks.filter((t) => !isActive(t.status)).slice(0, 3);
-  const displayTasks = expanded ? [...activeTasks, ...recentDone] : activeTasks;
   const hasActive = activeTasks.length > 0;
+  const latestTask = activeTasks[0] ?? recentDone[0] ?? null;
 
   if (tasks.length === 0) {
     return (
@@ -188,21 +188,26 @@ export function ActivityPulse() {
         )} />
       </button>
 
-      {expanded && displayTasks.length > 0 && (
-        <div className="space-y-0.5 pl-1">
-          {displayTasks.map((task) => (
-            <TaskRow key={task.task_id} task={task} llm={llm} />
-          ))}
+      {expanded ? (
+        <>
+          {(activeTasks.length > 0 || recentDone.length > 0) && (
+            <div className="space-y-0.5 pl-1">
+              {[...activeTasks, ...recentDone].map((task) => (
+                <TaskRow key={task.task_id} task={task} llm={llm} />
+              ))}
+            </div>
+          )}
+          <Link
+            href="/activity"
+            className="mt-1.5 flex items-center gap-1 pl-1 text-[10px] font-medium text-muted-foreground/60 hover:text-violet-400 transition-colors"
+          >
+            Ver todo <ChevronRight className="h-2.5 w-2.5" />
+          </Link>
+        </>
+      ) : latestTask && (
+        <div className="pl-1">
+          <TaskRow task={latestTask} llm={llm} />
         </div>
-      )}
-
-      {expanded && (
-        <Link
-          href="/activity"
-          className="mt-1.5 flex items-center gap-1 pl-1 text-[10px] font-medium text-muted-foreground/60 hover:text-violet-400 transition-colors"
-        >
-          Ver todo <ChevronRight className="h-2.5 w-2.5" />
-        </Link>
       )}
     </div>
   );
