@@ -59,3 +59,12 @@ class SourcePerformanceResponse(BaseModel):
     avg_score: float
     reply_rate: float
     conversion_rate: float
+
+
+class GeoSummaryCityResponse(BaseModel):
+    city: str
+    count: int
+    avg_score: float
+    qualified_count: int
+    lat: float
+    lng: float

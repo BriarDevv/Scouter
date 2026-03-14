@@ -18,6 +18,7 @@ import {
   ShieldAlert,
   ShieldOff,
   Radar,
+  MapPin,
   Settings,
 } from "lucide-react";
 
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { href: "/outreach",    label: "Outreach",      icon: Mail },
   { href: "/responses",   label: "Respuestas",    icon: Inbox },
   { href: "/performance", label: "Rendimiento",   icon: BarChart3 },
+  { href: "/map",         label: "Mapa",          icon: MapPin },
   { href: "/suppression", label: "Supresión",     icon: ShieldOff },
 ];
 

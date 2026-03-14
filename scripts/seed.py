@@ -9,6 +9,7 @@ from app.db.session import SessionLocal
 from app.models.lead_source import LeadSource, SourceType
 from app.schemas.lead import LeadCreate
 from app.services.lead_service import create_lead
+from app.models.territory import Territory
 
 SAMPLE_LEADS = [
     {
@@ -63,6 +64,34 @@ def main():
             lead_data["source_id"] = source.id
             lead = create_lead(db, LeadCreate(**lead_data))
             print(f"Created: {lead.business_name} ({lead.id})")
+
+        # Create sample territories
+        territories_data = [
+            {
+                "name": "CABA",
+                "description": "Ciudad Autonoma de Buenos Aires",
+                "color": "#8b5cf6",
+                "cities": ["Buenos Aires", "Palermo", "Recoleta", "Belgrano", "Caballito",
+                           "Villa Urquiza", "Flores", "Barracas", "Almagro", "Villa Crespo", "Boedo"],
+            },
+            {
+                "name": "GBA Norte",
+                "description": "Gran Buenos Aires zona norte",
+                "color": "#3b82f6",
+                "cities": ["San Isidro", "Tigre", "Vicente Lopez", "San Martin"],
+            },
+            {
+                "name": "Interior Cordoba",
+                "description": "Provincia de Cordoba",
+                "color": "#22c55e",
+                "cities": ["Cordoba", "Rio Cuarto"],
+            },
+        ]
+        for tdata in territories_data:
+            t = Territory(**tdata)
+            db.add(t)
+        db.commit()
+        print(f"Seeded {len(territories_data)} territories.")
 
         print(f"\nSeeded {len(SAMPLE_LEADS)} leads.")
     finally:

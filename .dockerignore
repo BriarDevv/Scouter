@@ -1,0 +1,16 @@
+.venv/
+.git/
+node_modules/
+.next/
+test.db
+*.egg-info/
+.env
+dashboard/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+*.pyc
+.dev-runtime/
+.openclaw.db
+docs/
+skills/

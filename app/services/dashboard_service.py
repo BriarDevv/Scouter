@@ -1,7 +1,7 @@
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func as sa_func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.lead import Lead, LeadStatus
@@ -90,6 +90,14 @@ def _load_sent_drafts(db: Session, since: datetime | None = None) -> list[Outrea
     return list(db.execute(stmt.order_by(OutreachDraft.sent_at.desc())).scalars().all())
 
 
+def _last_lead_at(db: Session) -> str | None:
+    """Retorna el max(created_at) de leads como ISO string o None."""
+    result = db.execute(select(sa_func.max(Lead.created_at))).scalar()
+    if result is None:
+        return None
+    normalized = _normalize_timestamp(result)
+    return normalized.isoformat() if normalized else None
+
 def get_dashboard_stats(db: Session, *, leads: list[Lead] | None = None) -> dict:
     leads = leads if leads is not None else _load_leads(db)
     today = _now_utc().date()
@@ -134,6 +142,7 @@ def get_dashboard_stats(db: Session, *, leads: list[Lead] | None = None) -> dict
         "positive_reply_rate": round(_safe_rate(meetings, replied), 4),
         "meeting_rate": round(_safe_rate(meetings, contacted), 4),
         "pipeline_velocity": round(_safe_average(closed_cycle_days), 1),
+        "last_lead_at": _last_lead_at(db),
     }
 
 

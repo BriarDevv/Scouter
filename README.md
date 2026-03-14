@@ -1,214 +1,192 @@
-# ClawScout v1
+# ClawScout
 
-Private lead prospecting system for web development services. Detects businesses that need web development/redesign, enriches leads, scores them, generates outreach drafts, and supports human-in-the-loop review.
+Sistema privado de prospeccion de leads para servicios de desarrollo web.
+Detecta negocios que necesitan desarrollo/rediseno web, enriquece leads, los puntua, genera borradores de contacto y soporta revision humana antes del envio.
 
-## Architecture
+## Stack
 
-```
-app/
-├── api/v1/        # FastAPI endpoints
-├── core/          # Config, logging
-├── db/            # Database session, base model
-├── models/        # SQLAlchemy models
-├── schemas/       # Pydantic request/response schemas
-├── services/      # Business logic layer
-├── workers/       # Celery tasks
-├── llm/           # Ollama/Qwen integration
-├── scoring/       # Rule-based scoring engine
-├── outreach/      # Email draft generation
-└── crawlers/      # Lead discovery crawlers
-```
+| Capa | Tecnologia |
+|------|-----------|
+| Backend | Python 3.14, FastAPI, SQLAlchemy 2.x, Celery, structlog |
+| Base de datos | PostgreSQL 16, Redis 7 |
+| LLM | Ollama — catalogo: `qwen3.5:4b`, `qwen3.5:9b`, `qwen3.5:27b` |
+| Frontend | Next.js 16 (App Router), TypeScript, Tailwind CSS v4, shadcn/ui (base-ui) |
+| Infra | Docker Compose, Alembic (migraciones) |
 
-**Stack:** Python 3.12, FastAPI, SQLAlchemy 2.x, PostgreSQL, Redis, Celery, Ollama (default `qwen3.5:9b`), Next.js 16, Playwright-ready browser runtime, httpx, BeautifulSoup4, structlog.
+## Mapa de servicios
 
-## Recommended Local Environment
+| Servicio | Puerto | Descripcion |
+|----------|--------|-------------|
+| API | `:8000` | FastAPI backend (Swagger en `/docs`) |
+| Dashboard | `:3000` | Next.js frontend |
+| Flower | `:5555` | Monitor de Celery |
+| PostgreSQL | `:5432` | Base de datos principal |
+| Redis | `:6379` | Broker de Celery + cache |
 
-ClawScout is now **Linux-first for local development**.
-
-- Primary local environment: **WSL2 / Ubuntu**
-- Primary repo location: `~/src/ClawScout`
-- Current migration branch: `codex/feat/wsl-linux-first`
-- Windows clone remains a fallback and should stay quiet on `main`
-
-See the full operational guide in [docs/linux-first.md](docs/linux-first.md).
-
-## Prerequisites
-
-- Python 3.12+
-- Node `>=20.9.0`
-- Docker Desktop + Docker Compose
-- Ollama (temporarily still hosted on Windows in the validated setup)
-- Ubuntu on WSL2
-
-## Quick Start
-
-### Windows (PowerShell)
-
-```powershell
-.\bootstrap.ps1
-```
-
-### Linux / WSL
+## Quick Start (5 pasos)
 
 ```bash
-chmod +x bootstrap.sh
-./bootstrap.sh
-```
+# 1. Clonar y configurar entorno
+git clone <repo-url> && cd ClawScout
+cp .env.example .env        # Editar con tus valores
 
-For the current validated Linux-first workflow, use the dedicated guide in [docs/linux-first.md](docs/linux-first.md).
-
-### Manual Setup
-
-```bash
-# 1. Create and activate virtual environment
-python -m venv .venv
-source .venv/bin/activate  # Linux/WSL
-# .\.venv\Scripts\Activate.ps1  # Windows PowerShell
-
-# 2. Install dependencies
-pip install -e ".[dev]"
-
-# 3. Copy and edit environment config
-cp .env.example .env
-# Edit .env with your values
-
-# 4. Start infrastructure
+# 2. Levantar infraestructura
 docker compose up -d postgres redis
 
-# 5. Run database migrations
+# 3. Backend
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
 alembic upgrade head
 
-# 6. Pull LLM model
-ollama pull qwen3.5:9b
+# 4. Dashboard
+cd dashboard && npm ci && cd ..
 
-# 7. Seed sample data (optional)
-python scripts/seed.py
+# 5. Ejecutar
+uvicorn app.main:app --reload &          # API en :8000
+cd dashboard && npm run dev              # Dashboard en :3000
 ```
 
-## LLM Defaults
-
-- Supported catalog: `qwen3.5:4b`, `qwen3.5:9b`, `qwen3.5:27b` via `OLLAMA_SUPPORTED_MODELS`
-- Role defaults:
-  - `leader` -> `qwen3.5:4b`
-  - `executor` -> `qwen3.5:9b`
-  - `reviewer` -> `qwen3.5:27b`
-- Backward compatibility:
-  - `OLLAMA_MODEL` remains supported as the legacy executor fallback
-  - if `OLLAMA_EXECUTOR_MODEL` is unset, the system resolves executor to `OLLAMA_MODEL`
-- The client layer still behaves like a single-provider Ollama setup today; role-aware resolution is prepared for the next step
-
-## Playwright On Linux / WSL
-
-Playwright is declared as an optional dependency and should be installed only on environments that need browser automation or deep crawling.
+O con Docker Compose completo:
 
 ```bash
-# Python package
-pip install -e ".[playwright]"
-
-# System dependencies for Chromium on Ubuntu / WSL
-python -m playwright install-deps chromium
-
-# Browser binaries for the current Linux user
-python -m playwright install chromium
-```
-
-Validated on WSL2 with headless Chromium navigation against a public site.
-
-Notes:
-
-- `install-deps` pulls the Linux packages Playwright needs for Chromium, including NSS, audio, Xvfb, and font packages.
-- The current crawler implementation in `app/crawlers/base_crawler.py` is still an `httpx` / BeautifulSoup template.
-- Browser runtime is ready in Linux-first, but a real Playwright crawler has not been implemented yet.
-
-## Dashboard On Linux / WSL
-
-The Next.js dashboard requires Node `>=20.9.0`.
-
-```bash
-cd dashboard
-npm ci
-npm run dev -- --hostname 0.0.0.0 --port 3000
-```
-
-Notes:
-
-- The dashboard talks to the API from the browser, so the backend must allow the dashboard origin via `API_CORS_ORIGINS`.
-- The default API CORS origins now cover both `http://localhost:3000` and `http://127.0.0.1:3000` for WSL/Linux-first local development.
-- If you override `NEXT_PUBLIC_API_URL`, keep it pointed at the backend API root (for example `http://localhost:8000/api/v1`).
-
-## Running
-
-```bash
-# API server (with auto-reload)
-uvicorn app.main:app --reload
-
-# Celery worker
-celery -A app.workers.celery_app worker --loglevel=info
-
-# Celery Flower (monitoring dashboard)
-celery -A app.workers.celery_app flower --port=5555
-
-# Or run everything via Docker Compose
+cp .env.example .env
 docker compose up -d
 ```
 
-## API Endpoints
+## Prerequisitos
 
-Once running, visit http://localhost:8000/docs for interactive Swagger docs.
+- Python 3.14+
+- Node.js v24+
+- Docker Desktop + Docker Compose
+- Ollama (para funciones LLM)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/health` | Health check |
-| POST | `/api/v1/leads` | Create a lead |
-| GET | `/api/v1/leads` | List leads (paginated, filterable) |
-| GET | `/api/v1/leads/{id}` | Get lead with signals |
-| POST | `/api/v1/enrichment/{id}` | Enrich a lead (sync) |
-| POST | `/api/v1/enrichment/{id}/async` | Enrich a lead (async) |
-| POST | `/api/v1/scoring/{id}` | Score a lead |
-| POST | `/api/v1/scoring/{id}/analyze` | LLM analysis (async) |
-| POST | `/api/v1/scoring/{id}/pipeline` | Full pipeline (async) |
-| POST | `/api/v1/outreach/{id}/draft` | Generate outreach draft |
-| GET | `/api/v1/outreach/drafts` | List drafts |
-| POST | `/api/v1/outreach/drafts/{id}/review` | Approve/reject draft |
-| POST | `/api/v1/suppression` | Add to suppression list |
-| GET | `/api/v1/suppression` | List suppression entries |
-| DELETE | `/api/v1/suppression/{id}` | Remove from suppression list |
+## Configuracion de LLM
 
-## Pipeline Flow
+El sistema usa Ollama con modelos qwen3.5 asignados por rol:
+
+| Rol | Modelo default | Variable de entorno |
+|-----|---------------|---------------------|
+| Leader | `qwen3.5:4b` | `OLLAMA_LEADER_MODEL` |
+| Executor | `qwen3.5:9b` | `OLLAMA_EXECUTOR_MODEL` |
+| Reviewer | `qwen3.5:27b` | `OLLAMA_REVIEWER_MODEL` |
+
+```bash
+# Descargar los modelos necesarios
+ollama pull qwen3.5:4b
+ollama pull qwen3.5:9b
+ollama pull qwen3.5:27b
+```
+
+El catalogo de modelos soportados se configura con `OLLAMA_SUPPORTED_MODELS` en `.env`.
+La variable legacy `OLLAMA_MODEL` sigue funcionando como fallback para el rol executor.
+
+## Estructura del proyecto
 
 ```
-1. Ingest lead (manual or crawler)
-2. Enrich: analyze website, detect signals
-3. Score: rule-based scoring from signals
-4. LLM Analysis: summarize, evaluate quality, suggest angle
-5. Generate outreach draft
-6. Human review: approve / reject
-7. (v2) Send email
+ClawScout/
+|-- app/                      # Backend Python
+|   |-- api/v1/               # Endpoints FastAPI
+|   |-- core/                 # Config (pydantic-settings), logging (structlog)
+|   |-- db/                   # Session factory, Base model
+|   |-- models/               # SQLAlchemy models
+|   |-- schemas/              # Pydantic request/response schemas
+|   |-- services/             # Business logic layer
+|   |-- workers/              # Celery app + tasks
+|   |-- llm/                  # Ollama client, catalogo, roles, prompts
+|   |-- mail/                 # Email send/receive
+|   |-- scoring/              # Motor de scoring basado en reglas
+|   |-- outreach/             # Generacion de borradores via LLM
+|   |-- crawlers/             # BaseCrawler ABC + implementaciones
+|-- dashboard/                # Frontend Next.js 16
+|   |-- app/                  # App Router -- paginas
+|   |-- components/           # UI, shared, charts, layout
+|   |-- lib/                  # API client, hooks, constants
+|   |-- data/                 # Mock data para desarrollo
+|   |-- types/                # TypeScript definitions
+|-- alembic/                  # Migraciones de base de datos
+|-- infra/                    # Dockerfiles, config de infra
+|-- scripts/                  # Scripts utilitarios
+|-- tests/                    # Tests del backend
+|-- docker-compose.yml        # Orquestacion de servicios
+|-- pyproject.toml            # Config del proyecto Python
+|-- .env.example              # Template de variables de entorno
+```
+
+## Paginas del dashboard
+
+| Pagina | Ruta | Descripcion |
+|--------|------|-------------|
+| Overview | `/` | Metricas generales, pipeline visual, graficos temporales |
+| Leads | `/leads` | Tabla paginada con filtros, busqueda y acciones |
+| Lead Detail | `/leads/[id]` | Senales detectadas, score, drafts, timeline |
+| Outreach | `/outreach` | Gestion de borradores: pendientes, aprobados, enviados |
+| Performance | `/performance` | Metricas por industria, ciudad y fuente |
+| Suppression | `/suppression` | Lista de supresion global |
+| Responses | `/responses` | Respuestas inbound clasificadas por LLM |
+| Activity | `/activity` | Log de actividad del sistema |
+| Notifications | `/notifications` | Notificaciones y alertas |
+| Security | `/security` | Configuracion de seguridad |
+| Settings | `/settings` | Configuracion general del sistema |
+
+## Endpoints de la API
+
+Swagger interactivo en `http://localhost:8000/docs`.
+
+| Metodo | Endpoint | Descripcion |
+|--------|----------|-------------|
+| GET | `/health` | Health check |
+| POST | `/api/v1/leads` | Crear lead |
+| GET | `/api/v1/leads` | Listar leads (paginado, filtrable) |
+| GET | `/api/v1/leads/{id}` | Obtener lead con senales |
+| POST | `/api/v1/enrichment/{id}` | Enriquecer lead (sync) |
+| POST | `/api/v1/enrichment/{id}/async` | Enriquecer lead (async) |
+| POST | `/api/v1/scoring/{id}` | Puntuar lead |
+| POST | `/api/v1/scoring/{id}/analyze` | Analisis LLM (async) |
+| POST | `/api/v1/scoring/{id}/pipeline` | Pipeline completo (async) |
+| POST | `/api/v1/outreach/{id}/draft` | Generar borrador de contacto |
+| GET | `/api/v1/outreach/drafts` | Listar borradores |
+| POST | `/api/v1/outreach/drafts/{id}/review` | Aprobar/rechazar borrador |
+| POST | `/api/v1/suppression` | Agregar a lista de supresion |
+| GET | `/api/v1/suppression` | Listar supresiones |
+| DELETE | `/api/v1/suppression/{id}` | Eliminar de supresion |
+
+## Pipeline de prospeccion
+
+```
+1. Ingesta de lead (manual o crawler)
+2. Enriquecimiento: analizar website, detectar senales
+3. Scoring: puntuacion basada en reglas desde senales
+4. Analisis LLM: resumen, evaluacion de calidad, angulo sugerido
+5. Generacion de borrador de contacto
+6. Revision humana: aprobar / rechazar
+7. Envio (v2)
 ```
 
 ## Tests
 
 ```bash
+# Backend (pytest con SQLite)
 pytest -v
+
+# Frontend (type checking)
+cd dashboard && npx tsc --noEmit
 ```
 
-## Key Design Decisions
+Los tests del backend usan SQLite via override en `conftest.py` para aislamiento.
 
-- **Celery over RQ**: Native retry+backoff, task routing (separate queues for crawling/LLM/enrichment), rate limiting per task, Flower monitoring.
-- **Sync SQLAlchemy for v1**: Simpler, FastAPI supports it fine. Async migration path is straightforward with SQLAlchemy 2.x.
-- **structlog**: Structured JSON logs for auditing and debugging.
-- **Dedup via hash**: SHA-256 of normalized (business_name + city + domain). Prevents duplicate leads at insert time.
-- **Suppression list enforced globally**: Checked at lead creation, before outreach generation, and on bulk operations.
-- **LLM output treated as untrusted**: JSON extraction with fallback, all outputs sanitized before storage.
-- **No auto-send in v1**: All outreach requires human approval.
+## Variables de entorno
 
-## What's Still Pending
+Copiar `.env.example` a `.env` y completar los valores.
+Ver `.env.example` para la lista completa de variables disponibles.
 
-- Role-based model selection and routing
-- OpenClaw leader / supervisor orchestration layer
-- Browser automation beyond the current Playwright runtime validation
-- Email sending integration (SMTP/Resend/etc.)
-- WhatsApp / outbound messaging channel
-- Real settings / operations UI beyond the current dashboard screens
-- Advanced SEO analysis and deeper crawling
-- Multi-executor / supervisor workflows
+## Decisiones de diseno
+
+- **Celery sobre RQ**: Retries nativos, routing por queue, rate limiting por tarea, Flower para monitoreo.
+- **SQLAlchemy sync para v1**: Mas simple, FastAPI lo soporta bien. Migracion a async es directa con SQLAlchemy 2.x.
+- **structlog**: Logs estructurados en JSON para auditoria y debugging.
+- **Dedup via hash**: SHA-256 de (business_name + city + domain) normalizado. Previene duplicados en insert.
+- **Supresion global**: Se verifica al crear leads, antes de generar outreach, y en operaciones bulk.
+- **Output LLM como untrusted**: Extraccion JSON con fallback, outputs sanitizados antes de guardar.
+- **Sin auto-send en v1**: Todo outreach requiere aprobacion humana.
+- **shadcn/ui con base-ui**: Usa prop `render` en vez de `asChild` (no Radix).
+- **Tailwind v4**: Config inline con `@theme`, sin `tailwind.config.ts`.

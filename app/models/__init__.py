@@ -11,6 +11,7 @@ from app.models.settings import OperationalSettings
 from app.models.suppression import SuppressionEntry
 from app.models.task_tracking import PipelineRun, TaskRun
 from app.models.notification import Notification
+from app.models.territory import Territory
 from app.models.whatsapp_credentials import WhatsAppCredentials
 
 from app.models.whatsapp_audit import WhatsAppAuditLog
@@ -33,6 +34,7 @@ __all__ = [
     "PipelineRun",
     "TaskRun",
     "Notification",
+    "Territory",
     "WhatsAppCredentials",
     "WhatsAppAuditLog",
 ]

@@ -13,6 +13,7 @@ from urllib.parse import quote_plus
 import httpx
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.logging import get_logger
 from app.models.whatsapp_credentials import WhatsAppCredentials
 
@@ -39,6 +40,9 @@ class CallMeBotProvider(WhatsAppProvider):
     BASE_URL = "https://api.callmebot.com/whatsapp.php"
 
     def send_message(self, phone: str, message: str, api_key: str) -> bool:
+        if getattr(settings, "WHATSAPP_DRY_RUN", False):
+            logger.info("whatsapp_dry_run", message=message[:100])
+            return True
         url = f"{self.BASE_URL}?phone={quote_plus(phone)}&text={quote_plus(message)}&apikey={quote_plus(api_key)}"
         try:
             with httpx.Client(timeout=_SEND_TIMEOUT) as client:
@@ -132,6 +136,10 @@ def send_alert(
     sev_emoji = {"critical": "\u26a0\ufe0f", "high": "\U0001f534", "warning": "\U0001f7e1", "info": "\u2139\ufe0f"}
     emoji = sev_emoji.get(severity, "\u2139\ufe0f")
     text = f"{emoji} *ClawScout — {title}*\n\n{message}\n\nSeveridad: {severity.upper()}"
+
+    if getattr(settings, "WHATSAPP_DRY_RUN", False):
+        logger.info("whatsapp_dry_run", message=text[:100])
+        return True
 
     provider = _get_provider(creds.provider)
     return provider.send_message(creds.phone_number, text, creds.api_key)

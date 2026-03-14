@@ -658,3 +658,65 @@ export async function updateAIWorkspaceFile(key: string, content: string): Promi
 export async function resetAIWorkspaceFile(key: string): Promise<{ key: string; filename: string; reset: boolean }> {
   return apiFetch(`/settings/ai-workspace/${key}/reset`, { method: 'POST' });
 }
+
+
+// ─── System Health ─────────────────────────────────────────
+
+export async function getSystemHealth(): Promise<import("@/types").SystemHealth> {
+  // /health/detailed is at the app root, not under /api/v1
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1").replace(/\/api\/v1$/, "");
+  const res = await fetch(`${baseUrl}/health/detailed`, {
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Health check failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+// ─── Geo / Map ─────────────────────────────────────────
+
+export async function getGeoSummary(): Promise<import('@/types').GeoSummaryCity[]> {
+  return withMockFallback(
+    () => apiFetch('/dashboard/geo-summary'),
+    () => [
+      { city: 'Buenos Aires', count: 42, avg_score: 68.5, qualified_count: 28, lat: -34.6037, lng: -58.3816 },
+      { city: 'Córdoba', count: 18, avg_score: 55.2, qualified_count: 10, lat: -31.4201, lng: -64.1888 },
+      { city: 'Rosario', count: 15, avg_score: 61.0, qualified_count: 9, lat: -32.9468, lng: -60.6393 },
+      { city: 'Mendoza', count: 11, avg_score: 49.8, qualified_count: 5, lat: -32.8908, lng: -68.8272 },
+      { city: 'La Plata', count: 8, avg_score: 72.1, qualified_count: 6, lat: -34.9215, lng: -57.9545 },
+      { city: 'Tucumán', count: 7, avg_score: 44.3, qualified_count: 3, lat: -26.8083, lng: -65.2176 },
+      { city: 'Mar del Plata', count: 6, avg_score: 58.0, qualified_count: 3, lat: -38.0055, lng: -57.5426 },
+      { city: 'Salta', count: 5, avg_score: 51.4, qualified_count: 2, lat: -24.7821, lng: -65.4232 },
+    ]
+  );
+}
+
+// ─── Territories ───────────────────────────────────────
+
+export async function getTerritories(): Promise<import('@/types').TerritoryWithStats[]> {
+  return withMockFallback(
+    () => apiFetch('/territories'),
+    () => []
+  );
+}
+
+export async function createTerritory(data: Partial<import('@/types').Territory>): Promise<import('@/types').Territory> {
+  return apiFetch('/territories', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateTerritory(id: string, data: Partial<import('@/types').Territory>): Promise<import('@/types').Territory> {
+  return apiFetch(`/territories/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function deleteTerritory(id: string): Promise<void> {
+  return apiFetch(`/territories/${id}`, { method: 'DELETE' });
+}
+
+export async function getTerritoryAnalytics(): Promise<import('@/types').TerritoryWithStats[]> {
+  return withMockFallback(
+    () => apiFetch('/territories/analytics'),
+    () => []
+  );
+}

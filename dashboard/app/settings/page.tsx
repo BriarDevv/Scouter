@@ -33,6 +33,7 @@ import { CredentialsSection } from "@/components/settings/credentials-section";
 import { NotificationsSection } from "@/components/settings/notifications-section";
 import { WhatsAppSection } from "@/components/settings/whatsapp-section";
 import { AIWorkspaceSection } from "@/components/settings/ai-workspace-section";
+import { TerritoriesSection } from "@/components/settings/territories-section";
 import type { WhatsAppCredentials } from "@/components/settings/whatsapp-section";
 
 async function getWhatsAppCredentials(): Promise<WhatsAppCredentials> {
@@ -193,6 +194,9 @@ export default function SettingsPage() {
         </TabsContent>
         <TabsContent value="ai-workspace">
           <AIWorkspaceSection />
+        </TabsContent>
+        <TabsContent value="territories">
+          <TerritoriesSection />
         </TabsContent>
       </Tabs>
 

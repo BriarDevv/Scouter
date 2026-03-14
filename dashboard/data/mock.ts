@@ -286,6 +286,7 @@ export const MOCK_STATS: DashboardStats = {
   positive_reply_rate: 0.28,
   meeting_rate: 0.14,
   pipeline_velocity: 4.2,
+  last_lead_at: "2026-03-14T10:30:00+00:00",
 };
 
 export const MOCK_PIPELINE: PipelineStage[] = [

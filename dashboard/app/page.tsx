@@ -8,6 +8,7 @@ import { PipelineFunnel } from "@/components/dashboard/pipeline-funnel";
 import { AreaChartCard } from "@/components/charts/area-chart-card";
 import { IndustryChart } from "@/components/dashboard/industry-chart";
 import { RecentActivity } from "@/components/dashboard/recent-activity";
+import { SystemHealthStrip } from "@/components/dashboard/system-health-strip";
 import { StatCard } from "@/components/shared/stat-card";
 import { SectionHeader } from "@/components/shared/section-header";
 import { CollapsibleSection } from "@/components/shared/collapsible-section";
@@ -33,6 +34,7 @@ import {
   MOCK_LOGS,
 } from "@/data/mock";
 import type { InboundMessage } from "@/types";
+import { TerritorySummary } from "@/components/dashboard/territory-summary";
 
 export default function OverviewPage() {
   const [stats, setStats] = useState(MOCK_STATS);
@@ -107,6 +109,8 @@ export default function OverviewPage() {
         title="Panel general"
         description="Estado general del sistema de prospección"
       />
+
+      <SystemHealthStrip />
 
       {/* Group 1: Key Metrics */}
       {loading ? (
@@ -219,6 +223,7 @@ export default function OverviewPage() {
           </CollapsibleSection>
         </>
       )}
+      <TerritorySummary />
     </div>
   );
 }

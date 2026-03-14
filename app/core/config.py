@@ -74,6 +74,9 @@ class Settings(BaseSettings):
     MAIL_AUTO_CLASSIFY_INBOUND: bool = False
     MAIL_USE_REVIEWER_FOR_LABELS: str = ""
 
+    # WhatsApp
+    WHATSAPP_DRY_RUN: bool = True
+
     # Rate limiting (API)
     API_RATE_LIMIT: str = "60/minute"
     API_CORS_ORIGINS: str = (
