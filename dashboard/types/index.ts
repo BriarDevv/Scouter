@@ -537,3 +537,47 @@ export interface CredentialsStatus {
   all_smtp_ready: boolean;
   all_imap_ready: boolean;
 }
+
+// ─── Mail Credentials ──────────────────────────────────────────────
+
+export interface MailCredentials {
+  smtp_host: string | null;
+  smtp_port: number;
+  smtp_username: string | null;
+  smtp_password_set: boolean;
+  smtp_ssl: boolean;
+  smtp_starttls: boolean;
+  imap_host: string | null;
+  imap_port: number;
+  imap_username: string | null;
+  imap_password_set: boolean;
+  imap_ssl: boolean;
+  smtp_last_test_at: string | null;
+  smtp_last_test_ok: boolean | null;
+  smtp_last_test_error: string | null;
+  imap_last_test_at: string | null;
+  imap_last_test_ok: boolean | null;
+  imap_last_test_error: string | null;
+  updated_at: string | null;
+}
+
+export interface ConnectionTestResult {
+  ok: boolean;
+  error: string | null;
+  sample_count: number | null;
+}
+
+export interface SetupStep {
+  id: string;
+  label: string;
+  status: "complete" | "incomplete" | "warning" | "pending";
+  detail: string | null;
+  action: string | null;
+}
+
+export interface SetupStatus {
+  steps: SetupStep[];
+  overall: "ready" | "incomplete" | "warning";
+  ready_to_send: boolean;
+  ready_to_receive: boolean;
+}

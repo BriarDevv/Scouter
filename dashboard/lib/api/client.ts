@@ -32,6 +32,9 @@ import type {
   ReplyAssistantDraftReview,
   OperationalSettings,
   CredentialsStatus,
+  MailCredentials,
+  ConnectionTestResult,
+  SetupStatus,
 } from "@/types";
 import { API_BASE_URL } from "@/lib/constants";
 import {
@@ -501,4 +504,29 @@ export async function updateOperationalSettings(
 
 export async function getCredentialsStatus(): Promise<CredentialsStatus> {
   return apiFetch("/settings/credentials");
+}
+
+export async function getMailCredentials(): Promise<MailCredentials> {
+  return apiFetch("/settings/mail-credentials");
+}
+
+export async function updateMailCredentials(
+  updates: Partial<MailCredentials> & { smtp_password?: string; imap_password?: string }
+): Promise<MailCredentials> {
+  return apiFetch("/settings/mail-credentials", {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+}
+
+export async function testSmtpConnection(): Promise<ConnectionTestResult> {
+  return apiFetch("/settings/test/smtp", { method: "POST" });
+}
+
+export async function testImapConnection(): Promise<ConnectionTestResult> {
+  return apiFetch("/settings/test/imap", { method: "POST" });
+}
+
+export async function getSetupStatus(): Promise<SetupStatus> {
+  return apiFetch("/settings/setup-status");
 }
