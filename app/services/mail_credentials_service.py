@@ -47,10 +47,16 @@ def get_or_create(db: Session) -> MailCredentials:
     return row
 
 
+# Fields that must be stripped of whitespace on save
+_STRIP_FIELDS = {"smtp_host", "smtp_username", "imap_host", "imap_username"}
+
+
 def update_credentials(db: Session, updates: dict) -> MailCredentials:
     row = get_or_create(db)
     for key, value in updates.items():
         if hasattr(row, key):
+            if key in _STRIP_FIELDS and isinstance(value, str):
+                value = value.strip()
             setattr(row, key, value)
     row.updated_at = datetime.now(timezone.utc)
     db.commit()
@@ -116,7 +122,7 @@ class EffectiveIMAPConfig:
 def get_effective_smtp(db: Session) -> EffectiveSMTPConfig:
     row = get_or_create(db)
     return EffectiveSMTPConfig(
-        host=row.smtp_host or env.MAIL_SMTP_HOST,
+        host=(row.smtp_host or env.MAIL_SMTP_HOST or "").strip(),
         port=row.smtp_port if row.smtp_host else env.MAIL_SMTP_PORT,
         username=row.smtp_username or env.MAIL_SMTP_USERNAME,
         password=row.smtp_password or env.MAIL_SMTP_PASSWORD,
@@ -128,7 +134,7 @@ def get_effective_smtp(db: Session) -> EffectiveSMTPConfig:
 def get_effective_imap(db: Session) -> EffectiveIMAPConfig:
     row = get_or_create(db)
     return EffectiveIMAPConfig(
-        host=row.imap_host or env.MAIL_IMAP_HOST,
+        host=(row.imap_host or env.MAIL_IMAP_HOST or "").strip(),
         port=row.imap_port if row.imap_host else env.MAIL_IMAP_PORT,
         username=row.imap_username or env.MAIL_IMAP_USERNAME,
         password=row.imap_password or env.MAIL_IMAP_PASSWORD,
