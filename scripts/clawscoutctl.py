@@ -63,6 +63,12 @@ COMMAND_SPECS: dict[str, CommandSpec] = {
     "review-draft": CommandSpec("POST", "/reviews/drafts/{draft_id}/async", mutating=True),
     "review-reply": CommandSpec("POST", "/reviews/inbound/messages/{message_id}/async", mutating=True),
     "review-reply-sync": CommandSpec("POST", "/reviews/inbound/messages/{message_id}", mutating=True, timeout_seconds=300),
+    "notifications-list": CommandSpec("GET", "/notifications"),
+    "notifications-counts": CommandSpec("GET", "/notifications/counts"),
+    "notification-resolve": CommandSpec("PATCH", "/notifications/{notification_id}", mutating=True),
+    "notifications-mark-read": CommandSpec("POST", "/notifications/bulk", mutating=True),
+    "whatsapp-status": CommandSpec("GET", "/settings/whatsapp-credentials"),
+    "whatsapp-test": CommandSpec("POST", "/settings/test/whatsapp", mutating=True),
 }
 
 
@@ -333,6 +339,24 @@ def parse_args() -> argparse.Namespace:
     review_reply.add_argument("--sync", action="store_true")
     _add_wait_args(review_reply)
 
+    notifications_list = subparsers.add_parser("notifications-list")
+    notifications_list.add_argument("--limit", type=int, default=20)
+    notifications_list.add_argument("--category")
+    notifications_list.add_argument("--severity")
+    notifications_list.add_argument("--status")
+
+    subparsers.add_parser("notifications-counts")
+
+    notification_resolve = subparsers.add_parser("notification-resolve")
+    notification_resolve.add_argument("--id", required=True)
+
+    notifications_mark_read = subparsers.add_parser("notifications-mark-read")
+    notifications_mark_read.add_argument("--category")
+
+    subparsers.add_parser("whatsapp-status")
+
+    subparsers.add_parser("whatsapp-test")
+
     return parser.parse_args()
 
 
@@ -415,6 +439,18 @@ def build_request(args: argparse.Namespace) -> tuple[str, str, str, dict[str, An
         path = spec.path_template.format(draft_id=args.draft_id)
     elif direct_command == "review-reply":
         path = spec.path_template.format(message_id=args.message_id)
+    elif direct_command == "notifications-list":
+        params = {
+            "limit": args.limit,
+            "category": getattr(args, "category", None),
+            "severity": getattr(args, "severity", None),
+            "status": getattr(args, "status", None),
+        }
+        path = spec.path_template
+    elif direct_command == "notification-resolve":
+        path = spec.path_template.format(notification_id=args.id)
+    elif direct_command == "notifications-mark-read":
+        path = spec.path_template
     else:
         path = spec.path_template
 
@@ -617,6 +653,66 @@ def summarize_pipeline_wait_result(
         "latest_draft": latest_draft,
         "pipeline_run": final,
     }
+
+
+def handle_notifications_list(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    params: dict[str, Any] = {"limit": args.limit}
+    if args.category:
+        params["category"] = args.category
+    if args.severity:
+        params["severity"] = args.severity
+    if args.status:
+        params["status"] = args.status
+    return client.request(
+        "notifications-list",
+        path=COMMAND_SPECS["notifications-list"].path_template,
+        method="GET",
+        params=params,
+    )
+
+
+def handle_notifications_counts(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    return client.request(
+        "notifications-counts",
+        path=COMMAND_SPECS["notifications-counts"].path_template,
+        method="GET",
+    )
+
+
+def handle_notification_resolve(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    return client.request(
+        "notification-resolve",
+        path=COMMAND_SPECS["notification-resolve"].path_template.format(notification_id=args.id),
+        method="PATCH",
+    )
+
+
+def handle_notifications_mark_read(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    payload: dict[str, Any] = {"action": "mark_read"}
+    if args.category:
+        payload["category"] = args.category
+    return client.request(
+        "notifications-mark-read",
+        path=COMMAND_SPECS["notifications-mark-read"].path_template,
+        method="POST",
+        payload=payload,
+    )
+
+
+def handle_whatsapp_status(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    return client.request(
+        "whatsapp-status",
+        path=COMMAND_SPECS["whatsapp-status"].path_template,
+        method="GET",
+    )
+
+
+def handle_whatsapp_test(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    return client.request(
+        "whatsapp-test",
+        path=COMMAND_SPECS["whatsapp-test"].path_template,
+        method="POST",
+    )
 
 
 def handle_direct_command(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
@@ -1270,6 +1366,12 @@ def main() -> int:
         "review-lead": handle_review_lead,
         "review-draft": handle_review_draft,
         "review-reply": handle_review_reply,
+        "notifications-list": handle_notifications_list,
+        "notifications-counts": handle_notifications_counts,
+        "notification-resolve": handle_notification_resolve,
+        "notifications-mark-read": handle_notifications_mark_read,
+        "whatsapp-status": handle_whatsapp_status,
+        "whatsapp-test": handle_whatsapp_test,
     }
 
     if args.command in handlers:

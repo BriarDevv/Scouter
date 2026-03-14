@@ -1,45 +1,41 @@
 ---
 name: clawscout-mail
-description: "Use ClawScout mail wrappers for exact draft lookup, delivery status, and explicit single-draft sends."
+description: "Draft lookup, delivery status, and explicit single-draft sends via mailctl.py. For mail operations only."
 metadata: { "openclaw": { "emoji": "✉️", "os": ["linux"], "requires": { "bins": ["python3"] } } }
 ---
 
 # ClawScout Mail Skill
 
-ClawScout is the source of truth for drafts and deliveries.
+Send approved drafts and check delivery status. Uses mailctl.py for grounded mail operations.
 
-Use this skill only for:
+## When to use
 
-- recent drafts
-- draft detail
-- delivery status for one draft
-- sending one explicit approved draft
+- "qué drafts están aprobados para enviar?"
+- "mandá el draft X"
+- "qué pasó con el envío del draft X?"
 
-Do not use this skill for:
+## When NOT to use
 
-- reply summaries
-- reply prioritization
-- top leads
-- model/settings questions
-- SMTP direct access
+- Generating new drafts → use **clawscout-actions**
+- Reviewing drafts → use **clawscout-actions**
+- Listing all drafts (not mail-specific) → use **clawscout-data**
+- Reply assisted drafts → use **clawscout-actions**
 
-## Hard rule for exact draft queries
+## Hard rules
 
-For exact draft or delivery data:
+1. Execute exactly one wrapper command first.
+2. Final answer = wrapper JSON only. No markdown fences.
+3. Sending requires explicit user intent. Never send multiple unless user clearly scopes it.
 
-1. Do not explain the plan.
-2. Do not inspect files if the wrapper exists.
-3. Execute exactly one wrapper command first.
-4. Final answer must be only the wrapper JSON.
-5. Do not use Markdown fences.
-
-Commands:
+## Commands
 
 ```bash
-cd /home/briar/src/ClawScout && .venv/bin/python scripts/mailctl.py --data-only --compact recent-drafts --limit <n>
-cd /home/briar/src/ClawScout && .venv/bin/python scripts/mailctl.py --data-only --compact draft-detail --draft-id <draft_id>
-cd /home/briar/src/ClawScout && .venv/bin/python scripts/mailctl.py --data-only --compact send-status --draft-id <draft_id>
-cd /home/briar/src/ClawScout && .venv/bin/python scripts/mailctl.py --data-only --compact send-draft --draft-id <draft_id>
+cd /home/briar/src/ClawScout && .venv/bin/python scripts/mailctl.py --data-only --compact <command> [args]
 ```
 
-Sending requires explicit user intent. Never send multiple drafts unless the user clearly scopes the request.
+| Request | Command |
+|---|---|
+| Recent approved drafts | `recent-drafts --limit <n>` |
+| Draft detail | `draft-detail --draft-id <id>` |
+| Delivery status | `send-status --draft-id <id>` |
+| Send one draft | `send-draft --draft-id <id>` |
