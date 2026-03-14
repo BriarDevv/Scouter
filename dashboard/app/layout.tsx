@@ -3,7 +3,7 @@ import { Plus_Jakarta_Sans, Inter, Geist_Mono } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Sidebar } from "@/components/layout/sidebar";
-import { Toaster } from "sileo";
+import { ThemedToaster } from "@/components/providers/themed-toaster";
 import "./globals.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -30,6 +30,13 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("clawscout-theme");if(t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme:dark)").matches))document.documentElement.classList.add("dark")}catch(e){}})()`,
+          }}
+        />
+      </head>
       <body
         className={`${plusJakarta.variable} ${inter.variable} ${geistMono.variable} antialiased bg-background`}
       >
@@ -41,7 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 {children}
               </div>
             </main>
-            <Toaster position="top-right" />
+            <ThemedToaster />
           </TooltipProvider>
         </ThemeProvider>
       </body>
