@@ -18,14 +18,6 @@ import {
   getTimeSeries,
 } from "@/lib/api/client";
 import {
-  MOCK_STATS,
-  MOCK_TIME_SERIES,
-  MOCK_PIPELINE,
-  MOCK_INDUSTRY_BREAKDOWN,
-  MOCK_CITY_BREAKDOWN,
-  MOCK_SOURCE_PERFORMANCE,
-} from "@/data/mock";
-import {
   Target, MessageSquare, CalendarCheck, Trophy, Clock, Zap,
   TrendingUp, AlertTriangle,
 } from "lucide-react";
@@ -34,7 +26,7 @@ import {
   ResponsiveContainer, Cell,
 } from "recharts";
 import { cn } from "@/lib/utils";
-import type { DashboardStats, IndustryBreakdown, CityBreakdown, SourcePerformance, PipelineStage } from "@/types";
+import type { CityBreakdown, DashboardStats, IndustryBreakdown, PipelineStage, SourcePerformance, TimeSeriesPoint } from "@/types";
 
 const CONVERSION_COLORS = ["#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444"];
 
@@ -113,12 +105,12 @@ function computeInsights(
 }
 
 export default function PerformancePage() {
-  const [stats, setStats] = useState(MOCK_STATS);
-  const [timeSeries, setTimeSeries] = useState(MOCK_TIME_SERIES);
-  const [pipeline, setPipeline] = useState(MOCK_PIPELINE);
-  const [industryBreakdown, setIndustryBreakdown] = useState(MOCK_INDUSTRY_BREAKDOWN);
-  const [cityBreakdown, setCityBreakdown] = useState(MOCK_CITY_BREAKDOWN);
-  const [sourcePerformance, setSourcePerformance] = useState(MOCK_SOURCE_PERFORMANCE);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [timeSeries, setTimeSeries] = useState<TimeSeriesPoint[]>([]);
+  const [pipeline, setPipeline] = useState<PipelineStage[]>([]);
+  const [industryBreakdown, setIndustryBreakdown] = useState<IndustryBreakdown[]>([]);
+  const [cityBreakdown, setCityBreakdown] = useState<CityBreakdown[]>([]);
+  const [sourcePerformance, setSourcePerformance] = useState<SourcePerformance[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>("resumen");
 
@@ -215,7 +207,7 @@ export default function PerformancePage() {
       </div>
 
       {/* Tab content */}
-      {activeTab === "resumen" && (
+      {activeTab === "resumen" && stats && (
         <div className="space-y-8">
           <section>
             <SectionHeader title="Tasas de Conversión" subtitle="Eficiencia en cada etapa del pipeline" className="mb-4" />

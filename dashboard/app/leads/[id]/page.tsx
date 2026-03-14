@@ -23,7 +23,6 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import { formatDateTime, extractDomain } from "@/lib/formatters";
-import { MOCK_LEADS, MOCK_DRAFTS, MOCK_LOGS } from "@/data/mock";
 import {
   generateDraft,
   getDrafts,
@@ -38,6 +37,8 @@ import {
   updateLeadStatus,
 } from "@/lib/api/client";
 import type {
+  OutreachDraft,
+  OutreachLog,
   EmailThreadSummary,
   InboundMessage,
   Lead,
@@ -150,9 +151,9 @@ function LeadDetailSkeleton() {
 
 export default function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const [lead, setLead] = useState<Lead | null>(MOCK_LEADS.find((item) => item.id === id) ?? null);
-  const [drafts, setDrafts] = useState(MOCK_DRAFTS.filter((draft) => draft.lead_id === id));
-  const [logs, setLogs] = useState(MOCK_LOGS.filter((log) => log.lead_id === id));
+  const [lead, setLead] = useState<Lead | null>(null);
+  const [drafts, setDrafts] = useState<OutreachDraft[]>([]);
+  const [logs, setLogs] = useState<OutreachLog[]>([]);
   const [pipelineRuns, setPipelineRuns] = useState<PipelineRunSummary[]>([]);
   const [inboundMessages, setInboundMessages] = useState<InboundMessage[]>([]);
   const [inboundThreads, setInboundThreads] = useState<EmailThreadSummary[]>([]);

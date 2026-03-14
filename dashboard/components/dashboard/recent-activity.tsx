@@ -1,7 +1,6 @@
 "use client";
 
 import type { Lead, OutreachLog } from "@/types";
-import { MOCK_LEADS } from "@/data/mock";
 import { RelativeTime } from "@/components/shared/relative-time";
 import {
   FileText, Send, Eye, MessageSquare, CalendarCheck, Trophy, XCircle, CheckCircle,
@@ -31,7 +30,7 @@ export function RecentActivity({ logs, leads }: { logs: OutreachLog[]; leads?: L
         {logs.slice(0, 8).map((log) => {
           const actionConfig = ACTION_ICONS[log.action] || ACTION_ICONS.generated;
           const Icon = actionConfig.icon;
-          const lead = leads?.find((item) => item.id === log.lead_id) ?? MOCK_LEADS.find((item) => item.id === log.lead_id);
+          const lead = leads?.find((item) => item.id === log.lead_id);
 
           return (
             <div key={log.id} className="flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-muted">

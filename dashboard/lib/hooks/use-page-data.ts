@@ -2,12 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-interface UsePageDataOptions<T> {
-  fallback: T;
-}
-
 interface UsePageDataResult<T> {
-  data: T;
+  data: T | null;
   loading: boolean;
   error: Error | null;
   refresh: () => Promise<void>;
@@ -15,9 +11,8 @@ interface UsePageDataResult<T> {
 
 export function usePageData<T>(
   fetcher: () => Promise<T>,
-  options: UsePageDataOptions<T>
 ): UsePageDataResult<T> {
-  const [data, setData] = useState<T>(options.fallback);
+  const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 

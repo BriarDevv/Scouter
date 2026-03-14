@@ -9,6 +9,7 @@ import { AreaChartCard } from "@/components/charts/area-chart-card";
 import { IndustryChart } from "@/components/dashboard/industry-chart";
 import { RecentActivity } from "@/components/dashboard/recent-activity";
 import { SystemHealthStrip } from "@/components/dashboard/system-health-strip";
+import { ControlCenter } from "@/components/dashboard/control-center";
 import { StatCard } from "@/components/shared/stat-card";
 import { SectionHeader } from "@/components/shared/section-header";
 import { CollapsibleSection } from "@/components/shared/collapsible-section";
@@ -24,25 +25,16 @@ import {
   getTimeSeries,
 } from "@/lib/api/client";
 import { POSITIVE_REPLY_LABELS } from "@/lib/constants";
-import {
-  MOCK_DRAFTS,
-  MOCK_LEADS,
-  MOCK_STATS,
-  MOCK_PIPELINE,
-  MOCK_TIME_SERIES,
-  MOCK_INDUSTRY_BREAKDOWN,
-  MOCK_LOGS,
-} from "@/data/mock";
-import type { InboundMessage } from "@/types";
+import type { DashboardStats, InboundMessage, IndustryBreakdown, Lead, OutreachLog, PipelineStage, TimeSeriesPoint } from "@/types";
 import { TerritorySummary } from "@/components/dashboard/territory-summary";
 
 export default function OverviewPage() {
-  const [stats, setStats] = useState(MOCK_STATS);
-  const [pipeline, setPipeline] = useState(MOCK_PIPELINE);
-  const [timeSeries, setTimeSeries] = useState(MOCK_TIME_SERIES);
-  const [industryBreakdown, setIndustryBreakdown] = useState(MOCK_INDUSTRY_BREAKDOWN);
-  const [logs, setLogs] = useState(MOCK_LOGS);
-  const [leads, setLeads] = useState(MOCK_LEADS);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [pipeline, setPipeline] = useState<PipelineStage[]>([]);
+  const [timeSeries, setTimeSeries] = useState<TimeSeriesPoint[]>([]);
+  const [industryBreakdown, setIndustryBreakdown] = useState<IndustryBreakdown[]>([]);
+  const [logs, setLogs] = useState<OutreachLog[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [inboundMessages, setInboundMessages] = useState<InboundMessage[]>([]);
   const [inboundError, setInboundError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -112,6 +104,9 @@ export default function OverviewPage() {
 
       <SystemHealthStrip />
 
+      {/* Centro de Control */}
+      <ControlCenter />
+
       {/* Group 1: Key Metrics */}
       {loading ? (
         <div className="space-y-4">
@@ -123,7 +118,7 @@ export default function OverviewPage() {
           </div>
         </div>
       ) : (
-        <StatsGrid stats={stats} />
+        <StatsGrid stats={stats!} />
       )}
 
       {/* Group 2: Canal Mail */}

@@ -14,7 +14,6 @@ import { SkeletonTable } from "@/components/shared/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import { formatDate } from "@/lib/formatters";
 import { usePageData } from "@/lib/hooks/use-page-data";
-import { MOCK_SUPPRESSION } from "@/data/mock";
 import { addToSuppression, getSuppressionList, removeFromSuppression } from "@/lib/api/client";
 import { ShieldOff, Plus, Search, Trash2 } from "lucide-react";
 import { sileo } from "sileo";
@@ -23,7 +22,6 @@ export default function SuppressionPage() {
   const [search, setSearch] = useState("");
   const { data: items, loading, refresh } = usePageData(
     () => getSuppressionList(),
-    { fallback: MOCK_SUPPRESSION }
   );
   const [localItems, setLocalItems] = useState<typeof items | null>(null);
   const [email, setEmail] = useState("");
@@ -46,7 +44,7 @@ export default function SuppressionPage() {
             domain: domain || undefined,
             reason: reason || undefined,
           });
-          setLocalItems((current) => [entry, ...(current ?? items)]);
+          setLocalItems((current) => [entry, ...(current ?? items ?? [])]);
           setEmail("");
           setDomain("");
           setReason("");
@@ -72,7 +70,7 @@ export default function SuppressionPage() {
       await sileo.promise(
         (async () => {
           await removeFromSuppression(id);
-          setLocalItems((current) => (current ?? items).filter((entry) => entry.id !== id));
+          setLocalItems((current) => (current ?? items ?? []).filter((entry) => entry.id !== id));
         })(),
         {
           loading: { title: "Removiendo de supresión..." },
@@ -90,13 +88,13 @@ export default function SuppressionPage() {
   }
 
   const filtered = search
-    ? displayItems.filter(
+    ? (displayItems ?? []).filter(
         (s) =>
           s.email?.toLowerCase().includes(search.toLowerCase()) ||
           s.domain?.toLowerCase().includes(search.toLowerCase()) ||
           s.business_name?.toLowerCase().includes(search.toLowerCase())
       )
-    : displayItems;
+    : (displayItems ?? []);
 
   return (
     <div className="space-y-6">

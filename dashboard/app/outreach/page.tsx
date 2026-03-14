@@ -11,7 +11,6 @@ import {
   InboundReplyLabelBadge,
 } from "@/components/shared/status-badge";
 import { RelativeTime } from "@/components/shared/relative-time";
-import { MOCK_DRAFTS, MOCK_LOGS, MOCK_LEADS } from "@/data/mock";
 import {
   getDraftDeliveries,
   getDrafts,
@@ -22,6 +21,7 @@ import {
   reviewDraft,
 } from "@/lib/api/client";
 import type {
+  Lead,
   DraftStatus,
   EmailThreadSummary,
   InboundMessage,
@@ -41,8 +41,8 @@ const FILTER_OPTIONS: (DraftStatus | "all")[] = ["all", "pending_review", "appro
 export default function OutreachPage() {
   const [filter, setFilter] = useState<DraftStatus | "all">("all");
   const [selectedDraft, setSelectedDraft] = useState<OutreachDraft | null>(null);
-  const [drafts, setDrafts] = useState(MOCK_DRAFTS);
-  const [leads, setLeads] = useState(MOCK_LEADS);
+  const [drafts, setDrafts] = useState<OutreachDraft[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [inboundMessages, setInboundMessages] = useState<InboundMessage[]>([]);
   const [inboundThreads, setInboundThreads] = useState<EmailThreadSummary[]>([]);
   const [selectedDeliveries, setSelectedDeliveries] = useState<OutreachDelivery[]>([]);

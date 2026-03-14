@@ -1,6 +1,5 @@
 /**
- * API client layer — prefers the real backend and falls back to local mocks
- * so the dashboard stays usable while the integration is being completed.
+ * API client layer — all calls go directly to the backend API.
  */
 
 import type {
@@ -43,20 +42,6 @@ import type {
   WhatsAppCredentials,
 } from "@/types";
 import { API_BASE_URL } from "@/lib/constants";
-import {
-  MOCK_LEADS,
-  MOCK_DRAFTS,
-  MOCK_SUPPRESSION,
-  MOCK_STATS,
-  MOCK_PIPELINE,
-  MOCK_TIME_SERIES,
-  MOCK_INDUSTRY_BREAKDOWN,
-  MOCK_CITY_BREAKDOWN,
-  MOCK_SOURCE_PERFORMANCE,
-  MOCK_LOGS,
-} from "@/data/mock";
-
-const USE_REAL_API = process.env.NEXT_PUBLIC_USE_REAL_API !== "false";
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, {
@@ -72,18 +57,6 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
-async function withMockFallback<T>(loadReal: () => Promise<T>, loadMock: () => T): Promise<T> {
-  if (!USE_REAL_API) {
-    return loadMock();
-  }
-  try {
-    return await loadReal();
-  } catch (error) {
-    console.warn("Falling back to mock data for dashboard API call", error);
-    return loadMock();
-  }
-}
-
 // ─── Leads ─────────────────────────────────────────────
 
 export async function getLeads(params?: {
@@ -92,129 +65,72 @@ export async function getLeads(params?: {
   status?: LeadStatus;
   min_score?: number;
 }): Promise<PaginatedResponse<Lead>> {
-  return withMockFallback(
-    async () => {
-      const query = new URLSearchParams();
-      if (params?.page) query.set("page", String(params.page));
-      if (params?.page_size) query.set("page_size", String(params.page_size));
-      if (params?.status) query.set("status", params.status);
-      if (params?.min_score !== undefined) query.set("min_score", String(params.min_score));
-      const suffix = query.size ? `?${query.toString()}` : "";
-      return apiFetch(`/leads${suffix}`);
-    },
-    () => ({
-      items: MOCK_LEADS,
-      total: MOCK_LEADS.length,
-      page: params?.page ?? 1,
-      page_size: params?.page_size ?? 50,
-    })
-  );
+  const query = new URLSearchParams();
+  if (params?.page) query.set("page", String(params.page));
+  if (params?.page_size) query.set("page_size", String(params.page_size));
+  if (params?.status) query.set("status", params.status);
+  if (params?.min_score !== undefined) query.set("min_score", String(params.min_score));
+  const suffix = query.size ? `?${query.toString()}` : "";
+  return apiFetch(`/leads${suffix}`);
+
 }
 
 export async function getLeadById(id: string): Promise<Lead> {
-  return withMockFallback(
-    () => apiFetch(`/leads/${id}`),
-    () => {
-      const lead = MOCK_LEADS.find((item) => item.id === id);
-      if (!lead) {
-        throw new Error("Lead not found");
-      }
-      return lead;
-    }
-  );
+  return apiFetch(`/leads/${id}`);
+
 }
 
 export async function createLead(data: Partial<Lead>): Promise<Lead> {
-  return withMockFallback(
-    () => apiFetch("/leads", { method: "POST", body: JSON.stringify(data) }),
-    () => ({ ...MOCK_LEADS[0], ...data, id: crypto.randomUUID() })
-  );
+  return apiFetch("/leads", { method: "POST", body: JSON.stringify(data) });
+
 }
 
 export async function updateLeadStatus(id: string, status: LeadStatus): Promise<Lead> {
-  return withMockFallback(
-    () => apiFetch(`/leads/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
-    () => {
-      const lead = MOCK_LEADS.find((item) => item.id === id);
-      if (!lead) {
-        throw new Error("Lead not found");
-      }
-      return { ...lead, status };
-    }
-  );
+  return apiFetch(`/leads/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
+
 }
 
 // ─── Enrichment ────────────────────────────────────────
 
 export async function runEnrichment(leadId: string): Promise<TaskResponse> {
-  return withMockFallback(
-    () => apiFetch(`/enrichment/${leadId}/async`, { method: "POST" }),
-    () => ({ task_id: "mock-task-001", status: "queued" })
-  );
+  return apiFetch(`/enrichment/${leadId}/async`, { method: "POST" });
+
 }
 
 // ─── Scoring ───────────────────────────────────────────
 
 export async function runScoring(leadId: string): Promise<TaskResponse> {
-  return withMockFallback(
-    () => apiFetch(`/scoring/${leadId}`, { method: "POST" }),
-    () => ({ task_id: "mock-task-002", status: "queued" })
-  );
+  return apiFetch(`/scoring/${leadId}`, { method: "POST" });
+
 }
 
 export async function runAnalysis(leadId: string): Promise<TaskResponse> {
-  return withMockFallback(
-    () => apiFetch(`/scoring/${leadId}/analyze`, { method: "POST" }),
-    () => ({ task_id: "mock-task-003", status: "queued" })
-  );
+  return apiFetch(`/scoring/${leadId}/analyze`, { method: "POST" });
+
 }
 
 export async function runFullPipeline(leadId: string): Promise<TaskResponse> {
-  return withMockFallback(
-    () => apiFetch(`/scoring/${leadId}/pipeline`, { method: "POST" }),
-    () => ({
-      task_id: "mock-task-004",
-      status: "queued",
-      queue: "default",
-      lead_id: leadId,
-      pipeline_run_id: "mock-pipeline-001",
-      current_step: "pipeline_dispatch",
-    })
-  );
+  return apiFetch(`/scoring/${leadId}/pipeline`, { method: "POST" });
+
 }
 
 // ─── Outreach ──────────────────────────────────────────
 
 export async function generateDraft(leadId: string): Promise<OutreachDraft> {
-  return withMockFallback(
-    () => apiFetch(`/outreach/${leadId}/draft`, { method: "POST" }),
-    () => ({ ...MOCK_DRAFTS[0], id: crypto.randomUUID(), lead_id: leadId })
-  );
+  return apiFetch(`/outreach/${leadId}/draft`, { method: "POST" });
+
 }
 
 export async function getDrafts(params?: {
   status?: DraftStatus;
   lead_id?: string;
 }): Promise<OutreachDraft[]> {
-  return withMockFallback(
-    async () => {
-      const query = new URLSearchParams();
-      if (params?.status) query.set("status", params.status);
-      if (params?.lead_id) query.set("lead_id", params.lead_id);
-      const suffix = query.size ? `?${query.toString()}` : "";
-      return apiFetch(`/outreach/drafts${suffix}`);
-    },
-    () => {
-      let drafts = [...MOCK_DRAFTS];
-      if (params?.status) {
-        drafts = drafts.filter((draft) => draft.status === params.status);
-      }
-      if (params?.lead_id) {
-        drafts = drafts.filter((draft) => draft.lead_id === params.lead_id);
-      }
-      return drafts;
-    }
-  );
+  const query = new URLSearchParams();
+  if (params?.status) query.set("status", params.status);
+  if (params?.lead_id) query.set("lead_id", params.lead_id);
+  const suffix = query.size ? `?${query.toString()}` : "";
+  return apiFetch(`/outreach/drafts${suffix}`);
+
 }
 
 export async function getDraftDetail(draftId: string): Promise<OutreachDraft> {
@@ -230,76 +146,39 @@ export async function reviewDraft(
   approved: boolean,
   feedback?: string
 ): Promise<OutreachDraft> {
-  return withMockFallback(
-    () =>
-      apiFetch(`/outreach/drafts/${draftId}`, {
+  return apiFetch(`/outreach/drafts/${draftId}`, {
         method: "PATCH",
         body: JSON.stringify({
           status: approved ? "approved" : "rejected",
           feedback,
         }),
-      }),
-    () => {
-      const draft = MOCK_DRAFTS.find((item) => item.id === draftId);
-      if (!draft) {
-        throw new Error("Draft not found");
-      }
-      return { ...draft, status: approved ? "approved" : "rejected" };
-    }
-  );
+      });
+
 }
 
 export async function updateDraft(
   draftId: string,
   data: Partial<Pick<OutreachDraft, "subject" | "body" | "status">> & { feedback?: string }
 ): Promise<OutreachDraft> {
-  return withMockFallback(
-    () => apiFetch(`/outreach/drafts/${draftId}`, { method: "PATCH", body: JSON.stringify(data) }),
-    () => {
-      const draft = MOCK_DRAFTS.find((item) => item.id === draftId);
-      if (!draft) {
-        throw new Error("Draft not found");
-      }
-      return { ...draft, ...data } as OutreachDraft;
-    }
-  );
+  return apiFetch(`/outreach/drafts/${draftId}`, { method: "PATCH", body: JSON.stringify(data) });
+
 }
 
 export async function getOutreachLogs(params?: {
   lead_id?: string;
   limit?: number;
 }): Promise<OutreachLog[]> {
-  return withMockFallback(
-    async () => {
-      const query = new URLSearchParams();
-      if (params?.lead_id) query.set("lead_id", params.lead_id);
-      if (params?.limit) query.set("limit", String(params.limit));
-      const suffix = query.size ? `?${query.toString()}` : "";
-      return apiFetch(`/outreach/logs${suffix}`);
-    },
-    () => {
-      let logs = [...MOCK_LOGS];
-      if (params?.lead_id) {
-        logs = logs.filter((log) => log.lead_id === params.lead_id);
-      }
-      if (params?.limit) {
-        logs = logs.slice(0, params.limit);
-      }
-      return logs;
-    }
-  );
+  const query = new URLSearchParams();
+  if (params?.lead_id) query.set("lead_id", params.lead_id);
+  if (params?.limit) query.set("limit", String(params.limit));
+  const suffix = query.size ? `?${query.toString()}` : "";
+  return apiFetch(`/outreach/logs${suffix}`);
+
 }
 
 export async function getTaskStatus(taskId: string): Promise<TaskStatusRecord> {
-  return withMockFallback(
-    () => apiFetch(`/tasks/${taskId}/status`),
-    () => ({
-      task_id: taskId,
-      status: "queued",
-      queue: "default",
-      current_step: "pipeline_dispatch",
-    })
-  );
+  return apiFetch(`/tasks/${taskId}/status`);
+
 }
 
 export async function getTasks(params?: {
@@ -307,17 +186,13 @@ export async function getTasks(params?: {
   lead_id?: string;
   limit?: number;
 }): Promise<TaskStatusRecord[]> {
-  return withMockFallback(
-    async () => {
-      const query = new URLSearchParams();
-      if (params?.status) query.set("status", params.status);
-      if (params?.lead_id) query.set("lead_id", params.lead_id);
-      if (params?.limit) query.set("limit", String(params.limit));
-      const suffix = query.size ? `?${query.toString()}` : "";
-      return apiFetch(`/tasks${suffix}`);
-    },
-    () => []
-  );
+  const query = new URLSearchParams();
+  if (params?.status) query.set("status", params.status);
+  if (params?.lead_id) query.set("lead_id", params.lead_id);
+  if (params?.limit) query.set("limit", String(params.limit));
+  const suffix = query.size ? `?${query.toString()}` : "";
+  return apiFetch(`/tasks${suffix}`);
+
 }
 
 export async function getPipelineRuns(params?: {
@@ -325,26 +200,20 @@ export async function getPipelineRuns(params?: {
   status?: string;
   limit?: number;
 }): Promise<PipelineRunSummary[]> {
-  return withMockFallback(
-    async () => {
-      const query = new URLSearchParams();
-      if (params?.lead_id) query.set("lead_id", params.lead_id);
-      if (params?.status) query.set("status", params.status);
-      if (params?.limit) query.set("limit", String(params.limit));
-      const suffix = query.size ? `?${query.toString()}` : "";
-      return apiFetch(`/pipelines/runs${suffix}`);
-    },
-    () => []
-  );
+  const query = new URLSearchParams();
+  if (params?.lead_id) query.set("lead_id", params.lead_id);
+  if (params?.status) query.set("status", params.status);
+  if (params?.limit) query.set("limit", String(params.limit));
+  const suffix = query.size ? `?${query.toString()}` : "";
+  return apiFetch(`/pipelines/runs${suffix}`);
+
 }
 
 // ─── Suppression ───────────────────────────────────────
 
 export async function getSuppressionList(): Promise<SuppressionEntry[]> {
-  return withMockFallback(
-    () => apiFetch("/suppression"),
-    () => MOCK_SUPPRESSION
-  );
+  return apiFetch("/suppression");
+
 }
 
 export async function addToSuppression(data: {
@@ -353,69 +222,45 @@ export async function addToSuppression(data: {
   phone?: string;
   reason?: string;
 }): Promise<SuppressionEntry> {
-  return withMockFallback(
-    () => apiFetch("/suppression", { method: "POST", body: JSON.stringify(data) }),
-    () => ({
-      id: crypto.randomUUID(),
-      ...data,
-      email: data.email ?? null,
-      domain: data.domain ?? null,
-      phone: data.phone ?? null,
-      reason: data.reason ?? null,
-      added_at: new Date().toISOString(),
-    })
-  );
+  return apiFetch("/suppression", { method: "POST", body: JSON.stringify(data) });
+
 }
 
 export async function removeFromSuppression(id: string): Promise<void> {
-  await withMockFallback(
-    () => apiFetch<void>(`/suppression/${id}`, { method: "DELETE" }),
-    () => undefined
-  );
+  return apiFetch<void>(`/suppression/${id}`, { method: "DELETE" });
+
 }
 
 // ─── Dashboard / Performance ───────────────────────────
 
 export async function getDashboardStats(): Promise<DashboardStats> {
-  return withMockFallback(
-    () => apiFetch("/dashboard/stats"),
-    () => MOCK_STATS
-  );
+  return apiFetch("/dashboard/stats");
+
 }
 
 export async function getPipeline(): Promise<PipelineStage[]> {
-  return withMockFallback(
-    () => apiFetch("/dashboard/pipeline"),
-    () => MOCK_PIPELINE
-  );
+  return apiFetch("/dashboard/pipeline");
+
 }
 
 export async function getTimeSeries(days?: number): Promise<TimeSeriesPoint[]> {
-  return withMockFallback(
-    () => apiFetch(`/dashboard/time-series${days ? `?days=${days}` : ""}`),
-    () => (days ? MOCK_TIME_SERIES.slice(-days) : MOCK_TIME_SERIES)
-  );
+  return apiFetch(`/dashboard/time-series${days ? `?days=${days}` : ""}`);
+
 }
 
 export async function getIndustryBreakdown(): Promise<IndustryBreakdown[]> {
-  return withMockFallback(
-    () => apiFetch("/performance/industry"),
-    () => MOCK_INDUSTRY_BREAKDOWN
-  );
+  return apiFetch("/performance/industry");
+
 }
 
 export async function getCityBreakdown(): Promise<CityBreakdown[]> {
-  return withMockFallback(
-    () => apiFetch("/performance/city"),
-    () => MOCK_CITY_BREAKDOWN
-  );
+  return apiFetch("/performance/city");
+
 }
 
 export async function getSourcePerformance(): Promise<SourcePerformance[]> {
-  return withMockFallback(
-    () => apiFetch("/performance/source"),
-    () => MOCK_SOURCE_PERFORMANCE
-  );
+  return apiFetch("/performance/source");
+
 }
 
 // ─── Inbound Mail ─────────────────────────────────────
@@ -659,7 +504,6 @@ export async function resetAIWorkspaceFile(key: string): Promise<{ key: string; 
   return apiFetch(`/settings/ai-workspace/${key}/reset`, { method: 'POST' });
 }
 
-
 // ─── System Health ─────────────────────────────────────────
 
 export async function getSystemHealth(): Promise<import("@/types").SystemHealth> {
@@ -678,28 +522,15 @@ export async function getSystemHealth(): Promise<import("@/types").SystemHealth>
 // ─── Geo / Map ─────────────────────────────────────────
 
 export async function getGeoSummary(): Promise<import('@/types').GeoSummaryCity[]> {
-  return withMockFallback(
-    () => apiFetch('/dashboard/geo-summary'),
-    () => [
-      { city: 'Buenos Aires', count: 42, avg_score: 68.5, qualified_count: 28, lat: -34.6037, lng: -58.3816 },
-      { city: 'Córdoba', count: 18, avg_score: 55.2, qualified_count: 10, lat: -31.4201, lng: -64.1888 },
-      { city: 'Rosario', count: 15, avg_score: 61.0, qualified_count: 9, lat: -32.9468, lng: -60.6393 },
-      { city: 'Mendoza', count: 11, avg_score: 49.8, qualified_count: 5, lat: -32.8908, lng: -68.8272 },
-      { city: 'La Plata', count: 8, avg_score: 72.1, qualified_count: 6, lat: -34.9215, lng: -57.9545 },
-      { city: 'Tucumán', count: 7, avg_score: 44.3, qualified_count: 3, lat: -26.8083, lng: -65.2176 },
-      { city: 'Mar del Plata', count: 6, avg_score: 58.0, qualified_count: 3, lat: -38.0055, lng: -57.5426 },
-      { city: 'Salta', count: 5, avg_score: 51.4, qualified_count: 2, lat: -24.7821, lng: -65.4232 },
-    ]
-  );
+  return apiFetch('/dashboard/geo-summary');
+
 }
 
 // ─── Territories ───────────────────────────────────────
 
 export async function getTerritories(): Promise<import('@/types').TerritoryWithStats[]> {
-  return withMockFallback(
-    () => apiFetch('/territories'),
-    () => []
-  );
+  return apiFetch('/territories');
+
 }
 
 export async function createTerritory(data: Partial<import('@/types').Territory>): Promise<import('@/types').Territory> {
@@ -715,8 +546,6 @@ export async function deleteTerritory(id: string): Promise<void> {
 }
 
 export async function getTerritoryAnalytics(): Promise<import('@/types').TerritoryWithStats[]> {
-  return withMockFallback(
-    () => apiFetch('/territories/analytics'),
-    () => []
-  );
+  return apiFetch('/territories/analytics');
+
 }

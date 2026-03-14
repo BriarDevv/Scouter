@@ -7,20 +7,19 @@ import { Button } from "@/components/ui/button";
 import { SkeletonTable } from "@/components/shared/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { MOCK_LEADS } from "@/data/mock";
 import { getLeads } from "@/lib/api/client";
 import { usePageData } from "@/lib/hooks/use-page-data";
 import type { Lead } from "@/types";
 import { Plus, Users, RefreshCw } from "lucide-react";
 
 export default function LeadsPage() {
-  const { data: leads, loading, error, refresh } = usePageData(
+  const { data: rawLeads, loading, error, refresh } = usePageData(
     async () => {
       const response = await getLeads({ page: 1, page_size: 200 });
       return response.items;
     },
-    { fallback: MOCK_LEADS }
   );
+  const leads = rawLeads ?? [];
 
   return (
     <div className="space-y-6">
