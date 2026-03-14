@@ -88,3 +88,9 @@ out/
 
 # Claude Code
 .claude/
+
+# ClawScout runtime
+logs/
+.pids/
+.openclaw.db
+.openclaw/

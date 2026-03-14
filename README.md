@@ -30,103 +30,122 @@ Detecta negocios que necesitan desarrollo/rediseno web, enriquece leads, los pun
 - Docker + Docker Compose
 - Ollama (para funciones LLM)
 
-## Instalacion (una sola vez)
+## Setup en WSL (una sola vez)
+
+Todo el desarrollo corre en WSL (Windows Subsystem for Linux). Abrir una terminal WSL:
 
 ```bash
-# 1. Clonar y configurar
-git clone <repo-url> && cd ClawScout
-cp .env.example .env                     # Editar con tus valores
+# 1. Clonar el repo dentro de WSL (NO en /mnt/c/)
+cd ~
+mkdir -p src && cd src
+git clone https://github.com/BriarDevv/ClawScout.git
+cd ClawScout
 
-# 2. Backend
-python -m venv .venv && source .venv/bin/activate
+# 2. Cambiar a la rama de desarrollo
+git checkout codex/feat/wsl-linux-first
+
+# 3. Configurar entorno
+cp .env.example .env                     # Editar con tus valores (nano .env)
+
+# 4. Backend Python
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -e ".[dev]"
 
-# 3. Dashboard
+# 5. Migraciones de base de datos
+alembic upgrade head
+
+# 6. Dashboard
 cd dashboard && npm ci && cd ..
 
-# 4. Modelos de Ollama
+# 7. Modelos de Ollama (necesita Ollama corriendo)
 ollama pull qwen3.5:4b
 ollama pull qwen3.5:9b
 ollama pull qwen3.5:27b
+
+# 8. Hacer ejecutable el script de gestion
+chmod +x scripts/clawscout.sh
 ```
 
-## Encender el sistema
+> **Importante**: El repo debe vivir dentro del filesystem de WSL (ej: `~/src/ClawScout`),
+> NO en `/mnt/c/...`. Correr desde el filesystem de Windows es mucho mas lento.
 
-### Opcion A: Desarrollo local (recomendado)
+## Uso diario
 
-Abrir 4 terminales en WSL:
+### Encender (un solo comando)
 
 ```bash
-# Terminal 1 — Infraestructura (Postgres + Redis)
+# Desde WSL, en la carpeta del proyecto:
+cd ~/src/ClawScout
+./scripts/clawscout.sh start
+```
+
+Esto levanta todo en background: Postgres, Redis, API, Celery worker y Dashboard.
+Los logs se guardan en `logs/` y se pueden ver con:
+
+```bash
+./scripts/clawscout.sh logs              # Ver todos los logs en vivo
+./scripts/clawscout.sh logs api          # Solo logs del API
+./scripts/clawscout.sh logs worker       # Solo logs de Celery
+./scripts/clawscout.sh logs dashboard    # Solo logs del dashboard
+```
+
+### Ver estado
+
+```bash
+./scripts/clawscout.sh status            # Muestra que esta corriendo y en que puerto
+```
+
+### Apagar
+
+```bash
+./scripts/clawscout.sh stop              # Para todo (mantiene datos de Postgres/Redis)
+```
+
+### Otros comandos utiles
+
+```bash
+./scripts/clawscout.sh restart           # Apagar + encender
+./scripts/clawscout.sh preflight         # Verificar que todo este configurado
+./scripts/clawscout.sh seed              # Cargar datos de prueba
+./scripts/clawscout.sh nuke              # Parar todo Y borrar datos (postgres, redis)
+```
+
+### Servicios disponibles (cuando esta encendido)
+
+| Servicio | URL |
+|----------|-----|
+| Dashboard | http://localhost:3000 |
+| API + Swagger | http://localhost:8000/docs |
+| Health check | http://localhost:8000/health/detailed |
+| Flower (opcional) | http://localhost:5555 |
+
+### Modo manual (4 terminales)
+
+Si preferis control individual de cada proceso:
+
+```bash
+# Terminal 1 — Infraestructura
 docker compose up postgres redis
 
-# Terminal 2 — API backend
-source .venv/bin/activate
-alembic upgrade head                     # Solo la primera vez o si hay migraciones nuevas
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+# Terminal 2 — API
+source .venv/bin/activate && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
-# Terminal 3 — Worker de Celery (procesa tareas async)
-source .venv/bin/activate
-celery -A app.workers.celery_app worker --loglevel=info --concurrency=2
+# Terminal 3 — Worker
+source .venv/bin/activate && celery -A app.workers.celery_app worker --loglevel=info
 
-# Terminal 4 — Dashboard frontend
-cd dashboard
-npm run dev
+# Terminal 4 — Dashboard
+cd dashboard && npm run dev
 ```
 
-Servicios disponibles:
-- API + Swagger: http://localhost:8000/docs
-- Dashboard: http://localhost:3000
-- Health check: http://localhost:8000/health
-- Health detallado: http://localhost:8000/health/detailed
+Para apagar: `Ctrl+C` en cada terminal + `docker compose down`.
 
-**Opcional** — Monitor de Celery (Flower):
-```bash
-# Terminal 5
-source .venv/bin/activate
-celery -A app.workers.celery_app flower --port=5555
-# Flower: http://localhost:5555
-```
-
-**Opcional** — Preflight (verificar que todo este listo):
-```bash
-source .venv/bin/activate
-python scripts/preflight.py
-```
-
-### Opcion B: Docker Compose completo
+### Docker Compose completo (alternativa)
 
 ```bash
-cp .env.example .env                     # Si no existe
-docker compose up -d                     # Levanta todo: postgres, redis, api, worker, flower, dashboard
-docker compose logs -f                   # Ver logs en tiempo real
-```
-
-Servicios: mismos puertos que arriba.
-
-## Apagar el sistema
-
-### Desarrollo local
-
-```bash
-# Ctrl+C en cada terminal, o desde cualquier terminal:
-# Parar infraestructura Docker
-docker compose down                      # Mantiene los datos
-docker compose down -v                   # Borra volumenes (datos de postgres/redis)
-```
-
-### Docker Compose completo
-
-```bash
-docker compose down                      # Parar todo, mantener datos
-docker compose down -v                   # Parar todo y borrar datos
-```
-
-## Seedear datos de prueba
-
-```bash
-source .venv/bin/activate
-python scripts/seed.py                   # Crea leads de ejemplo + territorios
+docker compose up -d                     # Levanta todo en containers
+docker compose logs -f                   # Ver logs
+docker compose down                      # Apagar
 ```
 
 ## Configuracion de LLM
