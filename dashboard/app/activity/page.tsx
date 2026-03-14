@@ -9,8 +9,8 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton, SkeletonCard } from "@/components/shared/skeleton";
 import { RelativeTime } from "@/components/shared/relative-time";
 import { Button } from "@/components/ui/button";
-import { getTasks, getLeads } from "@/lib/api/client";
-import type { TaskStatusRecord, Lead } from "@/types";
+import { getTasks, getLeads, getLLMSettings } from "@/lib/api/client";
+import type { TaskStatusRecord, Lead, LLMSettings } from "@/types";
 import {
   BrainCircuit,
   Search,
@@ -42,9 +42,44 @@ const STEP_CONFIG: Record<string, { label: string; icon: typeof BrainCircuit; de
   completed:         { label: "Completado",             icon: CheckCircle2,  description: "Todos los pasos finalizaron correctamente" },
 };
 
+const REVIEWER_STEPS = new Set(["lead_review", "draft_review"]);
+const NO_LLM_STEPS = new Set(["enrichment", "scoring", "pipeline_dispatch", "completed"]);
+
 function getStepConfig(step: string | null | undefined) {
   if (!step) return { label: "Procesando", icon: BrainCircuit, description: "Tarea en curso" };
   return STEP_CONFIG[step] ?? { label: step.replace(/_/g, " "), icon: BrainCircuit, description: "" };
+}
+
+function getModelForStep(step: string | null | undefined, llm: LLMSettings | null): string | null {
+  if (!step || !llm || NO_LLM_STEPS.has(step)) return null;
+  if (REVIEWER_STEPS.has(step)) return llm.reviewer_model;
+  return llm.executor_model;
+}
+
+function formatModelShort(model: string): string {
+  const match = model.match(/:(\d+[bB])/);
+  if (match) return match[1].toUpperCase();
+  return model.split(":").pop()?.toUpperCase() || model;
+}
+
+function ModelBadge({ model, size = "sm" }: { model: string | null; size?: "sm" | "md" }) {
+  if (!model) return null;
+  const short = formatModelShort(model);
+  const isReviewer = model.includes("27b") || model.includes("14b");
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded font-bold font-data leading-tight",
+        size === "md" ? "px-1.5 py-0.5 text-[10px]" : "px-1 py-px text-[9px]",
+        isReviewer
+          ? "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300"
+          : "bg-cyan-100 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300"
+      )}
+      title={model}
+    >
+      {short}
+    </span>
+  );
 }
 
 function isActive(status: string) {
@@ -72,12 +107,15 @@ function formatElapsed(start: string | null | undefined): string {
 function ActiveTaskCard({
   task,
   leadName,
+  llm,
 }: {
   task: TaskStatusRecord;
   leadName?: string;
+  llm: LLMSettings | null;
 }) {
   const step = getStepConfig(task.current_step);
   const StepIcon = step.icon;
+  const model = getModelForStep(task.current_step, llm);
   const [elapsed, setElapsed] = useState(() => formatElapsed(task.started_at ?? task.created_at));
 
   useEffect(() => {
@@ -97,7 +135,10 @@ function ActiveTaskCard({
               <Loader2 className="h-5 w-5 animate-spin text-violet-600 dark:text-violet-400" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-foreground font-heading">{step.label}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-foreground font-heading">{step.label}</p>
+                <ModelBadge model={model} size="md" />
+              </div>
               <p className="text-xs text-muted-foreground">{step.description}</p>
             </div>
           </div>
@@ -137,12 +178,15 @@ function ActiveTaskCard({
 function TaskHistoryRow({
   task,
   leadName,
+  llm,
 }: {
   task: TaskStatusRecord;
   leadName?: string;
+  llm: LLMSettings | null;
 }) {
   const step = getStepConfig(task.current_step);
   const StepIcon = step.icon;
+  const model = getModelForStep(task.current_step, llm);
   const active = isActive(task.status);
   const failed = isFailed(task.status);
   const done = isDone(task.status);
@@ -166,7 +210,7 @@ function TaskHistoryRow({
       </div>
 
       {/* Step */}
-      <div className="flex items-center gap-2 min-w-[180px]">
+      <div className="flex items-center gap-2 min-w-[200px]">
         <StepIcon className="h-3.5 w-3.5 text-muted-foreground" />
         <span className={cn(
           "text-sm font-medium",
@@ -174,6 +218,7 @@ function TaskHistoryRow({
         )}>
           {step.label}
         </span>
+        <ModelBadge model={model} />
       </div>
 
       {/* Lead */}
@@ -225,15 +270,18 @@ function TaskHistoryRow({
 export default function ActivityPage() {
   const [tasks, setTasks] = useState<TaskStatusRecord[]>([]);
   const [leadMap, setLeadMap] = useState<Record<string, string>>({});
+  const [llm, setLlm] = useState<LLMSettings | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
     try {
-      const [taskData, leadsData] = await Promise.all([
+      const [taskData, leadsData, llmData] = await Promise.all([
         getTasks({ limit: 50 }),
         getLeads({ page: 1, page_size: 200 }),
+        getLLMSettings(),
       ]);
       setTasks(taskData);
+      setLlm(llmData);
 
       const map: Record<string, string> = {};
       for (const lead of leadsData.items) {
@@ -344,6 +392,7 @@ export default function ActivityPage() {
                 key={task.task_id}
                 task={task}
                 leadName={task.lead_id ? leadMap[task.lead_id] : undefined}
+                llm={llm}
               />
             ))}
           </div>
@@ -417,7 +466,7 @@ export default function ActivityPage() {
             {/* Header */}
             <div className="flex items-center gap-4 border-b border-border px-4 py-2.5 bg-muted/30">
               <div className="shrink-0 w-4" />
-              <div className="min-w-[180px] text-xs font-medium text-muted-foreground uppercase tracking-wider">Paso</div>
+              <div className="min-w-[200px] text-xs font-medium text-muted-foreground uppercase tracking-wider">Paso</div>
               <div className="flex-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">Lead</div>
               <div className="shrink-0 text-xs font-medium text-muted-foreground uppercase tracking-wider">Estado</div>
               <div className="shrink-0 w-[80px] text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Cuándo</div>
@@ -429,6 +478,7 @@ export default function ActivityPage() {
                   <TaskHistoryRow
                     task={task}
                     leadName={task.lead_id ? leadMap[task.lead_id] : undefined}
+                    llm={llm}
                   />
                 </div>
               ))}

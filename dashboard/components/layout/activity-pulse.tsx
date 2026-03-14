@@ -3,8 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { getTasks } from "@/lib/api/client";
-import type { TaskStatusRecord } from "@/types";
+import { getTasks, getLLMSettings } from "@/lib/api/client";
+import type { TaskStatusRecord, LLMSettings } from "@/types";
 import {
   BrainCircuit,
   Search,
@@ -33,32 +33,53 @@ const STEP_CONFIG: Record<string, { label: string; icon: typeof BrainCircuit }> 
   completed:         { label: "Completado",          icon: CheckCircle2 },
 };
 
+const REVIEWER_STEPS = new Set(["lead_review", "draft_review"]);
+const NO_LLM_STEPS = new Set(["enrichment", "scoring", "pipeline_dispatch", "completed"]);
+
 function getStepConfig(step: string | null | undefined) {
   if (!step) return { label: "Procesando", icon: BrainCircuit };
   return STEP_CONFIG[step] ?? { label: step.replace(/_/g, " "), icon: BrainCircuit };
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  running:   "text-violet-500",
-  started:   "text-violet-500",
-  queued:    "text-amber-500",
-  pending:   "text-amber-500",
-  succeeded: "text-emerald-500",
-  success:   "text-emerald-500",
-  failed:    "text-red-500",
-  retrying:  "text-amber-500",
-};
+function getModelForStep(step: string | null | undefined, llm: LLMSettings | null): string | null {
+  if (!step || !llm || NO_LLM_STEPS.has(step)) return null;
+  if (REVIEWER_STEPS.has(step)) return llm.reviewer_model;
+  return llm.executor_model;
+}
+
+function formatModelShort(model: string): string {
+  // "qwen3.5:9b" → "9B", "qwen3.5:27b" → "27B"
+  const match = model.match(/:(\d+[bB])/);
+  if (match) return match[1].toUpperCase();
+  return model.split(":").pop()?.toUpperCase() || model;
+}
 
 function isActive(status: string) {
   return ["running", "started", "queued", "pending", "retrying"].includes(status);
 }
 
-function TaskRow({ task }: { task: TaskStatusRecord }) {
+function ModelBadge({ model }: { model: string | null }) {
+  if (!model) return null;
+  const short = formatModelShort(model);
+  const isReviewer = model.includes("27b") || model.includes("14b");
+  return (
+    <span className={cn(
+      "inline-flex items-center rounded px-1 py-px text-[9px] font-bold font-data leading-tight",
+      isReviewer
+        ? "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300"
+        : "bg-cyan-100 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300"
+    )}>
+      {short}
+    </span>
+  );
+}
+
+function TaskRow({ task, llm }: { task: TaskStatusRecord; llm: LLMSettings | null }) {
   const step = getStepConfig(task.current_step);
-  const StepIcon = step.icon;
   const active = isActive(task.status);
   const failed = task.status === "failed";
   const done = ["succeeded", "success"].includes(task.status);
+  const model = getModelForStep(task.current_step, llm);
 
   return (
     <div className="flex items-start gap-2.5 py-1.5 group">
@@ -74,12 +95,15 @@ function TaskRow({ task }: { task: TaskStatusRecord }) {
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <p className={cn(
-          "text-xs font-medium truncate",
-          active ? "text-sidebar-foreground" : "text-muted-foreground"
-        )}>
-          {step.label}
-        </p>
+        <div className="flex items-center gap-1.5">
+          <p className={cn(
+            "text-xs font-medium truncate",
+            active ? "text-sidebar-foreground" : "text-muted-foreground"
+          )}>
+            {step.label}
+          </p>
+          <ModelBadge model={model} />
+        </div>
         {task.lead_id && (
           <Link
             href={`/leads/${task.lead_id}`}
@@ -100,6 +124,7 @@ function TaskRow({ task }: { task: TaskStatusRecord }) {
 
 export function ActivityPulse() {
   const [tasks, setTasks] = useState<TaskStatusRecord[]>([]);
+  const [llm, setLlm] = useState<LLMSettings | null>(null);
   const [expanded, setExpanded] = useState(true);
 
   const poll = useCallback(async () => {
@@ -113,6 +138,7 @@ export function ActivityPulse() {
 
   useEffect(() => {
     poll();
+    getLLMSettings().then(setLlm).catch(() => {});
     const id = setInterval(poll, POLL_INTERVAL);
     return () => clearInterval(id);
   }, [poll]);
@@ -162,20 +188,22 @@ export function ActivityPulse() {
         )} />
       </button>
 
-      {displayTasks.length > 0 && (
+      {expanded && displayTasks.length > 0 && (
         <div className="space-y-0.5 pl-1">
           {displayTasks.map((task) => (
-            <TaskRow key={task.task_id} task={task} />
+            <TaskRow key={task.task_id} task={task} llm={llm} />
           ))}
         </div>
       )}
 
-      <Link
-        href="/activity"
-        className="mt-1.5 flex items-center gap-1 pl-1 text-[10px] font-medium text-muted-foreground/60 hover:text-violet-400 transition-colors"
-      >
-        Ver todo <ChevronRight className="h-2.5 w-2.5" />
-      </Link>
+      {expanded && (
+        <Link
+          href="/activity"
+          className="mt-1.5 flex items-center gap-1 pl-1 text-[10px] font-medium text-muted-foreground/60 hover:text-violet-400 transition-colors"
+        >
+          Ver todo <ChevronRight className="h-2.5 w-2.5" />
+        </Link>
+      )}
     </div>
   );
 }
