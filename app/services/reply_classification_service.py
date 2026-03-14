@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import settings
@@ -74,6 +74,20 @@ def classify_inbound_message(db: Session, message_id: uuid.UUID) -> InboundMessa
             inbound_message_id=str(message.id),
             classification_status=message.classification_status,
         )
+        return message
+
+    # Optimistic lock: claim the message for classification
+    rows_updated = db.execute(
+        update(InboundMessage)
+        .where(InboundMessage.id == message_id)
+        .where(InboundMessage.classification_status == InboundMailClassificationStatus.PENDING.value)
+        .values(classification_status=InboundMailClassificationStatus.CLASSIFYING.value)
+    )
+    db.commit()
+    if rows_updated.rowcount == 0:
+        # Another worker got there first
+        db.refresh(message)
+        logger.info("classification_claimed_by_another", inbound_message_id=str(message.id))
         return message
 
     role = LLMRole.EXECUTOR

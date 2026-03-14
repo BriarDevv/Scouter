@@ -40,8 +40,8 @@ class Settings(BaseSettings):
 
     # Crawling
     CRAWLER_RATE_LIMIT_PER_SECOND: float = 1.0
-    CRAWLER_TIMEOUT: int = 30
-    CRAWLER_MAX_RETRIES: int = 3
+    CRAWLER_TIMEOUT: int = 15
+    CRAWLER_MAX_RETRIES: int = 2
     CRAWLER_USER_AGENT: str = "ClawScout/1.0 (research)"
 
     # Outreach

@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 import httpx
 from bs4 import BeautifulSoup
 from sqlalchemy.orm import Session
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from app.core.config import settings
 from app.core.logging import get_logger
@@ -17,7 +17,8 @@ logger = get_logger(__name__)
 
 @retry(
     stop=stop_after_attempt(settings.CRAWLER_MAX_RETRIES),
-    wait=wait_exponential(multiplier=1, min=2, max=30),
+    wait=wait_exponential(multiplier=1, min=1, max=10),
+    retry=retry_if_exception_type((httpx.TimeoutException, httpx.ConnectError)),
     reraise=True,
 )
 def _fetch_url(url: str) -> httpx.Response:

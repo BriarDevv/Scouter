@@ -151,8 +151,6 @@ def mark_task_running(
     )
     task_run.status = "running"
     task_run.started_at = task_run.started_at or utcnow()
-    db.commit()
-    db.refresh(task_run)
 
     if pipeline_run_id:
         update_pipeline_run(
@@ -162,7 +160,11 @@ def mark_task_running(
             current_step=current_step,
             started=True,
             clear_error=True,
+            commit=False,
         )
+
+    db.commit()
+    db.refresh(task_run)
 
     logger.info(
         "task_run_started",
@@ -191,8 +193,6 @@ def mark_task_succeeded(
     task_run.result = result
     task_run.error = None
     task_run.finished_at = utcnow()
-    db.commit()
-    db.refresh(task_run)
 
     if pipeline_run_id:
         update_pipeline_run(
@@ -203,7 +203,11 @@ def mark_task_succeeded(
             result=result if pipeline_status == "succeeded" else None,
             clear_error=True,
             finished=pipeline_status == "succeeded",
+            commit=False,
         )
+
+    db.commit()
+    db.refresh(task_run)
 
     logger.info("task_run_succeeded", task_id=task_id, current_step=current_step, result=result)
     return task_run
@@ -223,8 +227,6 @@ def mark_task_retrying(
     task_run.status = "retrying"
     task_run.current_step = current_step or task_run.current_step
     task_run.error = error
-    db.commit()
-    db.refresh(task_run)
 
     if pipeline_run_id:
         update_pipeline_run(
@@ -233,7 +235,11 @@ def mark_task_retrying(
             status="running",
             current_step=current_step,
             error=f"Retry scheduled: {error}",
+            commit=False,
         )
+
+    db.commit()
+    db.refresh(task_run)
 
     logger.warning("task_run_retrying", task_id=task_id, current_step=current_step, error=error)
     return task_run
@@ -254,8 +260,6 @@ def mark_task_failed(
     task_run.current_step = current_step or task_run.current_step
     task_run.error = error
     task_run.finished_at = utcnow()
-    db.commit()
-    db.refresh(task_run)
 
     if pipeline_run_id:
         update_pipeline_run(
@@ -265,7 +269,11 @@ def mark_task_failed(
             current_step=current_step,
             error=error,
             finished=True,
+            commit=False,
         )
+
+    db.commit()
+    db.refresh(task_run)
 
     logger.error("task_run_failed", task_id=task_id, current_step=current_step, error=error)
     return task_run
@@ -282,6 +290,7 @@ def update_pipeline_run(
     clear_error: bool = False,
     started: bool = False,
     finished: bool = False,
+    commit: bool = True,
 ) -> PipelineRun | None:
     pipeline_run = db.get(PipelineRun, pipeline_run_id)
     if not pipeline_run:
@@ -300,8 +309,9 @@ def update_pipeline_run(
         pipeline_run.started_at = utcnow()
     if finished:
         pipeline_run.finished_at = utcnow()
-    db.commit()
-    db.refresh(pipeline_run)
+    if commit:
+        db.commit()
+        db.refresh(pipeline_run)
     logger.info(
         "pipeline_run_updated",
         pipeline_run_id=str(pipeline_run.id),

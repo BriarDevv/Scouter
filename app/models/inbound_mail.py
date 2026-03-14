@@ -23,6 +23,7 @@ from app.db.base import Base
 
 class InboundMailClassificationStatus(str, enum.Enum):
     PENDING = "pending"
+    CLASSIFYING = "classifying"
     CLASSIFIED = "classified"
     FAILED = "failed"
 

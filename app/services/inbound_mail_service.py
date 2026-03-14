@@ -4,7 +4,7 @@ import hashlib
 import re
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -29,6 +29,7 @@ from app.models.reply_assistant_send import ReplyAssistantSend, ReplyAssistantSe
 logger = get_logger(__name__)
 
 SUBJECT_PREFIX_RE = re.compile(r"^(?:(?:re|fw|fwd)\s*:\s*)+", re.IGNORECASE)
+BRACKETED_TAG_RE = re.compile(r"\[\w+\]", re.IGNORECASE)
 MESSAGE_ID_RE = re.compile(r"<([^>]+)>")
 
 
@@ -414,7 +415,7 @@ def _match_delivery(db: Session, payload: InboundMailMessage) -> DeliveryMatch:
         return DeliveryMatch(
             delivery=fallback_delivery,
             matched_via="subject_fallback",
-            match_confidence=0.55,
+            match_confidence=0.4,
         )
 
     return DeliveryMatch(delivery=None, reply_send=None, matched_via="unmatched", match_confidence=0.0)
@@ -488,10 +489,11 @@ def _find_delivery_by_subject_fallback(
         .where(
             OutreachDelivery.recipient_email == from_email,
             OutreachDelivery.status == OutreachDeliveryStatus.SENT,
+            OutreachDelivery.sent_at >= (datetime.now(UTC) - timedelta(days=30)),
         )
         .options(selectinload(OutreachDelivery.draft))
         .order_by(OutreachDelivery.sent_at.desc(), OutreachDelivery.created_at.desc())
-        .limit(25)
+        .limit(10)
     )
     deliveries = list(db.execute(stmt).scalars().all())
     for delivery in deliveries:
@@ -516,7 +518,8 @@ def _build_thread_key(
     normalized_subject = _normalize_subject(payload.subject)
     from_email = _normalize_email(payload.from_email)
     if from_email and normalized_subject:
-        return f"subject:{from_email}:{normalized_subject}"
+        month_bucket = payload.received_at.strftime("%Y-%m") if payload.received_at else "unknown"
+        return f"subject:{from_email}:{normalized_subject}:{month_bucket}"
     return f"unmatched:{_build_dedupe_key(payload)}"
 
 
@@ -592,6 +595,10 @@ def _normalize_email(value: str | None) -> str | None:
 def _normalize_subject(value: str | None) -> str | None:
     if not value:
         return None
-    normalized = SUBJECT_PREFIX_RE.sub("", value.strip())
+    normalized = value.strip()
+    # Strip bracketed noise tags like [EXTERNAL], [SPAM], etc.
+    normalized = BRACKETED_TAG_RE.sub("", normalized)
+    # Strip reply/forward prefixes (Re:, Fwd:, FW:, RE:, etc.)
+    normalized = SUBJECT_PREFIX_RE.sub("", normalized)
     normalized = re.sub(r"\s+", " ", normalized).strip().lower()
     return normalized or None

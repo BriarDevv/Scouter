@@ -284,7 +284,7 @@ def test_inbound_sync_falls_back_to_subject_and_email(client, db, monkeypatch):
     assert thread["draft_id"] == str(draft.id)
     assert thread["delivery_id"] == str(delivery.id)
     assert thread["matched_via"] == "subject_fallback"
-    assert thread["match_confidence"] == 0.55
+    assert thread["match_confidence"] == 0.4
 
 
 def test_inbound_status_and_detail_endpoints(client, db, monkeypatch):
