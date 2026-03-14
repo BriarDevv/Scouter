@@ -186,7 +186,7 @@ function SaveButton({
       ) : (
         <Save className="h-4 w-4" />
       )}
-      {saving ? "Guardando\u2026" : saved ? "Guardado" : "Guardar"}
+      {saving ? "Guardando…" : saved ? "Guardado" : "Guardar"}
     </button>
   );
 }
@@ -227,7 +227,7 @@ function LLMSection({ data }: { data: LLMSettings }) {
     <div className="grid gap-6 lg:grid-cols-[1.2fr,0.8fr]">
       <SectionCard
         title="Modelos activos"
-        description="Configuraci\u00f3n LLM read-only desde env."
+        description="Configuración LLM read-only desde env."
         icon={Bot}
       >
         <div className="space-y-3">
@@ -259,7 +259,7 @@ function LLMSection({ data }: { data: LLMSettings }) {
         <MetaRow label="Timeout" value={`${data.timeout_seconds}s`} />
         <MetaRow label="Reintentos" value={data.max_retries} />
         <MetaRow
-          label="Cat\u00e1logo"
+          label="Catálogo"
           value={
             <div className="flex flex-wrap justify-end gap-1">
               {data.supported_models.map((m) => (
@@ -299,7 +299,7 @@ function CredentialsSection({ data }: { data: CredentialsStatus }) {
     <div className="grid gap-6 lg:grid-cols-2">
       <SectionCard
         title="Credenciales SMTP"
-        description="Estado de presencia \u2014 valores nunca expuestos."
+        description="Estado de presencia — valores nunca expuestos."
         icon={KeyRound}
       >
         <div className="mb-4 flex gap-2">
@@ -310,12 +310,12 @@ function CredentialsSection({ data }: { data: CredentialsStatus }) {
         </div>
         {renderItems(data.smtp)}
         <p className="mt-4 text-xs text-slate-400">
-          Para actualizar secretos, edit\u00e1 el archivo <code>.env</code> y reinici\u00e1 el servidor.
+          Para actualizar secretos, editá el archivo <code>.env</code> y reiniciá el servidor.
         </p>
       </SectionCard>
       <SectionCard
         title="Credenciales IMAP"
-        description="Estado de presencia \u2014 valores nunca expuestos."
+        description="Estado de presencia — valores nunca expuestos."
         icon={KeyRound}
       >
         <div className="mb-4 flex gap-2">
@@ -326,7 +326,7 @@ function CredentialsSection({ data }: { data: CredentialsStatus }) {
         </div>
         {renderItems(data.imap)}
         <p className="mt-4 text-xs text-slate-400">
-          Para actualizar secretos, edit\u00e1 el archivo <code>.env</code> y reinici\u00e1 el servidor.
+          Para actualizar secretos, editá el archivo <code>.env</code> y reiniciá el servidor.
         </p>
       </SectionCard>
     </div>
@@ -400,10 +400,10 @@ function BrandSection({
           <FieldRow label="Empresa en firma">
             <TextInput value={form.signature_company} onChange={set("signature_company")} placeholder="ej. BriarDev" />
           </FieldRow>
-          <FieldRow label="CTA corta" hint="Llamada a la acci\u00f3n al final del email">
-            <TextInput value={form.signature_cta} onChange={set("signature_cta")} placeholder="ej. \u00bfAgendamos una charla de 15 min?" />
+          <FieldRow label="CTA corta" hint="Llamada a la acción al final del email">
+            <TextInput value={form.signature_cta} onChange={set("signature_cta")} placeholder="ej. ¿Agendamos una charla de 15 min?" />
           </FieldRow>
-          <FieldRow label="L\u00ednea de cierre" hint="Frase final antes de la firma">
+          <FieldRow label="Línea de cierre" hint="Frase final antes de la firma">
             <TextInput value={form.default_closing_line} onChange={set("default_closing_line")} placeholder="ej. Quedo atento, saludos" />
           </FieldRow>
         </div>
@@ -423,7 +423,7 @@ function BrandSection({
               onChange={(e) => set("default_outreach_tone")(e.target.value)}
               className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
             >
-              {["profesional", "cercano", "consultivo", "breve", "emp\u00e1tico"].map((t) => (
+              {["profesional", "cercano", "consultivo", "breve", "empático"].map((t) => (
                 <option key={t} value={t}>{t}</option>
               ))}
             </select>
@@ -434,7 +434,7 @@ function BrandSection({
               onChange={(e) => set("default_reply_tone")(e.target.value)}
               className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
             >
-              {["profesional", "cercano", "consultivo", "breve", "emp\u00e1tico"].map((t) => (
+              {["profesional", "cercano", "consultivo", "breve", "empático"].map((t) => (
                 <option key={t} value={t}>{t}</option>
               ))}
             </select>
@@ -443,7 +443,7 @@ function BrandSection({
             <Toggle
               checked={form.signature_include_portfolio}
               onChange={set("signature_include_portfolio") as (v: boolean) => void}
-              label={form.signature_include_portfolio ? "S\u00ed" : "No"}
+              label={form.signature_include_portfolio ? "Sí" : "No"}
             />
           </FieldRow>
         </div>
@@ -499,7 +499,7 @@ function MailOutboundSection({
   return (
     <SectionCard
       title="Mail outbound"
-      description="Configuraci\u00f3n operativa de env\u00edo. Credenciales SMTP siguen en .env."
+      description="Configuración operativa de envío. Credenciales SMTP siguen en .env."
       icon={Mail}
     >
       <div className="mb-4 flex flex-wrap gap-2">
@@ -530,11 +530,11 @@ function MailOutboundSection({
       <FieldRow label="Reply-To">
         <TextInput value={form.mail_reply_to} onChange={set("mail_reply_to")} placeholder={mailData.outbound.reply_to ?? "Sin reply-to"} type="email" />
       </FieldRow>
-      <FieldRow label="Timeout de env\u00edo (segundos)">
+      <FieldRow label="Timeout de envío (segundos)">
         <TextInput value={form.mail_send_timeout_seconds} onChange={set("mail_send_timeout_seconds")} placeholder={String(mailData.outbound.send_timeout_seconds)} type="number" />
       </FieldRow>
       <FieldRow label="Requerir drafts aprobados">
-        <Toggle checked={form.require_approved_drafts} onChange={set("require_approved_drafts") as (v: boolean) => void} label={form.require_approved_drafts ? "Solo drafts approved" : "Sin restricci\u00f3n"} />
+        <Toggle checked={form.require_approved_drafts} onChange={set("require_approved_drafts") as (v: boolean) => void} label={form.require_approved_drafts ? "Solo drafts approved" : "Sin restricción"} />
       </FieldRow>
       <div className="mt-4 flex items-center justify-between">
         {error && <p className="text-sm text-rose-600">{error}</p>}
@@ -583,7 +583,7 @@ function MailInboundSection({
   return (
     <SectionCard
       title="Mail inbound"
-      description="Configuraci\u00f3n del canal de lectura de inbox. Credenciales IMAP siguen en .env."
+      description="Configuración del canal de lectura de inbox. Credenciales IMAP siguen en .env."
       icon={Mail}
     >
       <div className="mb-4 flex flex-wrap gap-2">
@@ -616,7 +616,7 @@ function MailInboundSection({
       </FieldRow>
       {mailData.inbound.last_sync && (
         <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
-          <p className="mb-3 text-xs font-medium text-slate-500">\u00daltima sync persistida</p>
+          <p className="mb-3 text-xs font-medium text-slate-500">Última sync persistida</p>
           <div className="grid grid-cols-3 gap-2 text-sm">
             {[
               ["Fetched", mailData.inbound.last_sync.counts.fetched],
@@ -687,19 +687,19 @@ function RulesSection({
   const { save, saving, saved, error } = useSave("rules", getData, onSaved);
 
   const rules: Array<{ key: keyof typeof form; label: string; hint?: string }> = [
-    { key: "require_approved_drafts", label: "Requerir aprobaci\u00f3n de drafts", hint: "Solo los drafts aprobados se pueden enviar" },
-    { key: "auto_classify_inbound", label: "Auto-clasificar inbound", hint: "Clasificar replies autom\u00e1ticamente al sync" },
+    { key: "require_approved_drafts", label: "Requerir aprobación de drafts", hint: "Solo los drafts aprobados se pueden enviar" },
+    { key: "auto_classify_inbound", label: "Auto-clasificar inbound", hint: "Clasificar replies automáticamente al sync" },
     { key: "reply_assistant_enabled", label: "Reply assistant habilitado" },
-    { key: "reviewer_enabled", label: "Reviewer habilitado", hint: "Activa revisi\u00f3n profunda por el modelo reviewer" },
-    { key: "prioritize_quote_replies", label: "Priorizar replies con pedido de cotizaci\u00f3n" },
-    { key: "prioritize_meeting_replies", label: "Priorizar replies con pedido de reuni\u00f3n" },
+    { key: "reviewer_enabled", label: "Reviewer habilitado", hint: "Activa revisión profunda por el modelo reviewer" },
+    { key: "prioritize_quote_replies", label: "Priorizar replies con pedido de cotización" },
+    { key: "prioritize_meeting_replies", label: "Priorizar replies con pedido de reunión" },
     { key: "allow_openclaw_briefs", label: "Permitir briefs de OpenClaw" },
-    { key: "allow_reply_assistant_generation", label: "Permitir generaci\u00f3n de reply assistant" },
+    { key: "allow_reply_assistant_generation", label: "Permitir generación de reply assistant" },
   ];
 
   return (
     <SectionCard
-      title="Reglas / Automatizaci\u00f3n"
+      title="Reglas / Automatización"
       description="Control operativo del comportamiento del sistema."
       icon={Settings}
     >
@@ -787,19 +787,19 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Configuraci\u00f3n"
-        description="Configuraci\u00f3n operativa real del sistema. LLM y credenciales son read-only desde env."
+        title="Configuración"
+        description="Configuración operativa real del sistema. LLM y credenciales son read-only desde env."
       />
 
       {loading && (
         <div className="flex items-center gap-3 text-sm text-slate-500">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Cargando configuraci\u00f3n\u2026
+          Cargando configuración…
         </div>
       )}
 
       {!loading && error && (
-        <EmptyState icon={Settings} title="Sin configuraci\u00f3n disponible" description={error} />
+        <EmptyState icon={Settings} title="Sin configuración disponible" description={error} />
       )}
 
       {!loading && !error && (
@@ -850,7 +850,7 @@ export default function SettingsPage() {
               <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
                 <div className="flex items-center gap-2">
                   <TriangleAlert className="h-4 w-4 text-amber-500" />
-                  No se pudieron cargar los datos para esta secci\u00f3n.
+                  No se pudieron cargar los datos para esta sección.
                 </div>
               </div>
             ) : null}
@@ -859,7 +859,7 @@ export default function SettingsPage() {
           {/* Operational settings last update */}
           {opData?.updated_at && (
             <p className="text-xs text-slate-400">
-              \u00daltima actualizaci\u00f3n de settings operativos:{" "}
+              Última actualización de settings operativos:{" "}
               <RelativeTime date={opData.updated_at} />
             </p>
           )}
