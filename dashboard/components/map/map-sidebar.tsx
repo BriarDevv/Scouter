@@ -9,12 +9,13 @@ interface MapSidebarProps {
   cities: GeoSummaryCity[];
   open: boolean;
   onToggle: () => void;
+  isDarkMap?: boolean;
 }
 
-function getScoreColor(score: number): string {
-  if (score >= 70) return "text-emerald-400";
-  if (score >= 40) return "text-yellow-400";
-  return "text-red-400";
+function getScoreColor(score: number, dark: boolean): string {
+  if (score >= 70) return dark ? "text-emerald-400" : "text-emerald-600";
+  if (score >= 40) return dark ? "text-yellow-400" : "text-yellow-600";
+  return dark ? "text-red-400" : "text-red-600";
 }
 
 function getScoreDot(score: number): string {
@@ -23,8 +24,9 @@ function getScoreDot(score: number): string {
   return "bg-red-500";
 }
 
-export function MapSidebar({ cities, open, onToggle }: MapSidebarProps) {
+export function MapSidebar({ cities, open, onToggle, isDarkMap = true }: MapSidebarProps) {
   const [search, setSearch] = useState("");
+  const d = isDarkMap;
 
   const filtered = cities
     .filter((c) => c.city.toLowerCase().includes(search.toLowerCase()))
@@ -47,7 +49,12 @@ export function MapSidebar({ cities, open, onToggle }: MapSidebarProps) {
       {/* Toggle button */}
       <button
         onClick={onToggle}
-        className="absolute -left-10 top-4 z-[1001] flex h-10 w-10 items-center justify-center rounded-l-xl bg-black/60 backdrop-blur-md border border-r-0 border-white/10 text-white/50 hover:text-white hover:bg-black/70 transition-all"
+        className={cn(
+          "absolute -left-10 top-4 z-[1001] flex h-10 w-10 items-center justify-center rounded-l-xl backdrop-blur-md border border-r-0 transition-all",
+          d
+            ? "bg-black/60 border-white/10 text-white/50 hover:text-white hover:bg-black/70"
+            : "bg-white/80 border-black/10 text-black/40 hover:text-black hover:bg-white/90"
+        )}
         title={open ? "Cerrar panel" : "Abrir panel"}
       >
         {open ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
@@ -55,41 +62,53 @@ export function MapSidebar({ cities, open, onToggle }: MapSidebarProps) {
 
       {/* Panel content */}
       {open && (
-        <div className="flex w-80 flex-col overflow-hidden bg-black/50 backdrop-blur-xl border-l border-white/10">
+        <div
+          className={cn(
+            "flex w-80 flex-col overflow-hidden backdrop-blur-xl border-l transition-colors",
+            d
+              ? "bg-black/50 border-white/10"
+              : "bg-white/85 border-black/10"
+          )}
+        >
           {/* Header */}
-          <div className="border-b border-white/10 px-4 py-3">
+          <div className={cn("border-b px-4 py-3", d ? "border-white/10" : "border-black/8")}>
             <div className="flex items-center gap-2 mb-2">
-              <MapPin className="h-4 w-4 text-violet-400" />
-              <h3 className="text-sm font-bold text-white">
+              <MapPin className={cn("h-4 w-4", d ? "text-violet-400" : "text-violet-600")} />
+              <h3 className={cn("text-sm font-bold", d ? "text-white" : "text-gray-900")}>
                 Ciudades ({cities.length})
               </h3>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <div className="rounded-lg bg-white/5 px-2.5 py-1.5 text-center">
-                <p className="text-xs text-white/40">Leads</p>
-                <p className="text-sm font-bold text-white tabular-nums">{totalLeads}</p>
+              <div className={cn("rounded-lg px-2.5 py-1.5 text-center", d ? "bg-white/5" : "bg-black/5")}>
+                <p className={cn("text-xs", d ? "text-white/40" : "text-black/40")}>Leads</p>
+                <p className={cn("text-sm font-bold tabular-nums", d ? "text-white" : "text-gray-900")}>{totalLeads}</p>
               </div>
-              <div className="rounded-lg bg-white/5 px-2.5 py-1.5 text-center">
-                <p className="text-xs text-white/40">Calif.</p>
-                <p className="text-sm font-bold text-emerald-400 tabular-nums">{totalQualified}</p>
+              <div className={cn("rounded-lg px-2.5 py-1.5 text-center", d ? "bg-white/5" : "bg-black/5")}>
+                <p className={cn("text-xs", d ? "text-white/40" : "text-black/40")}>Calif.</p>
+                <p className={cn("text-sm font-bold tabular-nums", d ? "text-emerald-400" : "text-emerald-600")}>{totalQualified}</p>
               </div>
-              <div className="rounded-lg bg-white/5 px-2.5 py-1.5 text-center">
-                <p className="text-xs text-white/40">Score</p>
-                <p className="text-sm font-bold text-violet-400 tabular-nums">{avgScore.toFixed(0)}</p>
+              <div className={cn("rounded-lg px-2.5 py-1.5 text-center", d ? "bg-white/5" : "bg-black/5")}>
+                <p className={cn("text-xs", d ? "text-white/40" : "text-black/40")}>Score</p>
+                <p className={cn("text-sm font-bold tabular-nums", d ? "text-violet-400" : "text-violet-600")}>{avgScore.toFixed(0)}</p>
               </div>
             </div>
           </div>
 
           {/* Search */}
-          <div className="border-b border-white/10 px-4 py-2">
+          <div className={cn("border-b px-4 py-2", d ? "border-white/10" : "border-black/8")}>
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/30" />
+              <Search className={cn("absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2", d ? "text-white/30" : "text-black/30")} />
               <input
                 type="text"
                 placeholder="Buscar ciudad..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-white/5 py-1.5 pl-8 pr-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/40"
+                className={cn(
+                  "w-full rounded-lg border py-1.5 pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/40",
+                  d
+                    ? "border-white/10 bg-white/5 text-white placeholder:text-white/30"
+                    : "border-black/10 bg-black/5 text-gray-900 placeholder:text-black/30"
+                )}
               />
             </div>
           </div>
@@ -97,7 +116,7 @@ export function MapSidebar({ cities, open, onToggle }: MapSidebarProps) {
           {/* City list */}
           <div className="flex-1 overflow-y-auto scrollbar-thin">
             {filtered.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-white/30">
+              <p className={cn("px-4 py-8 text-center text-sm", d ? "text-white/30" : "text-black/30")}>
                 Sin resultados
               </p>
             ) : (
@@ -106,8 +125,9 @@ export function MapSidebar({ cities, open, onToggle }: MapSidebarProps) {
                   <li
                     key={city.city}
                     className={cn(
-                      "flex items-center justify-between px-4 py-2.5 hover:bg-white/5 transition-colors",
-                      i < filtered.length - 1 && "border-b border-white/5"
+                      "flex items-center justify-between px-4 py-2.5 transition-colors",
+                      d ? "hover:bg-white/5" : "hover:bg-black/5",
+                      i < filtered.length - 1 && (d ? "border-b border-white/5" : "border-b border-black/5")
                     )}
                   >
                     <div className="min-w-0 flex items-center gap-2.5">
@@ -118,10 +138,10 @@ export function MapSidebar({ cities, open, onToggle }: MapSidebarProps) {
                         )}
                       />
                       <div>
-                        <p className="truncate text-sm font-medium text-white/90">{city.city}</p>
-                        <p className="text-[11px] text-white/35">
+                        <p className={cn("truncate text-sm font-medium", d ? "text-white/90" : "text-gray-900")}>{city.city}</p>
+                        <p className={cn("text-[11px]", d ? "text-white/35" : "text-black/40")}>
                           Score{" "}
-                          <span className={cn("font-medium", getScoreColor(city.avg_score))}>
+                          <span className={cn("font-medium", getScoreColor(city.avg_score, d))}>
                             {city.avg_score.toFixed(1)}
                           </span>
                           {" · "}
@@ -129,7 +149,12 @@ export function MapSidebar({ cities, open, onToggle }: MapSidebarProps) {
                         </p>
                       </div>
                     </div>
-                    <span className="ml-2 flex-shrink-0 rounded-full bg-violet-500/15 px-2.5 py-0.5 text-xs font-bold text-violet-300 tabular-nums">
+                    <span className={cn(
+                      "ml-2 flex-shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold tabular-nums",
+                      d
+                        ? "bg-violet-500/15 text-violet-300"
+                        : "bg-violet-100 text-violet-700"
+                    )}>
                       {city.count}
                     </span>
                   </li>

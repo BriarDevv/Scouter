@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -13,7 +13,7 @@ import { MapSidebar } from "@/components/map/map-sidebar";
 import { HeatmapLayer } from "@/components/map/heatmap-layer";
 import type { GeoSummaryCity, TerritoryWithStats } from "@/types";
 import "leaflet/dist/leaflet.css";
-import "@/components/map/map-dark.css";
+import "@/components/map/map-theme.css";
 
 interface LeadMapProps {
   cities: GeoSummaryCity[];
@@ -25,28 +25,46 @@ const TILE_PROVIDERS = {
     url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
     attribution:
       '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    isDark: true,
   },
   light: {
     url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
     attribution:
       '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    isDark: false,
   },
   satellite: {
     url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
     attribution:
       '&copy; <a href="https://www.esri.com/">Esri</a>',
+    isDark: true,
   },
 } as const;
 
 type TileKey = keyof typeof TILE_PROVIDERS;
 
+const STORAGE_KEY = "clawscout-map-tile";
+
+function loadTileKey(): TileKey {
+  if (typeof window === "undefined") return "dark";
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved && saved in TILE_PROVIDERS) return saved as TileKey;
+  return "dark";
+}
+
 export function LeadMap({ cities, territories = [] }: LeadMapProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [tileKey, setTileKey] = useState<TileKey>("dark");
+  const [tileKey, setTileKey] = useState<TileKey>(loadTileKey);
   const [showHeat, setShowHeat] = useState(false);
   const [showTerritories, setShowTerritories] = useState(true);
 
   const tile = TILE_PROVIDERS[tileKey];
+  const isDark = tile.isDark;
+
+  const changeTile = useCallback((key: TileKey) => {
+    setTileKey(key);
+    localStorage.setItem(STORAGE_KEY, key);
+  }, []);
 
   // Build a lookup: city name -> territory color
   const cityTerritoryColor: Record<string, string> = {};
@@ -71,7 +89,7 @@ export function LeadMap({ cities, territories = [] }: LeadMapProps) {
       <MapContainer
         center={[-38.4, -63.6]}
         zoom={5}
-        className="h-full w-full z-0 map-dark-theme"
+        className={`h-full w-full z-0 ${isDark ? "map-dark-theme" : "map-light-theme"}`}
         scrollWheelZoom={true}
         zoomControl={false}
       >
@@ -107,7 +125,7 @@ export function LeadMap({ cities, territories = [] }: LeadMapProps) {
                     <Popup>
                       <div className="map-popup-content">
                         <p className="font-bold">{territory.name}</p>
-                        <p className="text-muted-foreground">{cityName}</p>
+                        <p className="opacity-60">{cityName}</p>
                       </div>
                     </Popup>
                   </CircleMarker>
@@ -136,27 +154,37 @@ export function LeadMap({ cities, territories = [] }: LeadMapProps) {
       </MapContainer>
 
       {/* ── Layer controls (top-left) ─────────────────────────── */}
-      <div className="absolute left-3 top-3 z-[1000] flex items-center gap-1.5 rounded-xl border border-white/10 bg-black/60 backdrop-blur-md px-2 py-1.5 shadow-lg">
+      <div
+        className={`absolute left-3 top-3 z-[1000] flex items-center gap-1.5 rounded-xl border backdrop-blur-md px-2 py-1.5 shadow-lg transition-colors ${
+          isDark
+            ? "border-white/10 bg-black/60"
+            : "border-black/10 bg-white/80"
+        }`}
+      >
         {(["dark", "light", "satellite"] as TileKey[]).map((key) => (
           <button
             key={key}
-            onClick={() => setTileKey(key)}
+            onClick={() => changeTile(key)}
             className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all ${
               tileKey === key
                 ? "bg-violet-600 text-white shadow-sm"
-                : "text-white/60 hover:text-white hover:bg-white/10"
+                : isDark
+                  ? "text-white/60 hover:text-white hover:bg-white/10"
+                  : "text-black/50 hover:text-black hover:bg-black/5"
             }`}
           >
             {key === "dark" ? "Oscuro" : key === "light" ? "Claro" : "Satelite"}
           </button>
         ))}
-        <div className="mx-1 h-4 w-px bg-white/20" />
+        <div className={`mx-1 h-4 w-px ${isDark ? "bg-white/20" : "bg-black/10"}`} />
         <button
           onClick={() => setShowHeat((p) => !p)}
           className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all ${
             showHeat
               ? "bg-orange-500/80 text-white shadow-sm"
-              : "text-white/60 hover:text-white hover:bg-white/10"
+              : isDark
+                ? "text-white/60 hover:text-white hover:bg-white/10"
+                : "text-black/50 hover:text-black hover:bg-black/5"
           }`}
         >
           Calor
@@ -166,7 +194,9 @@ export function LeadMap({ cities, territories = [] }: LeadMapProps) {
           className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all ${
             showTerritories
               ? "bg-emerald-500/80 text-white shadow-sm"
-              : "text-white/60 hover:text-white hover:bg-white/10"
+              : isDark
+                ? "text-white/60 hover:text-white hover:bg-white/10"
+                : "text-black/50 hover:text-black hover:bg-black/5"
           }`}
         >
           Territorios
@@ -174,22 +204,28 @@ export function LeadMap({ cities, territories = [] }: LeadMapProps) {
       </div>
 
       {/* ── Legend (bottom-right, above zoom) ──────────────────── */}
-      <div className="absolute right-3 bottom-20 z-[1000] rounded-xl border border-white/10 bg-black/60 backdrop-blur-md px-3 py-2 shadow-lg">
-        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/50">
+      <div
+        className={`absolute right-3 bottom-20 z-[1000] rounded-xl border backdrop-blur-md px-3 py-2 shadow-lg transition-colors ${
+          isDark
+            ? "border-white/10 bg-black/60"
+            : "border-black/10 bg-white/80"
+        }`}
+      >
+        <p className={`mb-1.5 text-[10px] font-semibold uppercase tracking-wider ${isDark ? "text-white/50" : "text-black/40"}`}>
           Score promedio
         </p>
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(34,197,94,0.5)]" />
-            <span className="text-[11px] text-white/70">&ge; 70 — Alto</span>
+            <span className={`text-[11px] ${isDark ? "text-white/70" : "text-black/60"}`}>&ge; 70 — Alto</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="inline-block h-2.5 w-2.5 rounded-full bg-yellow-500 shadow-[0_0_6px_rgba(234,179,8,0.5)]" />
-            <span className="text-[11px] text-white/70">&ge; 40 — Medio</span>
+            <span className={`text-[11px] ${isDark ? "text-white/70" : "text-black/60"}`}>&ge; 40 — Medio</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.5)]" />
-            <span className="text-[11px] text-white/70">&lt; 40 — Bajo</span>
+            <span className={`text-[11px] ${isDark ? "text-white/70" : "text-black/60"}`}>&lt; 40 — Bajo</span>
           </div>
         </div>
       </div>
@@ -198,6 +234,7 @@ export function LeadMap({ cities, territories = [] }: LeadMapProps) {
         cities={cities}
         open={sidebarOpen}
         onToggle={() => setSidebarOpen((prev) => !prev)}
+        isDarkMap={isDark}
       />
     </div>
   );
