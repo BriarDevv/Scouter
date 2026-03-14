@@ -221,8 +221,10 @@ def generate_outreach_draft(
     llm_suggested_angle: str | None,
     signals: list,
     role: LLMRole | str = LLMRole.EXECUTOR,
+    brand_context: dict | None = None,
 ) -> dict:
     """Generate an outreach email draft. Returns dict with subject and body."""
+    bc = brand_context or {}
     prompt = GENERATE_OUTREACH_EMAIL.format(
         business_name=business_name,
         industry=industry or "Unknown",
@@ -232,6 +234,14 @@ def generate_outreach_draft(
         llm_summary=llm_summary or "No summary available",
         llm_suggested_angle=llm_suggested_angle or "Web development services",
         signals=_format_signals(signals),
+        brand_name=bc.get("brand_name") or "No especificado",
+        signature_name=bc.get("signature_name") or "No especificado",
+        signature_role=bc.get("signature_role") or "No especificado",
+        portfolio_url=bc.get("portfolio_url") or "No especificado",
+        signature_cta=bc.get("signature_cta") or "No especificado",
+        default_outreach_tone=bc.get("default_outreach_tone") or "profesional",
+        default_closing_line=bc.get("default_closing_line") or "No especificado",
+        signature_include_portfolio=bc.get("signature_include_portfolio", True),
     )
 
     fallback = {
@@ -471,8 +481,10 @@ def generate_reply_assistant_draft(
     subject: str | None,
     body_text: str | None,
     role: LLMRole | str = LLMRole.EXECUTOR,
+    brand_context: dict | None = None,
 ) -> dict:
     """Generate a grounded response draft for a real inbound reply."""
+    bc = brand_context or {}
     prompt = GENERATE_REPLY_ASSISTANT_DRAFT.format(
         business_name=business_name or "Unknown",
         industry=industry or "Unknown",
@@ -489,6 +501,12 @@ def generate_reply_assistant_draft(
         to_email=to_email or "Unknown",
         subject=subject or "No subject",
         body_text=body_text or "No body text available",
+        brand_name=bc.get("brand_name") or "No especificado",
+        signature_name=bc.get("signature_name") or "No especificado",
+        signature_role=bc.get("signature_role") or "No especificado",
+        signature_cta=bc.get("signature_cta") or "No especificado",
+        default_reply_tone=bc.get("default_reply_tone") or "profesional",
+        default_closing_line=bc.get("default_closing_line") or "No especificado",
     )
 
     fallback = {

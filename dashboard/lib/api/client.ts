@@ -30,6 +30,8 @@ import type {
   MailSettings,
   ReplyAssistantDraft,
   ReplyAssistantDraftReview,
+  OperationalSettings,
+  CredentialsStatus,
 } from "@/types";
 import { API_BASE_URL } from "@/lib/constants";
 import {
@@ -482,4 +484,21 @@ export async function getLLMSettings(): Promise<LLMSettings> {
 
 export async function getMailSettings(): Promise<MailSettings> {
   return apiFetch("/settings/mail");
+}
+
+export async function getOperationalSettings(): Promise<OperationalSettings> {
+  return apiFetch("/settings/operational");
+}
+
+export async function updateOperationalSettings(
+  updates: Partial<OperationalSettings>
+): Promise<OperationalSettings> {
+  return apiFetch("/settings/operational", {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+}
+
+export async function getCredentialsStatus(): Promise<CredentialsStatus> {
+  return apiFetch("/settings/credentials");
 }

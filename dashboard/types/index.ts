@@ -479,3 +479,61 @@ export interface MailSettings {
   inbound: InboundMailSettings;
   health: MailHealthSettings;
 }
+
+// ─── Operational Settings ──────────────────────────────
+
+export interface OperationalSettings {
+  id: number;
+  // Brand / Signature
+  brand_name: string | null;
+  signature_name: string | null;
+  signature_role: string | null;
+  signature_company: string | null;
+  portfolio_url: string | null;
+  website_url: string | null;
+  calendar_url: string | null;
+  signature_cta: string | null;
+  signature_include_portfolio: boolean;
+  default_outreach_tone: string;
+  default_reply_tone: string;
+  default_closing_line: string | null;
+  // Mail outbound
+  mail_enabled: boolean | null;
+  mail_from_email: string | null;
+  mail_from_name: string | null;
+  mail_reply_to: string | null;
+  mail_send_timeout_seconds: number | null;
+  require_approved_drafts: boolean;
+  // Mail inbound
+  mail_inbound_sync_enabled: boolean | null;
+  mail_inbound_mailbox: string | null;
+  mail_inbound_sync_limit: number | null;
+  mail_inbound_timeout_seconds: number | null;
+  mail_inbound_search_criteria: string | null;
+  // Rules
+  auto_classify_inbound: boolean;
+  reply_assistant_enabled: boolean;
+  reviewer_enabled: boolean;
+  reviewer_labels: string[];
+  reviewer_confidence_threshold: number;
+  prioritize_quote_replies: boolean;
+  prioritize_meeting_replies: boolean;
+  allow_openclaw_briefs: boolean;
+  allow_reply_assistant_generation: boolean;
+  use_reviewer_for_labels: string[];
+  updated_at: string | null;
+}
+
+export interface CredentialStatusItem {
+  key: string;
+  label: string;
+  set: boolean;
+  required: boolean;
+}
+
+export interface CredentialsStatus {
+  smtp: CredentialStatusItem[];
+  imap: CredentialStatusItem[];
+  all_smtp_ready: boolean;
+  all_imap_ready: boolean;
+}

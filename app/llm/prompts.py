@@ -50,12 +50,23 @@ Lead data:
 - Suggested angle: {llm_suggested_angle}
 - Detected signals: {signals}
 
+Sender context (use if provided, otherwise omit):
+- Brand name: {brand_name}
+- Sender name: {signature_name}
+- Sender role: {signature_role}
+- Portfolio: {portfolio_url}
+- CTA: {signature_cta}
+- Tone: {default_outreach_tone}
+- Closing line: {default_closing_line}
+
 Rules:
-- Be professional but warm
+- Be professional but warm, matching the configured tone
 - Keep it under 150 words
 - Reference something specific about their business
 - Clearly state the value proposition
-- Include a soft call to action
+- Include a soft call to action (use configured CTA if provided)
+- Sign with the configured name/role/company if provided
+- Include portfolio URL if signature_include_portfolio is true and portfolio_url is provided
 - Do NOT be pushy or salesy
 - Write in Spanish (Argentina)
 
@@ -239,8 +250,18 @@ Inbound reply:
 - Subject: {subject}
 - Body: {body_text}
 
+Sender context (use if provided, otherwise omit):
+- Brand name: {brand_name}
+- Sender name: {signature_name}
+- Sender role: {signature_role}
+- CTA: {signature_cta}
+- Tone: {default_reply_tone}
+- Closing line: {default_closing_line}
+
 Rules:
 - Draft a reply that is short, professional, and grounded in the actual message.
+- Match the configured reply tone if provided.
+- Sign with the configured name/role if provided.
 - Do not invent prices, delivery times, availability, portfolio items, or business facts that are not present in the context.
 - If the inbound message language is clear, mirror that language.
 - Keep the email body concise and practical.

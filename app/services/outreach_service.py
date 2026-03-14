@@ -28,7 +28,7 @@ def generate_outreach_draft(db: Session, lead_id: uuid.UUID) -> OutreachDraft | 
         logger.warning("outreach_blocked_suppressed", lead_id=str(lead_id))
         return None
 
-    subject, body = generate_draft_content(lead)
+    subject, body = generate_draft_content(lead, db=db)
 
     draft = OutreachDraft(
         lead_id=lead.id,

@@ -7,6 +7,7 @@ from app.models.outreach import OutreachDraft, OutreachLog
 from app.models.reply_assistant import ReplyAssistantDraft, ReplyAssistantReview
 from app.models.suppression import SuppressionEntry
 from app.models.task_tracking import PipelineRun, TaskRun
+from app.models.settings import OperationalSettings
 
 __all__ = [
     "EmailThread",
@@ -23,4 +24,5 @@ __all__ = [
     "SuppressionEntry",
     "PipelineRun",
     "TaskRun",
+    "OperationalSettings",
 ]

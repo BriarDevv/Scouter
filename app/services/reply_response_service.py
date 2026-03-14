@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.logging import get_logger
 from app.llm.client import generate_reply_assistant_draft as llm_generate_reply_assistant_draft
+from app.services.operational_settings_service import get_brand_context
 from app.llm.resolver import resolve_model_for_role
 from app.llm.roles import LLMRole
 from app.models.inbound_mail import InboundMessage
@@ -87,6 +88,7 @@ def generate_reply_assistant_draft(
     existing = get_reply_assistant_draft_for_message(db, message_id)
     related_outbound_draft = message.draft or (message.delivery.draft if message.delivery else None)
 
+    brand_ctx = get_brand_context(db)
     generated = llm_generate_reply_assistant_draft(
         business_name=message.lead.business_name if message.lead else None,
         industry=message.lead.industry if message.lead else None,
@@ -104,6 +106,7 @@ def generate_reply_assistant_draft(
         subject=message.subject,
         body_text=message.body_text,
         role=role,
+        brand_context=brand_ctx,
     )
 
     should_escalate_reviewer = bool(

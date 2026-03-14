@@ -2,6 +2,11 @@ from app.core.config import settings
 from app.llm.catalog import DEFAULT_ROLE_MODEL_MAP
 from app.llm.roles import LLMRole
 from app.services.inbound_mail_service import get_inbound_sync_status
+from app.services.operational_settings_service import (
+    get_effective_mail_inbound,
+    get_effective_mail_outbound,
+    get_or_create as get_operational_settings,
+)
 
 
 def get_llm_settings() -> dict:
@@ -30,9 +35,13 @@ def get_llm_settings() -> dict:
 
 def get_mail_settings(db) -> dict:
     last_sync = get_inbound_sync_status(db)
+    op = get_operational_settings(db)
+    outbound = get_effective_mail_outbound(op)
+    inbound = get_effective_mail_inbound(op)
 
+    # Credential presence (sensitive env vars)
     outbound_missing = []
-    if not (settings.MAIL_FROM_EMAIL or "").strip():
+    if not (settings.MAIL_FROM_EMAIL or "").strip() and not outbound["from_email"]:
         outbound_missing.append("MAIL_FROM_EMAIL")
     if not (settings.MAIL_SMTP_HOST or "").strip():
         outbound_missing.append("MAIL_SMTP_HOST")
@@ -51,8 +60,8 @@ def get_mail_settings(db) -> dict:
 
     outbound_configured = not outbound_missing
     inbound_configured = not inbound_missing
-    outbound_ready = settings.MAIL_ENABLED and outbound_configured
-    inbound_ready = settings.MAIL_INBOUND_ENABLED and inbound_configured
+    outbound_ready = outbound["enabled"] and outbound_configured
+    inbound_ready = inbound["sync_enabled"] and inbound_configured
 
     last_sync_payload = None
     if last_sync:
@@ -70,38 +79,38 @@ def get_mail_settings(db) -> dict:
         }
 
     return {
-        "read_only": True,
-        "editable": False,
+        "read_only": False,
+        "editable": True,
         "outbound": {
-            "enabled": settings.MAIL_ENABLED,
+            "enabled": outbound["enabled"],
             "provider": settings.MAIL_PROVIDER.lower(),
             "configured": outbound_configured,
             "ready": outbound_ready,
-            "from_email": (settings.MAIL_FROM_EMAIL or "").strip() or None,
-            "from_name": settings.MAIL_FROM_NAME.strip(),
-            "reply_to": (settings.MAIL_REPLY_TO or "").strip() or None,
-            "send_timeout_seconds": settings.MAIL_SEND_TIMEOUT,
-            "require_approved_drafts": True,
+            "from_email": (outbound["from_email"] or "").strip() or None,
+            "from_name": (outbound["from_name"] or "").strip(),
+            "reply_to": (outbound["reply_to"] or "").strip() or None,
+            "send_timeout_seconds": outbound["send_timeout_seconds"],
+            "require_approved_drafts": outbound["require_approved_drafts"],
             "missing_requirements": outbound_missing,
         },
         "inbound": {
-            "enabled": settings.MAIL_INBOUND_ENABLED,
+            "enabled": inbound["sync_enabled"],
             "provider": settings.MAIL_INBOUND_PROVIDER.lower(),
             "configured": inbound_configured,
             "ready": inbound_ready,
             "account": (settings.MAIL_IMAP_USERNAME or "").strip() or None,
-            "mailbox": settings.MAIL_IMAP_MAILBOX.strip(),
-            "sync_limit": settings.MAIL_INBOUND_SYNC_LIMIT,
-            "timeout_seconds": settings.MAIL_INBOUND_TIMEOUT,
-            "search_criteria": settings.MAIL_IMAP_SEARCH_CRITERIA.strip(),
-            "auto_classify_inbound": settings.MAIL_AUTO_CLASSIFY_INBOUND,
-            "use_reviewer_for_labels": list(settings.mail_use_reviewer_for_labels),
+            "mailbox": inbound["mailbox"].strip(),
+            "sync_limit": inbound["sync_limit"],
+            "timeout_seconds": inbound["timeout_seconds"],
+            "search_criteria": inbound["search_criteria"].strip(),
+            "auto_classify_inbound": inbound["auto_classify_inbound"],
+            "use_reviewer_for_labels": inbound["use_reviewer_for_labels"],
             "last_sync": last_sync_payload,
             "missing_requirements": inbound_missing,
         },
         "health": {
             "configured": outbound_configured or inbound_configured,
-            "enabled": settings.MAIL_ENABLED or settings.MAIL_INBOUND_ENABLED,
+            "enabled": outbound["enabled"] or inbound["sync_enabled"],
             "outbound_ready": outbound_ready,
             "inbound_ready": inbound_ready,
             "last_sync_status": last_sync.status if last_sync else None,
