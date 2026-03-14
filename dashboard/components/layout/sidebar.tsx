@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { ActivityPulse } from "@/components/layout/activity-pulse";
 import {
   Inbox,
   LayoutDashboard,
@@ -61,6 +62,11 @@ export function Sidebar() {
           );
         })}
       </nav>
+
+      {/* AI Activity */}
+      <div className="border-t border-sidebar-border">
+        <ActivityPulse />
+      </div>
 
       {/* Footer */}
       <div className="border-t border-sidebar-border p-3 space-y-1">

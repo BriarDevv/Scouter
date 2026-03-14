@@ -298,6 +298,24 @@ export async function getTaskStatus(taskId: string): Promise<TaskStatusRecord> {
   );
 }
 
+export async function getTasks(params?: {
+  status?: string;
+  lead_id?: string;
+  limit?: number;
+}): Promise<TaskStatusRecord[]> {
+  return withMockFallback(
+    async () => {
+      const query = new URLSearchParams();
+      if (params?.status) query.set("status", params.status);
+      if (params?.lead_id) query.set("lead_id", params.lead_id);
+      if (params?.limit) query.set("limit", String(params.limit));
+      const suffix = query.size ? `?${query.toString()}` : "";
+      return apiFetch(`/tasks${suffix}`);
+    },
+    () => []
+  );
+}
+
 export async function getPipelineRuns(params?: {
   lead_id?: string;
   status?: string;
