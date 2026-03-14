@@ -197,8 +197,8 @@ function PasswordInput({
         onChange={(e) => onChange(e.target.value)}
         placeholder={
           alreadySet && isEmpty
-            ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022  (ya configurado)"
-            : (placeholder ?? "Nueva contrase\u00f1a")
+            ? "••••••••  (ya configurado)"
+            : (placeholder ?? "Nueva contraseña")
         }
         className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 pr-20 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
       />
@@ -268,7 +268,7 @@ function SaveButton({
       ) : (
         <Save className="h-4 w-4" />
       )}
-      {saving ? "Guardando\u2026" : saved ? "Guardado" : "Guardar"}
+      {saving ? "Guardando…" : saved ? "Guardado" : "Guardar"}
     </button>
   );
 }
@@ -361,7 +361,7 @@ function ConnectionTestBadge({
         <span
           className={`text-xs font-medium ${lastOk ? "text-emerald-700" : "text-rose-700"}`}
         >
-          {lastOk ? "Conexi\u00f3n exitosa" : "Fall\u00f3"}
+          {lastOk ? "Conexión exitosa" : "Falló"}
         </span>
         <span className="text-xs text-slate-400">
           &middot; <RelativeTime date={lastAt} />
@@ -393,7 +393,7 @@ function TestButton({
       const r = await onTest();
       setResult(r);
     } catch {
-      setResult({ ok: false, error: "Error de red al probar conexi\u00f3n.", sample_count: null });
+      setResult({ ok: false, error: "Error de red al probar conexión.", sample_count: null });
     } finally {
       setTesting(false);
     }
@@ -412,7 +412,7 @@ function TestButton({
         ) : (
           <RefreshCw className="h-4 w-4" />
         )}
-        {testing ? "Probando\u2026" : label}
+        {testing ? "Probando…" : label}
       </button>
       {result && (
         <div
@@ -424,7 +424,7 @@ function TestButton({
             <XCircle className="h-4 w-4 text-rose-500" />
           )}
           {result.ok
-            ? `Conexi\u00f3n OK${result.sample_count != null ? ` \u00b7 ${result.sample_count} mensajes encontrados` : ""}`
+            ? `Conexión OK${result.sample_count != null ? ` · ${result.sample_count} mensajes encontrados` : ""}`
             : result.error}
         </div>
       )}
@@ -467,7 +467,7 @@ function SetupChecklist({
       ? "Sistema listo para operar"
       : data.overall === "warning"
         ? "Listo con advertencias"
-        : "Configuraci\u00f3n incompleta";
+        : "Configuración incompleta";
 
   const overallText =
     data.overall === "ready"
@@ -491,10 +491,10 @@ function SetupChecklist({
             <p className={`font-semibold ${overallText}`}>{overallLabel}</p>
             <div className="mt-1 flex gap-3 text-xs">
               <span className={data.ready_to_send ? "text-emerald-600" : "text-slate-400"}>
-                {data.ready_to_send ? "\u2713" : "\u25cb"} Env\u00edo listo
+                {data.ready_to_send ? "✓" : "○"} Envío listo
               </span>
               <span className={data.ready_to_receive ? "text-emerald-600" : "text-slate-400"}>
-                {data.ready_to_receive ? "\u2713" : "\u25cb"} Recepci\u00f3n lista
+                {data.ready_to_receive ? "✓" : "○"} Recepción lista
               </span>
             </div>
           </div>
@@ -551,7 +551,7 @@ function SignaturePreview({
     return (
       <div className="flex items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8">
         <p className="text-sm text-slate-400">
-          Complet\u00e1 los datos para ver la preview
+          Completá los datos para ver la preview
         </p>
       </div>
     );
@@ -606,7 +606,7 @@ function LLMSection({ data }: { data: LLMSettings }) {
     <div className="grid gap-6 lg:grid-cols-[1.2fr,0.8fr]">
       <SectionCard
         title="Modelos activos"
-        description="Configuraci\u00f3n LLM read-only desde env."
+        description="Configuración LLM read-only desde env."
         icon={Bot}
       >
         <div className="space-y-3">
@@ -638,7 +638,7 @@ function LLMSection({ data }: { data: LLMSettings }) {
         <MetaRow label="Timeout" value={`${data.timeout_seconds}s`} />
         <MetaRow label="Reintentos" value={data.max_retries} />
         <MetaRow
-          label="Cat\u00e1logo"
+          label="Catálogo"
           value={
             <div className="flex flex-wrap justify-end gap-1">
               {data.supported_models.map((m) => (
@@ -741,14 +741,14 @@ function BrandSection({
                 placeholder="ej. BriarDev"
               />
             </FieldRow>
-            <FieldRow label="CTA corta" hint="Llamada a la acci\u00f3n al final del email">
+            <FieldRow label="CTA corta" hint="Llamada a la acción al final del email">
               <TextInput
                 value={form.signature_cta}
                 onChange={set("signature_cta")}
-                placeholder="ej. \u00bfAgendamos una charla de 15 min?"
+                placeholder="ej. ¿Agendamos una charla de 15 min?"
               />
             </FieldRow>
-            <FieldRow label="L\u00ednea de cierre" hint="Frase final antes de la firma">
+            <FieldRow label="Línea de cierre" hint="Frase final antes de la firma">
               <TextInput
                 value={form.default_closing_line}
                 onChange={set("default_closing_line")}
@@ -787,7 +787,7 @@ function BrandSection({
                 onChange={(e) => set("default_outreach_tone")(e.target.value)}
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
               >
-                {["profesional", "cercano", "consultivo", "breve", "emp\u00e1tico"].map((t) => (
+                {["profesional", "cercano", "consultivo", "breve", "empático"].map((t) => (
                   <option key={t} value={t}>
                     {t}
                   </option>
@@ -800,7 +800,7 @@ function BrandSection({
                 onChange={(e) => set("default_reply_tone")(e.target.value)}
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400 focus:bg-white"
               >
-                {["profesional", "cercano", "consultivo", "breve", "emp\u00e1tico"].map((t) => (
+                {["profesional", "cercano", "consultivo", "breve", "empático"].map((t) => (
                   <option key={t} value={t}>
                     {t}
                   </option>
@@ -811,7 +811,7 @@ function BrandSection({
               <Toggle
                 checked={form.signature_include_portfolio}
                 onChange={set("signature_include_portfolio") as (v: boolean) => void}
-                label={form.signature_include_portfolio ? "S\u00ed" : "No"}
+                label={form.signature_include_portfolio ? "Sí" : "No"}
               />
             </FieldRow>
           </div>
@@ -868,7 +868,7 @@ function MailOutboundSection({
   return (
     <SectionCard
       title="Mail de salida"
-      description="Configuraci\u00f3n operativa del canal de env\u00edo. Credenciales SMTP en la pesta\u00f1a Credenciales."
+      description="Configuración operativa del canal de envío. Credenciales SMTP en la pestaña Credenciales."
       icon={Mail}
     >
       <div className="mb-4 flex flex-wrap gap-2">
@@ -883,7 +883,7 @@ function MailOutboundSection({
           />
         )}
       </div>
-      <FieldRow label="Habilitar env\u00edo de mail">
+      <FieldRow label="Habilitar envío de mail">
         <Toggle
           checked={form.mail_enabled}
           onChange={set("mail_enabled") as (v: boolean) => void}
@@ -913,7 +913,7 @@ function MailOutboundSection({
           type="email"
         />
       </FieldRow>
-      <FieldRow label="Timeout de env\u00edo (seg)">
+      <FieldRow label="Timeout de envío (seg)">
         <TextInput
           value={form.mail_send_timeout_seconds}
           onChange={set("mail_send_timeout_seconds")}
@@ -921,11 +921,11 @@ function MailOutboundSection({
           type="number"
         />
       </FieldRow>
-      <FieldRow label="Requerir aprobaci\u00f3n de drafts">
+      <FieldRow label="Requerir aprobación de drafts">
         <Toggle
           checked={form.require_approved_drafts}
           onChange={set("require_approved_drafts") as (v: boolean) => void}
-          label={form.require_approved_drafts ? "Solo drafts aprobados" : "Sin restricci\u00f3n"}
+          label={form.require_approved_drafts ? "Solo drafts aprobados" : "Sin restricción"}
         />
       </FieldRow>
       <div className="mt-4 flex items-center justify-between">
@@ -978,7 +978,7 @@ function MailInboundSection({
   return (
     <SectionCard
       title="Bandeja de entrada"
-      description="Configuraci\u00f3n del canal de lectura de inbox. Credenciales IMAP en la pesta\u00f1a Credenciales."
+      description="Configuración del canal de lectura de inbox. Credenciales IMAP en la pestaña Credenciales."
       icon={Mail}
     >
       <div className="mb-4 flex flex-wrap gap-2">
@@ -1004,7 +1004,7 @@ function MailInboundSection({
           placeholder={mailData.inbound.mailbox}
         />
       </FieldRow>
-      <FieldRow label="L\u00edmite de sync">
+      <FieldRow label="Límite de sync">
         <TextInput
           value={form.mail_inbound_sync_limit}
           onChange={set("mail_inbound_sync_limit")}
@@ -1020,7 +1020,7 @@ function MailInboundSection({
           type="number"
         />
       </FieldRow>
-      <FieldRow label="Criterio de b\u00fasqueda IMAP">
+      <FieldRow label="Criterio de búsqueda IMAP">
         <TextInput
           value={form.mail_inbound_search_criteria}
           onChange={set("mail_inbound_search_criteria")}
@@ -1030,7 +1030,7 @@ function MailInboundSection({
       {mailData.inbound.last_sync && (
         <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
           <p className="mb-3 text-xs font-medium text-slate-500">
-            \u00daltima sync persistida
+            Última sync persistida
           </p>
           <div className="grid grid-cols-3 gap-2 text-sm">
             {(
@@ -1106,28 +1106,28 @@ function RulesSection({
   const rules: Array<{ key: keyof typeof form; label: string; hint?: string }> = [
     {
       key: "require_approved_drafts",
-      label: "Requerir aprobaci\u00f3n de drafts",
+      label: "Requerir aprobación de drafts",
       hint: "Solo los drafts aprobados se pueden enviar",
     },
-    { key: "auto_classify_inbound", label: "Clasificar replies autom\u00e1ticamente al sync" },
+    { key: "auto_classify_inbound", label: "Clasificar replies automáticamente al sync" },
     { key: "reply_assistant_enabled", label: "Asistente de respuesta habilitado" },
     {
       key: "reviewer_enabled",
-      label: "Revisor autom\u00e1tico habilitado",
-      hint: "Activa revisi\u00f3n profunda por el modelo reviewer",
+      label: "Revisor automático habilitado",
+      hint: "Activa revisión profunda por el modelo reviewer",
     },
-    { key: "prioritize_quote_replies", label: "Priorizar replies con pedido de cotizaci\u00f3n" },
-    { key: "prioritize_meeting_replies", label: "Priorizar replies con pedido de reuni\u00f3n" },
+    { key: "prioritize_quote_replies", label: "Priorizar replies con pedido de cotización" },
+    { key: "prioritize_meeting_replies", label: "Priorizar replies con pedido de reunión" },
     { key: "allow_openclaw_briefs", label: "Permitir briefs de OpenClaw" },
     {
       key: "allow_reply_assistant_generation",
-      label: "Permitir generaci\u00f3n de respuestas asistidas",
+      label: "Permitir generación de respuestas asistidas",
     },
   ];
 
   return (
     <SectionCard
-      title="Reglas de automatizaci\u00f3n"
+      title="Reglas de automatización"
       description="Control operativo del comportamiento del sistema."
       icon={Settings}
     >
@@ -1143,7 +1143,7 @@ function RulesSection({
         ))}
         <FieldRow
           label="Umbral de confianza del revisor"
-          hint="Valor entre 0 y 1 \u2014 mensajes por debajo del umbral se marcan para revisi\u00f3n manual"
+          hint="Valor entre 0 y 1 — mensajes por debajo del umbral se marcan para revisión manual"
         >
           <TextInput
             value={form.reviewer_confidence_threshold}
@@ -1285,7 +1285,7 @@ function CredentialsSectionNew({
     <div className="space-y-6">
       <SectionCard
         title="Credenciales SMTP"
-        description="Servidor de salida de correo. Las contrase\u00f1as se guardan en DB y nunca se exponen por API."
+        description="Servidor de salida de correo. Las contraseñas se guardan en DB y nunca se exponen por API."
         icon={KeyRound}
       >
         <div className="mb-5">
@@ -1334,8 +1334,8 @@ function CredentialsSectionNew({
               />
             </FieldRow>
             <FieldRow
-              label="Contrase\u00f1a"
-              hint="Dejar vac\u00edo para mantener la contrase\u00f1a actual"
+              label="Contraseña"
+              hint="Dejar vacío para mantener la contraseña actual"
             >
               <PasswordInput
                 value={smtpForm.smtp_password}
@@ -1349,7 +1349,7 @@ function CredentialsSectionNew({
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="mb-2 text-xs font-medium text-slate-500">
-                \u00daltimo test de conexi\u00f3n
+                Último test de conexión
               </p>
               <ConnectionTestBadge
                 lastAt={smtpLastTest.at}
@@ -1364,7 +1364,7 @@ function CredentialsSectionNew({
 
       <SectionCard
         title="Credenciales IMAP"
-        description="Servidor de entrada de correo para sincronizaci\u00f3n de inbox."
+        description="Servidor de entrada de correo para sincronización de inbox."
         icon={KeyRound}
       >
         <div className="mb-5">
@@ -1406,8 +1406,8 @@ function CredentialsSectionNew({
               />
             </FieldRow>
             <FieldRow
-              label="Contrase\u00f1a"
-              hint="Dejar vac\u00edo para mantener la contrase\u00f1a actual"
+              label="Contraseña"
+              hint="Dejar vacío para mantener la contraseña actual"
             >
               <PasswordInput
                 value={imapForm.imap_password}
@@ -1421,7 +1421,7 @@ function CredentialsSectionNew({
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="mb-2 text-xs font-medium text-slate-500">
-                \u00daltimo test de conexi\u00f3n
+                Último test de conexión
               </p>
               <ConnectionTestBadge
                 lastAt={imapLastTest.at}
@@ -1439,7 +1439,7 @@ function CredentialsSectionNew({
           <p className="text-sm text-rose-600">{saveError}</p>
         ) : (
           <p className="text-xs text-slate-400">
-            Las contrase\u00f1as se guardan de forma segura. Dejar el campo vac\u00edo mantiene la contrase\u00f1a actual.
+            Las contraseñas se guardan de forma segura. Dejar el campo vacío mantiene la contraseña actual.
           </p>
         )}
         <SaveButton onClick={handleSave} saving={saving} saved={saved} />
@@ -1543,21 +1543,21 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Configuraci\u00f3n"
+        title="Configuración"
         description="Ajustes operativos del sistema."
       />
 
       {loading && (
         <div className="flex items-center gap-3 text-sm text-slate-500">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Cargando configuraci\u00f3n\u2026
+          Cargando configuración…
         </div>
       )}
 
       {!loading && loadError && (
         <EmptyState
           icon={Settings}
-          title="Sin configuraci\u00f3n disponible"
+          title="Sin configuración disponible"
           description={loadError}
         />
       )}
@@ -1613,7 +1613,7 @@ export default function SettingsPage() {
               <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
                 <div className="flex items-center gap-2">
                   <TriangleAlert className="h-4 w-4 text-amber-500" />
-                  No se pudieron cargar los datos para esta secci\u00f3n.
+                  No se pudieron cargar los datos para esta sección.
                 </div>
               </div>
             )}
@@ -1621,7 +1621,7 @@ export default function SettingsPage() {
 
           {opData?.updated_at && (
             <p className="text-xs text-slate-400">
-              \u00daltima actualizaci\u00f3n: <RelativeTime date={opData.updated_at} />
+              Última actualización: <RelativeTime date={opData.updated_at} />
             </p>
           )}
         </>
