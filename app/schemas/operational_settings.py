@@ -47,9 +47,29 @@ class OperationalSettingsUpdate(BaseModel):
             raise ValueError("reviewer_confidence_threshold must be between 0 and 1")
         return v
 
+    # Non-nullable DB columns — can never be set to None from PATCH
+    _NON_NULLABLE: frozenset = frozenset({
+        "require_approved_drafts", "auto_classify_inbound", "reply_assistant_enabled",
+        "reviewer_enabled", "signature_include_portfolio", "prioritize_quote_replies",
+        "prioritize_meeting_replies", "allow_openclaw_briefs", "allow_reply_assistant_generation",
+        "reviewer_confidence_threshold",
+    })
+
     def to_update_dict(self) -> dict:
-        """Return only fields explicitly set (not None sentinel)."""
-        return {k: v for k, v in self.model_dump().items() if v is not None}
+        """Return fields explicitly included in the request body.
+
+        Uses model_fields_set (Pydantic v2) so that:
+        - field not sent → excluded (no accidental overwrite)
+        - field sent as null → included as None (allows clearing nullable string fields)
+        - field sent as false/0/[] → included (correct for booleans and numbers)
+        Non-nullable DB columns (bool/float with DB defaults) skip null assignments.
+        """
+        dumped = self.model_dump()
+        return {
+            k: dumped[k]
+            for k in self.model_fields_set
+            if not (dumped[k] is None and k in self._NON_NULLABLE)
+        }
 
 
 class OperationalSettingsResponse(BaseModel):
