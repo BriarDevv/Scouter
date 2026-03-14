@@ -54,10 +54,13 @@ Sender context (use if provided, otherwise omit):
 - Brand name: {brand_name}
 - Sender name: {signature_name}
 - Sender role: {signature_role}
+- Sender company: {signature_company}
 - Portfolio: {portfolio_url}
+- Calendar / booking link: {calendar_url}
 - CTA: {signature_cta}
 - Tone: {default_outreach_tone}
 - Closing line: {default_closing_line}
+- Include portfolio in signature: {signature_include_portfolio}
 
 Rules:
 - Be professional but warm, matching the configured tone
@@ -66,7 +69,7 @@ Rules:
 - Clearly state the value proposition
 - Include a soft call to action (use configured CTA if provided)
 - Sign with the configured name/role/company if provided
-- Include portfolio URL if signature_include_portfolio is true and portfolio_url is provided
+- Include portfolio URL only if include_portfolio is true and portfolio_url is not "No especificado"
 - Do NOT be pushy or salesy
 - Write in Spanish (Argentina)
 
@@ -254,6 +257,7 @@ Sender context (use if provided, otherwise omit):
 - Brand name: {brand_name}
 - Sender name: {signature_name}
 - Sender role: {signature_role}
+- Sender company: {signature_company}
 - CTA: {signature_cta}
 - Tone: {default_reply_tone}
 - Closing line: {default_closing_line}

@@ -20,6 +20,22 @@ _TEST_TIMEOUT = 10
 
 # ── Singleton CRUD ────────────────────────────────────────────────────
 
+
+def _friendly_conn_error(exc: Exception) -> str:
+    """Convert raw connection errors to user-friendly Spanish messages."""
+    msg = str(exc)
+    low = msg.lower()
+    if "name or service not known" in low or "nodename nor servname" in low or "getaddrinfo" in low:
+        return "No se pudo resolver el servidor. Verificá que el host sea correcto."
+    if "connection refused" in low:
+        return "Conexión rechazada. Verificá el puerto y que el servidor esté activo."
+    if "timed out" in low or "etimedout" in low:
+        return "Tiempo de espera agotado. El servidor no respondió en 10 segundos."
+    if "ssl" in low or "certificate" in low:
+        return f"Error SSL/TLS: {msg}"
+    return msg
+
+
 def get_or_create(db: Session) -> MailCredentials:
     row = db.get(MailCredentials, _SINGLETON_ID)
     if row is None:
@@ -144,7 +160,7 @@ def test_smtp(db: Session) -> dict:
             conn.quit()
             ok = True
         except (OSError, smtplib.SMTPException) as exc:
-            error = str(exc)
+            error = _friendly_conn_error(exc)
 
     row = get_or_create(db)
     row.smtp_last_test_at = datetime.now(timezone.utc)
@@ -184,7 +200,7 @@ def test_imap(db: Session) -> dict:
                 error = f"No se pudo seleccionar INBOX: {status}"
             conn.logout()
         except (OSError, imaplib.IMAP4.error) as exc:
-            error = str(exc)
+            error = _friendly_conn_error(exc)
 
     row = get_or_create(db)
     row.imap_last_test_at = datetime.now(timezone.utc)
