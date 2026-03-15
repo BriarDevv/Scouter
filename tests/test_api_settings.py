@@ -67,6 +67,12 @@ def test_mail_settings_endpoint_returns_non_sensitive_mail_state(client, db, mon
     monkeypatch.setattr(settings, "MAIL_AUTO_CLASSIFY_INBOUND", True)
     monkeypatch.setattr(settings, "MAIL_USE_REVIEWER_FOR_LABELS", "needs_human_review,asked_for_quote")
 
+    # The mail settings endpoint reads auto_classify_inbound from DB, not env.
+    from app.services.operational_settings_service import get_or_create
+    ops = get_or_create(db)
+    ops.auto_classify_inbound = True
+    db.commit()
+
     sync_run = InboundMailSyncRun(
         provider="imap",
         provider_mailbox="INBOX",

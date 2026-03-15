@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.services.operational_settings_service import get_cached_settings
 from app.llm.client import LLMError, classify_inbound_reply as llm_classify_inbound_reply
 from app.llm.resolver import resolve_model_for_role
 from app.llm.roles import LLMRole
@@ -115,10 +116,12 @@ def classify_inbound_message(db: Session, message_id: uuid.UUID) -> InboundMessa
         message.summary = _clean_text(result.get("summary"))
         message.confidence = _normalize_confidence(result.get("confidence"))
         message.next_action_suggestion = _clean_text(result.get("next_action_suggestion"))
+        ops = get_cached_settings(db)
         message.should_escalate_reviewer = _should_escalate_reviewer(
             label=label,
             confidence=message.confidence,
             llm_flag=bool(result.get("should_escalate_reviewer")),
+            confidence_threshold=ops.reviewer_confidence_threshold,
         )
         message.classification_error = None
         message.classification_role = role.value
@@ -201,7 +204,7 @@ def _clean_text(value: object) -> str | None:
 
 
 def _should_escalate_reviewer(
-    *, label: str, confidence: float | None, llm_flag: bool
+    *, label: str, confidence: float | None, llm_flag: bool, confidence_threshold: float = 0.7
 ) -> bool:
     if llm_flag:
         return True
@@ -209,6 +212,6 @@ def _should_escalate_reviewer(
         return True
     if label in settings.mail_use_reviewer_for_labels:
         return True
-    if confidence is not None and confidence < 0.45:
+    if confidence is not None and confidence < confidence_threshold:
         return True
     return False

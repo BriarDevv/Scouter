@@ -41,6 +41,12 @@ def create_tables():
 def db():
     session = TestSessionLocal()
     try:
+        # Seed OperationalSettings with auto_classify_inbound=False to match
+        # the env-var default and keep tests deterministic.
+        from app.models.settings import OperationalSettings
+        ops = OperationalSettings(id=1, auto_classify_inbound=False, reviewer_enabled=True)
+        session.add(ops)
+        session.commit()
         yield session
     finally:
         session.rollback()

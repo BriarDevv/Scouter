@@ -11,11 +11,17 @@ from app.llm.roles import LLMRole
 from app.models.inbound_mail import InboundMessage
 from app.models.lead import Lead
 from app.models.outreach import OutreachDraft
+from app.services.operational_settings_service import get_cached_settings
 
 logger = get_logger(__name__)
 
 
 def review_lead_with_reviewer(db: Session, lead_id: uuid.UUID) -> dict | None:
+    ops = get_cached_settings(db)
+    if not ops.reviewer_enabled:
+        logger.info("reviewer_disabled_by_settings", action="review_lead", lead_id=str(lead_id))
+        return None
+
     lead = db.get(Lead, lead_id)
     if not lead:
         return None
@@ -52,6 +58,11 @@ def review_lead_with_reviewer(db: Session, lead_id: uuid.UUID) -> dict | None:
 
 
 def review_draft_with_reviewer(db: Session, draft_id: uuid.UUID) -> dict | None:
+    ops = get_cached_settings(db)
+    if not ops.reviewer_enabled:
+        logger.info("reviewer_disabled_by_settings", action="review_draft", draft_id=str(draft_id))
+        return None
+
     draft = db.get(OutreachDraft, draft_id)
     if not draft:
         return None
@@ -95,6 +106,11 @@ def review_draft_with_reviewer(db: Session, draft_id: uuid.UUID) -> dict | None:
 
 
 def review_inbound_message_with_reviewer(db: Session, message_id: uuid.UUID) -> dict | None:
+    ops = get_cached_settings(db)
+    if not ops.reviewer_enabled:
+        logger.info("reviewer_disabled_by_settings", action="review_inbound", message_id=str(message_id))
+        return None
+
     message = db.get(InboundMessage, message_id)
     if not message:
         return None

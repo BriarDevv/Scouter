@@ -190,7 +190,9 @@ def sync_inbound_messages(db: Session, *, limit: int | None = None) -> InboundMa
             else:
                 sync_run.unmatched_count += 1
 
-            if persisted_message and settings.MAIL_AUTO_CLASSIFY_INBOUND:
+            from app.services.operational_settings_service import get_cached_settings
+            ops = get_cached_settings(db)
+            if persisted_message and ops.auto_classify_inbound:
                 from app.services.reply_classification_service import classify_inbound_message
 
                 classify_inbound_message(db, persisted_message.id)

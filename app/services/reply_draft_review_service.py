@@ -98,6 +98,13 @@ def ensure_reply_assistant_review_pending(
 def review_reply_assistant_draft_with_reviewer(
     db: Session, message_id: uuid.UUID
 ) -> dict | None:
+    from app.services.operational_settings_service import get_cached_settings
+
+    ops = get_cached_settings(db)
+    if not ops.allow_reply_assistant_generation:
+        logger.info("reply_assistant_review_disabled_by_settings", message_id=str(message_id))
+        return None
+
     message = get_inbound_message_with_review_context(db, message_id)
     if not message or not message.reply_assistant_draft:
         return None

@@ -1,8 +1,10 @@
 """Celery tasks for async processing of leads."""
 
+import json as _json
 import uuid
 
 from fastapi.encoders import jsonable_encoder
+from sqlalchemy import select
 from app.core.logging import get_logger
 from app.db.session import SessionLocal
 from app.llm.client import evaluate_lead_quality, summarize_business
@@ -11,6 +13,7 @@ from app.models.inbound_mail import InboundMessage
 from app.models.lead import Lead
 from app.models.outreach import OutreachDraft
 from app.services.enrichment_service import enrich_lead
+from app.services.operational_settings_service import get_cached_settings
 from app.services.outreach_service import generate_outreach_draft
 from app.services.reply_draft_review_service import (
     mark_reply_assistant_review_failed,
@@ -443,6 +446,12 @@ def task_review_lead(self, lead_id: str) -> dict:
                 current_step="lead_review",
             )
 
+            ops = get_cached_settings(db)
+            if not ops.reviewer_enabled:
+                result = {"status": "skipped", "reason": "reviewer_disabled", "lead_id": lead_id}
+                mark_task_succeeded(db, task_id=task_id, result=result, current_step="lead_review")
+                return result
+
             payload = review_lead_with_reviewer(db, uuid.UUID(lead_id))
             if not payload:
                 error = "Lead not found"
@@ -527,6 +536,12 @@ def task_review_draft(self, draft_id: str) -> dict:
                 lead_id=uuid.UUID(lead_id),
                 current_step="draft_review",
             )
+
+            ops = get_cached_settings(db)
+            if not ops.reviewer_enabled:
+                result = {"status": "skipped", "reason": "reviewer_disabled", "draft_id": draft_id}
+                mark_task_succeeded(db, task_id=task_id, result=result, current_step="draft_review")
+                return result
 
             draft_payload = review_draft_with_reviewer(db, uuid.UUID(draft_id))
             if not draft_payload:
@@ -613,6 +628,12 @@ def task_review_inbound_message(self, message_id: str) -> dict:
                 current_step="inbound_reply_review",
             )
 
+            ops = get_cached_settings(db)
+            if not ops.reviewer_enabled:
+                result = {"status": "skipped", "reason": "reviewer_disabled", "inbound_message_id": message_id}
+                mark_task_succeeded(db, task_id=task_id, result=result, current_step="inbound_reply_review")
+                return result
+
             payload = review_inbound_message_with_reviewer(db, uuid.UUID(message_id))
             if not payload:
                 error = "Inbound message not found"
@@ -697,6 +718,12 @@ def task_review_reply_assistant_draft(self, message_id: str) -> dict:
                 lead_id=uuid.UUID(lead_id) if lead_id else None,
                 current_step="reply_draft_review",
             )
+
+            ops = get_cached_settings(db)
+            if not ops.reviewer_enabled:
+                result = {"status": "skipped", "reason": "reviewer_disabled", "inbound_message_id": message_id}
+                mark_task_succeeded(db, task_id=task_id, result=result, current_step="reply_draft_review")
+                return result
 
             payload = review_reply_assistant_draft_with_reviewer(db, uuid.UUID(message_id))
             if not payload:
@@ -845,3 +872,269 @@ def task_full_pipeline(
         raise
     finally:
         clear_tracking_context()
+
+
+# ── Batch pipeline task ──────────────────────────────────────────────
+
+@celery_app.task(name="app.workers.tasks.task_batch_pipeline", bind=True, max_retries=0)
+def task_batch_pipeline(self, status_filter: str = "new"):
+    """Process ALL leads with the given status through the full pipeline, one by one.
+
+    Progress is tracked in Redis so the frontend can poll and the user can stop.
+    """
+    from app.services.enrichment_service import enrich_lead
+    from app.services.scoring_service import score_lead
+    from app.outreach.generator import generate_draft_content
+    from redis import Redis
+    from app.core.config import settings as env
+
+    redis = Redis.from_url(env.REDIS_URL)
+    redis_key = "pipeline:batch"
+    task_id = str(self.request.id)
+
+    db = SessionLocal()
+    try:
+        leads = db.query(Lead).filter(Lead.status == status_filter).order_by(Lead.created_at).all()
+        total = len(leads)
+
+        if total == 0:
+            redis.set(redis_key, _json.dumps({
+                "status": "done", "task_id": task_id,
+                "total": 0, "processed": 0, "current_lead": None,
+            }), ex=3600)
+            return
+
+        progress = {
+            "status": "running",
+            "task_id": task_id,
+            "total": total,
+            "processed": 0,
+            "current_lead": None,
+            "current_step": "",
+            "errors": 0,
+        }
+        redis.set(redis_key, _json.dumps(progress), ex=3600)
+
+        for idx, lead in enumerate(leads):
+            # Check if stop was requested (Redis key deleted)
+            current = redis.get(redis_key)
+            if not current:
+                logger.info("batch_pipeline_stopped_by_user")
+                return
+            cur_data = _json.loads(current)
+            if cur_data.get("status") == "stopping":
+                redis.set(redis_key, _json.dumps({
+                    **progress, "status": "stopped",
+                }), ex=3600)
+                logger.info("batch_pipeline_stopped_by_user")
+                return
+
+            progress["current_lead"] = lead.business_name
+            progress["processed"] = idx
+
+            try:
+                # Step 1: Enrich
+                progress["current_step"] = "enrichment"
+                redis.set(redis_key, _json.dumps(progress), ex=3600)
+                enrich_lead(db, lead.id)
+
+                # Step 2: Score
+                progress["current_step"] = "scoring"
+                redis.set(redis_key, _json.dumps(progress), ex=3600)
+                score_lead(db, lead.id)
+
+                # Step 3: LLM Analysis
+                progress["current_step"] = "analysis"
+                redis.set(redis_key, _json.dumps(progress), ex=3600)
+
+                db.refresh(lead)
+                from app.llm.client import summarize_business, evaluate_lead_quality
+                from app.llm.roles import LLMRole as _LLMRole
+
+                summary = summarize_business(
+                    business_name=lead.business_name,
+                    industry=lead.industry,
+                    city=lead.city,
+                    website_url=lead.website_url,
+                    instagram_url=lead.instagram_url,
+                    signals=list(lead.signals),
+                    role=_LLMRole.EXECUTOR,
+                )
+                lead.llm_summary = summary
+
+                evaluation = evaluate_lead_quality(
+                    business_name=lead.business_name,
+                    industry=lead.industry,
+                    city=lead.city,
+                    website_url=lead.website_url,
+                    instagram_url=lead.instagram_url,
+                    signals=list(lead.signals),
+                    score=lead.score,
+                    role=_LLMRole.EXECUTOR,
+                )
+                lead.llm_quality_assessment = evaluation["reasoning"]
+                lead.llm_suggested_angle = evaluation["suggested_angle"]
+                db.commit()
+
+                # Step 4: Generate draft
+                progress["current_step"] = "draft"
+                redis.set(redis_key, _json.dumps(progress), ex=3600)
+                generate_draft_content(lead, db=db)
+
+                logger.info("batch_pipeline_lead_done", lead=lead.business_name, idx=idx + 1, total=total)
+
+            except Exception as exc:
+                progress["errors"] = progress.get("errors", 0) + 1
+                logger.error("batch_pipeline_lead_error", lead=lead.business_name, error=str(exc))
+
+        progress["status"] = "done"
+        progress["processed"] = total
+        progress["current_lead"] = None
+        progress["current_step"] = ""
+        redis.set(redis_key, _json.dumps(progress), ex=3600)
+        logger.info("batch_pipeline_done", total=total, errors=progress.get("errors", 0))
+
+    except Exception as exc:
+        redis.set(redis_key, _json.dumps({
+            "status": "error", "task_id": task_id, "error": str(exc),
+        }), ex=3600)
+        logger.error("batch_pipeline_error", error=str(exc))
+    finally:
+        db.close()
+
+
+# ── Google Maps crawl task ────────────────────────────────────────────
+
+@celery_app.task(name="app.workers.tasks.task_crawl_territory", bind=True, max_retries=0)
+def task_crawl_territory(
+    self,
+    territory_id: str,
+    categories: list[str] | None = None,
+    only_without_website: bool = False,
+    max_results_per_category: int = 20,
+    target_leads: int = 50,
+):
+    """Crawl Google Maps for all cities in a territory."""
+    from app.crawlers.google_maps_crawler import GoogleMapsCrawler
+    from app.models.territory import Territory
+    from app.models.lead_source import LeadSource, SourceType
+    from app.schemas.lead import LeadCreate
+    from app.services.lead_service import _compute_dedup_hash, create_lead
+    from redis import Redis
+    from app.core.config import settings as env
+
+    redis = Redis.from_url(env.REDIS_URL)
+    redis_key = f"crawl:territory:{territory_id}"
+
+    db = SessionLocal()
+    try:
+        territory = db.get(Territory, uuid.UUID(territory_id))
+        if not territory:
+            redis.set(redis_key, _json.dumps({"status": "error", "error": "Territorio no encontrado"}), ex=3600)
+            return
+
+        cities = territory.cities or []
+        if not cities:
+            redis.set(redis_key, _json.dumps({"status": "error", "error": "El territorio no tiene ciudades"}), ex=3600)
+            return
+
+        # Get or create source
+        source = db.query(LeadSource).filter(LeadSource.name == "google_maps").first()
+        if not source:
+            source = LeadSource(name="google_maps", source_type=SourceType.CRAWLER, description="Google Maps Places API")
+            db.add(source)
+            db.commit()
+            db.refresh(source)
+
+        crawler = GoogleMapsCrawler()
+        total_found = 0
+        total_created = 0
+        total_dup = 0
+        task_id = str(self.request.id)
+
+        progress = {
+            "status": "running",
+            "task_id": task_id,
+            "territory": territory.name,
+            "total_cities": len(cities),
+            "current_city_idx": 0,
+            "current_city": "",
+            "leads_found": 0,
+            "leads_created": 0,
+            "leads_skipped": 0,
+        }
+        redis.set(redis_key, _json.dumps(progress), ex=3600)
+
+        for idx, city in enumerate(cities):
+            progress["current_city_idx"] = idx + 1
+            progress["current_city"] = city
+            redis.set(redis_key, _json.dumps(progress), ex=3600)
+
+            try:
+                raw_leads = crawler.crawl(
+                    city=city,
+                    categories=categories,
+                    max_results_per_category=max_results_per_category,
+                    only_without_website=only_without_website,
+                    target_leads=target_leads,
+                )
+            except Exception as exc:
+                logger.error("crawl_city_error", city=city, error=str(exc))
+                continue
+
+            total_found += len(raw_leads)
+
+            for raw in raw_leads:
+                try:
+                    dedup = _compute_dedup_hash(raw.business_name, raw.city, raw.website_url)
+                    existing = db.execute(
+                        select(Lead).where(Lead.dedup_hash == dedup)
+                    ).scalar_one_or_none()
+                    if existing:
+                        total_dup += 1
+                        continue
+
+                    lead_data = LeadCreate(
+                        business_name=raw.business_name,
+                        industry=raw.industry,
+                        city=raw.city,
+                        zone=raw.zone,
+                        website_url=raw.website_url,
+                        instagram_url=raw.instagram_url,
+                        phone=raw.phone,
+                        source_id=source.id,
+                        address=raw.address,
+                        google_maps_url=raw.google_maps_url,
+                        rating=raw.rating,
+                        review_count=raw.review_count,
+                        business_status=raw.business_status,
+                        opening_hours=raw.opening_hours,
+                        latitude=raw.latitude,
+                        longitude=raw.longitude,
+                    )
+                    create_lead(db, lead_data)
+                    total_created += 1
+                except Exception:
+                    total_dup += 1
+
+            progress["leads_found"] = total_found
+            progress["leads_created"] = total_created
+            progress["leads_skipped"] = total_dup
+            redis.set(redis_key, _json.dumps(progress), ex=3600)
+
+        progress["status"] = "done"
+        redis.set(redis_key, _json.dumps(progress), ex=3600)
+
+        logger.info(
+            "territory_crawl_done",
+            territory=territory.name,
+            cities=len(cities),
+            found=total_found,
+            created=total_created,
+            skipped=total_dup,
+        )
+    except Exception as exc:
+        redis.set(redis_key, _json.dumps({"status": "error", "error": str(exc)}), ex=3600)
+        logger.error("territory_crawl_error", territory_id=territory_id, error=str(exc))
+    finally:
+        db.close()
