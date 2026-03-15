@@ -117,9 +117,10 @@ def _call_ollama_chat(
             {"role": "user", "content": user_prompt},
         ],
         "stream": False,
+        "think": False,
         "options": {
             "temperature": 0.3,
-            "num_predict": 1024,
+            "num_predict": 2048,
         },
     }
 
@@ -254,12 +255,12 @@ def generate_outreach_draft(
         signature_name=bc.get("signature_name") or "No especificado",
         signature_role=bc.get("signature_role") or "No especificado",
         signature_company=bc.get("signature_company") or "No especificado",
-        portfolio_url=bc.get("portfolio_url") or "No especificado",
-        calendar_url=bc.get("calendar_url") or "No especificado",
+        portfolio_url=bc.get("portfolio_url") or "No proporcionado — NO inventar URLs",
+        calendar_url=bc.get("calendar_url") or "No proporcionado — NO inventar URLs",
         signature_cta=bc.get("signature_cta") or "No especificado",
         default_outreach_tone=bc.get("default_outreach_tone") or "profesional",
         default_closing_line=bc.get("default_closing_line") or "No especificado",
-        signature_include_portfolio=bc.get("signature_include_portfolio", True),
+        signature_include_portfolio=bc.get("signature_include_portfolio", True) and bool(bc.get("portfolio_url")),
     )
 
     fallback = {

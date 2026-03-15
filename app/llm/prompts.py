@@ -88,7 +88,8 @@ Rules:
 - Clearly state the value proposition
 - Include a soft call to action (use configured CTA if provided)
 - Sign with the configured name/role/company if provided
-- Include portfolio URL only if include_portfolio is true and portfolio_url is not "No especificado"
+- Include portfolio URL only if include_portfolio is true AND portfolio_url is a real URL (not "No especificado")
+- NEVER invent, fabricate, or guess URLs, links, prices, or facts not present in the data
 - Do NOT be pushy or salesy
 - Write in Spanish (Argentina)
 
