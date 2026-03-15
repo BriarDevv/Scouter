@@ -22,6 +22,7 @@ export function NotificationsSection({ data, onSaved }: NotificationsSectionProp
     notifications_enabled: data.notifications_enabled ?? true,
     notification_score_threshold: String(data.notification_score_threshold ?? "70"),
     whatsapp_alerts_enabled: data.whatsapp_alerts_enabled ?? false,
+    telegram_alerts_enabled: data.telegram_alerts_enabled ?? false,
     whatsapp_min_severity: data.whatsapp_min_severity ?? "high",
     notification_categories_business: (data.whatsapp_categories ?? ["business", "system"]).includes("business"),
     notification_categories_system: (data.whatsapp_categories ?? ["business", "system"]).includes("system"),
@@ -41,6 +42,7 @@ export function NotificationsSection({ data, onSaved }: NotificationsSectionProp
         notifications_enabled: form.notifications_enabled,
         notification_score_threshold: parseInt(form.notification_score_threshold, 10) || 70,
         whatsapp_alerts_enabled: form.whatsapp_alerts_enabled,
+        telegram_alerts_enabled: form.telegram_alerts_enabled,
         whatsapp_min_severity: form.whatsapp_min_severity,
         whatsapp_categories: categories,
       } as Partial<OperationalSettings>;
@@ -75,11 +77,18 @@ export function NotificationsSection({ data, onSaved }: NotificationsSectionProp
                 disabled={!form.notifications_enabled}
               />
             </FieldRow>
-            <FieldRow label="Alertas WhatsApp habilitadas" hint="Enviar alertas de alta prioridad por WhatsApp">
+            <FieldRow label="Alertas WhatsApp" hint="Enviar alertas de alta prioridad por WhatsApp">
               <Toggle
                 checked={form.whatsapp_alerts_enabled}
                 onChange={set("whatsapp_alerts_enabled") as (v: boolean) => void}
                 label={form.whatsapp_alerts_enabled ? "Habilitadas" : "Deshabilitadas"}
+              />
+            </FieldRow>
+            <FieldRow label="Alertas Telegram" hint="Enviar alertas de alta prioridad por Telegram Bot">
+              <Toggle
+                checked={form.telegram_alerts_enabled}
+                onChange={set("telegram_alerts_enabled") as (v: boolean) => void}
+                label={form.telegram_alerts_enabled ? "Habilitadas" : "Deshabilitadas"}
               />
             </FieldRow>
           </div>

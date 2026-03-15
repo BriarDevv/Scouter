@@ -74,8 +74,14 @@ class Settings(BaseSettings):
     MAIL_AUTO_CLASSIFY_INBOUND: bool = False
     MAIL_USE_REVIEWER_FOR_LABELS: str = ""
 
+    # Google Maps
+    GOOGLE_MAPS_API_KEY: str | None = None
+
     # WhatsApp
     WHATSAPP_DRY_RUN: bool = True
+
+    # Telegram
+    TELEGRAM_DRY_RUN: bool = True
 
     # Rate limiting (API)
     API_RATE_LIMIT: str = "60/minute"

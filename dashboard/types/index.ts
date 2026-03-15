@@ -77,6 +77,14 @@ export interface Lead {
   llm_summary: string | null;
   llm_quality_assessment: string | null;
   llm_suggested_angle: string | null;
+  address: string | null;
+  google_maps_url: string | null;
+  rating: number | null;
+  review_count: number | null;
+  business_status: string | null;
+  opening_hours: string | null;
+  latitude: number | null;
+  longitude: number | null;
   dedup_hash: string | null;
   created_at: string;
   updated_at: string;
@@ -593,6 +601,16 @@ export interface OperationalSettings {
   whatsapp_openclaw_enrichment: boolean;
   whatsapp_conversational_enabled: boolean;
   whatsapp_actions_enabled: boolean;
+  // Telegram
+  telegram_alerts_enabled: boolean;
+  telegram_openclaw_enrichment: boolean;
+  telegram_conversational_enabled: boolean;
+  telegram_actions_enabled: boolean;
+  // OpenClaw configuration
+  openclaw_model: string;
+  openclaw_max_response_chars: number;
+  openclaw_rate_limit: number;
+  openclaw_rate_window_seconds: number;
   updated_at: string | null;
 }
 

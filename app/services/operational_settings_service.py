@@ -167,5 +167,13 @@ def to_response_dict(row: OperationalSettings) -> dict:
         "whatsapp_openclaw_enrichment": row.whatsapp_openclaw_enrichment,
         "whatsapp_conversational_enabled": row.whatsapp_conversational_enabled,
         "whatsapp_actions_enabled": row.whatsapp_actions_enabled,
+        "telegram_alerts_enabled": row.telegram_alerts_enabled,
+        "telegram_openclaw_enrichment": row.telegram_openclaw_enrichment,
+        "telegram_conversational_enabled": row.telegram_conversational_enabled,
+        "telegram_actions_enabled": row.telegram_actions_enabled,
+        "openclaw_model": row.openclaw_model,
+        "openclaw_max_response_chars": row.openclaw_max_response_chars,
+        "openclaw_rate_limit": row.openclaw_rate_limit,
+        "openclaw_rate_window_seconds": row.openclaw_rate_window_seconds,
         "updated_at": row.updated_at.isoformat() if row.updated_at else None,
     }

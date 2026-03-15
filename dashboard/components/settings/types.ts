@@ -5,11 +5,12 @@ export type TabId =
   | "mail_in"
   | "rules"
   | "credentials"
-  | "llm"
   | "notifications"
   | "whatsapp"
+  | "telegram"
   | "ai-workspace"
-  | "territories";
+  | "territories"
+  | "crawlers";
 
 export const TABS: Array<{ id: TabId; label: string }> = [
   { id: "setup", label: "Inicio" },
@@ -18,9 +19,10 @@ export const TABS: Array<{ id: TabId; label: string }> = [
   { id: "mail_in", label: "Bandeja de entrada" },
   { id: "rules", label: "Reglas" },
   { id: "credentials", label: "Credenciales" },
-  { id: "llm", label: "LLM" },
   { id: "notifications", label: "Notificaciones" },
   { id: "whatsapp", label: "WhatsApp" },
-  { id: "ai-workspace", label: "IA / Workspace" },
+  { id: "telegram", label: "Telegram" },
+  { id: "ai-workspace", label: "IA" },
   { id: "territories", label: "Territorios" },
+  { id: "crawlers", label: "Crawlers" },
 ];

@@ -8,14 +8,12 @@ import { RelativeTime } from "@/components/shared/relative-time";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   getMailCredentials,
-  getLLMSettings,
   getMailSettings,
   getOperationalSettings,
   getSetupStatus,
 } from "@/lib/api/client";
 import { API_BASE_URL } from "@/lib/constants";
 import type {
-  LLMSettings,
   MailCredentials,
   MailSettings,
   OperationalSettings,
@@ -24,7 +22,6 @@ import type {
 import { TABS } from "@/components/settings/types";
 import type { TabId } from "@/components/settings/types";
 import { SetupChecklist } from "@/components/settings/setup-checklist";
-import { LLMSection } from "@/components/settings/llm-section";
 import { BrandSection } from "@/components/settings/brand-section";
 import { MailOutboundSection } from "@/components/settings/mail-outbound-section";
 import { MailInboundSection } from "@/components/settings/mail-inbound-section";
@@ -32,9 +29,12 @@ import { RulesSection } from "@/components/settings/rules-section";
 import { CredentialsSection } from "@/components/settings/credentials-section";
 import { NotificationsSection } from "@/components/settings/notifications-section";
 import { WhatsAppSection, OpenClawWhatsAppSection } from "@/components/settings/whatsapp-section";
+import { TelegramSection, OpenClawTelegramSection } from "@/components/settings/telegram-section";
 import { AIWorkspaceSection } from "@/components/settings/ai-workspace-section";
 import { TerritoriesSection } from "@/components/settings/territories-section";
+import { CrawlersSection } from "@/components/settings/crawlers-section";
 import type { WhatsAppCredentials } from "@/components/settings/whatsapp-section";
+import type { TelegramCredentials } from "@/components/settings/telegram-section";
 
 async function getWhatsAppCredentials(): Promise<WhatsAppCredentials> {
   const res = await fetch(`${API_BASE_URL}/settings/whatsapp-credentials`);
@@ -42,14 +42,20 @@ async function getWhatsAppCredentials(): Promise<WhatsAppCredentials> {
   return res.json();
 }
 
+async function getTelegramCredentials(): Promise<TelegramCredentials> {
+  const res = await fetch(`${API_BASE_URL}/settings/telegram-credentials`);
+  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+  return res.json();
+}
+
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabId>("setup");
-  const [llmData, setLlmData] = useState<LLMSettings | null>(null);
   const [mailData, setMailData] = useState<MailSettings | null>(null);
   const [opData, setOpData] = useState<OperationalSettings | null>(null);
   const [credsData, setCredsData] = useState<MailCredentials | null>(null);
   const [setupData, setSetupData] = useState<SetupStatus | null>(null);
   const [waCredsData, setWaCredsData] = useState<WhatsAppCredentials | null>(null);
+  const [tgCredsData, setTgCredsData] = useState<TelegramCredentials | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -71,22 +77,21 @@ export default function SettingsPage() {
     setLoadError(null);
 
     Promise.allSettled([
-      getLLMSettings(),
       getMailSettings(),
       getOperationalSettings(),
       getMailCredentials(),
       getSetupStatus(),
       getWhatsAppCredentials(),
-    ]).then(([llm, mail, op, creds, setup, waCreds]) => {
+      getTelegramCredentials(),
+    ]).then(([mail, op, creds, setup, waCreds, tgCreds]) => {
       if (!active) return;
-      if (llm.status === "fulfilled") setLlmData(llm.value);
       if (mail.status === "fulfilled") setMailData(mail.value);
       if (op.status === "fulfilled") setOpData(op.value);
       if (creds.status === "fulfilled") setCredsData(creds.value);
       if (setup.status === "fulfilled") setSetupData(setup.value);
       if (waCreds.status === "fulfilled") setWaCredsData(waCreds.value);
+      if (tgCreds.status === "fulfilled") setTgCredsData(tgCreds.value);
       if (
-        llm.status === "rejected" &&
         mail.status === "rejected" &&
         op.status === "rejected"
       ) {
@@ -112,6 +117,11 @@ export default function SettingsPage() {
 
   const handleSavedWACreds = (updated: WhatsAppCredentials) => {
     setWaCredsData(updated);
+    void refreshSetup();
+  };
+
+  const handleSavedTGCreds = (updated: TelegramCredentials) => {
+    setTgCredsData(updated);
     void refreshSetup();
   };
 
@@ -179,9 +189,6 @@ export default function SettingsPage() {
             <CredentialsSection data={credsData} onSaved={handleSavedCreds} />
           ) : <NoDataNotice />}
         </TabsContent>
-        <TabsContent value="llm">
-          {llmData ? <LLMSection data={llmData} /> : <NoDataNotice />}
-        </TabsContent>
         <TabsContent value="notifications">
           {opData ? (
             <NotificationsSection data={opData} onSaved={handleSavedOps} />
@@ -197,11 +204,24 @@ export default function SettingsPage() {
             ) : null}
           </div>
         </TabsContent>
+        <TabsContent value="telegram">
+          <div className="space-y-6">
+            {tgCredsData ? (
+              <TelegramSection data={tgCredsData} onSaved={handleSavedTGCreds} />
+            ) : <NoDataNotice />}
+            {opData ? (
+              <OpenClawTelegramSection data={opData} onSaved={handleSavedOps} />
+            ) : null}
+          </div>
+        </TabsContent>
         <TabsContent value="ai-workspace">
           <AIWorkspaceSection />
         </TabsContent>
         <TabsContent value="territories">
           <TerritoriesSection />
+        </TabsContent>
+        <TabsContent value="crawlers">
+          <CrawlersSection />
         </TabsContent>
       </Tabs>
 

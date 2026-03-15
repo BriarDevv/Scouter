@@ -76,3 +76,15 @@ class OperationalSettings(Base):
     whatsapp_openclaw_enrichment: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     whatsapp_conversational_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     whatsapp_actions_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # ── Telegram alerts (non-secret config; secrets in TelegramCredentials)
+    telegram_alerts_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    telegram_openclaw_enrichment: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    telegram_conversational_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    telegram_actions_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # ── OpenClaw configuration
+    openclaw_model: Mapped[str] = mapped_column(String, default="leader", nullable=False)
+    openclaw_max_response_chars: Mapped[int] = mapped_column(Integer, default=600, nullable=False)
+    openclaw_rate_limit: Mapped[int] = mapped_column(Integer, default=20, nullable=False)
+    openclaw_rate_window_seconds: Mapped[int] = mapped_column(Integer, default=900, nullable=False)
