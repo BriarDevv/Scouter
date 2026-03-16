@@ -112,6 +112,7 @@ def to_response_dict(row: WhatsAppCredentials) -> dict:
         "provider": row.provider,
         "phone_number": row.phone_number,
         "api_key_set": bool(row.api_key),
+        "webhook_secret_set": bool(row.webhook_secret),
         "webhook_url": row.webhook_url,
         "last_test_at": row.last_test_at,
         "last_test_ok": row.last_test_ok,

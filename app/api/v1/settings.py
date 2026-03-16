@@ -230,9 +230,60 @@ def test_telegram_connection(db=Depends(get_session)):
     return test_telegram(db)
 
 
+from pydantic import BaseModel as _BaseModel
+
+
+class TelegramRegisterWebhookBody(_BaseModel):
+    webhook_url: str
+
+
+@router.post('/telegram/register-webhook')
+def register_telegram_webhook(body: TelegramRegisterWebhookBody, db=Depends(get_session)):
+    """Register the webhook URL with Telegram Bot API and auto-generate a secret."""
+    import secrets as _secrets
+    from app.services.telegram_service import _call_telegram
+
+    creds = get_tg_creds(db)
+    if not creds.bot_token:
+        raise HTTPException(status_code=400, detail="No hay bot token configurado.")
+
+    # Generate a webhook secret if not set
+    webhook_secret = creds.webhook_secret
+    if not webhook_secret:
+        webhook_secret = _secrets.token_urlsafe(32)
+
+    # Register with Telegram
+    try:
+        result = _call_telegram(creds.bot_token, "setWebhook", {
+            "url": body.webhook_url,
+            "secret_token": webhook_secret,
+            "allowed_updates": ["message", "edited_message"],
+        })
+        if not result.get("ok"):
+            raise HTTPException(
+                status_code=502,
+                detail=f"Telegram API error: {result.get('description', 'unknown')}",
+            )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Error al registrar webhook: {str(exc)}")
+
+    # Save webhook_url and secret to DB
+    update_tg_creds(db, {
+        "webhook_url": body.webhook_url,
+        "webhook_secret": webhook_secret,
+    })
+
+    return {
+        "ok": True,
+        "message": f"Webhook registrado en {body.webhook_url}",
+        "webhook_secret": webhook_secret,
+    }
+
+
 # ── OpenClaw WhatsApp automation ──────────────────────────────────────
 
-from pydantic import BaseModel as _BaseModel
 import json
 import subprocess
 import shutil

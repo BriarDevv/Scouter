@@ -60,8 +60,10 @@ def webhook_inbound(
     x_webhook_secret: str = Header("", alias="X-Webhook-Secret"),
 ) -> WebhookResponse:
     """Receive inbound WhatsApp messages and return a conversational response."""
-    # Validate webhook secret
-    webhook_secret = os.environ.get("WHATSAPP_WEBHOOK_SECRET", "")
+    # Validate webhook secret — check DB first, fall back to env var
+    from app.models.whatsapp_credentials import WhatsAppCredentials
+    wa_creds = db.get(WhatsAppCredentials, 1)
+    webhook_secret = (wa_creds.webhook_secret if wa_creds and wa_creds.webhook_secret else None) or os.environ.get("WHATSAPP_WEBHOOK_SECRET", "")
     if not webhook_secret or x_webhook_secret != webhook_secret:
         logger.warning("wa_webhook_auth_failed", phone=body.phone[:6] + "***")
         raise HTTPException(status_code=403, detail="Webhook secret invalido.")

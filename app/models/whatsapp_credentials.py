@@ -25,6 +25,9 @@ class WhatsAppCredentials(Base):
     api_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
     webhook_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
+    # Webhook security — secret for authenticating inbound webhook requests
+    webhook_secret: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
     # Test results
     last_test_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_test_ok: Mapped[bool | None] = mapped_column(Boolean, nullable=True)

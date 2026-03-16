@@ -33,6 +33,7 @@ import {
   getPipelineRuns,
   getTaskStatus,
   reviewDraft,
+  reviewLeadWithIA,
   runFullPipeline,
   updateLeadStatus,
 } from "@/lib/api/client";
@@ -47,9 +48,9 @@ import type {
   TaskStatusRecord,
 } from "@/types";
 import {
-  ArrowLeft, Globe, Instagram, Mail, Phone, MapPin, Building2,
+  ArrowLeft, Globe, Instagram, Mail, Phone, MapPin, Building2, ShieldCheck,
   RefreshCw, FileText, CheckCircle, XCircle, Sparkles, Clock,
-  MessageSquare, GitBranch, StickyNote, Loader2,
+  MessageSquare, GitBranch, StickyNote, Loader2, Star, Map as MapIcon, ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sileo } from "sileo";
@@ -164,6 +165,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [isGeneratingDraft, setIsGeneratingDraft] = useState(false);
   const [isApprovingLead, setIsApprovingLead] = useState(false);
   const [isReviewingDraftId, setIsReviewingDraftId] = useState<string | null>(null);
+  const [isReviewingLead, setIsReviewingLead] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -322,6 +324,29 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     }
   }
 
+  async function handleReviewLead() {
+    if (!lead) return;
+    setIsReviewingLead(true);
+    try {
+      await sileo.promise(
+        (async () => {
+          await reviewLeadWithIA(lead.id);
+          await refreshLeadContext();
+        })(),
+        {
+          loading: { title: "Reviewer IA analizando..." },
+          success: { title: "Análisis del Reviewer completado" },
+          error: (err: unknown) => ({
+            title: "Error en Reviewer IA",
+            description: err instanceof Error ? err.message : "No se pudo analizar.",
+          }),
+        }
+      );
+    } finally {
+      setIsReviewingLead(false);
+    }
+  }
+
   // Loading skeleton
   if (isLoading && !lead) {
     return <LeadDetailSkeleton />;
@@ -344,7 +369,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     );
   }
 
-  const threadById = new Map(inboundThreads.map((thread) => [thread.id, thread]));
+  const threadById = new Map<string, EmailThreadSummary>(inboundThreads.map((thread) => [thread.id, thread]));
   const latestInboundMessage = inboundMessages[0] ?? null;
 
   return (
@@ -399,6 +424,24 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 <Button
                   variant="outline"
                   size="sm"
+                  className="rounded-xl gap-1.5 text-amber-700 border-amber-200 hover:bg-amber-50 dark:hover:bg-amber-950/20"
+                  onClick={() => void handleReviewLead()}
+                  disabled={isReviewingLead}
+                />
+              }
+            >
+              {isReviewingLead ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+              Reviewer
+            </TooltipTrigger>
+            <TooltipContent>Analizar con Reviewer IA (27B)</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="rounded-xl gap-1.5"
                   onClick={() => void handleGenerateDraft()}
                   disabled={isGeneratingDraft}
@@ -438,12 +481,46 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
             <h3 className="text-sm font-semibold text-foreground mb-3 font-heading">Datos de contacto</h3>
             <div className="divide-y divide-border/50">
-              <InfoRow icon={Globe} label="Website" value={extractDomain(lead.website_url)} href={lead.website_url || undefined} />
-              <InfoRow icon={Instagram} label="Instagram" value={lead.instagram_url ? "@" + lead.instagram_url.split("/").pop() : null} href={lead.instagram_url || undefined} />
+              <div className="flex items-center gap-3 py-2">
+                <Globe className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground w-24 shrink-0">Website</span>
+                {lead.website_url ? (
+                  <a href={lead.website_url} target="_blank" rel="noopener noreferrer" className="text-sm text-violet-600 dark:text-violet-400 hover:underline truncate font-data">
+                    {extractDomain(lead.website_url)}
+                  </a>
+                ) : (
+                  <span className="text-sm text-muted-foreground/50 font-data">Sin website</span>
+                )}
+              </div>
+              <div className="flex items-center gap-3 py-2">
+                <Instagram className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground w-24 shrink-0">Instagram</span>
+                {lead.instagram_url ? (
+                  <a href={lead.instagram_url} target="_blank" rel="noopener noreferrer" className="text-sm text-violet-600 dark:text-violet-400 hover:underline truncate font-data">
+                    @{lead.instagram_url.split("/").pop()}
+                  </a>
+                ) : (
+                  <span className="text-sm text-muted-foreground/50 font-data">Sin Instagram</span>
+                )}
+              </div>
               <InfoRow icon={Mail} label="Email" value={lead.email} href={lead.email ? `mailto:${lead.email}` : undefined} />
               <InfoRow icon={Phone} label="Teléfono" value={lead.phone} />
               <InfoRow icon={MapPin} label="Ubicación" value={lead.city ? `${lead.city}${lead.zone ? `, ${lead.zone}` : ""}` : null} />
+              <InfoRow icon={MapPin} label="Dirección" value={lead.address} />
               <InfoRow icon={Building2} label="Rubro" value={lead.industry} />
+              <InfoRow icon={MapIcon} label="Google Maps" value={lead.google_maps_url ? "Ver en Maps" : null} href={lead.google_maps_url || undefined} />
+              {lead.rating !== null && lead.rating !== undefined && (
+                <div className="flex items-center gap-3 py-2">
+                  <Star className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground w-24 shrink-0">Rating</span>
+                  <span className="text-sm text-foreground font-data">
+                    {lead.rating.toFixed(1)} / 5
+                    {lead.review_count !== null && lead.review_count !== undefined && (
+                      <span className="text-muted-foreground ml-1">({lead.review_count} reseñas)</span>
+                    )}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 

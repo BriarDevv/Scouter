@@ -9,6 +9,7 @@ class WhatsAppCredentialsResponse(BaseModel):
     provider: str
     phone_number: str | None = None
     api_key_set: bool = False
+    webhook_secret_set: bool = False
     webhook_url: str | None = None
     last_test_at: datetime | None = None
     last_test_ok: bool | None = None
@@ -21,6 +22,7 @@ class WhatsAppCredentialsUpdate(BaseModel):
     phone_number: str | None = None
     api_key: str | None = None
     webhook_url: str | None = None
+    webhook_secret: str | None = None
 
     def to_update_dict(self) -> dict:
         return {k: v for k, v in self.model_dump().items() if v is not None}

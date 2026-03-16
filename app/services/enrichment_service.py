@@ -1,3 +1,4 @@
+import re
 import uuid
 from datetime import datetime, timezone
 from urllib.parse import urlparse
@@ -30,16 +31,36 @@ def _fetch_url(url: str) -> httpx.Response:
         return client.get(url)
 
 
-def _analyze_website(url: str) -> list[tuple[SignalType, str]]:
-    """Fetch and analyze a website, returning detected signals."""
+_EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
+_JUNK_EMAIL_DOMAINS = {"example.com", "sentry.io", "wixpress.com", "wordpress.com", "gravatar.com"}
+
+
+def _extract_emails(html: str) -> list[str]:
+    """Extract real contact emails from HTML, filtering out junk."""
+    raw = set(_EMAIL_RE.findall(html))
+    emails: list[str] = []
+    for email in raw:
+        domain = email.split("@", 1)[1].lower()
+        if domain in _JUNK_EMAIL_DOMAINS:
+            continue
+        # Skip image-like extensions and common false positives
+        if any(email.lower().endswith(ext) for ext in (".png", ".jpg", ".svg", ".gif", ".webp")):
+            continue
+        emails.append(email.lower())
+    return sorted(set(emails))
+
+
+def _analyze_website(url: str) -> tuple[list[tuple[SignalType, str]], list[str]]:
+    """Fetch and analyze a website, returning detected signals and extracted emails."""
     signals: list[tuple[SignalType, str]] = []
+    emails: list[str] = []
 
     try:
         resp = _fetch_url(url)
     except Exception as e:
         logger.warning("website_fetch_failed", url=url, error=str(e))
         signals.append((SignalType.NO_WEBSITE, f"Could not reach: {e}"))
-        return signals
+        return signals, emails
 
     signals.append((SignalType.HAS_WEBSITE, f"HTTP {resp.status_code}"))
 
@@ -72,9 +93,11 @@ def _analyze_website(url: str) -> list[tuple[SignalType, str]]:
     if not meta_desc:
         signals.append((SignalType.WEAK_SEO, "Missing meta description"))
 
-    # Check for visible email
-    text = soup.get_text()
-    if "@" not in text and "mailto:" not in resp.text:
+    # Extract emails from page
+    emails = _extract_emails(resp.text)
+
+    # Check for visible email (signal)
+    if not emails:
         signals.append((SignalType.NO_VISIBLE_EMAIL, "No email found on page"))
 
     # Outdated indicators
@@ -82,10 +105,18 @@ def _analyze_website(url: str) -> list[tuple[SignalType, str]]:
     if generator:
         content = (generator.get("content") or "").lower()
         if "wordpress" in content:
-            # Very rough heuristic: old WP versions
             signals.append((SignalType.OUTDATED_WEBSITE, f"Generator: {content}"))
 
-    return signals
+    return signals, emails
+
+
+_SOCIAL_MEDIA_DOMAINS = {"instagram.com", "facebook.com", "tiktok.com", "twitter.com", "x.com", "linkedin.com"}
+
+
+def _is_social_media_url(url: str) -> bool:
+    """Check if a URL points to a social media profile, not a real website."""
+    hostname = urlparse(url).hostname or ""
+    return any(domain in hostname for domain in _SOCIAL_MEDIA_DOMAINS)
 
 
 def enrich_lead(db: Session, lead_id: uuid.UUID) -> Lead | None:
@@ -97,10 +128,18 @@ def enrich_lead(db: Session, lead_id: uuid.UUID) -> Lead | None:
     logger.info("enrichment_started", lead_id=str(lead_id), business=lead.business_name)
 
     signals: list[tuple[SignalType, str]] = []
+    found_emails: list[str] = []
+
+    # If website_url is actually a social media link, move it to the right field
+    if lead.website_url and _is_social_media_url(lead.website_url):
+        if "instagram.com" in lead.website_url.lower() and not lead.instagram_url:
+            lead.instagram_url = lead.website_url
+        lead.website_url = None
 
     # Website analysis
     if lead.website_url:
-        signals.extend(_analyze_website(lead.website_url))
+        web_signals, found_emails = _analyze_website(lead.website_url)
+        signals.extend(web_signals)
     else:
         signals.append((SignalType.NO_WEBSITE, "No website URL provided"))
 
@@ -114,6 +153,11 @@ def enrich_lead(db: Session, lead_id: uuid.UUID) -> Lead | None:
 
     for signal_type, detail in signals:
         db.add(LeadSignal(lead_id=lead.id, signal_type=signal_type, detail=detail))
+
+    # Save extracted email if lead doesn't already have one
+    if not lead.email and found_emails:
+        lead.email = found_emails[0]
+        logger.info("email_extracted", lead_id=str(lead_id), email=found_emails[0])
 
     lead.status = LeadStatus.ENRICHED
     lead.enriched_at = datetime.now(timezone.utc)

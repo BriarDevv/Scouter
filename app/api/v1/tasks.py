@@ -98,3 +98,13 @@ def get_task_status(task_id: str, db: Session = Depends(get_session)):
         pass
 
     raise HTTPException(status_code=404, detail="Task not found")
+
+
+@router.post("/{task_id}/revoke")
+def revoke_task(task_id: str):
+    """Revoke/terminate a running Celery task."""
+    try:
+        celery_app.control.revoke(task_id, terminate=True, signal="SIGTERM")
+        return {"ok": True, "task_id": task_id, "message": "Task revocada."}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))

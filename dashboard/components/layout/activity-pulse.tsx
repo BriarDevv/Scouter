@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { getTasks, getLLMSettings } from "@/lib/api/client";
+import { getTasks, getLLMSettings, getBatchPipelineStatus } from "@/lib/api/client";
+import type { BatchPipelineProgress } from "@/lib/api/client";
 import type { TaskStatusRecord, LLMSettings } from "@/types";
 import {
   BrainCircuit,
@@ -134,12 +135,17 @@ function TaskRow({ task, llm }: { task: TaskStatusRecord; llm: LLMSettings | nul
 export function ActivityPulse() {
   const [tasks, setTasks] = useState<TaskStatusRecord[]>([]);
   const [llm, setLlm] = useState<LLMSettings | null>(null);
+  const [batch, setBatch] = useState<BatchPipelineProgress | null>(null);
   const [expanded, setExpanded] = useState(true);
 
   const poll = useCallback(async () => {
     try {
-      const result = await getTasks({ limit: 10 });
+      const [result, batchStatus] = await Promise.all([
+        getTasks({ limit: 10 }),
+        getBatchPipelineStatus(),
+      ]);
       setTasks(result);
+      setBatch(batchStatus);
     } catch {
       // silent — sidebar shouldn't break on API errors
     }
@@ -154,7 +160,8 @@ export function ActivityPulse() {
 
   const activeTasks = tasks.filter((t) => isActive(t.status));
   const recentDone = tasks.filter((t) => !isActive(t.status)).slice(0, 3);
-  const hasActive = activeTasks.length > 0;
+  const batchRunning = batch?.status === "running";
+  const hasActive = activeTasks.length > 0 || batchRunning;
   const latestTask = activeTasks[0] ?? recentDone[0] ?? null;
 
   if (tasks.length === 0) {
@@ -188,7 +195,11 @@ export function ActivityPulse() {
             "text-[11px] font-semibold uppercase tracking-wider",
             hasActive ? "text-sidebar-foreground" : "text-muted-foreground"
           )}>
-            IA {hasActive ? `· ${activeTasks.length} activa${activeTasks.length > 1 ? "s" : ""}` : "· Idle"}
+            IA {batchRunning
+              ? `· Pipeline ${batch!.processed ?? 0}/${batch!.total ?? 0}`
+              : hasActive
+                ? `· ${activeTasks.length} activa${activeTasks.length > 1 ? "s" : ""}`
+                : "· Idle"}
           </span>
         </div>
         <ChevronRight className={cn(
@@ -199,6 +210,25 @@ export function ActivityPulse() {
 
       {expanded ? (
         <>
+          {batchRunning && (
+            <div className="mb-1.5 rounded-lg bg-violet-500/10 border border-violet-500/20 px-2.5 py-2 ml-1">
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-500" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-semibold text-violet-400">
+                    Pipeline {batch!.processed ?? 0}/{batch!.total ?? 0}
+                  </p>
+                  {batch!.current_lead && (
+                    <p className="text-[10px] text-violet-300/70 truncate">
+                      {batch!.current_step && STEP_CONFIG[batch!.current_step]
+                        ? STEP_CONFIG[batch!.current_step].label
+                        : batch!.current_step} — {batch!.current_lead}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
           {(activeTasks.length > 0 || recentDone.length > 0) && (
             <div className="space-y-0.5 pl-1">
               {[...activeTasks, ...recentDone].map((task) => (
@@ -213,9 +243,29 @@ export function ActivityPulse() {
             Ver todo <ChevronRight className="h-2.5 w-2.5" />
           </Link>
         </>
-      ) : latestTask && (
+      ) : (
         <div className="pl-1">
-          <TaskRow task={latestTask} llm={llm} />
+          {batchRunning && (
+            <div className="flex items-center gap-2 py-1.5">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-500 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-violet-400 truncate">
+                  Pipeline {batch!.processed ?? 0}/{batch!.total ?? 0}
+                  {batch!.current_step && STEP_CONFIG[batch!.current_step]
+                    ? ` · ${STEP_CONFIG[batch!.current_step].label}`
+                    : ""}
+                </p>
+                {batch!.current_lead && (
+                  <p className="text-[10px] text-violet-300/70 truncate">
+                    {batch!.current_lead}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+          {!batchRunning && latestTask && (
+            <TaskRow task={latestTask} llm={llm} />
+          )}
         </div>
       )}
     </div>

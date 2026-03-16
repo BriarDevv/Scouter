@@ -9,7 +9,6 @@ import { ActivityPulse } from "@/components/layout/activity-pulse";
 import { API_BASE_URL } from "@/lib/constants";
 import {
   Bell,
-  BrainCircuit,
   Inbox,
   LayoutDashboard,
   Users,
@@ -24,7 +23,6 @@ import {
 
 const NAV_ITEMS = [
   { href: "/",            label: "Panel general", icon: LayoutDashboard },
-  { href: "/activity",    label: "Actividad IA",  icon: BrainCircuit },
   { href: "/leads",       label: "Leads",         icon: Users },
   { href: "/outreach",    label: "Outreach",      icon: Mail },
   { href: "/responses",   label: "Respuestas",    icon: Inbox },

@@ -18,6 +18,14 @@ class LeadCreate(BaseModel):
     email: str | None = Field(None, max_length=320)
     phone: str | None = Field(None, max_length=50)
     source_id: uuid.UUID | None = None
+    address: str | None = None
+    google_maps_url: str | None = None
+    rating: float | None = None
+    review_count: int | None = None
+    business_status: str | None = Field(None, max_length=50)
+    opening_hours: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
 
 
 class LeadUpdate(BaseModel):
@@ -54,6 +62,14 @@ class LeadResponse(BaseModel):
     llm_summary: str | None
     llm_quality_assessment: str | None
     llm_suggested_angle: str | None
+    address: str | None
+    google_maps_url: str | None
+    rating: float | None
+    review_count: int | None
+    business_status: str | None
+    opening_hours: str | None
+    latitude: float | None
+    longitude: float | None
     dedup_hash: str | None
     created_at: datetime
     updated_at: datetime

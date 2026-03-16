@@ -10,10 +10,13 @@ import {
   MessageCircle,
   Play,
   Power,
+  PowerOff,
   RefreshCw,
+  Search,
   Server,
   ShieldCheck,
   Sparkles,
+  Square,
   Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -22,10 +25,10 @@ import {
   getSystemHealth,
   getOperationalSettings,
   updateOperationalSettings,
-  getLeads,
-  runFullPipeline,
+  getTerritories,
 } from "@/lib/api/client";
-import type { HealthComponent, OperationalSettings } from "@/types";
+import { API_BASE_URL } from "@/lib/constants";
+import type { HealthComponent, OperationalSettings, TerritoryWithStats } from "@/types";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -127,14 +130,22 @@ function componentLabel(name: string) {
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
+const LS_PIPELINE_KEY = "cs:pipeline_task_id";
+const LS_CRAWL_TERRITORY_KEY = "cs:crawl_territory_id";
+
 export function ControlCenter() {
   const [health, setHealth] = useState<HealthComponent[]>([]);
   const [settings, setSettings] = useState<OperationalSettings | null>(null);
   const [loadingHealth, setLoadingHealth] = useState(true);
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
-  const [runningPipeline, setRunningPipeline] = useState(false);
-  const [pipelineResult, setPipelineResult] = useState<string | null>(null);
+  const [pipelineStatus, setPipelineStatus] = useState<"idle" | "running" | "done" | "error" | "stopping">("idle");
+  const [pipelineProgress, setPipelineProgress] = useState<string | null>(null);
+  const [territories, setTerritories] = useState<TerritoryWithStats[]>([]);
+  const [selectedTerritoryId, setSelectedTerritoryId] = useState<string>("");
+  const [crawlStatus, setCrawlStatus] = useState<"idle" | "running" | "done" | "error">("idle");
+  const [crawlProgress, setCrawlProgress] = useState<string | null>(null);
+  const [crawlTaskId, setCrawlTaskId] = useState<string | null>(null);
 
   const loadHealth = useCallback(async () => {
     setLoadingHealth(true);
@@ -160,9 +171,82 @@ export function ControlCenter() {
     }
   }, []);
 
+  // Check batch pipeline status on mount + poll when running
+  useEffect(() => {
+    let active = true;
+    async function checkPipeline() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/pipelines/batch/status`);
+        const data = await res.json();
+        if (!active) return;
+        if (data.status === "running" || data.status === "stopping") {
+          setPipelineStatus(data.status === "stopping" ? "stopping" : "running");
+          setPipelineProgress(data.current_lead
+            ? `${data.current_lead} (${data.processed ?? 0}/${data.total ?? 0}) — ${data.current_step ?? ""}`
+            : "Iniciando...");
+        } else if (data.status === "done") {
+          setPipelineStatus("done");
+          setPipelineProgress(`Listo — ${data.processed ?? 0} leads procesados`);
+        }
+      } catch { /* ignore */ }
+    }
+    checkPipeline();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (pipelineStatus !== "running") return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/pipelines/batch/status`);
+        const data = await res.json();
+        if (data.status === "done") {
+          setPipelineStatus("done");
+          setPipelineProgress(`Listo — ${data.processed ?? 0} leads procesados (${data.errors ?? 0} errores)`);
+          sileo.success({ title: `Pipeline completado: ${data.processed ?? 0} leads` });
+        } else if (data.status === "error") {
+          setPipelineStatus("error");
+          setPipelineProgress(data.error ?? "Error");
+          sileo.error({ title: data.error ?? "Error en pipeline" });
+        } else if (data.status === "stopped") {
+          setPipelineStatus("idle");
+          setPipelineProgress(null);
+          sileo.success({ title: "Pipeline detenido" });
+        } else if (data.status === "running") {
+          setPipelineProgress(data.current_lead
+            ? `${data.current_lead} (${data.processed ?? 0}/${data.total ?? 0}) — ${data.current_step ?? ""}`
+            : "Procesando...");
+        }
+      } catch { /* ignore */ }
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [pipelineStatus]);
+
   useEffect(() => {
     loadHealth();
     loadSettings();
+    getTerritories()
+      .then((data) => {
+        setTerritories(data);
+        if (data.length > 0) {
+          const savedTerritoryId = localStorage.getItem(LS_CRAWL_TERRITORY_KEY) || data[0].id;
+          const territoryExists = data.some((t) => t.id === savedTerritoryId);
+          const tid = territoryExists ? savedTerritoryId : data[0].id;
+          setSelectedTerritoryId(tid);
+          // Check if there's a running crawl
+          fetch(`${API_BASE_URL}/crawl/territory/${tid}/status`)
+            .then((r) => r.json())
+            .then((s) => {
+              if (s.status === "running") {
+                setCrawlStatus("running");
+                setCrawlTaskId(s.task_id ?? null);
+                setCrawlProgress(s.current_city ? `${s.current_city} (${s.current_city_idx ?? 0}/${s.total_cities ?? 0})` : "Iniciando...");
+              }
+            })
+            .catch(() => {});
+        }
+      })
+      .catch(() => {});
   }, [loadHealth, loadSettings]);
 
   // Auto-refresh health every 30s
@@ -170,6 +254,32 @@ export function ControlCenter() {
     const interval = setInterval(loadHealth, 30_000);
     return () => clearInterval(interval);
   }, [loadHealth]);
+
+  // Poll crawl status when running
+  useEffect(() => {
+    if (crawlStatus !== "running" || !selectedTerritoryId) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/crawl/territory/${selectedTerritoryId}/status`);
+        const data = await res.json();
+        if (data.task_id) setCrawlTaskId(data.task_id);
+        if (data.status === "done") {
+          setCrawlStatus("done");
+          setCrawlProgress(`Listo — ${data.leads_created ?? 0} leads nuevos`);
+          localStorage.removeItem(LS_CRAWL_TERRITORY_KEY);
+          sileo.success({ title: `Crawl completado: ${data.leads_created ?? 0} leads nuevos` });
+        } else if (data.status === "error") {
+          setCrawlStatus("error");
+          setCrawlProgress(data.error ?? "Error");
+          localStorage.removeItem(LS_CRAWL_TERRITORY_KEY);
+          sileo.error({ title: data.error ?? "Error en el crawl" });
+        } else if (data.status === "running") {
+          setCrawlProgress(`${data.current_city ?? "..."} (${data.current_city_idx ?? 0}/${data.total_cities ?? 0})`);
+        }
+      } catch { /* ignore */ }
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [crawlStatus, selectedTerritoryId]);
 
   async function toggleFeature(key: keyof OperationalSettings, value: boolean) {
     if (!settings) return;
@@ -192,30 +302,70 @@ export function ControlCenter() {
   }
 
   async function handleRunPipeline() {
-    setRunningPipeline(true);
-    setPipelineResult(null);
     try {
-      // Get first lead to run pipeline on
-      const leadsRes = await getLeads({ page: 1, page_size: 1, status: "new" });
-      if (!leadsRes.items.length) {
-        sileo.error({ title: "No hay leads nuevos para procesar" });
-        return;
+      const res = await fetch(`${API_BASE_URL}/pipelines/batch`, { method: "POST" });
+      const data = await res.json();
+      if (data.ok) {
+        setPipelineStatus("running");
+        setPipelineProgress("Iniciando...");
+        sileo.success({ title: "Pipeline iniciado", description: data.message });
+      } else {
+        sileo.error({ title: data.message ?? "Error al iniciar pipeline" });
       }
+    } catch {
+      sileo.error({ title: "Error de conexión al iniciar pipeline" });
+    }
+  }
 
-      const lead = leadsRes.items[0];
-      const result = await runFullPipeline(lead.id);
-      setPipelineResult(result.task_id);
-      sileo.success({
-        title: "Pipeline iniciado",
-        description: `Lead: ${lead.business_name ?? lead.id.slice(0, 8)}`,
+  async function handleStopPipeline() {
+    try {
+      await fetch(`${API_BASE_URL}/pipelines/batch/stop`, { method: "POST" });
+      setPipelineStatus("stopping");
+      setPipelineProgress("Deteniendo...");
+    } catch {
+      sileo.error({ title: "Error al detener pipeline" });
+    }
+  }
+
+  async function handleStartCrawl() {
+    if (!selectedTerritoryId) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/crawl/territory`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ territory_id: selectedTerritoryId }),
       });
-    } catch (err) {
-      sileo.error({
-        title: "Error al iniciar pipeline",
-        description: err instanceof Error ? err.message : "Error desconocido",
-      });
-    } finally {
-      setRunningPipeline(false);
+      const data = await res.json();
+      if (data.ok) {
+        setCrawlStatus("running");
+        setCrawlProgress("Iniciando...");
+        setCrawlTaskId(data.task_id ?? null);
+        localStorage.setItem(LS_CRAWL_TERRITORY_KEY, selectedTerritoryId);
+        sileo.success({ title: "Crawl iniciado", description: data.message });
+      } else {
+        sileo.error({ title: data.message ?? "Error al iniciar crawl" });
+      }
+    } catch {
+      sileo.error({ title: "Error de conexión al iniciar crawl" });
+    }
+  }
+
+  async function handleStopCrawl() {
+    if (!selectedTerritoryId) return;
+    try {
+      // Revoke the Celery task if we have its ID
+      if (crawlTaskId) {
+        await fetch(`${API_BASE_URL}/tasks/${crawlTaskId}/revoke`, { method: "POST" });
+      }
+      // Clear Redis status
+      await fetch(`${API_BASE_URL}/crawl/territory/${selectedTerritoryId}/stop`, { method: "POST" });
+      setCrawlStatus("idle");
+      setCrawlProgress(null);
+      setCrawlTaskId(null);
+      localStorage.removeItem(LS_CRAWL_TERRITORY_KEY);
+      sileo.success({ title: "Crawl detenido" });
+    } catch {
+      sileo.error({ title: "Error al detener crawl" });
     }
   }
 
@@ -300,34 +450,101 @@ export function ControlCenter() {
             </div>
           )}
 
-          {/* Pipeline trigger */}
-          <div className="pt-1">
-            <button
-              onClick={handleRunPipeline}
-              disabled={runningPipeline || !celeryOk}
-              className={cn(
-                "flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all",
-                celeryOk
-                  ? "bg-violet-600 text-white hover:bg-violet-700 active:scale-[0.98]"
-                  : "bg-muted text-muted-foreground cursor-not-allowed",
-                runningPipeline && "opacity-70"
-              )}
-            >
-              {runningPipeline ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
+          {/* Pipeline toggle */}
+          <div className="pt-1 space-y-1.5">
+            {pipelineStatus !== "running" && pipelineStatus !== "stopping" ? (
+              <button
+                onClick={handleRunPipeline}
+                disabled={!celeryOk}
+                className={cn(
+                  "flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all",
+                  celeryOk
+                    ? "bg-violet-600 text-white hover:bg-violet-700 active:scale-[0.98]"
+                    : "bg-muted text-muted-foreground cursor-not-allowed"
+                )}
+              >
                 <Play className="h-4 w-4" />
-              )}
-              {runningPipeline ? "Procesando..." : "Iniciar Pipeline"}
-            </button>
+                Iniciar Pipeline
+              </button>
+            ) : (
+              <button
+                onClick={handleStopPipeline}
+                disabled={pipelineStatus === "stopping"}
+                className={cn(
+                  "flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 active:scale-[0.98] transition-all",
+                  pipelineStatus === "stopping" && "opacity-70"
+                )}
+              >
+                <Square className="h-4 w-4" />
+                {pipelineStatus === "stopping" ? "Deteniendo..." : "Detener Pipeline"}
+              </button>
+            )}
             {!celeryOk && (
-              <p className="mt-1 text-[10px] text-amber-500 text-center">
-                Celery debe estar corriendo para iniciar pipelines
+              <p className="text-[10px] text-amber-500 text-center">
+                Celery debe estar corriendo
               </p>
             )}
-            {pipelineResult && (
-              <p className="mt-1 text-[10px] text-emerald-500 text-center tabular-nums">
-                Task: {pipelineResult.slice(0, 12)}...
+            {pipelineProgress && (
+              <p className={cn(
+                "text-[10px] text-center",
+                pipelineStatus === "running" ? "text-violet-500" : pipelineStatus === "done" ? "text-emerald-500" : "text-muted-foreground"
+              )}>
+                {pipelineStatus === "running" && <Loader2 className="inline h-3 w-3 animate-spin mr-1" />}
+                {pipelineProgress}
+              </p>
+            )}
+          </div>
+
+          {/* Crawl toggle */}
+          <div className="pt-1 space-y-1.5">
+            {territories.length > 0 && (
+              <select
+                value={selectedTerritoryId}
+                onChange={(e) => {
+                  setSelectedTerritoryId(e.target.value);
+                  setCrawlStatus("idle");
+                  setCrawlProgress(null);
+                }}
+                disabled={crawlStatus === "running"}
+                className="w-full appearance-none rounded-lg border border-border bg-muted px-2.5 py-1.5 text-xs text-foreground outline-none disabled:opacity-50"
+              >
+                {territories.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({t.cities?.length ?? 0} ciudades)
+                  </option>
+                ))}
+              </select>
+            )}
+            {crawlStatus !== "running" ? (
+              <button
+                onClick={handleStartCrawl}
+                disabled={!celeryOk || !selectedTerritoryId}
+                className={cn(
+                  "flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all",
+                  celeryOk && selectedTerritoryId
+                    ? "bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.98]"
+                    : "bg-muted text-muted-foreground cursor-not-allowed"
+                )}
+              >
+                <Search className="h-4 w-4" />
+                Iniciar Crawl
+              </button>
+            ) : (
+              <button
+                onClick={handleStopCrawl}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 active:scale-[0.98] transition-all"
+              >
+                <Square className="h-4 w-4" />
+                Detener Crawl
+              </button>
+            )}
+            {crawlProgress && (
+              <p className={cn(
+                "text-[10px] text-center",
+                crawlStatus === "running" ? "text-violet-500" : crawlStatus === "done" ? "text-emerald-500" : "text-red-500"
+              )}>
+                {crawlStatus === "running" && <Loader2 className="inline h-3 w-3 animate-spin mr-1" />}
+                {crawlProgress}
               </p>
             )}
           </div>

@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.core.logging import get_logger
 from app.llm.client import _call_ollama_chat, LLMError
 from app.llm.catalog import LLMRole
+from app.models.settings import OperationalSettings
 from app.services.dashboard_service import get_dashboard_stats
 
 logger = get_logger(__name__)
@@ -117,8 +118,10 @@ def chat_with_openclaw(db: Session, phone: str, message: str) -> str:
         # Clean up response
         response = response.strip()
         # Truncate if too long for WhatsApp
-        if len(response) > 600:
-            response = response[:597] + "..."
+        ops = db.get(OperationalSettings, 1)
+        max_chars = ops.openclaw_max_response_chars if ops else 600
+        if len(response) > max_chars:
+            response = response[:max_chars - 3] + "..."
 
         # Save to history
         _add_to_history(phone, "user", message)

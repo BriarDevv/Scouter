@@ -16,6 +16,7 @@ from app.models.telegram_credentials import TelegramCredentials
 from app.models.whatsapp_credentials import WhatsAppCredentials
 
 from app.models.whatsapp_audit import WhatsAppAuditLog
+from app.models.telegram_audit import TelegramAuditLog
 
 __all__ = [
     "EmailThread",
@@ -39,4 +40,5 @@ __all__ = [
     "TelegramCredentials",
     "WhatsAppCredentials",
     "WhatsAppAuditLog",
+    "TelegramAuditLog",
 ]

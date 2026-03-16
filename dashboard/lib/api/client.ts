@@ -141,6 +141,10 @@ export async function getDraftDeliveries(draftId: string): Promise<OutreachDeliv
   return apiFetch(`/outreach/drafts/${draftId}/deliveries`);
 }
 
+export async function reviewLeadWithIA(leadId: string): Promise<TaskResponse> {
+  return apiFetch(`/reviews/${leadId}/async`, { method: "POST" });
+}
+
 export async function reviewDraft(
   draftId: string,
   approved: boolean,
@@ -548,4 +552,44 @@ export async function deleteTerritory(id: string): Promise<void> {
 export async function getTerritoryAnalytics(): Promise<import('@/types').TerritoryWithStats[]> {
   return apiFetch('/territories/analytics');
 
+}
+
+// ─── Batch Pipeline ───────────────────────────────────
+
+export interface BatchPipelineProgress {
+  status: string;
+  task_id?: string;
+  total?: number;
+  processed?: number;
+  current_lead?: string | null;
+  current_step?: string;
+  errors?: number;
+}
+
+export async function getBatchPipelineStatus(): Promise<BatchPipelineProgress | null> {
+  try {
+    return await apiFetch<BatchPipelineProgress>("/pipelines/batch/status");
+  } catch {
+    return null;
+  }
+}
+
+// ─── Map (individual leads) ───────────────────────────
+
+export async function getLeadsWithCoords(): Promise<Lead[]> {
+  const all: Lead[] = [];
+  let page = 1;
+  while (true) {
+    const res = await apiFetch<PaginatedResponse<Lead>>(
+      `/leads?page=${page}&page_size=200`
+    );
+    all.push(...res.items);
+    if (all.length >= res.total) break;
+    page++;
+  }
+  return all.filter((l) =>
+    l.latitude !== null && l.longitude !== null &&
+    l.latitude >= -55 && l.latitude <= -21 &&
+    l.longitude >= -73 && l.longitude <= -53
+  );
 }

@@ -30,6 +30,15 @@ class RawLead:
     email: str | None = None
     phone: str | None = None
     source_url: str | None = None
+    # Extended fields from Google Maps
+    address: str | None = None
+    google_maps_url: str | None = None
+    rating: float | None = None
+    review_count: int | None = None
+    business_status: str | None = None
+    opening_hours: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
 
 
 class BaseCrawler(ABC):

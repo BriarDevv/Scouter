@@ -56,8 +56,9 @@ const MORE_FILTER_OPTIONS: LeadStatus[] = [
 export function LeadsTable({ leads }: LeadsTableProps) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<LeadStatus | "all">("all");
-  const [sortBy, setSortBy] = useState<"score" | "created_at" | "business_name">("created_at");
+  const [sortBy, setSortBy] = useState<"score" | "created_at" | "business_name">("score");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [minScore, setMinScore] = useState<number | null>(null);
   const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => {
@@ -78,6 +79,10 @@ export function LeadsTable({ leads }: LeadsTableProps) {
       result = result.filter((l) => l.status === statusFilter);
     }
 
+    if (minScore !== null) {
+      result = result.filter((l) => (l.score ?? 0) >= minScore);
+    }
+
     result = [...result].sort((a, b) => {
       let cmp = 0;
       if (sortBy === "score") cmp = (a.score ?? 0) - (b.score ?? 0);
@@ -87,7 +92,7 @@ export function LeadsTable({ leads }: LeadsTableProps) {
     });
 
     return result;
-  }, [leads, search, statusFilter, sortBy, sortDir]);
+  }, [leads, search, statusFilter, sortBy, sortDir, minScore]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -144,6 +149,27 @@ export function LeadsTable({ leads }: LeadsTableProps) {
               <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>
             ))}
           </select>
+        </div>
+
+        {/* Score filters */}
+        <div className="flex items-center gap-1.5">
+          {[
+            { label: "Score 70+", value: 70 },
+            { label: "Score 40+", value: 40 },
+          ].map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => { setMinScore(minScore === opt.value ? null : opt.value); setPage(1); }}
+              className={cn(
+                "shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors",
+                minScore === opt.value
+                  ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
+                  : "bg-card text-muted-foreground hover:bg-muted hover:text-foreground/80 border border-border"
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -224,7 +250,7 @@ export function LeadsTable({ leads }: LeadsTableProps) {
         {/* Pagination */}
         <div className="flex items-center justify-between border-t border-border px-4 py-3">
           <span className="text-xs text-muted-foreground">
-            <span className="font-data">{filtered.length}</span> leads{statusFilter !== "all" && ` (${STATUS_CONFIG[statusFilter].label})`}
+            <span className="font-data">{filtered.length}</span> leads{statusFilter !== "all" && ` (${STATUS_CONFIG[statusFilter].label})`}{minScore !== null && ` · score ≥ ${minScore}`}
           </span>
           <div className="flex items-center gap-1">
             <Button

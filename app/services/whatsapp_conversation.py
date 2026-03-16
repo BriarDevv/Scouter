@@ -80,13 +80,27 @@ def _sanitize(text: str) -> str | None:
     return text
 
 
-def _check_rate_limit(phone: str) -> bool:
-    """Return True if the phone is within the rate limit window."""
+def _check_rate_limit(phone: str, db: Session | None = None) -> bool:
+    """Return True if the phone is within the rate limit window.
+
+    If a db session is provided, reads rate-limit settings from
+    OperationalSettings; otherwise falls back to module-level defaults.
+    """
+    rate_limit = _RATE_LIMIT
+    rate_window_seconds = _RATE_WINDOW_SECONDS
+
+    if db is not None:
+        from app.models.settings import OperationalSettings
+        ops = db.get(OperationalSettings, 1)
+        if ops is not None:
+            rate_limit = ops.openclaw_rate_limit
+            rate_window_seconds = ops.openclaw_rate_window_seconds
+
     now = time.time()
     window = _rate_window[phone]
     # Prune old entries
-    _rate_window[phone] = [t for t in window if now - t < _RATE_WINDOW_SECONDS]
-    if len(_rate_window[phone]) >= _RATE_LIMIT:
+    _rate_window[phone] = [t for t in window if now - t < rate_window_seconds]
+    if len(_rate_window[phone]) >= rate_limit:
         return False
     _rate_window[phone].append(now)
     return True
@@ -408,7 +422,7 @@ def handle_inbound_message(db: Session, phone: str, message: str) -> str:
     from app.services.whatsapp_actions import check_action_rate_limit
 
     # Rate limit check
-    if not _check_rate_limit(phone):
+    if not _check_rate_limit(phone, db):
         logger.warning("wa_rate_limited", phone=phone[:6] + "***")
         return "Has superado el limite de mensajes (20 cada 15 min). Intenta mas tarde."
 

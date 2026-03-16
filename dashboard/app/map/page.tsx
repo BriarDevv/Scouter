@@ -5,13 +5,14 @@ import dynamic from "next/dynamic";
 import { MapPin, RefreshCw } from "lucide-react";
 import {
   getGeoSummary,
+  getLeadsWithCoords,
   getTerritories,
   createTerritory,
   updateTerritory,
   deleteTerritory,
 } from "@/lib/api/client";
 import { TerritoryPanel } from "@/components/map/territory-panel";
-import type { GeoSummaryCity, TerritoryWithStats } from "@/types";
+import type { Lead, GeoSummaryCity, TerritoryWithStats } from "@/types";
 
 const LeadMap = dynamic(
   () => import("@/components/map/lead-map").then((mod) => ({ default: mod.LeadMap })),
@@ -31,17 +32,20 @@ function MapSkeleton() {
 
 export default function MapPage() {
   const [cities, setCities] = useState<GeoSummaryCity[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [territories, setTerritories] = useState<TerritoryWithStats[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [geoData, territoryData] = await Promise.all([
+      const [geoData, leadsData, territoryData] = await Promise.all([
         getGeoSummary(),
+        getLeadsWithCoords(),
         getTerritories(),
       ]);
       setCities(geoData);
+      setLeads(leadsData);
       setTerritories(territoryData);
     } catch (err) {
       console.error("Error cargando datos del mapa:", err);
@@ -86,7 +90,7 @@ export default function MapPage() {
           <div>
             <h1 className="font-heading text-lg font-bold text-foreground">Mapa de Leads</h1>
             <p className="text-xs text-muted-foreground">
-              {cities.length} ciudades &middot; {cities.reduce((a, c) => a + c.count, 0)} leads
+              {leads.length} negocios con ubicacion &middot; {cities.length} ciudades
             </p>
           </div>
         </div>
@@ -102,7 +106,7 @@ export default function MapPage() {
 
       {/* Map */}
       <div className="relative flex-1">
-        <LeadMap cities={cities} territories={territories} />
+        <LeadMap cities={cities} leads={leads} territories={territories} />
         <TerritoryPanel
           territories={territories}
           onSave={handleCreateTerritory}

@@ -1,23 +1,28 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   MapContainer,
   TileLayer,
   CircleMarker,
   Popup,
   ZoomControl,
+  useMap,
 } from "react-leaflet";
 import { CityMarker } from "@/components/map/city-marker";
+import { LeadPin } from "@/components/map/lead-pin";
 import { MapSidebar } from "@/components/map/map-sidebar";
 import { HeatmapLayer } from "@/components/map/heatmap-layer";
-import type { GeoSummaryCity, TerritoryWithStats } from "@/types";
+import type { Lead, GeoSummaryCity, TerritoryWithStats } from "@/types";
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "@/components/map/map-theme.css";
 
 interface LeadMapProps {
   cities: GeoSummaryCity[];
+  leads?: Lead[];
   territories?: TerritoryWithStats[];
+  onSelectLead?: (lead: Lead) => void;
 }
 
 const TILE_PROVIDERS = {
@@ -52,11 +57,34 @@ function loadTileKey(): TileKey {
   return "dark";
 }
 
-export function LeadMap({ cities, territories = [] }: LeadMapProps) {
+function FitToLeads({ leads, active }: { leads: Lead[]; active: boolean }) {
+  const map = useMap();
+  const fitted = useRef(false);
+
+  useEffect(() => {
+    if (!active || leads.length === 0) {
+      fitted.current = false;
+      return;
+    }
+    if (fitted.current) return;
+    const points = leads
+      .filter((l) => l.latitude !== null && l.longitude !== null)
+      .map((l) => [l.latitude!, l.longitude!] as [number, number]);
+    if (points.length === 0) return;
+    const bounds = L.latLngBounds(points);
+    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+    fitted.current = true;
+  }, [leads, active, map]);
+
+  return null;
+}
+
+export function LeadMap({ cities, leads = [], territories = [], onSelectLead }: LeadMapProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [tileKey, setTileKey] = useState<TileKey>(loadTileKey);
   const [showHeat, setShowHeat] = useState(false);
   const [showTerritories, setShowTerritories] = useState(true);
+  const [viewMode, setViewMode] = useState<"cities" | "leads">("leads");
 
   const tile = TILE_PROVIDERS[tileKey];
   const isDark = tile.isDark;
@@ -94,6 +122,7 @@ export function LeadMap({ cities, territories = [] }: LeadMapProps) {
         zoomControl={false}
       >
         <ZoomControl position="bottomright" />
+        <FitToLeads leads={leads} active={viewMode === "leads"} />
 
         <TileLayer
           key={tileKey}
@@ -136,8 +165,8 @@ export function LeadMap({ cities, territories = [] }: LeadMapProps) {
         {/* Heatmap layer */}
         <HeatmapLayer points={heatPoints} visible={showHeat} />
 
-        {/* City markers */}
-        {cities.map((city) => (
+        {/* City markers (aggregated view) */}
+        {viewMode === "cities" && cities.map((city) => (
           <CityMarker
             key={city.city}
             city={city.city}
@@ -151,6 +180,12 @@ export function LeadMap({ cities, territories = [] }: LeadMapProps) {
             }
           />
         ))}
+
+        {/* Individual lead pins */}
+        {viewMode === "leads" &&
+          leads.map((lead) => (
+            <LeadPin key={lead.id} lead={lead} onSelect={onSelectLead} />
+          ))}
       </MapContainer>
 
       {/* ── Layer controls (top-left) ─────────────────────────── */}
@@ -176,6 +211,19 @@ export function LeadMap({ cities, territories = [] }: LeadMapProps) {
             {key === "dark" ? "Oscuro" : key === "light" ? "Claro" : "Satelite"}
           </button>
         ))}
+        <div className={`mx-1 h-4 w-px ${isDark ? "bg-white/20" : "bg-black/10"}`} />
+        <button
+          onClick={() => setViewMode(viewMode === "leads" ? "cities" : "leads")}
+          className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all ${
+            viewMode === "leads"
+              ? "bg-violet-600 text-white shadow-sm"
+              : isDark
+                ? "text-white/60 hover:text-white hover:bg-white/10"
+                : "text-black/50 hover:text-black hover:bg-black/5"
+          }`}
+        >
+          {viewMode === "leads" ? "Negocios" : "Ciudades"}
+        </button>
         <div className={`mx-1 h-4 w-px ${isDark ? "bg-white/20" : "bg-black/10"}`} />
         <button
           onClick={() => setShowHeat((p) => !p)}
@@ -212,7 +260,7 @@ export function LeadMap({ cities, territories = [] }: LeadMapProps) {
         }`}
       >
         <p className={`mb-1.5 text-[10px] font-semibold uppercase tracking-wider ${isDark ? "text-white/50" : "text-black/40"}`}>
-          Score promedio
+          {viewMode === "leads" ? "Score del lead" : "Score promedio"}
         </p>
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
