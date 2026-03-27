@@ -88,6 +88,8 @@ out/
 
 # Claude Code
 .claude/
+!.claude/settings.json
+!.claude/commands/
 
 # Celery Beat
 celerybeat-schedule
