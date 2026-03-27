@@ -1,334 +1,384 @@
 # ClawScout
 
-Sistema privado de prospeccion de leads para servicios de desarrollo web.
-Detecta negocios que necesitan desarrollo/rediseno web, enriquece leads, los puntua, genera borradores de contacto y soporta revision humana antes del envio.
+Private lead prospecting system for web development services.
+Detects businesses that need web development or redesign, enriches leads, scores them, generates outreach drafts, and supports human-in-the-loop review before sending.
 
 ## Stack
 
-| Capa | Tecnologia |
-|------|-----------|
+| Layer | Technology |
+|-------|-----------|
 | Backend | Python 3.14, FastAPI, SQLAlchemy 2.x, Celery, structlog |
-| Base de datos | PostgreSQL 16, Redis 7 |
-| LLM | Ollama — catalogo: `qwen3.5:4b`, `qwen3.5:9b`, `qwen3.5:27b` |
+| Database | PostgreSQL 16, Redis 7 |
+| LLM | Ollama -- catalog: `qwen3.5:4b`, `qwen3.5:9b`, `qwen3.5:27b` |
 | Frontend | Next.js 16 (App Router), TypeScript, Tailwind CSS v4, shadcn/ui (base-ui) |
-| Infra | Docker Compose, Alembic (migraciones) |
+| Infra | Docker Compose, Alembic (migrations) |
 
-## Mapa de servicios
+## Service Map
 
-| Servicio | Puerto | Descripcion |
-|----------|--------|-------------|
-| API | `:8000` | FastAPI backend (Swagger en `/docs`) |
+| Service | Port | Description |
+|---------|------|-------------|
+| API | `:8000` | FastAPI backend (Swagger at `/docs`) |
 | Dashboard | `:3000` | Next.js frontend |
-| Flower | `:5555` | Monitor de Celery |
-| PostgreSQL | `:5432` | Base de datos principal |
-| Redis | `:6379` | Broker de Celery + cache |
+| Flower | `:5555` | Celery monitoring dashboard |
+| PostgreSQL | `:5432` | Primary database |
+| Redis | `:6379` | Celery broker + cache |
 
-## Prerequisitos
+---
 
-- Python 3.14+
-- Node.js v24+
-- Docker + Docker Compose
-- Ollama (para funciones LLM)
+## Installation from Scratch
 
-## Setup en WSL (una sola vez)
+> Everything runs inside **WSL** (Windows Subsystem for Linux). The repo **must** live
+> in the WSL filesystem (e.g. `~/src/ClawScout`), **not** in `/mnt/c/...` -- running
+> from the Windows filesystem is significantly slower.
 
-Todo el desarrollo corre en WSL (Windows Subsystem for Linux). Abrir una terminal WSL:
+### 1. Install WSL2 + Ubuntu
+
+Open **PowerShell as Administrator**:
+
+```powershell
+wsl --install -d Ubuntu
+```
+
+Restart your machine if prompted. After restart, open **Ubuntu** from the Start menu and create your Linux user. Then:
 
 ```bash
-# 1. Clonar el repo dentro de WSL (NO en /mnt/c/)
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y build-essential curl git
+```
+
+### 2. Install Docker Desktop
+
+1. Download and install [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/)
+2. During setup, make sure **"Use WSL 2 based engine"** is checked
+3. After install: Docker Desktop --> Settings --> Resources --> WSL Integration
+4. Enable integration with your **Ubuntu** distro
+5. Click **Apply & Restart**
+
+Verify from a WSL terminal:
+
+```bash
+docker --version
+docker compose version
+```
+
+### 3. Install Ollama
+
+Install Ollama on the **Windows side** (it uses your GPU directly):
+
+1. Download and install from [ollama.com](https://ollama.com/download)
+2. Ollama runs as a service on `localhost:11434` -- WSL can reach it automatically
+
+Verify from a WSL terminal:
+
+```bash
+curl -s http://localhost:11434/api/tags | head -c 100
+```
+
+### 4. Install Python 3.14+ and Node.js v24+
+
+Inside your WSL Ubuntu terminal:
+
+```bash
+# Python (check if already installed)
+python3 --version
+
+# If not installed or too old:
+sudo apt install -y python3 python3-pip python3-venv
+
+# Node.js v24 via nvm (recommended)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+source ~/.bashrc
+nvm install 24
+nvm use 24
+```
+
+### 5. Clone and Set Up the Project
+
+```bash
+# Clone the repo inside WSL (NOT in /mnt/c/)
 cd ~
 mkdir -p src && cd src
 git clone https://github.com/BriarDevv/ClawScout.git
 cd ClawScout
 
-# 2. Cambiar a la rama de desarrollo
-git checkout codex/feat/wsl-linux-first
+# Configure environment
+cp .env.example .env                     # Edit with your values: nano .env
 
-# 3. Configurar entorno
-cp .env.example .env                     # Editar con tus valores (nano .env)
-
-# 4. Backend Python
+# Python backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
 
-# 5. Migraciones de base de datos
+# Start infrastructure (needed for migrations)
+docker compose up -d postgres redis
+
+# Run database migrations
 alembic upgrade head
 
-# 6. Dashboard
+# Dashboard
 cd dashboard && npm ci && cd ..
 
-# 7. Modelos de Ollama (necesita Ollama corriendo)
+# Pull Ollama models (requires Ollama running)
 ollama pull qwen3.5:4b
 ollama pull qwen3.5:9b
 ollama pull qwen3.5:27b
 
-# 8. Hacer ejecutable el script de gestion
+# Make management script executable
 chmod +x scripts/clawscout.sh
 ```
 
-> **Importante**: El repo debe vivir dentro del filesystem de WSL (ej: `~/src/ClawScout`),
-> NO en `/mnt/c/...`. Correr desde el filesystem de Windows es mucho mas lento.
+---
 
-## Uso diario
+## Daily Usage
 
-### Encender
+### Start
 
 ```bash
 cd ~/src/ClawScout
-make up                                  # Levanta TODO: Postgres, Redis, API, Worker, Dashboard
+make up                                  # Starts everything: Postgres, Redis, API, Worker, Dashboard
 ```
 
-### Apagar
+### Stop
 
 ```bash
-make down                                # Para todo (mantiene datos de Postgres/Redis)
+make down                                # Stops everything (preserves Postgres/Redis data)
 ```
 
-### Ver estado
+### Check Status
 
 ```bash
-make status                              # Muestra que esta corriendo y en que puerto
+make status                              # Shows what is running and on which port
 ```
 
 ### Logs
 
 ```bash
-make logs                                # Todos los logs en vivo (Ctrl+C para salir)
-./scripts/clawscout.sh logs api          # Solo API
-./scripts/clawscout.sh logs worker       # Solo Celery worker
-./scripts/clawscout.sh logs dashboard    # Solo Dashboard
+make logs                                # All logs live (Ctrl+C to exit)
+./scripts/clawscout.sh logs api          # API only
+./scripts/clawscout.sh logs worker       # Celery worker only
+./scripts/clawscout.sh logs dashboard    # Dashboard only
 ```
 
-### Todos los comandos
+### All Commands
 
-| Comando | Atajo | Que hace |
-|---------|-------|----------|
-| `make up` | `./scripts/clawscout.sh start` | Encender todo |
-| `make down` | `./scripts/clawscout.sh stop` | Apagar todo (mantiene datos) |
-| `make restart` | `./scripts/clawscout.sh restart` | Apagar + encender |
-| `make status` | `./scripts/clawscout.sh status` | Ver estado de cada servicio |
-| `make logs` | `./scripts/clawscout.sh logs` | Ver logs en vivo |
-| `make preflight` | `./scripts/clawscout.sh preflight` | Verificar configuracion |
-| `make seed` | `./scripts/clawscout.sh seed` | Cargar datos de prueba |
-| `make nuke` | `./scripts/clawscout.sh nuke` | Parar + borrar datos (pide confirmacion) |
+| Command | Shortcut | What it does |
+|---------|----------|-------------|
+| `make up` | `./scripts/clawscout.sh start` | Start everything |
+| `make down` | `./scripts/clawscout.sh stop` | Stop everything (preserves data) |
+| `make restart` | `./scripts/clawscout.sh restart` | Stop + start |
+| `make status` | `./scripts/clawscout.sh status` | Show status of each service |
+| `make logs` | `./scripts/clawscout.sh logs` | Live logs |
+| `make preflight` | `./scripts/clawscout.sh preflight` | Verify configuration |
+| `make seed` | `./scripts/clawscout.sh seed` | Load sample data |
+| `make nuke` | `./scripts/clawscout.sh nuke` | Stop + delete all data (asks for confirmation) |
 
-### Solo API + Dashboard (sin Docker ni Celery)
+### API + Dashboard Only (no Docker or Celery)
 
-Si Postgres y Redis ya estan corriendo y no necesitas el worker:
+If Postgres and Redis are already running and you don't need the worker:
 
 ```bash
-make dev-up                              # Solo levanta API :8000 + Dashboard :3000
-make dev-down                            # Solo para API + Dashboard
-make dev-status                          # Estado de API + Dashboard
+make dev-up                              # Starts only API :8000 + Dashboard :3000
+make dev-down                            # Stops API + Dashboard
+make dev-status                          # Status of API + Dashboard
 ```
 
-### Servicios disponibles (cuando esta encendido)
+### Available Services (when running)
 
-| Servicio | URL |
-|----------|-----|
+| Service | URL |
+|---------|-----|
 | Dashboard | http://localhost:3000 |
 | API + Swagger | http://localhost:8000/docs |
-| Health detallado | http://localhost:8000/health/detailed |
-| Flower (opcional) | http://localhost:5555 |
+| Detailed Health | http://localhost:8000/health/detailed |
+| Flower (optional) | http://localhost:5555 |
 
-### Modo manual (4 terminales)
+### Manual Mode (4 terminals)
 
-Si preferis control individual de cada proceso:
+If you prefer individual control over each process:
 
 ```bash
-# Terminal 1 — Infraestructura
+# Terminal 1 -- Infrastructure
 docker compose up postgres redis
 
-# Terminal 2 — API
+# Terminal 2 -- API
 source .venv/bin/activate && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
-# Terminal 3 — Worker
+# Terminal 3 -- Worker
 source .venv/bin/activate && celery -A app.workers.celery_app worker --loglevel=info
 
-# Terminal 4 — Dashboard
+# Terminal 4 -- Dashboard
 cd dashboard && npm run dev
 ```
 
-Para apagar: `Ctrl+C` en cada terminal + `docker compose down`.
+To stop: `Ctrl+C` in each terminal + `docker compose down`.
 
-### Docker Compose completo (alternativa)
-
-```bash
-docker compose up -d                     # Levanta todo en containers
-docker compose logs -f                   # Ver logs
-docker compose down                      # Apagar
-```
-
-## Que es automatico y que es manual
-
-En ClawScout v1, **casi todo es manual**. No hay tareas programadas, no hay
-auto-crawl, no hay Celery Beat. Todo se dispara cuando vos lo pedis.
-
-| Componente | Automatico? | Como se controla |
-|---|---|---|
-| Crawlers | No — se corren a mano | Nada que apagar |
-| Enrichment / Scoring / Drafts | No — se disparan por API | Nada que apagar |
-| Reviewer (modelo 27b) | No — vos lo pedis | Nada que apagar |
-| Reply assistant | Toggle en Settings | `reply_assistant_enabled` |
-| Auto-classify inbound | Toggle en Settings | `auto_classify_inbound` |
-| Reviewer automatico | Toggle en Settings | `reviewer_enabled` |
-| Mail inbound sync | Toggle en Settings | `mail_inbound_sync_enabled` |
-| WhatsApp alerts | Toggle en Settings | `whatsapp_alerts_enabled` |
-| OpenClaw | Proceso separado | No se toca con make up/down |
-
-Los modelos de Ollama (4b, 9b, 27b) solo consumen VRAM cuando los usas.
-Ollama los descarga de memoria automaticamente despues de unos minutos de
-inactividad.
-
-### Modo "solo OpenClaw" (estacionar el sistema)
-
-Si queres dejar solo OpenClaw funcionando y apagar todo lo demas:
+### Full Docker Compose (alternative)
 
 ```bash
-make down                                # Apaga API, Worker, Dashboard, Postgres, Redis
+docker compose up -d                     # Start everything in containers
+docker compose logs -f                   # View logs
+docker compose down                      # Stop
 ```
 
-OpenClaw sigue funcionando porque es un proceso independiente.
-Cuando quieras volver: `make up`.
+---
 
-### Apagar features de IA sin apagar el sistema
+## What Is Automatic vs Manual
 
-Desde el dashboard en **Settings > Reglas**, podes desactivar:
-- **Reply assistant** — genera respuestas automaticas a emails entrantes
-- **Reviewer** — revisa automaticamente drafts y mensajes
-- **Auto-classify inbound** — clasifica emails entrantes con IA
+In ClawScout v1, **almost everything is manual**. There are no scheduled tasks, no auto-crawl, no Celery Beat. Everything runs when you trigger it.
 
-Todos estos toggles estan en `false` por default, asi que la IA automatica
-no corre salvo que la enciendas explicitamente.
+| Component | Automatic? | How to control |
+|-----------|-----------|----------------|
+| Crawlers | No -- run manually | Nothing to turn off |
+| Enrichment / Scoring / Drafts | No -- triggered via API | Nothing to turn off |
+| Reviewer (27b model) | No -- you request it | Nothing to turn off |
+| Reply assistant | Toggle in Settings | `reply_assistant_enabled` |
+| Auto-classify inbound | Toggle in Settings | `auto_classify_inbound` |
+| Automatic reviewer | Toggle in Settings | `reviewer_enabled` |
+| Mail inbound sync | Toggle in Settings | `mail_inbound_sync_enabled` |
+| WhatsApp alerts | Toggle in Settings | `whatsapp_alerts_enabled` |
+| OpenClaw | Separate process | Not managed by make up/down |
 
-## Configuracion de LLM
+Ollama models (4b, 9b, 27b) only consume VRAM when in use. Ollama automatically unloads them from memory after a few minutes of inactivity.
 
-El sistema usa Ollama con modelos qwen3.5 asignados por rol:
+### Disabling AI Features Without Stopping the System
 
-| Rol | Modelo default | Variable de entorno |
-|-----|---------------|---------------------|
+From the dashboard under **Settings > Rules**, you can disable:
+- **Reply assistant** -- auto-generates responses to inbound emails
+- **Reviewer** -- automatically reviews drafts and messages
+- **Auto-classify inbound** -- classifies inbound emails with AI
+
+All these toggles default to `false`, so automatic AI features don't run unless you explicitly enable them.
+
+---
+
+## LLM Configuration
+
+The system uses Ollama with qwen3.5 models assigned by role:
+
+| Role | Default Model | Environment Variable |
+|------|--------------|---------------------|
 | Leader | `qwen3.5:4b` | `OLLAMA_LEADER_MODEL` |
 | Executor | `qwen3.5:9b` | `OLLAMA_EXECUTOR_MODEL` |
 | Reviewer | `qwen3.5:27b` | `OLLAMA_REVIEWER_MODEL` |
 
 ```bash
-# Descargar los modelos necesarios
+# Download required models
 ollama pull qwen3.5:4b
 ollama pull qwen3.5:9b
 ollama pull qwen3.5:27b
 ```
 
-El catalogo de modelos soportados se configura con `OLLAMA_SUPPORTED_MODELS` en `.env`.
-La variable legacy `OLLAMA_MODEL` sigue funcionando como fallback para el rol executor.
+The supported model catalog is configured via `OLLAMA_SUPPORTED_MODELS` in `.env`.
+The legacy `OLLAMA_MODEL` variable still works as a fallback for the executor role.
 
-## Estructura del proyecto
+---
+
+## Project Structure
 
 ```
 ClawScout/
-|-- app/                      # Backend Python
-|   |-- api/v1/               # Endpoints FastAPI
+|-- app/                      # Python backend
+|   |-- api/v1/               # FastAPI endpoints
 |   |-- core/                 # Config (pydantic-settings), logging (structlog)
 |   |-- db/                   # Session factory, Base model
 |   |-- models/               # SQLAlchemy models
 |   |-- schemas/              # Pydantic request/response schemas
 |   |-- services/             # Business logic layer
 |   |-- workers/              # Celery app + tasks
-|   |-- llm/                  # Ollama client, catalogo, roles, prompts
+|   |-- llm/                  # Ollama client, catalog, roles, prompts
 |   |-- mail/                 # Email send/receive
-|   |-- scoring/              # Motor de scoring basado en reglas
-|   |-- outreach/             # Generacion de borradores via LLM
-|   |-- crawlers/             # BaseCrawler ABC + implementaciones
-|-- dashboard/                # Frontend Next.js 16
-|   |-- app/                  # App Router -- paginas
+|   |-- scoring/              # Rule-based scoring engine
+|   |-- outreach/             # LLM-powered draft generation
+|   |-- crawlers/             # BaseCrawler ABC + implementations
+|-- dashboard/                # Next.js 16 frontend
+|   |-- app/                  # App Router -- pages
 |   |-- components/           # UI, shared, charts, layout
 |   |-- lib/                  # API client, hooks, constants
-|   |-- data/                 # Mock data para desarrollo
+|   |-- data/                 # Mock data for development
 |   |-- types/                # TypeScript definitions
-|-- alembic/                  # Migraciones de base de datos
-|-- infra/                    # Dockerfiles, config de infra
-|-- scripts/                  # Scripts utilitarios
-|-- tests/                    # Tests del backend
-|-- docker-compose.yml        # Orquestacion de servicios
-|-- pyproject.toml            # Config del proyecto Python
-|-- .env.example              # Template de variables de entorno
+|-- alembic/                  # Database migrations
+|-- infra/                    # Dockerfiles, infra config
+|-- scripts/                  # Utility scripts
+|-- tests/                    # Backend tests
+|-- docker-compose.yml        # Service orchestration
+|-- pyproject.toml            # Python project config
+|-- .env.example              # Environment variable template
 ```
 
-## Paginas del dashboard
+## Dashboard Pages
 
-| Pagina | Ruta | Descripcion |
-|--------|------|-------------|
-| Overview | `/` | Metricas generales, pipeline visual, graficos temporales |
-| Leads | `/leads` | Tabla paginada con filtros, busqueda y acciones |
-| Lead Detail | `/leads/[id]` | Senales detectadas, score, drafts, timeline |
-| Outreach | `/outreach` | Gestion de borradores: pendientes, aprobados, enviados |
-| Performance | `/performance` | Metricas por industria, ciudad y fuente |
-| Suppression | `/suppression` | Lista de supresion global |
-| Responses | `/responses` | Respuestas inbound clasificadas por LLM |
-| Activity | `/activity` | Log de actividad del sistema |
-| Notifications | `/notifications` | Notificaciones y alertas |
-| Security | `/security` | Configuracion de seguridad |
-| Settings | `/settings` | Configuracion general del sistema |
+| Page | Route | Description |
+|------|-------|-------------|
+| Overview | `/` | General metrics, visual pipeline, time-series charts |
+| Leads | `/leads` | Paginated table with filters, search, and actions |
+| Lead Detail | `/leads/[id]` | Detected signals, score, drafts, timeline |
+| Outreach | `/outreach` | Draft management: pending, approved, sent |
+| Performance | `/performance` | Metrics by industry, city, and source |
+| Suppression | `/suppression` | Global suppression list |
+| Responses | `/responses` | Inbound replies classified by LLM |
+| Activity | `/activity` | System activity log |
+| Notifications | `/notifications` | Notifications and alerts |
+| Security | `/security` | Security configuration |
+| Settings | `/settings` | General system settings |
 
-## Endpoints de la API
+## API Endpoints
 
-Swagger interactivo en `http://localhost:8000/docs`.
+Interactive Swagger docs at `http://localhost:8000/docs`.
 
-| Metodo | Endpoint | Descripcion |
+| Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/health` | Health check |
-| POST | `/api/v1/leads` | Crear lead |
-| GET | `/api/v1/leads` | Listar leads (paginado, filtrable) |
-| GET | `/api/v1/leads/{id}` | Obtener lead con senales |
-| POST | `/api/v1/enrichment/{id}` | Enriquecer lead (sync) |
-| POST | `/api/v1/enrichment/{id}/async` | Enriquecer lead (async) |
-| POST | `/api/v1/scoring/{id}` | Puntuar lead |
-| POST | `/api/v1/scoring/{id}/analyze` | Analisis LLM (async) |
-| POST | `/api/v1/scoring/{id}/pipeline` | Pipeline completo (async) |
-| POST | `/api/v1/outreach/{id}/draft` | Generar borrador de contacto |
-| GET | `/api/v1/outreach/drafts` | Listar borradores |
-| POST | `/api/v1/outreach/drafts/{id}/review` | Aprobar/rechazar borrador |
-| POST | `/api/v1/suppression` | Agregar a lista de supresion |
-| GET | `/api/v1/suppression` | Listar supresiones |
-| DELETE | `/api/v1/suppression/{id}` | Eliminar de supresion |
+| POST | `/api/v1/leads` | Create a lead |
+| GET | `/api/v1/leads` | List leads (paginated, filterable) |
+| GET | `/api/v1/leads/{id}` | Get lead with signals |
+| POST | `/api/v1/enrichment/{id}` | Enrich a lead (sync) |
+| POST | `/api/v1/enrichment/{id}/async` | Enrich a lead (async) |
+| POST | `/api/v1/scoring/{id}` | Score a lead |
+| POST | `/api/v1/scoring/{id}/analyze` | LLM analysis (async) |
+| POST | `/api/v1/scoring/{id}/pipeline` | Full pipeline (async) |
+| POST | `/api/v1/outreach/{id}/draft` | Generate outreach draft |
+| GET | `/api/v1/outreach/drafts` | List drafts |
+| POST | `/api/v1/outreach/drafts/{id}/review` | Approve/reject draft |
+| POST | `/api/v1/suppression` | Add to suppression list |
+| GET | `/api/v1/suppression` | List suppression entries |
+| DELETE | `/api/v1/suppression/{id}` | Remove from suppression list |
 
-## Pipeline de prospeccion
+## Prospecting Pipeline
 
 ```
-1. Ingesta de lead (manual o crawler)
-2. Enriquecimiento: analizar website, detectar senales
-3. Scoring: puntuacion basada en reglas desde senales
-4. Analisis LLM: resumen, evaluacion de calidad, angulo sugerido
-5. Generacion de borrador de contacto
-6. Revision humana: aprobar / rechazar
-7. Envio (v2)
+1. Ingest lead (manual or via crawler)
+2. Enrich: analyze website, detect signals
+3. Score: rule-based scoring from signals
+4. LLM Analysis: summarize, evaluate quality, suggest angle
+5. Generate outreach draft
+6. Human review: approve / reject
+7. Send (v2)
 ```
 
 ## Tests
 
 ```bash
-# Backend (pytest con SQLite)
+# Backend (pytest with SQLite)
 pytest -v
 
 # Frontend (type checking)
 cd dashboard && npx tsc --noEmit
 ```
 
-Los tests del backend usan SQLite via override en `conftest.py` para aislamiento.
+Backend tests use SQLite via an override in `conftest.py` for isolation.
 
-## Variables de entorno
+## Environment Variables
 
-Copiar `.env.example` a `.env` y completar los valores.
-Ver `.env.example` para la lista completa de variables disponibles.
+Copy `.env.example` to `.env` and fill in the values.
+See `.env.example` for the full list of available variables.
 
-## Decisiones de diseno
+## Design Decisions
 
-- **Celery sobre RQ**: Retries nativos, routing por queue, rate limiting por tarea, Flower para monitoreo.
-- **SQLAlchemy sync para v1**: Mas simple, FastAPI lo soporta bien. Migracion a async es directa con SQLAlchemy 2.x.
-- **structlog**: Logs estructurados en JSON para auditoria y debugging.
-- **Dedup via hash**: SHA-256 de (business_name + city + domain) normalizado. Previene duplicados en insert.
-- **Supresion global**: Se verifica al crear leads, antes de generar outreach, y en operaciones bulk.
-- **Output LLM como untrusted**: Extraccion JSON con fallback, outputs sanitizados antes de guardar.
-- **Sin auto-send en v1**: Todo outreach requiere aprobacion humana.
-- **shadcn/ui con base-ui**: Usa prop `render` en vez de `asChild` (no Radix).
-- **Tailwind v4**: Config inline con `@theme`, sin `tailwind.config.ts`.
+- **Celery over RQ**: Native retries, queue-based routing, per-task rate limiting, Flower monitoring.
+- **Sync SQLAlchemy for v1**: Simpler; FastAPI supports it fine. Async migration is straightforward with SQLAlchemy 2.x.
+- **structlog**: Structured JSON logs for auditing and debugging.
+- **Dedup via hash**: SHA-256 of normalized (business_name + city + domain). Prevents duplicates at insert time.
+- **Global suppression list**: Checked at lead creation, before outreach generation, and on bulk operations.
+- **LLM output treated as untrusted**: JSON extraction with fallback; all outputs sanitized before storage.
+- **No auto-send in v1**: All outreach requires human approval.
+- **shadcn/ui with base-ui**: Uses `render` prop instead of `asChild` (not Radix).
+- **Tailwind v4**: Inline config with `@theme` blocks, no `tailwind.config.ts`.
