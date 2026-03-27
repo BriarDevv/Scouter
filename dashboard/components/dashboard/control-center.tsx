@@ -92,12 +92,27 @@ const FEATURES: FeatureToggle[] = [
 
 interface ControlCenterProps {
   health: HealthComponent[];
+  healthLoading?: boolean;
+  onRefreshHealth?: () => void;
 }
+
+const HEALTH_DOT: Record<string, string> = {
+  ok: "bg-emerald-500",
+  degraded: "bg-amber-500",
+  error: "bg-red-500",
+};
+
+const HEALTH_LABEL: Record<string, string> = {
+  database: "BD",
+  redis: "Redis",
+  ollama: "Ollama",
+  celery: "Celery",
+};
 
 const LS_PIPELINE_KEY = "cs:pipeline_task_id";
 const LS_CRAWL_TERRITORY_KEY = "cs:crawl_territory_id";
 
-export function ControlCenter({ health }: ControlCenterProps) {
+export function ControlCenter({ health, healthLoading, onRefreshHealth }: ControlCenterProps) {
   const [settings, setSettings] = useState<OperationalSettings | null>(null);
   const [loadingSettings, setLoadingSettings] = useState(true);
   const isInitialSettings = useRef(true);
@@ -326,7 +341,7 @@ export function ControlCenter({ health }: ControlCenterProps) {
 
   return (
     <div className="rounded-2xl border border-border bg-card overflow-hidden">
-      {/* Header */}
+      {/* Header with integrated health strip */}
       <div className="flex items-center justify-between border-b border-border px-5 py-3">
         <div className="flex items-center gap-3">
           <div className={cn(
@@ -342,13 +357,30 @@ export function ControlCenter({ health }: ControlCenterProps) {
             </p>
           </div>
         </div>
-        <button
-          onClick={() => { loadSettings(); }}
-          className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          title="Actualizar estado"
-        >
-          <RefreshCw className="h-4 w-4" />
-        </button>
+
+        <div className="flex items-center gap-3">
+          {/* Health dots inline */}
+          <div className="hidden sm:flex items-center gap-2">
+            {health.map((comp) => (
+              <div
+                key={comp.name}
+                className="flex items-center gap-1.5"
+                title={comp.error || `${HEALTH_LABEL[comp.name] ?? comp.name}: ${comp.latency_ms?.toFixed(0) ?? "?"}ms`}
+              >
+                <span className={cn("h-2 w-2 rounded-full", HEALTH_DOT[comp.status] ?? "bg-slate-400 animate-pulse")} />
+                <span className="text-[11px] text-muted-foreground">{HEALTH_LABEL[comp.name] ?? comp.name}</span>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={() => { onRefreshHealth?.(); loadSettings(); }}
+            className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            title="Actualizar estado"
+          >
+            <RefreshCw className={cn("h-4 w-4", healthLoading && "animate-spin")} />
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-0 lg:grid-cols-3">

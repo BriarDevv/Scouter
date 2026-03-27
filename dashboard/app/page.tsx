@@ -8,7 +8,6 @@ import { PipelineFunnel } from "@/components/dashboard/pipeline-funnel";
 import { AreaChartCard } from "@/components/charts/area-chart-card";
 import { IndustryChart } from "@/components/dashboard/industry-chart";
 import { RecentActivity } from "@/components/dashboard/recent-activity";
-import { SystemHealthStrip } from "@/components/dashboard/system-health-strip";
 import { ControlCenter } from "@/components/dashboard/control-center";
 import { CollapsibleSection } from "@/components/shared/collapsible-section";
 import { SkeletonStatCard, SkeletonCard } from "@/components/shared/skeleton";
@@ -24,7 +23,7 @@ import type { DashboardStats, IndustryBreakdown, OutreachLog, PipelineStage, Tim
 import { TerritorySummary } from "@/components/dashboard/territory-summary";
 
 export default function OverviewPage() {
-  const { health, components, loading: healthLoading, error: healthError } = useSystemHealth();
+  const { components, loading: healthLoading, refresh: refreshHealth } = useSystemHealth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [pipeline, setPipeline] = useState<PipelineStage[]>([]);
   const [timeSeries, setTimeSeries] = useState<TimeSeriesPoint[]>([]);
@@ -69,9 +68,7 @@ export default function OverviewPage() {
         description="Estado general del sistema de prospección"
       />
 
-      <SystemHealthStrip health={health} loading={healthLoading} error={healthError} />
-
-      <ControlCenter health={components} />
+      <ControlCenter health={components} healthLoading={healthLoading} onRefreshHealth={refreshHealth} />
 
       {/* Key Metrics */}
       {loading ? (
