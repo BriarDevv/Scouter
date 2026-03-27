@@ -272,37 +272,195 @@ The legacy `OLLAMA_MODEL` variable still works as a fallback for the executor ro
 
 ---
 
-## Project Structure
+## Project Map
 
 ```
 ClawScout/
-|-- app/                      # Python backend
-|   |-- api/v1/               # FastAPI endpoints
-|   |-- core/                 # Config (pydantic-settings), logging (structlog)
-|   |-- db/                   # Session factory, Base model
-|   |-- models/               # SQLAlchemy models
-|   |-- schemas/              # Pydantic request/response schemas
-|   |-- services/             # Business logic layer
-|   |-- workers/              # Celery app + tasks
-|   |-- llm/                  # Ollama client, catalog, roles, prompts
-|   |-- mail/                 # Email send/receive
-|   |-- scoring/              # Rule-based scoring engine
-|   |-- outreach/             # LLM-powered draft generation
-|   |-- crawlers/             # BaseCrawler ABC + implementations
-|-- dashboard/                # Next.js 16 frontend
-|   |-- app/                  # App Router -- pages
-|   |-- components/           # UI, shared, charts, layout
-|   |-- lib/                  # API client, hooks, constants
-|   |-- data/                 # Mock data for development
-|   |-- types/                # TypeScript definitions
-|-- alembic/                  # Database migrations
-|-- infra/                    # Dockerfiles, infra config
-|-- scripts/                  # Utility scripts
-|-- tests/                    # Backend tests
-|-- docker-compose.yml        # Service orchestration
-|-- pyproject.toml            # Python project config
-|-- .env.example              # Environment variable template
+|
+|-- app/                             # Python backend (FastAPI)
+|   |-- main.py                      #   Entrypoint: app factory, middleware, health check
+|   |-- api/
+|   |   |-- router.py                #   Registers all /api/v1/* routes
+|   |   |-- auth.py                  #   API key middleware (X-API-Key)
+|   |   |-- deps.py                  #   FastAPI dependency injection (DB session)
+|   |   +-- v1/                      #   20 endpoint modules:
+|   |       |-- leads.py             #     Lead CRUD
+|   |       |-- enrichment.py        #     Data enrichment (sync/async)
+|   |       |-- scoring.py           #     Rule-based scoring
+|   |       |-- outreach.py          #     Outreach draft management
+|   |       |-- pipelines.py         #     Full pipeline orchestration
+|   |       |-- settings.py          #     System configuration (22KB, 12 tabs)
+|   |       |-- mail.py              #     Inbound/outbound email
+|   |       |-- dashboard.py         #     Analytics & metrics
+|   |       |-- tasks.py             #     Async task status
+|   |       |-- crawl.py             #     Google Maps crawling
+|   |       |-- replies.py           #     Email reply management
+|   |       |-- reviews.py           #     Manual review workflows
+|   |       |-- notifications.py     #     Real-time notifications
+|   |       |-- whatsapp.py          #     WhatsApp integration
+|   |       |-- telegram.py          #     Telegram bot
+|   |       |-- territories.py       #     Geographic regions
+|   |       |-- leader.py            #     Leader analysis
+|   |       |-- performance.py       #     Performance metrics
+|   |       +-- suppression.py       #     Email suppression list
+|   |-- core/
+|   |   |-- config.py                #   Pydantic settings (all env vars)
+|   |   |-- crypto.py                #   Encryption for credentials
+|   |   +-- logging.py               #   structlog JSON logging
+|   |-- db/
+|   |   |-- base.py                  #   SQLAlchemy DeclarativeBase
+|   |   +-- session.py               #   Engine, SessionLocal, get_db()
+|   |-- models/                      #   19 SQLAlchemy ORM models
+|   |   |-- lead.py                  #     Lead, LeadStatus, LeadQuality
+|   |   |-- lead_signal.py           #     LeadSignal (11 signal types)
+|   |   |-- outreach.py              #     OutreachDraft, OutreachLog, OutreachDelivery
+|   |   |-- settings.py              #     OperationalSettings (feature toggles)
+|   |   |-- mail.py                  #     MailCredentials, EmailThread, InboundMessage
+|   |   |-- task_tracking.py         #     TaskRun, PipelineRun
+|   |   |-- notification.py          #     Notification
+|   |   |-- territory.py             #     Territory
+|   |   +-- ...                      #     WhatsApp/Telegram credentials & audit logs
+|   |-- schemas/                     #   20 Pydantic request/response schemas
+|   |-- services/                    #   36 service modules (business logic)
+|   |   |-- enrichment_service.py    #     Website crawl + signal detection
+|   |   |-- leader_service.py        #     Lead analysis orchestration
+|   |   |-- outreach_service.py      #     Draft generation + sending
+|   |   |-- dashboard_service.py     #     Analytics aggregation
+|   |   |-- inbound_mail_service.py  #     IMAP sync + classification
+|   |   |-- ai_workspace_service.py  #     OpenClaw integration
+|   |   |-- operational_settings_service.py  # Feature toggle cache
+|   |   +-- ...                      #     Mail, WhatsApp, Telegram, replies, notifications
+|   |-- workers/
+|   |   |-- celery_app.py            #   Celery config, queue routing, beat schedule
+|   |   |-- tasks.py                 #   All async tasks (enrich, score, draft, review, crawl)
+|   |   +-- janitor.py               #   Stale task cleanup
+|   |-- llm/
+|   |   |-- client.py                #   Ollama HTTP client (all LLM calls)
+|   |   |-- prompts.py               #   System + data prompt templates
+|   |   |-- roles.py                 #   LLMRole enum (LEADER, EXECUTOR, REVIEWER)
+|   |   |-- catalog.py               #   Model catalog + role defaults
+|   |   +-- resolver.py              #   Role -> model resolution
+|   |-- mail/
+|   |   |-- smtp_provider.py         #   SMTP sending (TLS/SSL)
+|   |   |-- imap_provider.py         #   IMAP sync (UID-based)
+|   |   +-- provider.py              #   Abstract base class
+|   |-- scoring/
+|   |   +-- rules.py                 #   Rule-based scoring (0-100 points)
+|   |-- outreach/
+|   |   +-- generator.py             #   LLM-powered draft generation
+|   |-- crawlers/
+|   |   |-- base_crawler.py          #   ABC with rate limiting
+|   |   +-- google_maps_crawler.py   #   Google Maps API integration
+|   +-- data/
+|       +-- cities_ar.py             #   Argentine city list for validation
+|
+|-- dashboard/                       # Next.js 16 frontend (App Router)
+|   |-- app/                         #   Routes / pages
+|   |   |-- layout.tsx               #     Root layout (fonts, theme, sidebar)
+|   |   |-- page.tsx                 #     / -- Overview dashboard
+|   |   |-- globals.css              #     Tailwind v4 theme (oklch colors)
+|   |   |-- leads/page.tsx           #     /leads -- Lead table
+|   |   |-- leads/[id]/page.tsx      #     /leads/:id -- Lead detail
+|   |   |-- outreach/page.tsx        #     /outreach -- Draft management
+|   |   |-- responses/page.tsx       #     /responses -- Inbound replies
+|   |   |-- performance/page.tsx     #     /performance -- Metrics
+|   |   |-- suppression/page.tsx     #     /suppression -- Suppression list
+|   |   |-- activity/page.tsx        #     /activity -- System log
+|   |   |-- map/page.tsx             #     /map -- Interactive lead map
+|   |   |-- notifications/page.tsx   #     /notifications -- Alerts
+|   |   |-- security/page.tsx        #     /security -- Security config
+|   |   +-- settings/page.tsx        #     /settings -- 12-tab configuration
+|   |-- components/
+|   |   |-- layout/                  #     Sidebar, ActivityPulse, PageHeader, ThemeToggle
+|   |   |-- dashboard/               #     ControlCenter, StatsGrid, PipelineFunnel, charts
+|   |   |-- shared/                  #     StatCard, StatusBadge, Skeleton, EmptyState, ReplyDraftPanel
+|   |   |-- leads/                   #     LeadsTable
+|   |   |-- map/                     #     LeadMap, TerritoryPanel, CityMarker, Heatmap
+|   |   |-- settings/               #     16 settings section components
+|   |   |-- ui/                      #     shadcn/ui (base-ui): button, dialog, dropdown, input, table, tabs, tooltip
+|   |   +-- providers/               #     ThemeProvider, ThemedToaster
+|   |-- lib/
+|   |   |-- api/client.ts            #     Centralized API client (all backend calls)
+|   |   |-- constants.ts             #     Status/quality/signal configs, colors
+|   |   |-- formatters.ts            #     Date/number formatting (es-AR locale)
+|   |   |-- utils.ts                 #     cn() class merging
+|   |   +-- hooks/use-page-data.ts   #     Async data loading hook
+|   |-- data/
+|   |   +-- cities-ar.ts             #     Argentine city coordinates (map fallback)
+|   +-- types/
+|       +-- index.ts                 #     All TypeScript type definitions (800 lines)
+|
+|-- alembic/                         # Database migrations (27 versions)
+|   |-- env.py                       #   Migration environment config
+|   +-- versions/                    #   Sequential schema evolution
+|
+|-- scripts/                         # Operations & CLI tools
+|   |-- clawscout.sh                 #   Main mgmt script (start/stop/status/logs/seed/nuke)
+|   |-- dev-up.sh                    #   API + Dashboard only (no Docker)
+|   |-- dev-down.sh                  #   Stop dev mode
+|   |-- dev-status.sh                #   Dev mode status
+|   |-- clawscoutctl.py              #   Data + mutating CLI (leads, drafts, tasks, pipelines)
+|   |-- opsctl.py                    #   Operational briefs + leader model integration
+|   |-- browserctl.py                #   Website inspection via Playwright
+|   |-- mailctl.py                   #   Mail operations CLI
+|   |-- preflight.py                 #   Pre-launch validation checks
+|   |-- seed.py                      #   Sample data loader
+|   |-- ensure-ollama-bridge.sh      #   Restore WSL <-> Windows Ollama connection
+|   |-- start-local-stack.sh         #   Guided setup with tmux
+|   |-- render-openclaw-config.sh    #   Generate OpenClaw config from template
+|   +-- validate-openclaw-grounding.sh  # Test OpenClaw workspace grounding
+|
+|-- skills/                          # OpenClaw agent skills (7 modules)
+|   |-- clawscout-data/              #   Read-only grounded data queries
+|   |-- clawscout-actions/           #   Mutating operations (drafts, pipeline, reviews)
+|   |-- clawscout-briefs/            #   Operational summaries with leader model
+|   |-- clawscout-browser/           #   Website inspection via Playwright
+|   |-- clawscout-mail/              #   Mail operations
+|   |-- clawscout-notifications/     #   Notification management
+|   +-- clawscout-whatsapp/          #   WhatsApp integration
+|
+|-- infra/
+|   |-- docker/Dockerfile            # Python backend container image
+|   +-- openclaw/openclaw.template.json  # OpenClaw config template
+|
+|-- tests/                           # Backend tests (pytest + SQLite)
+|   |-- conftest.py                  #   Fixtures, TestClient, session override
+|   +-- test_*.py                    #   22 test modules
+|
+|-- docs/                            # Internal documentation
+|   |-- linux-first.md               #   Architecture decisions & validated workflow
+|   |-- SECURITY_AUDIT_PENDING.md    #   Security findings tracker
+|   +-- superpowers/plans/           #   Implementation plans
+|
+|-- AGENTS.md                        # OpenClaw agent framework documentation
+|-- SOUL.md                          # OpenClaw core principles
+|-- IDENTITY.md                      # OpenClaw agent identity (template)
+|-- HEARTBEAT.md                     # OpenClaw periodic tasks
+|-- TOOLS.md                         # OpenClaw environment notes
+|-- USER.md                          # OpenClaw user context
+|-- AUDIT.md                         # Internal audit history
+|-- docker-compose.yml               # Service orchestration (6 services)
+|-- pyproject.toml                   # Python project config + dependencies
+|-- Makefile                         # Make targets (up/down/restart/status/logs)
++-- .env.example                     # Environment variable template (99 vars)
 ```
+
+### Where to Find Things
+
+| I want to... | Look here |
+|--------------|-----------|
+| Add a new API endpoint | `app/api/v1/` + register in `app/api/router.py` |
+| Add business logic | `app/services/` (stateless functions) |
+| Add a new model | `app/models/` + import in `app/models/__init__.py` + alembic migration |
+| Change LLM prompts | `app/llm/prompts.py` |
+| Add a dashboard page | `dashboard/app/<route>/page.tsx` |
+| Add a reusable component | `dashboard/components/shared/` |
+| Add a settings tab | `dashboard/components/settings/` + update `types.ts` |
+| Call the backend from frontend | `dashboard/lib/api/client.ts` |
+| Add an async task | `app/workers/tasks.py` + register queue in `celery_app.py` |
+| Add a database migration | `alembic revision --autogenerate -m "description"` |
+| Add an OpenClaw skill | `skills/<skill-name>/SKILL.md` |
+| Run pre-launch checks | `python scripts/preflight.py` |
 
 ## Dashboard Pages
 

@@ -21,9 +21,8 @@ Validated on WSL2 / Ubuntu with the repo cloned into `~/src/ClawScout`.
 
 - Entorno principal: **WSL2 / Ubuntu**
 - Repo principal: `~/src/ClawScout`
-- Rama activa de migración: `codex/feat/wsl-linux-first`
-- `main`: base estable / referencia
-- Clon Windows: fallback físico en `C:\Users\mateo\Desktop\ClawScout`
+- Rama principal: `main` (migrado desde `codex/feat/wsl-linux-first` el 2026-03-27)
+- El clon Windows ya no se usa como fallback
 - Windows sigue usándose de forma temporal para:
   - Docker Desktop
   - instancia dedicada de Ollama accesible desde WSL

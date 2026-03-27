@@ -89,6 +89,10 @@ out/
 # Claude Code
 .claude/
 
+# Celery Beat
+celerybeat-schedule
+celerybeat-schedule.db
+
 # ClawScout runtime
 logs/
 .pids/
