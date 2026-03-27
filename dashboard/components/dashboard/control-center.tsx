@@ -1,28 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Activity,
   Brain,
-  Database,
   Loader2,
   Mail,
   MessageCircle,
   Play,
   Power,
-  PowerOff,
   RefreshCw,
   Search,
-  Server,
   ShieldCheck,
   Sparkles,
   Square,
-  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sileo } from "sileo";
 import {
-  getSystemHealth,
   getOperationalSettings,
   updateOperationalSettings,
   getTerritories,
@@ -94,50 +88,19 @@ const FEATURES: FeatureToggle[] = [
   },
 ];
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function statusColor(status: string): string {
-  if (status === "ok") return "bg-emerald-500";
-  if (status === "degraded") return "bg-yellow-500";
-  return "bg-red-500";
-}
-
-function statusGlow(status: string): string {
-  if (status === "ok") return "shadow-[0_0_8px_rgba(34,197,94,0.6)]";
-  if (status === "degraded") return "shadow-[0_0_8px_rgba(234,179,8,0.6)]";
-  return "shadow-[0_0_8px_rgba(239,68,68,0.6)]";
-}
-
-function componentIcon(name: string) {
-  switch (name) {
-    case "database": return Database;
-    case "redis": return Server;
-    case "ollama": return Brain;
-    case "celery": return Activity;
-    default: return Zap;
-  }
-}
-
-function componentLabel(name: string) {
-  switch (name) {
-    case "database": return "PostgreSQL";
-    case "redis": return "Redis";
-    case "ollama": return "Ollama";
-    case "celery": return "Celery";
-    default: return name;
-  }
-}
-
 // ─── Component ──────────────────────────────────────────────────────────────
+
+interface ControlCenterProps {
+  health: HealthComponent[];
+}
 
 const LS_PIPELINE_KEY = "cs:pipeline_task_id";
 const LS_CRAWL_TERRITORY_KEY = "cs:crawl_territory_id";
 
-export function ControlCenter() {
-  const [health, setHealth] = useState<HealthComponent[]>([]);
+export function ControlCenter({ health }: ControlCenterProps) {
   const [settings, setSettings] = useState<OperationalSettings | null>(null);
-  const [loadingHealth, setLoadingHealth] = useState(true);
   const [loadingSettings, setLoadingSettings] = useState(true);
+  const isInitialSettings = useRef(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [pipelineStatus, setPipelineStatus] = useState<"idle" | "running" | "done" | "error" | "stopping">("idle");
   const [pipelineProgress, setPipelineProgress] = useState<string | null>(null);
@@ -147,20 +110,8 @@ export function ControlCenter() {
   const [crawlProgress, setCrawlProgress] = useState<string | null>(null);
   const [crawlTaskId, setCrawlTaskId] = useState<string | null>(null);
 
-  const loadHealth = useCallback(async () => {
-    setLoadingHealth(true);
-    try {
-      const data = await getSystemHealth();
-      setHealth(data.components);
-    } catch {
-      setHealth([]);
-    } finally {
-      setLoadingHealth(false);
-    }
-  }, []);
-
   const loadSettings = useCallback(async () => {
-    setLoadingSettings(true);
+    if (isInitialSettings.current) setLoadingSettings(true);
     try {
       const data = await getOperationalSettings();
       setSettings(data);
@@ -168,6 +119,7 @@ export function ControlCenter() {
       // Settings not available
     } finally {
       setLoadingSettings(false);
+      isInitialSettings.current = false;
     }
   }, []);
 
@@ -230,7 +182,6 @@ export function ControlCenter() {
   }, [pipelineStatus]);
 
   useEffect(() => {
-    loadHealth();
     loadSettings();
     getTerritories()
       .then((data) => {
@@ -240,7 +191,6 @@ export function ControlCenter() {
           const territoryExists = data.some((t) => t.id === savedTerritoryId);
           const tid = territoryExists ? savedTerritoryId : data[0].id;
           setSelectedTerritoryId(tid);
-          // Check if there's a running crawl
           fetch(`${API_BASE_URL}/crawl/territory/${tid}/status`)
             .then((r) => r.json())
             .then((s) => {
@@ -254,13 +204,7 @@ export function ControlCenter() {
         }
       })
       .catch(() => {});
-  }, [loadHealth, loadSettings]);
-
-  // Auto-refresh health every 30s
-  useEffect(() => {
-    const interval = setInterval(loadHealth, 30_000);
-    return () => clearInterval(interval);
-  }, [loadHealth]);
+  }, [loadSettings]);
 
   // Poll crawl status when running
   useEffect(() => {
@@ -399,63 +343,20 @@ export function ControlCenter() {
           </div>
         </div>
         <button
-          onClick={() => { loadHealth(); loadSettings(); }}
+          onClick={() => { loadSettings(); }}
           className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           title="Actualizar estado"
         >
-          <RefreshCw className={cn("h-4 w-4", loadingHealth && "animate-spin")} />
+          <RefreshCw className="h-4 w-4" />
         </button>
       </div>
 
       <div className="grid gap-0 lg:grid-cols-3">
-        {/* ── Col 1: System Health ──────────────────────────── */}
+        {/* ── Col 1: Operations ──────────────────────────── */}
         <div className="border-b lg:border-b-0 lg:border-r border-border p-4 space-y-3">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Infraestructura
+            Operaciones
           </p>
-
-          {loadingHealth ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Chequeando...
-            </div>
-          ) : health.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No se pudo conectar al backend</p>
-          ) : (
-            <div className="grid grid-cols-2 gap-2">
-              {health.map((comp) => {
-                const Icon = componentIcon(comp.name);
-                return (
-                  <div
-                    key={comp.name}
-                    className="flex items-center gap-2.5 rounded-lg bg-muted/50 px-3 py-2"
-                  >
-                    <span className={cn(
-                      "inline-block h-2 w-2 rounded-full flex-shrink-0",
-                      statusColor(comp.status),
-                      statusGlow(comp.status),
-                    )} />
-                    <Icon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium text-foreground truncate">
-                        {componentLabel(comp.name)}
-                      </p>
-                      {comp.latency_ms != null && (
-                        <p className="text-[10px] text-muted-foreground tabular-nums">
-                          {comp.latency_ms.toFixed(0)}ms
-                        </p>
-                      )}
-                      {comp.error && (
-                        <p className="text-[10px] text-red-500 truncate" title={comp.error}>
-                          {comp.error.slice(0, 30)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
 
           {/* Pipeline toggle */}
           <div className="pt-1 space-y-1.5">

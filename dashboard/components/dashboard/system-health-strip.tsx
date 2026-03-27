@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Database, Server, Brain, Cog, RefreshCw } from "lucide-react";
+import { Database, Server, Brain, Cog } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getSystemHealth } from "@/lib/api/client";
 import type { HealthComponent, SystemHealth } from "@/types";
 
 const COMPONENT_META: Record<string, { label: string; icon: typeof Database }> = {
@@ -51,30 +49,13 @@ function ComponentDot({ component }: { component: HealthComponent }) {
   );
 }
 
-export function SystemHealthStrip() {
-  const [health, setHealth] = useState<SystemHealth | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+interface SystemHealthStripProps {
+  health?: SystemHealth | null;
+  loading?: boolean;
+  error?: string | null;
+}
 
-  async function fetchHealth() {
-    try {
-      const data = await getSystemHealth();
-      setHealth(data);
-      setError(null);
-    } catch (err) {
-      console.warn("No se pudo obtener el estado del sistema", err);
-      setError("Sin conexión al backend");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    void fetchHealth();
-    const interval = setInterval(() => void fetchHealth(), 30_000);
-    return () => clearInterval(interval);
-  }, []);
-
+export function SystemHealthStrip({ health, loading = false, error }: SystemHealthStripProps) {
   const overallStatus = health?.status ?? "checking";
 
   return (
@@ -88,21 +69,21 @@ export function SystemHealthStrip() {
             {STATUS_LABEL[overallStatus]}
           </span>
           {error && (
-            <span className="text-xs text-muted-foreground">· {error}</span>
+            <span className="text-xs text-muted-foreground">&middot; {error}</span>
           )}
         </div>
 
         <div className="flex items-center gap-1">
-          {loading || !health ? (
+          {loading && !health ? (
             <div className="flex items-center gap-2 px-3 py-2">
-              <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+              <span className="h-3.5 w-3.5 rounded-full bg-muted animate-pulse" />
               <span className="text-xs text-muted-foreground">Verificando componentes...</span>
             </div>
-          ) : (
+          ) : health ? (
             health.components.map((component) => (
               <ComponentDot key={component.name} component={component} />
             ))
-          )}
+          ) : null}
         </div>
       </div>
     </div>
