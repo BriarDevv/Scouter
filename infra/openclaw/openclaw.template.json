@@ -61,8 +61,8 @@
     "defaults": {
       "workspace": "__WORKSPACE_PATH__",
       "timeoutSeconds": __OPENCLAW_TIMEOUT_SECONDS__,
-      "bootstrapMaxChars": 1,
-      "bootstrapTotalMaxChars": 1,
+      "bootstrapMaxChars": 4000,
+      "bootstrapTotalMaxChars": 12000,
       "bootstrapPromptTruncationWarning": "off",
       "model": {
         "primary": "ollama/__LEADER_MODEL_ID__"
@@ -97,7 +97,17 @@
       "watchDebounceMs": 250
     },
     "entries": {
-      "clawscout-leader": {
+      "clawscout-data": {
+        "env": {
+          "CLAWSCOUT_API_BASE_URL": "__CLAWSCOUT_API_BASE_URL__"
+        }
+      },
+      "clawscout-briefs": {
+        "env": {
+          "CLAWSCOUT_API_BASE_URL": "__CLAWSCOUT_API_BASE_URL__"
+        }
+      },
+      "clawscout-actions": {
         "env": {
           "CLAWSCOUT_API_BASE_URL": "__CLAWSCOUT_API_BASE_URL__"
         }
@@ -108,6 +118,16 @@
         }
       },
       "clawscout-browser": {
+        "env": {
+          "CLAWSCOUT_API_BASE_URL": "__CLAWSCOUT_API_BASE_URL__"
+        }
+      },
+      "clawscout-notifications": {
+        "env": {
+          "CLAWSCOUT_API_BASE_URL": "__CLAWSCOUT_API_BASE_URL__"
+        }
+      },
+      "clawscout-whatsapp": {
         "env": {
           "CLAWSCOUT_API_BASE_URL": "__CLAWSCOUT_API_BASE_URL__"
         }

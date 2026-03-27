@@ -18,6 +18,7 @@ class SignalType(str, enum.Enum):
     WEAK_SEO = "weak_seo"
     NO_MOBILE_FRIENDLY = "no_mobile_friendly"
     SLOW_LOAD = "slow_load"
+    WEBSITE_ERROR = "website_error"
     HAS_WEBSITE = "has_website"
     HAS_CUSTOM_DOMAIN = "has_custom_domain"
 

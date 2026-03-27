@@ -83,6 +83,9 @@ class Settings(BaseSettings):
     # Telegram
     TELEGRAM_DRY_RUN: bool = True
 
+    # Authentication
+    API_KEY: str | None = None  # Set to enable API key auth; None = open (dev only)
+
     # Rate limiting (API)
     API_RATE_LIMIT: str = "60/minute"
     API_CORS_ORIGINS: str = (
@@ -113,8 +116,13 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
-    def warn_default_secret_key(self):
-        if self.SECRET_KEY == "change-me-to-a-random-secret-key" and self.APP_ENV != "development":
+    def validate_secret_key(self):
+        if self.SECRET_KEY == "change-me-to-a-random-secret-key":
+            if self.APP_ENV != "development":
+                raise ValueError(
+                    "SECRET_KEY must be changed from default in non-development environments. "
+                    'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(64))"'
+                )
             import warnings
             warnings.warn(
                 "SECRET_KEY is still set to the default placeholder. "

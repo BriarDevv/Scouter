@@ -1,6 +1,6 @@
 ---
 name: clawscout-mail
-description: "Draft lookup, delivery status, and explicit single-draft sends via mailctl.py. For mail operations only."
+description: "Mail operations. Exec: cd /home/briar/src/ClawScout && .venv/bin/python scripts/mailctl.py --data-only --compact <cmd>. Commands: recent-drafts --limit N | draft-detail --draft-id ID | send-status --draft-id ID | send-draft --draft-id ID. Return ONLY the JSON output."
 metadata: { "openclaw": { "emoji": "✉️", "os": ["linux"], "requires": { "bins": ["python3"] } } }
 ---
 

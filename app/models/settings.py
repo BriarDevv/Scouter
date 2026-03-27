@@ -27,6 +27,7 @@ class OperationalSettings(Base):
     calendar_url: Mapped[str | None] = mapped_column(String, nullable=True)
     signature_cta: Mapped[str | None] = mapped_column(String, nullable=True)
     signature_include_portfolio: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    signature_is_solo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     default_outreach_tone: Mapped[str] = mapped_column(String, default="profesional", nullable=False)
     default_reply_tone: Mapped[str] = mapped_column(String, default="profesional", nullable=False)
     default_closing_line: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -67,7 +68,7 @@ class OperationalSettings(Base):
 
     # ── Notifications
     notifications_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    notification_score_threshold: Mapped[int] = mapped_column(Integer, default=70, nullable=False)
+    notification_score_threshold: Mapped[int] = mapped_column(Integer, default=50, nullable=False)
 
     # ── WhatsApp alerts (non-secret config only; secrets in WhatsAppCredentials)
     whatsapp_alerts_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

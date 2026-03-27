@@ -1,7 +1,8 @@
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -38,14 +39,35 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    """Catch unhandled exceptions — log details, return generic message to client."""
+    if isinstance(exc, HTTPException):
+        raise exc  # Let FastAPI handle HTTPExceptions normally
+    logger.error(
+        "unhandled_exception",
+        path=request.url.path,
+        method=request.method,
+        error=str(exc),
+        exc_type=type(exc).__name__,
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Error interno del servidor."},
+    )
+
 # CORS for dashboard dev server
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(settings.api_cors_origins),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Webhook-Secret"],
 )
+
+from app.api.auth import APIKeyMiddleware
+app.add_middleware(APIKeyMiddleware)
 
 app.include_router(api_router)
 

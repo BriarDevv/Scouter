@@ -38,6 +38,9 @@ class Lead(Base):
         Index("ix_leads_website_url", "website_url", unique=False),
         Index("ix_leads_status", "status"),
         Index("ix_leads_score", "score"),
+        Index("ix_leads_status_score", "status", "score"),
+        Index("ix_leads_created_at", "created_at"),
+        Index("ix_leads_llm_quality", "llm_quality"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
@@ -71,6 +74,7 @@ class Lead(Base):
 
     # LLM analysis
     llm_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    llm_quality: Mapped[str | None] = mapped_column(String(20), nullable=True)
     llm_quality_assessment: Mapped[str | None] = mapped_column(Text, nullable=True)
     llm_suggested_angle: Mapped[str | None] = mapped_column(Text, nullable=True)
 

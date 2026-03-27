@@ -13,6 +13,14 @@ from app.workers.tasks import task_analyze_lead, task_full_pipeline
 router = APIRouter(prefix="/scoring", tags=["scoring"])
 
 
+@router.post("/rescore-all")
+def rescore_all_leads():
+    """Re-score all leads. Useful after scoring weight changes."""
+    from app.workers.tasks import task_rescore_all
+    task = task_rescore_all.delay()
+    return {"task_id": str(task.id), "status": "queued"}
+
+
 @router.post("/{lead_id}", response_model=LeadResponse)
 def score(lead_id: uuid.UUID, db: Session = Depends(get_session)):
     """Score a lead synchronously based on its signals."""

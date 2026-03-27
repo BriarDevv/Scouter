@@ -202,7 +202,8 @@ export function ControlCenter() {
         const data = await res.json();
         if (data.status === "done") {
           setPipelineStatus("done");
-          setPipelineProgress(`Listo — ${data.processed ?? 0} leads procesados (${data.errors ?? 0} errores)`);
+          const crawlNote = data.crawl_rounds ? ` (${data.crawl_rounds} crawls, ${data.leads_from_crawl ?? 0} encontrados)` : "";
+          setPipelineProgress(`Listo — ${data.processed ?? 0} leads procesados${crawlNote}`);
           sileo.success({ title: `Pipeline completado: ${data.processed ?? 0} leads` });
         } else if (data.status === "error") {
           setPipelineStatus("error");
@@ -213,9 +214,15 @@ export function ControlCenter() {
           setPipelineProgress(null);
           sileo.success({ title: "Pipeline detenido" });
         } else if (data.status === "running") {
-          setPipelineProgress(data.current_lead
-            ? `${data.current_lead} (${data.processed ?? 0}/${data.total ?? 0}) — ${data.current_step ?? ""}`
-            : "Procesando...");
+          const step = data.current_step ?? "";
+          const crawlInfo = data.crawl_rounds ? ` | crawl #${data.crawl_rounds}` : "";
+          if (step === "crawling") {
+            setPipelineProgress(`Buscando leads — ${data.current_lead ?? "crawling..."}${crawlInfo}`);
+          } else if (data.current_lead) {
+            setPipelineProgress(`${data.current_lead} (${data.processed ?? 0}/${data.total ?? 0}) — ${step}${crawlInfo}`);
+          } else {
+            setPipelineProgress("Iniciando...");
+          }
         }
       } catch { /* ignore */ }
     }, 2000);

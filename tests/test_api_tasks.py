@@ -1,7 +1,12 @@
+from datetime import UTC, datetime, timedelta
+
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
+from app.models.lead import Lead
 from app.models.task_tracking import TaskRun
 from app.services.task_tracking_service import queue_task_run
+from app.workers.tasks import _should_generate_draft
 from tests.conftest import TestSessionLocal
 
 
@@ -110,3 +115,74 @@ def test_queue_task_run_handles_worker_race(db, monkeypatch):
     assert task_run.task_id == task_id
     assert task_run.status == "running"
     assert task_run.current_step == "pipeline_dispatch"
+
+
+def test_draft_skipped_when_quality_not_high(db):
+    """Draft generation should be skipped when lead quality is not 'high'."""
+    lead = Lead(business_name="Low Quality Lead", city="Rosario", email="test@example.com")
+    db.add(lead)
+    db.commit()
+    db.refresh(lead)
+
+    # quality not set -> should not generate
+    assert _should_generate_draft(lead) is False
+
+    lead.llm_quality = "medium"
+    db.commit()
+    assert _should_generate_draft(lead) is False
+
+    lead.llm_quality = "low"
+    db.commit()
+    assert _should_generate_draft(lead) is False
+
+    lead.llm_quality = "unknown"
+    db.commit()
+    assert _should_generate_draft(lead) is False
+
+    lead.llm_quality = "high"
+    db.commit()
+    assert _should_generate_draft(lead) is True
+
+
+def test_draft_skipped_when_no_email(db):
+    """Draft generation should be skipped when lead has no email even if high quality."""
+    lead = Lead(business_name="No Email Lead", city="CABA")
+    db.add(lead)
+    db.commit()
+
+    lead.llm_quality = "high"
+    db.commit()
+    assert _should_generate_draft(lead) is False
+
+    lead.email = "contact@business.com"
+    db.commit()
+    assert _should_generate_draft(lead) is True
+
+
+def test_janitor_marks_stale_tasks_as_failed(db):
+    """Janitor should mark tasks stuck > 10 min as failed."""
+    stale_task = TaskRun(
+        task_id="stale-test-001",
+        task_name="task_analyze_lead",
+        queue="llm",
+        status="running",
+        current_step="analysis",
+    )
+    db.add(stale_task)
+    db.commit()
+
+    # Use raw SQL to bypass onupdate=func.now()
+    db.execute(
+        text("UPDATE task_runs SET updated_at = :ts WHERE task_id = :tid"),
+        {"ts": datetime.now(UTC) - timedelta(minutes=15), "tid": "stale-test-001"},
+    )
+    db.commit()
+
+    from app.workers.janitor import sweep_stale_tasks
+    result = sweep_stale_tasks(session_factory=TestSessionLocal)
+
+    db.expire_all()
+    db.refresh(stale_task)
+    assert stale_task.status == "failed"
+    assert "stale" in stale_task.error.lower()
+    assert result["marked_failed"] >= 1

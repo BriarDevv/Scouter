@@ -59,6 +59,36 @@ def test_instagram_only_scores_well():
     assert score >= 50.0
 
 
+def test_website_with_problems_scores_well():
+    """A lead with a website that has issues should be a good prospect."""
+    lead = _make_lead(
+        signals=[
+            _make_signal(SignalType.HAS_WEBSITE),
+            _make_signal(SignalType.HAS_CUSTOM_DOMAIN),
+            _make_signal(SignalType.NO_SSL),
+            _make_signal(SignalType.WEAK_SEO),
+            _make_signal(SignalType.NO_MOBILE_FRIENDLY),
+        ],
+        industry="restaurante",
+        city="CABA",
+    )
+    score = compute_score(lead)
+    # NO_SSL(10) + WEAK_SEO(8) + NO_MOBILE_FRIENDLY(12) + industry(15) + city(2) = 47
+    assert score >= 40.0
+
+
+def test_website_error_scores_like_prospect():
+    """A lead whose website errors out is a good prospect."""
+    lead = _make_lead(
+        signals=[_make_signal(SignalType.WEBSITE_ERROR)],
+        industry="clinica",
+        city="CABA",
+    )
+    score = compute_score(lead)
+    # WEBSITE_ERROR(15) + industry(15) + city(2) = 32
+    assert score >= 25.0
+
+
 def test_score_capped_at_100():
     # Stack all positive signals
     lead = _make_lead(

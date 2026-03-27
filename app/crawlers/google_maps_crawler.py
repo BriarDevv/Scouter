@@ -13,13 +13,18 @@ from app.crawlers.base_crawler import BaseCrawler, RawLead
 
 logger = get_logger(__name__)
 
-# Categories relevant for web development services
+# Categories relevant for web development services — ordered by prospect value
 DEFAULT_CATEGORIES = [
-    "restaurante", "peluqueria", "gimnasio", "clinica",
-    "estudio contable", "inmobiliaria", "taller mecanico",
-    "veterinaria", "floreria", "lavadero de autos",
-    "panaderia", "ferreteria", "optica", "libreria",
-    "hotel", "hostel", "bar", "cafeteria",
+    # High-value: service businesses that benefit most from a website
+    "restaurante", "clinica", "consultorio odontologico",
+    "inmobiliaria", "hotel", "hostel",
+    "estudio contable", "abogado", "estudio juridico",
+    # Medium-high: personal care, fitness, retail
+    "peluqueria", "barberia", "gimnasio",
+    "veterinaria", "optica", "boutique",
+    # Medium: food/hospitality
+    "cafeteria", "bar", "panaderia",
+    "floreria", "ferreteria", "libreria",
 ]
 
 _PLACES_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"

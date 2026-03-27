@@ -169,13 +169,27 @@ def _detect_intent(message: str) -> tuple[Intent, str | None]:
     if msg in ("borradores", "drafts"):
         return Intent.QUERY_DRAFTS, None
 
-    # Stats
+    # Stats — exact keywords and natural-language patterns
     if msg in ("stats", "estadisticas", "resumen", "estad\u00edsticas"):
         return Intent.QUERY_STATS, None
+    if re.search(r"cuantos?\s+leads", msg) or re.search(r"cuántos?\s+leads", msg):
+        return Intent.QUERY_STATS, None
+    if re.search(r"(resumen|overview|metricas|métricas|numeros|números|dashboard)", msg):
+        return Intent.QUERY_STATS, None
 
-    # Leads (generic)
+    # Leads (generic) — exact keywords and natural-language patterns
     if msg in ("leads", "prospectos"):
         return Intent.QUERY_LEADS, None
+    if re.search(r"(mejores|top|mejores?\s+leads|top\s+leads|listado?\s+de?\s+leads)", msg):
+        return Intent.QUERY_LEADS, None
+
+    # Notifications — natural-language patterns
+    if re.search(r"(alertas?|notificacion|hay\s+alertas|hay\s+notificacion)", msg):
+        return Intent.QUERY_NOTIFICATIONS, None
+
+    # Drafts — natural-language patterns
+    if re.search(r"(borrador|draft|pendientes?\s+de\s+revision)", msg):
+        return Intent.QUERY_DRAFTS, None
 
     return Intent.HELP, None
 

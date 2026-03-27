@@ -1,6 +1,6 @@
 ---
 name: clawscout-notifications
-description: "Query, manage, and resolve ClawScout notifications and security alerts. Covers in-app and WhatsApp alert channels."
+description: "ClawScout notifications. Exec: cd /home/briar/src/ClawScout && .venv/bin/python scripts/clawscoutctl.py --data-only --compact <cmd>. Commands: notifications-list --limit N | notifications-list --category business|system|security | notifications-counts | notification-resolve --id UUID | notifications-mark-read. Return ONLY the JSON output."
 metadata: { "openclaw": { "emoji": "🔔", "os": ["linux"], "requires": { "bins": ["python3"] } } }
 ---
 

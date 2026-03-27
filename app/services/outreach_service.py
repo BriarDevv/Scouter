@@ -23,8 +23,12 @@ def generate_outreach_draft(db: Session, lead_id: uuid.UUID) -> OutreachDraft | 
     if not lead:
         return None
 
+    if not lead.email:
+        logger.warning("draft_skipped_no_email", lead_id=str(lead_id), business=lead.business_name)
+        return None
+
     # Check suppression before generating
-    if lead.email and is_suppressed(db, email=lead.email):
+    if is_suppressed(db, email=lead.email):
         logger.warning("outreach_blocked_suppressed", lead_id=str(lead_id))
         return None
 

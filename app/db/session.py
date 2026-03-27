@@ -7,10 +7,11 @@ from app.core.config import settings
 
 engine = create_engine(
     settings.DATABASE_URL,
-    pool_size=10,
-    max_overflow=20,
+    pool_size=20,
+    max_overflow=30,
     pool_pre_ping=True,
-    echo=settings.DEBUG,
+    pool_recycle=3600,
+    echo=False,
 )
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)

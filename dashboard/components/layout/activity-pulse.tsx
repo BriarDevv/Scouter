@@ -87,7 +87,8 @@ function ModelBadge({ model }: { model: string | null }) {
 function TaskRow({ task, llm }: { task: TaskStatusRecord; llm: LLMSettings | null }) {
   const step = getStepConfig(task.current_step);
   const active = isActive(task.status);
-  const failed = task.status === "failed";
+  const stale = task.status === "stale";
+  const failed = task.status === "failed" || stale;
   const done = ["succeeded", "success"].includes(task.status);
   const model = getModelForStep(task.current_step, llm);
 
@@ -158,8 +159,24 @@ export function ActivityPulse() {
     return () => clearInterval(id);
   }, [poll]);
 
-  const activeTasks = tasks.filter((t) => isActive(t.status));
-  const recentDone = tasks.filter((t) => !isActive(t.status)).slice(0, 3);
+  const activeTasksRaw = tasks.filter((t) => isActive(t.status));
+  // Dedup: keep only the most recent task per lead_id + current_step
+  const seenActive = new Set<string>();
+  const activeTasks = activeTasksRaw.filter((t) => {
+    const key = (t.lead_id ?? "no-lead") + ":" + (t.current_step ?? "no-step");
+    if (seenActive.has(key)) return false;
+    seenActive.add(key);
+    return true;
+  });
+  // Dedup recent/stale tasks too — keep only the most recent per lead_id + current_step
+  const seenDone = new Set<string>();
+  const recentDone = tasks.filter((t) => {
+    if (isActive(t.status)) return false;
+    const key = (t.lead_id ?? "no-lead") + ":" + (t.current_step ?? "no-step");
+    if (seenDone.has(key)) return false;
+    seenDone.add(key);
+    return true;
+  }).slice(0, 3);
   const batchRunning = batch?.status === "running";
   const hasActive = activeTasks.length > 0 || batchRunning;
   const latestTask = activeTasks[0] ?? recentDone[0] ?? null;

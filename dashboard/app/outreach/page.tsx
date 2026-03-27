@@ -19,6 +19,7 @@ import {
   getLeads,
   getOutreachLogs,
   reviewDraft,
+  sendOutreachDraft,
 } from "@/lib/api/client";
 import type {
   Lead,
@@ -30,7 +31,7 @@ import type {
 } from "@/types";
 import { DRAFT_STATUS_CONFIG, INBOUND_MATCH_VIA_LABELS } from "@/lib/constants";
 import {
-  Mail, CheckCircle, XCircle, Loader2, FileText,
+  Mail, CheckCircle, XCircle, Loader2, FileText, Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -150,6 +151,32 @@ export default function OutreachPage() {
     }
   }
 
+  const [isSendingDraftId, setIsSendingDraftId] = useState<string | null>(null);
+
+  async function handleSend(draftId: string) {
+    setIsSendingDraftId(draftId);
+    try {
+      await sileo.promise(
+        (async () => {
+          await sendOutreachDraft(draftId);
+          setDrafts((current) =>
+            current.map((draft) => (draft.id === draftId ? { ...draft, status: "sent" as DraftStatus } : draft))
+          );
+        })(),
+        {
+          loading: { title: "Enviando mail..." },
+          success: { title: "Mail enviado" },
+          error: (err: unknown) => ({
+            title: "Error al enviar",
+            description: err instanceof Error ? err.message : "No se pudo enviar el mail.",
+          }),
+        }
+      );
+    } finally {
+      setIsSendingDraftId(null);
+    }
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -262,6 +289,20 @@ export default function OutreachPage() {
                         disabled={isReviewingDraftId === draft.id}
                       >
                         <XCircle className="h-3.5 w-3.5" /> Rechazar
+                      </Button>
+                    </div>
+                  )}
+
+                  {draft.status === "approved" && (
+                    <div className="mt-3 flex gap-2 border-t border-border/50 pt-3">
+                      <Button
+                        size="sm"
+                        className="rounded-xl bg-blue-600 text-white hover:bg-blue-700 gap-1.5 h-8"
+                        onClick={(e) => { e.stopPropagation(); void handleSend(draft.id); }}
+                        disabled={isSendingDraftId === draft.id}
+                      >
+                        {isSendingDraftId === draft.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                        Enviar Mail
                       </Button>
                     </div>
                   )}

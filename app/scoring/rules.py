@@ -21,9 +21,10 @@ SIGNAL_WEIGHTS: dict[SignalType, float] = {
     SignalType.WEAK_SEO: 8.0,
     SignalType.NO_MOBILE_FRIENDLY: 12.0,
     SignalType.SLOW_LOAD: 8.0,
-    # Negative signals (already has good web presence)
-    SignalType.HAS_WEBSITE: -5.0,
-    SignalType.HAS_CUSTOM_DOMAIN: -5.0,
+    SignalType.WEBSITE_ERROR: 15.0,
+    # Neutral: having a website is not a penalty — score comes from problems found
+    SignalType.HAS_WEBSITE: 0.0,
+    SignalType.HAS_CUSTOM_DOMAIN: 0.0,
 }
 
 # Industries with higher likelihood of needing web services

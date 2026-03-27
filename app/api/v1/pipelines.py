@@ -107,13 +107,9 @@ def stop_batch_pipeline():
     existing = redis.get(redis_key)
     if existing:
         data = _json.loads(existing)
-        if data.get("status") == "running":
+        if data.get("status") in ("running", "stopping"):
             data["status"] = "stopping"
-            redis.set(redis_key, _json.dumps(data), ex=7200)
-            # Also revoke the Celery task
-            if data.get("task_id"):
-                from app.workers.celery_app import celery_app
-                celery_app.control.revoke(data["task_id"], terminate=True, signal="SIGTERM")
-            return {"ok": True, "message": "Pipeline batch detenido."}
+            redis.set(redis_key, _json.dumps(data), ex=3600)
+            return {"ok": True, "message": "Pipeline batch deteniéndose tras el lead actual."}
     redis.delete(redis_key)
     return {"ok": True, "message": "No habia pipeline corriendo."}

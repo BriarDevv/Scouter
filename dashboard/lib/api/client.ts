@@ -43,9 +43,13 @@ import type {
 } from "@/types";
 import { API_BASE_URL } from "@/lib/constants";
 
+const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
+
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (API_KEY) headers["X-API-Key"] = API_KEY;
   const res = await fetch(`${API_BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
+    headers,
     ...options,
   });
   if (!res.ok) {
@@ -141,8 +145,12 @@ export async function getDraftDeliveries(draftId: string): Promise<OutreachDeliv
   return apiFetch(`/outreach/drafts/${draftId}/deliveries`);
 }
 
+export async function sendOutreachDraft(draftId: string): Promise<OutreachDelivery> {
+  return apiFetch(`/outreach/drafts/${draftId}/send`, { method: "POST" });
+}
+
 export async function reviewLeadWithIA(leadId: string): Promise<TaskResponse> {
-  return apiFetch(`/reviews/${leadId}/async`, { method: "POST" });
+  return apiFetch(`/reviews/leads/${leadId}/async`, { method: "POST" });
 }
 
 export async function reviewDraft(

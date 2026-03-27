@@ -53,19 +53,19 @@ run_wrapper settings settings-llm
 
 run_openclaw \
   overview \
-  'Use the clawscout-leader skill. Run only the overview command. Return only compact JSON with exactly total_leads and drafts_recent_24h copied from the wrapper output. Do not infer or recompute anything.'
+  'Use the clawscout-data skill. Run only the overview command. Return only compact JSON with exactly total_leads and drafts_recent_24h copied from the wrapper output. Do not infer or recompute anything.'
 
 run_openclaw \
   top_leads \
-  "Use the clawscout-leader skill. Run only the top-leads command with limit $TOP_LEADS_LIMIT. Return only compact JSON shaped like {\"top_leads\":[{\"id\":\"...\",\"score\":0.0}]}, preserving order and values from the wrapper output."
+  "Use the clawscout-data skill. Run only the top-leads command with limit $TOP_LEADS_LIMIT. Return only compact JSON shaped like {\"top_leads\":[{\"id\":\"...\",\"score\":0.0}]}, preserving order and values from the wrapper output."
 
 run_openclaw \
   recent_drafts \
-  "Use the clawscout-leader skill. Run only the recent-drafts command with limit $TOP_LEADS_LIMIT. Return only compact JSON shaped like {\"recent_drafts\":[{\"id\":\"...\",\"lead_id\":\"...\",\"status\":\"...\"}]}, preserving order and values from the wrapper output."
+  "Use the clawscout-data skill. Run only the recent-drafts command with limit $TOP_LEADS_LIMIT. Return only compact JSON shaped like {\"recent_drafts\":[{\"id\":\"...\",\"lead_id\":\"...\",\"status\":\"...\"}]}, preserving order and values from the wrapper output."
 
 run_openclaw \
   settings \
-  'Use the clawscout-leader skill. Run only the settings-llm command. Return only compact JSON with exactly leader_model, executor_model, reviewer_model, and supported_models copied from the wrapper output.'
+  'Use the clawscout-data skill. Run only the settings-llm command. Return only compact JSON with exactly leader_model, executor_model, reviewer_model, and supported_models copied from the wrapper output.'
 
 python3 - "$OUTPUT_DIR" "$TOP_LEADS_LIMIT" <<'PY'
 import json

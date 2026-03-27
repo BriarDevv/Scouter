@@ -67,8 +67,8 @@ def get_mail_settings(db) -> dict:
 
     outbound_configured = not outbound_missing
     inbound_configured = not inbound_missing
-    outbound_ready = outbound["enabled"] and outbound_configured
-    inbound_ready = inbound["sync_enabled"] and inbound_configured
+    outbound_ready = outbound_configured
+    inbound_ready = inbound_configured
 
     last_sync_payload = None
     if last_sync:

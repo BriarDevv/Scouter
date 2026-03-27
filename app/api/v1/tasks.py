@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -10,6 +10,9 @@ from app.services.task_tracking_service import get_pipeline_run, get_task_run, l
 from app.workers.celery_app import celery_app
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
+
+STALE_THRESHOLD = timedelta(minutes=10)
+ACTIVE_STATUSES = {"running", "queued", "started", "pending", "retrying"}
 
 
 def _merge_task_view(db: Session, task_run) -> TaskStatusResponse:
@@ -33,6 +36,13 @@ def _merge_task_view(db: Session, task_run) -> TaskStatusResponse:
         updated_at = pipeline_run.updated_at
         started_at = pipeline_run.started_at or started_at
         finished_at = pipeline_run.finished_at or finished_at
+
+    # Mark stale tasks — stuck in active status for > STALE_THRESHOLD
+    if status in ACTIVE_STATUSES and updated_at:
+        ts = updated_at if updated_at.tzinfo else updated_at.replace(tzinfo=UTC)
+        if datetime.now(UTC) - ts > STALE_THRESHOLD:
+            status = "stale"
+            error = error or "Task stuck — no worker processed it"
 
     return TaskStatusResponse(
         task_id=task_run.task_id,
@@ -106,5 +116,5 @@ def revoke_task(task_id: str):
     try:
         celery_app.control.revoke(task_id, terminate=True, signal="SIGTERM")
         return {"ok": True, "task_id": task_id, "message": "Task revocada."}
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+    except Exception:
+        raise HTTPException(status_code=500, detail="No se pudo revocar la task.")

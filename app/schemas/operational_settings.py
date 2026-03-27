@@ -15,6 +15,7 @@ class OperationalSettingsUpdate(BaseModel):
     calendar_url: str | None = None
     signature_cta: str | None = None
     signature_include_portfolio: bool | None = None
+    signature_is_solo: bool | None = None
     default_outreach_tone: str | None = None
     default_reply_tone: str | None = None
     default_closing_line: str | None = None
@@ -72,7 +73,7 @@ class OperationalSettingsUpdate(BaseModel):
     # Non-nullable DB columns — can never be set to None from PATCH
     _NON_NULLABLE: frozenset = frozenset({
         "require_approved_drafts", "auto_classify_inbound", "reply_assistant_enabled",
-        "reviewer_enabled", "signature_include_portfolio", "prioritize_quote_replies",
+        "reviewer_enabled", "signature_include_portfolio", "signature_is_solo", "prioritize_quote_replies",
         "prioritize_meeting_replies", "allow_openclaw_briefs", "allow_reply_assistant_generation",
         "reviewer_confidence_threshold",
         "notifications_enabled", "notification_score_threshold",
@@ -112,6 +113,7 @@ class OperationalSettingsResponse(BaseModel):
     calendar_url: str | None
     signature_cta: str | None
     signature_include_portfolio: bool
+    signature_is_solo: bool
     default_outreach_tone: str
     default_reply_tone: str
     default_closing_line: str | None

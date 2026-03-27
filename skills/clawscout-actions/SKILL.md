@@ -1,6 +1,6 @@
 ---
 name: clawscout-actions
-description: "Mutating actions in ClawScout: generate drafts, run pipelines, request reviews. Requires explicit user intent."
+description: "Mutating actions in ClawScout. Exec: cd /home/briar/src/ClawScout && .venv/bin/python scripts/clawscoutctl.py --data-only --compact <cmd>. Commands: generate-draft --lead-id ID --wait | run-pipeline --lead-id ID --wait | review-lead --lead-id ID --wait | review-draft --draft-id ID --wait | review-reply --message-id ID | task-status --task-id ID. Only on explicit user request."
 metadata: { "openclaw": { "emoji": "⚡", "os": ["linux"], "requires": { "bins": ["python3"] } } }
 ---
 

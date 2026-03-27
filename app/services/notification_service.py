@@ -1,6 +1,6 @@
 """Notification service — create, query, update, and dispatch notifications.
 
-Supports deduplication, rate limiting, and multi-channel delivery (in-app + WhatsApp).
+Supports deduplication, rate limiting, and multi-channel delivery (in-app + WhatsApp + Telegram).
 """
 
 from __future__ import annotations
@@ -98,8 +98,9 @@ def create_notification(
         logger.debug("notification_dedup_integrity", dedup_key=dedup_key)
         return None
 
-    # Dispatch WhatsApp if thresholds met
+    # Dispatch to external channels if thresholds met
     _maybe_dispatch_whatsapp(db, notif)
+    _maybe_dispatch_telegram(db, notif)
 
     db.commit()
     db.refresh(notif)
@@ -236,11 +237,15 @@ def bulk_update_notifications(
     return result.rowcount
 
 
+def _get_ops_settings(db: Session):
+    """Return the singleton OperationalSettings row, creating if needed."""
+    from app.services.operational_settings_service import get_or_create
+    return get_or_create(db)
+
+
 def _maybe_dispatch_whatsapp(db: Session, notif: Notification) -> None:
     """Send WhatsApp alert if notification meets severity/category thresholds."""
-    from app.services.operational_settings_service import get_or_create as get_settings
-
-    settings = get_or_create(db)
+    settings = _get_ops_settings(db)
     if not getattr(settings, "whatsapp_alerts_enabled", False):
         return
 
@@ -272,6 +277,36 @@ def _maybe_dispatch_whatsapp(db: Session, notif: Notification) -> None:
         }
 
 
-def get_or_create(db: Session) -> None:
-    """Alias used internally — not needed for notifications."""
-    pass
+def _maybe_dispatch_telegram(db: Session, notif: Notification) -> None:
+    """Send Telegram alert if notification meets severity/category thresholds."""
+    settings = _get_ops_settings(db)
+    if not getattr(settings, "telegram_alerts_enabled", False):
+        return
+
+    # Reuse the same severity/category logic as WhatsApp
+    min_sev = getattr(settings, "whatsapp_min_severity", "high")
+    if _SEV_ORDER.get(notif.severity.value, 0) < _SEV_ORDER.get(min_sev, 2):
+        return
+
+    allowed_cats = getattr(settings, "whatsapp_categories", None) or ["business", "security"]
+    if notif.category.value not in allowed_cats:
+        return
+
+    # Anti-loop: never send Telegram alert about Telegram failure
+    if notif.type in ("telegram_delivery_failed", "whatsapp_delivery_failed"):
+        return
+
+    try:
+        from app.services.telegram_service import send_alert
+        result = send_alert(db, title=notif.title, message=notif.message, severity=notif.severity.value)
+        notif.channel_state = {
+            **(notif.channel_state or {}),
+            "telegram": "sent" if result else "failed",
+        }
+    except Exception as exc:
+        logger.error("telegram_dispatch_failed", error=str(exc))
+        notif.channel_state = {
+            **(notif.channel_state or {}),
+            "telegram": "failed",
+            "telegram_error": str(exc)[:200],
+        }

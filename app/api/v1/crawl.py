@@ -72,11 +72,18 @@ def get_territory_crawl_status(territory_id: str):
 
 @router.post("/territory/{territory_id}/stop")
 def stop_territory_crawl(territory_id: str):
-    """Stop/clear a territory crawl status."""
+    """Signal the crawl to stop after the current city."""
     redis = Redis.from_url(env.REDIS_URL)
     redis_key = f"crawl:territory:{territory_id}"
+    existing = redis.get(redis_key)
+    if existing:
+        data = _json.loads(existing)
+        if data.get("status") in ("running", "stopping"):
+            data["status"] = "stopping"
+            redis.set(redis_key, _json.dumps(data), ex=3600)
+            return {"ok": True, "message": "Crawl deteniéndose tras la ciudad actual."}
     redis.delete(redis_key)
-    return {"ok": True, "message": "Crawl detenido."}
+    return {"ok": True, "message": "No habia crawl corriendo."}
 
 
 # ── Categories ────────────────────────────────────────────────────────

@@ -32,7 +32,17 @@ def _fetch_url(url: str) -> httpx.Response:
 
 
 _EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
-_JUNK_EMAIL_DOMAINS = {"example.com", "sentry.io", "wixpress.com", "wordpress.com", "gravatar.com"}
+_JUNK_EMAIL_DOMAINS = {
+    "example.com", "email.com", "test.com", "placeholder.com",
+    "sentry.io", "sentry-next.wixpress.com", "wixpress.com",
+    "wordpress.com", "gravatar.com", "w3.org",
+    "ingest.de.sentry.io", "ingest.sentry.io",
+}
+_JUNK_EMAIL_PREFIXES = (
+    "noreply", "no-reply", "no_reply", "donotreply",
+    "notify", "notification", "alert", "mailer-daemon",
+    "tuemail", "youremail", "your-email", "tu-email",
+)
 
 
 def _extract_emails(html: str) -> list[str]:
@@ -40,13 +50,22 @@ def _extract_emails(html: str) -> list[str]:
     raw = set(_EMAIL_RE.findall(html))
     emails: list[str] = []
     for email in raw:
-        domain = email.split("@", 1)[1].lower()
-        if domain in _JUNK_EMAIL_DOMAINS:
+        lower = email.lower()
+        domain = lower.split("@", 1)[1]
+        local = lower.split("@", 1)[0]
+        # Skip junk domains
+        if domain in _JUNK_EMAIL_DOMAINS or any(jd in domain for jd in ("sentry", "wixpress")):
             continue
-        # Skip image-like extensions and common false positives
-        if any(email.lower().endswith(ext) for ext in (".png", ".jpg", ".svg", ".gif", ".webp")):
+        # Skip image-like extensions
+        if any(lower.endswith(ext) for ext in (".png", ".jpg", ".svg", ".gif", ".webp")):
             continue
-        emails.append(email.lower())
+        # Skip placeholder/noreply prefixes
+        if any(local.startswith(p) for p in _JUNK_EMAIL_PREFIXES):
+            continue
+        # Skip hex-like local parts (tracking IDs)
+        if len(local) > 20 and all(c in "0123456789abcdef" for c in local.replace("-", "")):
+            continue
+        emails.append(lower)
     return sorted(set(emails))
 
 
@@ -57,12 +76,28 @@ def _analyze_website(url: str) -> tuple[list[tuple[SignalType, str]], list[str]]
 
     try:
         resp = _fetch_url(url)
+    except httpx.TimeoutException as e:
+        logger.warning("website_fetch_timeout", url=url, error=str(e))
+        signals.append((SignalType.WEBSITE_ERROR, f"Timeout: {e}"))
+        return signals, emails
+    except httpx.ConnectError as e:
+        logger.warning("website_fetch_connect_error", url=url, error=str(e))
+        signals.append((SignalType.NO_WEBSITE, f"Could not connect: {e}"))
+        return signals, emails
     except Exception as e:
         logger.warning("website_fetch_failed", url=url, error=str(e))
-        signals.append((SignalType.NO_WEBSITE, f"Could not reach: {e}"))
+        signals.append((SignalType.WEBSITE_ERROR, f"Error: {e}"))
+        return signals, emails
+
+    if resp.status_code >= 500:
+        signals.append((SignalType.WEBSITE_ERROR, f"Server error: HTTP {resp.status_code}"))
         return signals, emails
 
     signals.append((SignalType.HAS_WEBSITE, f"HTTP {resp.status_code}"))
+
+    # Load time check
+    if resp.elapsed and resp.elapsed.total_seconds() > 3.0:
+        signals.append((SignalType.SLOW_LOAD, f"Load time: {resp.elapsed.total_seconds():.1f}s"))
 
     # SSL check
     parsed = urlparse(url)
@@ -95,6 +130,22 @@ def _analyze_website(url: str) -> tuple[list[tuple[SignalType, str]], list[str]]
 
     # Extract emails from page
     emails = _extract_emails(resp.text)
+
+    # If no email on home page, try common subpages
+    if not emails:
+        base = f"{parsed.scheme}://{parsed.hostname}"
+        if parsed.port and parsed.port not in (80, 443):
+            base += f":{parsed.port}"
+        for subpath in ("/contacto", "/contact", "/about", "/nosotros", "/quienes-somos"):
+            try:
+                sub_resp = _fetch_url(f"{base}{subpath}")
+                if sub_resp.status_code < 400:
+                    emails = _extract_emails(sub_resp.text)
+                    if emails:
+                        logger.info("email_from_subpage", url=url, subpath=subpath, email=emails[0])
+                        break
+            except Exception:
+                continue
 
     # Check for visible email (signal)
     if not emails:
@@ -135,6 +186,17 @@ def enrich_lead(db: Session, lead_id: uuid.UUID) -> Lead | None:
         if "instagram.com" in lead.website_url.lower() and not lead.instagram_url:
             lead.instagram_url = lead.website_url
         lead.website_url = None
+
+    # If no website but has Instagram, try to extract website from Instagram bio
+    if not lead.website_url and lead.instagram_url:
+        try:
+            from app.services.instagram_scraper import scrape_instagram_bio_link
+            bio_website = scrape_instagram_bio_link(lead.instagram_url)
+            if bio_website:
+                lead.website_url = bio_website
+                logger.info("website_from_instagram", lead_id=str(lead_id), website=bio_website)
+        except Exception as exc:
+            logger.warning("ig_scrape_skipped", lead_id=str(lead_id), error=str(exc))
 
     # Website analysis
     if lead.website_url:

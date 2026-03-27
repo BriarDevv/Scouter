@@ -31,6 +31,7 @@ import {
   ExternalLink,
   RefreshCw,
   Mail,
+  MailX,
   ShieldOff,
   ChevronLeft,
   ChevronRight,
@@ -206,6 +207,11 @@ export function LeadsTable({ leads }: LeadsTableProps) {
               <TableRow key={lead.id} className="border-border/50 hover:bg-muted/50 transition-colors">
                 <TableCell>
                   <Link href={`/leads/${lead.id}`} className="group flex items-center gap-2">
+                    {lead.email ? (
+                      <Mail className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                    ) : (
+                      <MailX className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
+                    )}
                     <span className="font-medium text-foreground group-hover:text-violet-700 transition-colors">
                       {truncate(lead.business_name, 30)}
                     </span>

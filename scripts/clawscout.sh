@@ -82,7 +82,8 @@ cmd_start() {
         # shellcheck disable=SC1091
         source "$PROJECT_DIR/.venv/bin/activate"
         nohup celery -A app.workers.celery_app worker \
-            --loglevel=info --concurrency=2 \
+            --loglevel=info --concurrency=4 \
+            -Q default,enrichment,scoring,llm,reviewer \
             >>"$LOG_DIR/worker.log" 2>&1 &
         echo $! > "$PID_DIR/worker.pid"
         sleep 2
@@ -90,6 +91,23 @@ cmd_start() {
             log_ok "Worker corriendo (PID $(get_pid worker))"
         else
             log_warn "Worker no arranco — ver logs/worker.log"
+        fi
+    fi
+
+    # 2b. Celery beat (scheduler for janitor and periodic tasks)
+    if is_running beat; then
+        log_ok "Beat ya esta corriendo (PID $(get_pid beat))"
+    else
+        log_info "Iniciando Celery beat..."
+        nohup celery -A app.workers.celery_app beat \
+            --loglevel=info \
+            >>"$LOG_DIR/beat.log" 2>&1 &
+        echo $! > "$PID_DIR/beat.pid"
+        sleep 2
+        if is_running beat; then
+            log_ok "Beat corriendo (PID $(get_pid beat))"
+        else
+            log_warn "Beat no arranco — ver logs/beat.log"
         fi
     fi
 
@@ -126,6 +144,17 @@ cmd_stop() {
         log_info "Worker no estaba corriendo"
     fi
 
+    # 2b. Celery beat
+    if is_running beat; then
+        local pid
+        pid=$(get_pid beat)
+        kill "$pid" 2>/dev/null || true
+        rm -f "$PID_DIR/beat.pid"
+        log_ok "Beat detenido (was PID $pid)"
+    else
+        log_info "Beat no estaba corriendo"
+    fi
+
     # 3. Docker infra
     log_info "Deteniendo Postgres + Redis..."
     docker compose -f "$PROJECT_DIR/docker-compose.yml" stop postgres redis >/dev/null 2>&1 || true
@@ -155,6 +184,13 @@ cmd_status() {
         log_ok "worker corriendo (PID $(get_pid worker))"
     else
         log_fail "worker no esta corriendo"
+    fi
+
+    # Celery beat
+    if is_running beat; then
+        log_ok "beat corriendo (PID $(get_pid beat))"
+    else
+        log_fail "beat no esta corriendo"
     fi
 
     # API + Dashboard via dev-status.sh

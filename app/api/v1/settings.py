@@ -267,7 +267,8 @@ def register_telegram_webhook(body: TelegramRegisterWebhookBody, db=Depends(get_
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Error al registrar webhook: {str(exc)}")
+        logger.error("telegram_webhook_register_failed", error=str(exc))
+        raise HTTPException(status_code=502, detail="Error al registrar webhook. Revisá los logs.")
 
     # Save webhook_url and secret to DB
     update_tg_creds(db, {
@@ -539,7 +540,8 @@ def link_openclaw_whatsapp():
             "command": f"{oc} channels login --channel whatsapp",
         }
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Error al abrir terminal: {str(exc)}")
+        logger.error("openclaw_terminal_failed", error=str(exc))
+        raise HTTPException(status_code=500, detail="Error al abrir terminal. Revisá los logs.")
 
 
 @router.post('/openclaw/start-gateway')
@@ -567,7 +569,8 @@ def start_openclaw_gateway():
             "message": "Gateway instalado pero no confirmo inicio. Verifica con 'openclaw gateway status'.",
         }
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Error al iniciar gateway: {str(exc)}")
+        logger.error("openclaw_gateway_start_failed", error=str(exc))
+        raise HTTPException(status_code=500, detail="Error al iniciar gateway. Revisá los logs.")
 
 
 # ── AI Workspace (OpenClaw config files) ──────────────────────────────

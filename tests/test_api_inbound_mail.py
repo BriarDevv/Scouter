@@ -166,7 +166,7 @@ def test_inbound_sync_blocked_when_disabled(client, monkeypatch):
 
     resp = client.post("/api/v1/mail/inbound/sync")
     assert resp.status_code == 503
-    assert "MAIL_INBOUND_ENABLED=true" in resp.json()["detail"]
+    assert "deshabilitada" in resp.json()["detail"].lower()
 
 
 def test_inbound_sync_deduplicates_and_matches_by_message_id(client, db, monkeypatch):

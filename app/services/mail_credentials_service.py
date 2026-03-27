@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from app.core.config import settings as env
+from app.core.crypto import decrypt_safe, encrypt_if_needed
 from app.core.logging import get_logger
 from app.models.mail_credentials import MailCredentials
 
@@ -49,6 +50,7 @@ def get_or_create(db: Session) -> MailCredentials:
 
 # Fields that must be stripped of whitespace on save
 _STRIP_FIELDS = {"smtp_host", "smtp_username", "imap_host", "imap_username"}
+_PASSWORD_FIELDS = {"smtp_password", "imap_password"}
 
 
 def update_credentials(db: Session, updates: dict) -> MailCredentials:
@@ -57,6 +59,8 @@ def update_credentials(db: Session, updates: dict) -> MailCredentials:
         if hasattr(row, key):
             if key in _STRIP_FIELDS and isinstance(value, str):
                 value = value.strip()
+            if key in _PASSWORD_FIELDS:
+                value = encrypt_if_needed(value)
             setattr(row, key, value)
     row.updated_at = datetime.now(timezone.utc)
     db.commit()
@@ -125,7 +129,7 @@ def get_effective_smtp(db: Session) -> EffectiveSMTPConfig:
         host=(row.smtp_host or env.MAIL_SMTP_HOST or "").strip(),
         port=row.smtp_port if row.smtp_host else env.MAIL_SMTP_PORT,
         username=row.smtp_username or env.MAIL_SMTP_USERNAME,
-        password=row.smtp_password or env.MAIL_SMTP_PASSWORD,
+        password=decrypt_safe(row.smtp_password) or env.MAIL_SMTP_PASSWORD,
         ssl=row.smtp_ssl if row.smtp_host else env.MAIL_SMTP_SSL,
         starttls=row.smtp_starttls if row.smtp_host else env.MAIL_SMTP_STARTTLS,
     )
@@ -137,7 +141,7 @@ def get_effective_imap(db: Session) -> EffectiveIMAPConfig:
         host=(row.imap_host or env.MAIL_IMAP_HOST or "").strip(),
         port=row.imap_port if row.imap_host else env.MAIL_IMAP_PORT,
         username=row.imap_username or env.MAIL_IMAP_USERNAME,
-        password=row.imap_password or env.MAIL_IMAP_PASSWORD,
+        password=decrypt_safe(row.imap_password) or env.MAIL_IMAP_PASSWORD,
         ssl=row.imap_ssl if row.imap_host else env.MAIL_IMAP_SSL,
     )
 

@@ -3,6 +3,7 @@
 import json as _json
 import uuid
 
+from celery.exceptions import SoftTimeLimitExceeded
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import select
 from app.core.logging import get_logger
@@ -239,7 +240,7 @@ def task_score_lead(
         clear_tracking_context()
 
 
-@celery_app.task(bind=True, max_retries=2, default_retry_delay=60)
+@celery_app.task(bind=True, max_retries=2, default_retry_delay=60, soft_time_limit=300, time_limit=360)
 def task_analyze_lead(
     self,
     lead_id: str,
@@ -306,12 +307,16 @@ def task_analyze_lead(
             )
             lead.llm_quality_assessment = evaluation["reasoning"]
             lead.llm_suggested_angle = evaluation["suggested_angle"]
+            raw_quality = evaluation.get("quality", "unknown").lower().strip()
+            if raw_quality not in ("high", "medium", "low"):
+                logger.warning("quality_normalized_to_unknown", lead=lead.business_name, raw_quality=raw_quality)
+            lead.llm_quality = raw_quality if raw_quality in ("high", "medium", "low") else "unknown"
 
             db.commit()
             result = {
                 "status": "ok",
                 "lead_id": lead_id,
-                "quality": evaluation["quality"],
+                "quality": lead.llm_quality,
             }
             mark_task_succeeded(
                 db,
@@ -322,6 +327,17 @@ def task_analyze_lead(
             )
             logger.info("task_step_completed", task_name="task_analyze_lead", result=result)
             return result
+    except SoftTimeLimitExceeded:
+        logger.error("task_soft_time_limit", task_name="task_analyze_lead", task_id=task_id)
+        with SessionLocal() as db:
+            mark_task_failed(
+                db,
+                task_id=task_id,
+                error="Soft time limit exceeded (5min)",
+                current_step="analysis",
+                pipeline_run_id=pipeline_uuid,
+            )
+        raise
     except Exception as exc:
         _track_failure(
             task=self,
@@ -339,14 +355,19 @@ def task_analyze_lead(
         clear_tracking_context()
 
 
-@celery_app.task(bind=True, max_retries=2, default_retry_delay=60)
+def _should_generate_draft(lead: Lead) -> bool:
+    """Only generate outreach drafts for high-quality leads with email."""
+    return getattr(lead, "llm_quality", None) == "high" and bool(lead.email)
+
+
+@celery_app.task(bind=True, max_retries=2, default_retry_delay=60, soft_time_limit=300, time_limit=360)
 def task_generate_draft(
     self,
     lead_id: str,
     pipeline_run_id: str | None = None,
     correlation_id: str | None = None,
 ) -> dict:
-    """Async task: generate outreach email draft."""
+    """Async task: generate outreach email draft (only for high-quality leads)."""
     task_id = str(self.request.id)
     queue = _queue_name(self.request, "llm")
     pipeline_uuid = _pipeline_uuid(pipeline_run_id)
@@ -370,6 +391,47 @@ def task_generate_draft(
                 correlation_id=correlation_id,
                 current_step="draft_generation",
             )
+
+            lead = db.get(Lead, uuid.UUID(lead_id))
+            if not lead:
+                error = "Lead not found"
+                mark_task_failed(
+                    db,
+                    task_id=task_id,
+                    error=error,
+                    current_step="draft_generation",
+                    pipeline_run_id=pipeline_uuid,
+                )
+                return {"status": "not_found", "lead_id": lead_id}
+
+            if not _should_generate_draft(lead):
+                result = {
+                    "status": "skipped",
+                    "lead_id": lead_id,
+                    "reason": f"quality={lead.llm_quality!r}, draft only for high",
+                }
+                mark_task_succeeded(
+                    db,
+                    task_id=task_id,
+                    result=result,
+                    current_step="draft_generation",
+                    pipeline_run_id=pipeline_uuid,
+                    pipeline_status="succeeded" if pipeline_uuid else None,
+                )
+                if pipeline_uuid:
+                    with SessionLocal() as pipeline_db:
+                        from app.services.task_tracking_service import update_pipeline_run
+
+                        update_pipeline_run(
+                            pipeline_db,
+                            pipeline_uuid,
+                            current_step="completed",
+                            status="succeeded",
+                            result=result,
+                            finished=True,
+                        )
+                logger.info("draft_skipped_quality_gate", lead_id=lead_id, quality=lead.llm_quality)
+                return result
 
             draft = generate_outreach_draft(db, uuid.UUID(lead_id))
             if not draft:
@@ -407,6 +469,17 @@ def task_generate_draft(
                     )
             logger.info("task_step_completed", task_name="task_generate_draft", result=result)
             return result
+    except SoftTimeLimitExceeded:
+        logger.error("task_soft_time_limit", task_name="task_generate_draft", task_id=task_id)
+        with SessionLocal() as db:
+            mark_task_failed(
+                db,
+                task_id=task_id,
+                error="Soft time limit exceeded (5min)",
+                current_step="draft_generation",
+                pipeline_run_id=pipeline_uuid,
+            )
+        raise
     except Exception as exc:
         _track_failure(
             task=self,
@@ -876,7 +949,7 @@ def task_full_pipeline(
 
 # ── Batch pipeline task ──────────────────────────────────────────────
 
-@celery_app.task(name="app.workers.tasks.task_batch_pipeline", bind=True, max_retries=0)
+@celery_app.task(name="app.workers.tasks.task_batch_pipeline", bind=True, max_retries=0, soft_time_limit=None, time_limit=None)
 def task_batch_pipeline(self, status_filter: str = "new"):
     """Process ALL leads with the given status through the full pipeline, one by one.
 
@@ -884,7 +957,7 @@ def task_batch_pipeline(self, status_filter: str = "new"):
     """
     from app.services.enrichment_service import enrich_lead
     from app.services.scoring_service import score_lead
-    from app.outreach.generator import generate_draft_content
+    from app.services.outreach_service import generate_outreach_draft as _generate_draft
     from redis import Redis
     from app.core.config import settings as env
 
@@ -892,113 +965,240 @@ def task_batch_pipeline(self, status_filter: str = "new"):
     redis_key = "pipeline:batch"
     task_id = str(self.request.id)
 
+    from app.models.territory import Territory
+
     db = SessionLocal()
     try:
-        leads = db.query(Lead).filter(Lead.status == status_filter).order_by(Lead.created_at).all()
-        total = len(leads)
-
-        if total == 0:
-            redis.set(redis_key, _json.dumps({
-                "status": "done", "task_id": task_id,
-                "total": 0, "processed": 0, "current_lead": None,
-            }), ex=3600)
-            return
+        total_processed = 0
+        total_errors = 0
+        crawl_rounds = 0
 
         progress = {
             "status": "running",
             "task_id": task_id,
-            "total": total,
+            "total": 0,
             "processed": 0,
             "current_lead": None,
             "current_step": "",
             "errors": 0,
+            "crawl_rounds": 0,
+            "leads_from_crawl": 0,
         }
-        redis.set(redis_key, _json.dumps(progress), ex=3600)
 
-        for idx, lead in enumerate(leads):
-            # Check if stop was requested (Redis key deleted)
+        while True:
+            # Check stop signal
             current = redis.get(redis_key)
-            if not current:
-                logger.info("batch_pipeline_stopped_by_user")
-                return
-            cur_data = _json.loads(current)
-            if cur_data.get("status") == "stopping":
-                redis.set(redis_key, _json.dumps({
-                    **progress, "status": "stopped",
-                }), ex=3600)
-                logger.info("batch_pipeline_stopped_by_user")
-                return
+            if current:
+                cur_data = _json.loads(current)
+                if cur_data.get("status") == "stopping":
+                    progress["status"] = "stopped"
+                    redis.set(redis_key, _json.dumps(progress), ex=3600)
+                    logger.info("batch_pipeline_stopped_by_user")
+                    return
 
-            progress["current_lead"] = lead.business_name
-            progress["processed"] = idx
+            # Load pending leads
+            leads = db.query(Lead).filter(Lead.status == status_filter).order_by(Lead.created_at).all()
 
-            try:
-                # Step 1: Enrich
+            if not leads:
+                # No leads — try crawling
+                territories = db.query(Territory).all()
+                if not territories or crawl_rounds >= 3:
+                    # No territories or max crawl rounds reached — done
+                    break
+
+                territory = territories[0]
+                crawl_rounds += 1
+                progress["current_step"] = "crawling"
+                progress["current_lead"] = f"Crawling {territory.name} (ronda {crawl_rounds})"
+                redis.set(redis_key, _json.dumps(progress), ex=3600)
+                logger.info("batch_auto_crawl", territory=territory.name, round=crawl_rounds)
+
+                try:
+                    task_crawl_territory(
+                        territory_id=str(territory.id),
+                        categories=None,
+                        only_without_website=False,
+                        max_results_per_category=20,
+                    )
+                except Exception as crawl_exc:
+                    logger.error("batch_auto_crawl_failed", territory=territory.name, round=crawl_rounds, error=str(crawl_exc))
+                    total_errors += 1
+                    progress["errors"] = total_errors
+                    redis.set(redis_key, _json.dumps(progress), ex=3600)
+                    continue
+
+                # Reload after crawl
+                db.expire_all()
+                leads = db.query(Lead).filter(Lead.status == status_filter).order_by(Lead.created_at).all()
+                progress["leads_from_crawl"] = progress.get("leads_from_crawl", 0) + len(leads)
+                progress["crawl_rounds"] = crawl_rounds
+                logger.info("batch_post_crawl", new_leads=len(leads), round=crawl_rounds)
+
+                if not leads:
+                    break  # Crawl brought nothing new
+
+            # Reset crawl counter — we have leads to process, so next crawl is fresh
+            crawl_rounds = 0
+
+            # Process this batch of leads
+            batch_total = len(leads)
+            progress["total"] = total_processed + batch_total
+            redis.set(redis_key, _json.dumps(progress), ex=3600)
+
+            for idx, lead in enumerate(leads):
+                # Check stop signal between leads
+                current = redis.get(redis_key)
+                if not current:
+                    logger.info("batch_pipeline_stopped_by_user")
+                    return
+                cur_data = _json.loads(current)
+                if cur_data.get("status") == "stopping":
+                    progress["status"] = "stopped"
+                    redis.set(redis_key, _json.dumps(progress), ex=3600)
+                    logger.info("batch_pipeline_stopped_by_user")
+                    return
+
+                progress["current_lead"] = lead.business_name
+                progress["processed"] = total_processed + idx
                 progress["current_step"] = "enrichment"
                 redis.set(redis_key, _json.dumps(progress), ex=3600)
-                enrich_lead(db, lead.id)
 
-                # Step 2: Score
-                progress["current_step"] = "scoring"
-                redis.set(redis_key, _json.dumps(progress), ex=3600)
-                score_lead(db, lead.id)
+                try:
+                    # Step 1: Enrich
+                    enrich_lead(db, lead.id)
 
-                # Step 3: LLM Analysis
-                progress["current_step"] = "analysis"
-                redis.set(redis_key, _json.dumps(progress), ex=3600)
+                    # Step 2: Score
+                    progress["current_step"] = "scoring"
+                    redis.set(redis_key, _json.dumps(progress), ex=3600)
+                    score_lead(db, lead.id)
 
-                db.refresh(lead)
-                from app.llm.client import summarize_business, evaluate_lead_quality
-                from app.llm.roles import LLMRole as _LLMRole
+                    # Step 3: LLM Analysis
+                    progress["current_step"] = "analysis"
+                    redis.set(redis_key, _json.dumps(progress), ex=3600)
 
-                summary = summarize_business(
-                    business_name=lead.business_name,
-                    industry=lead.industry,
-                    city=lead.city,
-                    website_url=lead.website_url,
-                    instagram_url=lead.instagram_url,
-                    signals=list(lead.signals),
-                    role=_LLMRole.EXECUTOR,
-                )
-                lead.llm_summary = summary
+                    db.refresh(lead)
+                    from app.llm.client import summarize_business, evaluate_lead_quality
+                    from app.llm.roles import LLMRole as _LLMRole
 
-                evaluation = evaluate_lead_quality(
-                    business_name=lead.business_name,
-                    industry=lead.industry,
-                    city=lead.city,
-                    website_url=lead.website_url,
-                    instagram_url=lead.instagram_url,
-                    signals=list(lead.signals),
-                    score=lead.score,
-                    role=_LLMRole.EXECUTOR,
-                )
-                lead.llm_quality_assessment = evaluation["reasoning"]
-                lead.llm_suggested_angle = evaluation["suggested_angle"]
-                db.commit()
+                    summary = summarize_business(
+                        business_name=lead.business_name,
+                        industry=lead.industry,
+                        city=lead.city,
+                        website_url=lead.website_url,
+                        instagram_url=lead.instagram_url,
+                        signals=list(lead.signals),
+                        role=_LLMRole.EXECUTOR,
+                    )
+                    lead.llm_summary = summary
 
-                # Step 4: Generate draft
-                progress["current_step"] = "draft"
-                redis.set(redis_key, _json.dumps(progress), ex=3600)
-                generate_draft_content(lead, db=db)
+                    evaluation = evaluate_lead_quality(
+                        business_name=lead.business_name,
+                        industry=lead.industry,
+                        city=lead.city,
+                        website_url=lead.website_url,
+                        instagram_url=lead.instagram_url,
+                        signals=list(lead.signals),
+                        score=lead.score,
+                        role=_LLMRole.EXECUTOR,
+                    )
+                    lead.llm_quality_assessment = evaluation["reasoning"]
+                    lead.llm_suggested_angle = evaluation["suggested_angle"]
+                    raw_quality = evaluation.get("quality", "unknown").lower().strip()
+                    if raw_quality not in ("high", "medium", "low"):
+                        logger.warning("quality_normalized_to_unknown", lead=lead.business_name, raw_quality=raw_quality)
+                    lead.llm_quality = raw_quality if raw_quality in ("high", "medium", "low") else "unknown"
+                    db.commit()
 
-                logger.info("batch_pipeline_lead_done", lead=lead.business_name, idx=idx + 1, total=total)
+                    # Step 4: Generate draft (only for high quality)
+                    progress["current_step"] = "draft"
+                    redis.set(redis_key, _json.dumps(progress), ex=3600)
+                    if lead.llm_quality == "high" and lead.email:
+                        _generate_draft(db, lead.id)
+                    else:
+                        reason = "no_email" if not lead.email else ("quality=%s" % lead.llm_quality)
+                        logger.info("batch_draft_skipped", lead=lead.business_name, reason=reason)
 
-            except Exception as exc:
-                progress["errors"] = progress.get("errors", 0) + 1
-                logger.error("batch_pipeline_lead_error", lead=lead.business_name, error=str(exc))
+                    logger.info("batch_pipeline_lead_done", lead=lead.business_name, idx=total_processed + idx + 1)
 
+                except Exception as exc:
+                    total_errors += 1
+                    progress["errors"] = total_errors
+                    logger.error("batch_pipeline_lead_error", lead=lead.business_name, error=str(exc))
+
+            total_processed += batch_total
+
+        # Done
         progress["status"] = "done"
-        progress["processed"] = total
+        progress["processed"] = total_processed
+        progress["total"] = total_processed
         progress["current_lead"] = None
         progress["current_step"] = ""
         redis.set(redis_key, _json.dumps(progress), ex=3600)
-        logger.info("batch_pipeline_done", total=total, errors=progress.get("errors", 0))
+        logger.info("batch_pipeline_done", total=total_processed, errors=total_errors, crawl_rounds=crawl_rounds)
 
     except Exception as exc:
         redis.set(redis_key, _json.dumps({
             "status": "error", "task_id": task_id, "error": str(exc),
         }), ex=3600)
         logger.error("batch_pipeline_error", error=str(exc))
+    finally:
+        db.close()
+
+
+# ── Re-score task ─────────────────────────────────────────────────────
+
+@celery_app.task(name="app.workers.tasks.task_rescore_all", bind=True, max_retries=0, soft_time_limit=None, time_limit=None)
+def task_rescore_all(self):
+    """Re-score all leads. Useful after scoring weight changes."""
+    from redis import Redis
+    from app.core.config import settings as env
+
+    redis = Redis.from_url(env.REDIS_URL)
+    redis_key = "pipeline:rescore"
+    task_id = str(self.request.id)
+
+    db = SessionLocal()
+    try:
+        leads = db.query(Lead).filter(Lead.score.isnot(None)).all()
+        total = len(leads)
+        rescored = 0
+
+        redis.set(redis_key, _json.dumps({
+            "status": "running", "task_id": task_id,
+            "total": total, "rescored": 0,
+        }), ex=3600)
+
+        for lead in leads:
+            try:
+                score_lead(db, lead.id)
+                rescored += 1
+            except Exception as exc:
+                logger.error("rescore_lead_error", lead=lead.business_name, error=str(exc))
+
+            if rescored % 20 == 0:
+                redis.set(redis_key, _json.dumps({
+                    "status": "running", "task_id": task_id,
+                    "total": total, "rescored": rescored,
+                }), ex=3600)
+
+        # Update notification threshold if still at old default
+        from app.models.settings import OperationalSettings
+        ops = db.query(OperationalSettings).first()
+        if ops and ops.notification_score_threshold == 70:
+            ops.notification_score_threshold = 50
+            db.commit()
+            logger.info("notification_threshold_updated", old=70, new=50)
+
+        redis.set(redis_key, _json.dumps({
+            "status": "done", "task_id": task_id,
+            "total": total, "rescored": rescored,
+        }), ex=3600)
+        logger.info("rescore_all_done", total=total, rescored=rescored)
+    except Exception as exc:
+        redis.set(redis_key, _json.dumps({
+            "status": "error", "task_id": task_id, "error": str(exc),
+        }), ex=3600)
+        logger.error("rescore_all_error", error=str(exc))
     finally:
         db.close()
 
@@ -1066,6 +1266,18 @@ def task_crawl_territory(
         redis.set(redis_key, _json.dumps(progress), ex=3600)
 
         for idx, city in enumerate(cities):
+            # Check if stop was requested
+            current = redis.get(redis_key)
+            if not current:
+                logger.info("territory_crawl_stopped_by_user", territory=territory.name)
+                return
+            cur_data = _json.loads(current)
+            if cur_data.get("status") == "stopping":
+                progress["status"] = "stopped"
+                redis.set(redis_key, _json.dumps(progress), ex=3600)
+                logger.info("territory_crawl_stopped_by_user", territory=territory.name)
+                return
+
             progress["current_city_idx"] = idx + 1
             progress["current_city"] = city
             redis.set(redis_key, _json.dumps(progress), ex=3600)

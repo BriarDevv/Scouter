@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from sqlalchemy.orm import Session
@@ -12,6 +13,15 @@ from app.llm.client import _call_ollama_chat, LLMError
 from app.llm.catalog import LLMRole
 from app.models.settings import OperationalSettings
 from app.services.dashboard_service import get_dashboard_stats
+
+# Patterns to strip from LLM output (thinking blocks, tool calls, XML artifacts)
+_LLM_ARTIFACT_RE = re.compile(
+    r"<think>.*?</think>"
+    r"|<tool_call>.*?</tool_call>"
+    r"|<\|.*?\|>"  # special tokens like <|end|>
+    r"|```.*?```",
+    re.DOTALL,
+)
 
 logger = get_logger(__name__)
 
@@ -49,6 +59,9 @@ def _build_system_prompt(db: Session) -> str:
         "Responde siempre en espanol argentino (vos, che, etc).",
         "No uses markdown — WhatsApp no lo renderiza bien. Usa texto plano.",
         "Limita tus respuestas a 500 caracteres maximo.",
+        "IMPORTANTE: No tenes herramientas ni tools. No generes XML, tool_call, ni bloques de codigo.",
+        "No expliques tu razonamiento interno. Responde directamente la pregunta del usuario.",
+        "Usa los datos del contexto que te doy abajo para responder preguntas sobre el sistema.",
     ]
 
     # Try to add live stats context
@@ -115,8 +128,12 @@ def chat_with_openclaw(db: Session, phone: str, message: str) -> str:
             user_prompt=user_prompt,
             role=LLMRole.LEADER,  # Use 4b model for fast responses
         )
-        # Clean up response
-        response = response.strip()
+        # Strip LLM artifacts (thinking blocks, tool calls, code fences)
+        response = _LLM_ARTIFACT_RE.sub("", response).strip()
+        # Collapse multiple blank lines left after stripping
+        response = re.sub(r"\n{3,}", "\n\n", response)
+        if not response:
+            response = "No pude generar una respuesta. Intenta de nuevo."
         # Truncate if too long for WhatsApp
         ops = db.get(OperationalSettings, 1)
         max_chars = ops.openclaw_max_response_chars if ops else 600
