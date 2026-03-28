@@ -7,16 +7,17 @@ import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { ActivityPulse } from "@/components/layout/activity-pulse";
 import { API_BASE_URL } from "@/lib/constants";
+import { useChatPanel } from "@/lib/hooks/use-chat-panel";
 import {
   Bell,
   Inbox,
   LayoutDashboard,
-  MessageSquare,
   Users,
   Mail,
   BarChart3,
   ShieldAlert,
   ShieldOff,
+  Sparkles,
   Radar,
   MapPin,
   Settings,
@@ -24,7 +25,6 @@ import {
 
 const NAV_ITEMS = [
   { href: "/",            label: "Panel general", icon: LayoutDashboard },
-  { href: "/chat",        label: "Chat IA",       icon: MessageSquare },
   { href: "/leads",       label: "Leads",         icon: Users },
   { href: "/outreach",    label: "Outreach",      icon: Mail },
   { href: "/responses",   label: "Respuestas",    icon: Inbox },
@@ -41,6 +41,7 @@ const EXTRA_NAV_ITEMS = [
 export function Sidebar() {
   const pathname = usePathname();
   const [unreadCount, setUnreadCount] = useState(0);
+  const { isOpen: chatOpen, toggle: toggleChat } = useChatPanel();
 
   useEffect(() => {
     let active = true;
@@ -129,6 +130,18 @@ export function Sidebar() {
       {/* Footer */}
       <div className="border-t border-sidebar-border p-3 space-y-1">
         <ThemeToggle />
+        <button
+          onClick={toggleChat}
+          className={cn(
+            "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium font-heading transition-all duration-150",
+            chatOpen
+              ? "bg-violet-600 text-white"
+              : "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-950/60"
+          )}
+        >
+          <Sparkles className="h-[18px] w-[18px]" />
+          Chat IA
+        </button>
         <Link
           href="/settings"
           className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground"

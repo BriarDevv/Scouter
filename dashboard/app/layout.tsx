@@ -3,6 +3,9 @@ import { Plus_Jakarta_Sans, Inter, Geist_Mono } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Sidebar } from "@/components/layout/sidebar";
+import { LayoutShell } from "@/components/layout/layout-shell";
+import { ChatPanel } from "@/components/chat/chat-panel";
+import { ChatPanelProvider } from "@/lib/hooks/use-chat-panel";
 import { ThemedToaster } from "@/components/providers/themed-toaster";
 import "./globals.css";
 
@@ -42,12 +45,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       >
         <ThemeProvider>
           <TooltipProvider>
-            <Sidebar />
-            <main className="ml-64 min-h-screen">
-              <div className="mx-auto max-w-[1400px] px-8 py-8">
-                {children}
-              </div>
-            </main>
+            <ChatPanelProvider>
+              <Sidebar />
+              <LayoutShell>{children}</LayoutShell>
+              <ChatPanel />
+            </ChatPanelProvider>
             <ThemedToaster />
           </TooltipProvider>
         </ThemeProvider>
