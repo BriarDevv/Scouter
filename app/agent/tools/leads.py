@@ -7,7 +7,13 @@ from sqlalchemy.orm import Session
 
 from app.agent.tool_registry import ToolDefinition, ToolParameter, registry
 from app.models.lead import Lead, LeadStatus
-from app.services.lead_service import get_lead, list_leads
+from app.schemas.lead import LeadCreate
+from app.services.lead_service import (
+    create_lead as _create_lead,
+    get_lead,
+    list_leads,
+    update_lead_status as _update_lead_status,
+)
 
 
 def search_leads(
@@ -143,4 +149,134 @@ registry.register(ToolDefinition(
     description="Contar leads agrupados por estado (new, enriched, scored, etc.)",
     category="leads",
     handler=count_leads_by_status,
+))
+
+
+# ---------------------------------------------------------------------------
+# create_lead
+# ---------------------------------------------------------------------------
+
+
+def create_lead(
+    db: Session,
+    *,
+    business_name: str,
+    industry: str | None = None,
+    city: str | None = None,
+    email: str | None = None,
+    website_url: str | None = None,
+    instagram_url: str | None = None,
+    phone: str | None = None,
+) -> dict:
+    """Create a new lead."""
+    try:
+        lead = _create_lead(
+            db,
+            LeadCreate(
+                business_name=business_name,
+                industry=industry,
+                city=city,
+                email=email,
+                website_url=website_url,
+                instagram_url=instagram_url,
+                phone=phone,
+            ),
+        )
+    except ValueError as exc:
+        return {"error": str(exc)}
+    return {
+        "id": str(lead.id),
+        "business_name": lead.business_name,
+        "status": lead.status.value if lead.status else None,
+        "dedup_hash": lead.dedup_hash,
+    }
+
+
+registry.register(ToolDefinition(
+    name="create_lead",
+    description=(
+        "Crear un nuevo lead en el sistema "
+        "(requiere confirmación)"
+    ),
+    parameters=[
+        ToolParameter(
+            "business_name", "string",
+            "Nombre del negocio",
+        ),
+        ToolParameter(
+            "industry", "string",
+            "Industria o rubro", required=False,
+        ),
+        ToolParameter(
+            "city", "string", "Ciudad", required=False,
+        ),
+        ToolParameter(
+            "email", "string",
+            "Email de contacto", required=False,
+        ),
+        ToolParameter(
+            "website_url", "string",
+            "URL del sitio web", required=False,
+        ),
+        ToolParameter(
+            "instagram_url", "string",
+            "URL de Instagram", required=False,
+        ),
+        ToolParameter(
+            "phone", "string",
+            "Teléfono de contacto", required=False,
+        ),
+    ],
+    category="leads",
+    requires_confirmation=True,
+    handler=create_lead,
+))
+
+
+# ---------------------------------------------------------------------------
+# update_lead_status
+# ---------------------------------------------------------------------------
+
+
+def update_lead_status(
+    db: Session, *, lead_id: str, status: str
+) -> dict:
+    """Update a lead's status."""
+    try:
+        lid = uuid.UUID(lead_id)
+    except ValueError:
+        return {"error": "ID de lead inválido (debe ser UUID)"}
+
+    lead = get_lead(db, lid)
+    if not lead:
+        return {"error": "Lead no encontrado"}
+
+    old_status = lead.status.value if lead.status else None
+    updated = _update_lead_status(db, lid, LeadStatus(status))
+    if not updated:
+        return {"error": "No se pudo actualizar el estado"}
+    return {
+        "id": str(updated.id),
+        "business_name": updated.business_name,
+        "old_status": old_status,
+        "new_status": updated.status.value,
+    }
+
+
+registry.register(ToolDefinition(
+    name="update_lead_status",
+    description=(
+        "Actualizar el estado de un lead "
+        "(requiere confirmación)"
+    ),
+    parameters=[
+        ToolParameter("lead_id", "string", "UUID del lead"),
+        ToolParameter(
+            "status", "string", "Nuevo estado del lead",
+            enum=[s.value for s in LeadStatus],
+        ),
+    ],
+    category="leads",
+    requires_confirmation=True,
+    handler=update_lead_status,
 ))
