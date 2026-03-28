@@ -97,8 +97,10 @@ export function ChatPanel() {
   // Auto-create conversation on first message if none active
   const handleSend = useCallback(
     async (content: string) => {
-      if (!activeConversationId) {
+      let targetId = activeConversationId;
+      if (!targetId) {
         const conv = await createConversation();
+        targetId = conv.id;
         setConversations((prev) => [
           {
             id: conv.id,
@@ -110,10 +112,8 @@ export function ChatPanel() {
           ...prev,
         ]);
         setActiveConversationId(conv.id);
-        // Small delay to let state propagate
-        await new Promise((r) => setTimeout(r, 50));
       }
-      await sendMessage(content);
+      await sendMessage(content, targetId);
     },
     [activeConversationId, setActiveConversationId, sendMessage]
   );

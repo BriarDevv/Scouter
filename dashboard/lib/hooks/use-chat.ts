@@ -8,7 +8,7 @@ interface UseChatReturn {
   messages: ChatMessage[];
   isStreaming: boolean;
   error: string | null;
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (content: string, overrideId?: string) => Promise<void>;
   setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
 }
 
@@ -18,8 +18,9 @@ export function useChat(conversationId: string | null): UseChatReturn {
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  const sendMessage = useCallback(async (content: string) => {
-    if (!conversationId || !content.trim()) return;
+  const sendMessage = useCallback(async (content: string, overrideId?: string) => {
+    const targetId = overrideId || conversationId;
+    if (!targetId || !content.trim()) return;
 
     setError(null);
 
@@ -57,7 +58,7 @@ export function useChat(conversationId: string | null): UseChatReturn {
       if (apiKey) headers["X-API-Key"] = apiKey;
 
       const res = await fetch(
-        `${API_BASE_URL}/chat/conversations/${conversationId}/messages`,
+        `${API_BASE_URL}/chat/conversations/${targetId}/messages`,
         {
           method: "POST",
           headers,
