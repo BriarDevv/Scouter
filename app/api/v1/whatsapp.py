@@ -79,7 +79,13 @@ def webhook_inbound(
 
     # Process message
     start = time.monotonic()
-    response_text = handle_inbound_message(db, body.phone, body.message)
+    if getattr(settings, "whatsapp_agent_enabled", False):
+        from app.agent.channel_router import handle_channel_message
+        response_text = handle_channel_message(
+            db=db, channel="whatsapp", channel_id=body.phone, message=body.message,
+        )
+    else:
+        response_text = handle_inbound_message(db, body.phone, body.message)
     elapsed_ms = int((time.monotonic() - start) * 1000)
 
     # Detect intent for audit

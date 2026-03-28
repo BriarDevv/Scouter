@@ -94,7 +94,13 @@ def webhook_inbound(
 
     # Process message
     start = time.monotonic()
-    response_text = handle_inbound_message(db, chat_id, text)
+    if getattr(settings, "telegram_agent_enabled", False):
+        from app.agent.channel_router import handle_channel_message
+        response_text = handle_channel_message(
+            db=db, channel="telegram", channel_id=chat_id, message=text,
+        )
+    else:
+        response_text = handle_inbound_message(db, chat_id, text)
     elapsed_ms = int((time.monotonic() - start) * 1000)
 
     # Detect intent for audit

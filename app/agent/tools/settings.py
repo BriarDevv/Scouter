@@ -14,6 +14,8 @@ _SAFE_SETTINGS = {
     "mail_enabled",
     "whatsapp_enabled",
     "telegram_enabled",
+    "telegram_agent_enabled",
+    "whatsapp_agent_enabled",
     "openclaw_enabled",
     "default_outreach_tone",
     "default_reply_tone",

@@ -84,6 +84,10 @@ class OperationalSettings(Base):
     telegram_conversational_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     telegram_actions_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
+    # ── Hermes 3 agent routing (opt-in per channel)
+    telegram_agent_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    whatsapp_agent_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
     # ── OpenClaw configuration
     openclaw_model: Mapped[str] = mapped_column(String, default="leader", nullable=False)
     openclaw_max_response_chars: Mapped[int] = mapped_column(Integer, default=600, nullable=False)
