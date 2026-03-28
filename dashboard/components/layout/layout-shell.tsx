@@ -9,7 +9,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   return (
     <main
       className={cn(
-        "min-h-screen rounded-l-3xl bg-background shadow-[inset_2px_0_8px_-2px_rgba(0,0,0,0.06)] dark:shadow-[inset_2px_0_8px_-2px_rgba(0,0,0,0.2)] transition-all duration-300 ease-in-out",
+        "min-h-screen transition-all duration-300 ease-in-out",
         sidebarCollapsed ? "ml-[68px]" : "ml-64",
         isOpen ? "mr-[400px]" : "mr-0"
       )}
