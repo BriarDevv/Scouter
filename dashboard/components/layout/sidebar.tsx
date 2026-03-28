@@ -158,7 +158,7 @@ export function Sidebar() {
       {/* AI Activity */}
       <div className={cn(
         "border-t border-sidebar-border overflow-hidden transition-all duration-200",
-        collapsed ? "max-h-0 border-t-0" : "max-h-40"
+        collapsed ? "max-h-0 border-t-0" : "max-h-96"
       )}>
         <ActivityPulse />
       </div>

@@ -133,11 +133,28 @@ function TaskRow({ task, llm }: { task: TaskStatusRecord; llm: LLMSettings | nul
   );
 }
 
+const PULSE_STORAGE_KEY = "clawscout-activity-expanded";
+
 export function ActivityPulse() {
   const [tasks, setTasks] = useState<TaskStatusRecord[]>([]);
   const [llm, setLlm] = useState<LLMSettings | null>(null);
   const [batch, setBatch] = useState<BatchPipelineProgress | null>(null);
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(() => {
+    try {
+      const stored = localStorage.getItem(PULSE_STORAGE_KEY);
+      return stored !== "false";
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleExpanded = useCallback(() => {
+    setExpanded((prev) => {
+      const next = !prev;
+      try { localStorage.setItem(PULSE_STORAGE_KEY, String(next)); } catch {}
+      return next;
+    });
+  }, []);
 
   const poll = useCallback(async () => {
     try {
@@ -195,7 +212,7 @@ export function ActivityPulse() {
   return (
     <div className="px-3 py-3">
       <button
-        onClick={() => setExpanded(!expanded)}
+        onClick={toggleExpanded}
         className="flex w-full items-center justify-between px-1 mb-1 group"
       >
         <div className="flex items-center gap-2">
