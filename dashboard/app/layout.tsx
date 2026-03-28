@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { GeistSans } from "geist/font/sans";
-import { GeistMono } from "geist/font/mono";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -17,6 +15,18 @@ const satoshi = localFont({
     { path: "./fonts/Satoshi-VariableItalic.woff2", style: "italic" },
   ],
   variable: "--font-heading",
+  display: "swap",
+});
+
+const geistSans = localFont({
+  src: "./fonts/Geist-Variable.woff2",
+  variable: "--font-geist-sans",
+  display: "swap",
+});
+
+const geistMono = localFont({
+  src: "./fonts/GeistMono-Variable.woff2",
+  variable: "--font-geist-mono",
   display: "swap",
 });
 
@@ -36,7 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body
-        className={`${satoshi.variable} ${GeistSans.variable} ${GeistMono.variable} antialiased bg-sidebar`}
+        className={`${satoshi.variable} ${geistSans.variable} ${geistMono.variable} antialiased bg-sidebar`}
       >
         <ThemeProvider>
           <TooltipProvider>
