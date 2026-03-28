@@ -134,27 +134,25 @@ registry.register(ToolDefinition(
 
 
 def send_draft(db: Session, *, draft_id: str) -> dict:
-    """Mark a draft as sent (actual email delivery is a v2 feature)."""
+    """Send an approved outreach draft via email (SMTP)."""
     try:
         did = uuid.UUID(draft_id)
     except ValueError:
         return {"error": "ID de borrador inválido"}
 
-    draft = _update_draft(db, did, status=DraftStatus.SENT)
-    if not draft:
-        return {"error": "Borrador no encontrado"}
-
-    # Fetch the lead's email for the response
-    from app.services.lead_service import get_lead
-
-    lead = get_lead(db, draft.lead_id)
-    recipient_email = lead.email if lead else None
-
-    return {
-        "id": str(draft.id),
-        "status": draft.status.value,
-        "recipient_email": recipient_email,
-    }
+    try:
+        from app.services.mail_service import send_draft as _mail_send
+        delivery = _mail_send(db, did)
+        return {
+            "id": str(delivery.draft_id),
+            "status": "sent",
+            "recipient_email": delivery.recipient_email,
+            "provider": delivery.provider,
+        }
+    except Exception as exc:
+        # Fallback: if mail service fails (not configured, SMTP down, etc.)
+        # just report the error — don't crash
+        return {"error": f"No se pudo enviar: {exc}"}
 
 
 registry.register(ToolDefinition(
