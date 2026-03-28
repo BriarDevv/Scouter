@@ -9,9 +9,9 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   return (
     <main
       className={cn(
-        "min-h-screen rounded-l-2xl border-l border-t border-b border-border/40 bg-background transition-all duration-300 ease-in-out",
-        sidebarCollapsed ? "ml-[68px]" : "ml-64",
-        isOpen ? "mr-[400px]" : "mr-0"
+        "fixed inset-y-0 right-0 rounded-l-2xl border-l border-border/40 bg-background overflow-y-auto transition-all duration-300 ease-in-out",
+        sidebarCollapsed ? "left-[68px]" : "left-64",
+        isOpen ? "right-[400px]" : "right-0"
       )}
     >
       <div className="mx-auto max-w-[1400px] px-8 py-8">{children}</div>
