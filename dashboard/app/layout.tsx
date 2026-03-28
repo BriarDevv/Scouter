@@ -41,7 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body
-        className={`${plusJakarta.variable} ${inter.variable} ${geistMono.variable} antialiased bg-background`}
+        className={`${plusJakarta.variable} ${inter.variable} ${geistMono.variable} antialiased bg-sidebar`}
       >
         <ThemeProvider>
           <TooltipProvider>
