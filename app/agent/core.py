@@ -31,6 +31,7 @@ from app.agent.hermes_format import (
 )
 from app.agent.prompts import build_agent_system_prompt
 from app.agent.streaming_client import AgentStreamError, stream_ollama_chat
+import app.agent.tools  # noqa: F401 — ensure all tools are registered
 from app.agent.tool_registry import registry
 from app.core.config import settings
 from app.core.logging import get_logger
