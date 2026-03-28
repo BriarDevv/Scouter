@@ -108,6 +108,21 @@ def _save_message(
     return msg
 
 
+def _json_safe(obj: Any) -> Any:
+    """Make an object JSON-serializable (convert UUIDs, datetimes, enums)."""
+    if isinstance(obj, dict):
+        return {k: _json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_json_safe(v) for v in obj]
+    if isinstance(obj, uuid.UUID):
+        return str(obj)
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    if hasattr(obj, "value"):  # Enum
+        return obj.value
+    return obj
+
+
 def _save_tool_call(
     db: Session,
     message_id: uuid.UUID,
@@ -119,11 +134,12 @@ def _save_tool_call(
     duration_ms: int | None = None,
 ) -> ToolCall:
     """Persist a tool call record."""
+    safe_result = _json_safe(result) if result is not None else None
     tc = ToolCall(
         message_id=message_id,
         tool_name=tool_name,
         arguments_json=arguments,
-        result_json=result if isinstance(result, dict) else {"value": result},
+        result_json=safe_result if isinstance(safe_result, dict) else {"value": safe_result},
         error=error,
         status=status,
         duration_ms=duration_ms,
@@ -300,7 +316,7 @@ async def run_agent_turn(
             yield ToolResult(
                 tool_call_id=tool_call_id,
                 tool_name=tc.name,
-                result=result,
+                result=_json_safe(result),
                 error=error,
             )
 
