@@ -165,12 +165,7 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="border-t border-sidebar-border space-y-1 p-3">
-        <div className={cn(
-          "overflow-hidden transition-all duration-200",
-          collapsed ? "max-h-0" : "max-h-12"
-        )}>
-          <ThemeToggle />
-        </div>
+        <ThemeToggle collapsed={collapsed} />
         <button
           onClick={toggleChat}
           title={collapsed ? "Chat IA" : undefined}

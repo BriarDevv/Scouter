@@ -5,8 +5,9 @@ import { useTheme } from "@/components/providers/theme-provider";
 import { cn } from "@/lib/utils";
 
 const CYCLE: Array<"light" | "dark" | "system"> = ["light", "dark", "system"];
+const LABEL = { light: "Claro", dark: "Oscuro", system: "Sistema" } as const;
 
-export function ThemeToggle() {
+export function ThemeToggle({ collapsed = false }: { collapsed?: boolean }) {
   const { theme, setTheme } = useTheme();
 
   function cycle() {
@@ -19,14 +20,18 @@ export function ThemeToggle() {
   return (
     <button
       onClick={cycle}
-      className={cn(
-        "flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
-        "text-muted-foreground hover:bg-muted hover:text-foreground"
-      )}
-      title={`Tema: ${theme === "light" ? "Claro" : theme === "dark" ? "Oscuro" : "Sistema"}`}
+      title={`Tema: ${LABEL[theme]}`}
+      className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
     >
-      <Icon className="h-[18px] w-[18px]" />
-      <span className="text-xs">{theme === "light" ? "Claro" : theme === "dark" ? "Oscuro" : "Sistema"}</span>
+      <Icon className="h-[18px] w-[18px] shrink-0" />
+      <span className={cn(
+        "whitespace-nowrap overflow-hidden text-xs transition-[opacity]",
+        collapsed
+          ? "opacity-0 w-0 duration-100 delay-0"
+          : "opacity-100 w-auto duration-200 delay-150"
+      )}>
+        {LABEL[theme]}
+      </span>
     </button>
   );
 }
