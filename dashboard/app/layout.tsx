@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Inter, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -9,20 +11,13 @@ import { ChatPanelProvider } from "@/lib/hooks/use-chat-panel";
 import { ThemedToaster } from "@/components/providers/themed-toaster";
 import "./globals.css";
 
-const plusJakarta = Plus_Jakarta_Sans({
+const satoshi = localFont({
+  src: [
+    { path: "./fonts/Satoshi-Variable.woff2", style: "normal" },
+    { path: "./fonts/Satoshi-VariableItalic.woff2", style: "italic" },
+  ],
   variable: "--font-heading",
-  subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
-});
-
-const inter = Inter({
-  variable: "--font-body",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-mono",
-  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -41,7 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body
-        className={`${plusJakarta.variable} ${inter.variable} ${geistMono.variable} antialiased bg-sidebar`}
+        className={`${satoshi.variable} ${GeistSans.variable} ${GeistMono.variable} antialiased bg-sidebar`}
       >
         <ThemeProvider>
           <TooltipProvider>
