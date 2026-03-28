@@ -36,17 +36,31 @@ MAX_RESPONSE_LENGTH = {
 def _find_or_create_conversation(
     db: Session, channel: str, channel_id: str
 ) -> Conversation:
-    """Find the most recent active conversation for this channel+id, or create one."""
-    stmt = (
-        select(Conversation)
-        .where(
-            Conversation.channel == channel,
-            Conversation.channel_id == channel_id,
-            Conversation.is_active.is_(True),
+    """Find the most recent active conversation, or create one.
+
+    For telegram/whatsapp: joins the most recent active conversation
+    (any channel) so messages sync to the web chat panel.
+    For web: scoped to channel+channel_id as before.
+    """
+    if channel == "web":
+        stmt = (
+            select(Conversation)
+            .where(
+                Conversation.channel == "web",
+                Conversation.channel_id == channel_id,
+                Conversation.is_active.is_(True),
+            )
+            .order_by(Conversation.updated_at.desc())
+            .limit(1)
         )
-        .order_by(Conversation.updated_at.desc())
-        .limit(1)
-    )
+    else:
+        # Cross-channel sync: find ANY recent active conversation
+        stmt = (
+            select(Conversation)
+            .where(Conversation.is_active.is_(True))
+            .order_by(Conversation.updated_at.desc())
+            .limit(1)
+        )
     conv = db.execute(stmt).scalar_one_or_none()
     if conv:
         return conv

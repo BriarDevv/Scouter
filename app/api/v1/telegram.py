@@ -1,9 +1,4 @@
-"""Telegram webhook — inbound message endpoint for conversational queries.
-
-Receives Telegram Bot API Update objects, extracts chat_id + text,
-validates the webhook secret, processes via conversation handler,
-sends response back via Telegram sendMessage API, and audits.
-"""
+"""Telegram webhook — routes inbound messages through the Hermes 3 agent."""
 
 from __future__ import annotations
 
@@ -15,16 +10,11 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.agent.channel_router import handle_channel_message
 from app.api.deps import get_session
 from app.core.logging import get_logger
 from app.models.settings import OperationalSettings
 from app.services.telegram_audit import log_inbound, log_outbound
-from app.services.telegram_conversation import (
-    Intent,
-    _detect_intent,
-    _sanitize,
-    handle_inbound_message,
-)
 from app.services.telegram_service import send_message as tg_send_message
 
 logger = get_logger(__name__)
@@ -37,7 +27,6 @@ class TelegramWebhookResponse(BaseModel):
 
 
 def _get_settings(db: Session) -> OperationalSettings:
-    """Retrieve the singleton operational settings row."""
     row = db.get(OperationalSettings, 1)
     if not row:
         row = OperationalSettings(id=1)
@@ -54,25 +43,17 @@ def webhook_inbound(
     db: Session = Depends(get_session),
     x_telegram_bot_api_secret_token: str = Header("", alias="X-Telegram-Bot-Api-Secret-Token"),
 ) -> TelegramWebhookResponse:
-    """Receive inbound Telegram Bot API updates and return conversational response.
-
-    Telegram sends Updates as JSON POST to this endpoint.
-    Must return 200 quickly — Telegram retries on failure.
-    """
-    # Extract message from update
+    """Receive Telegram updates, process via Hermes 3 agent, send response."""
     message_obj = body.get("message") or body.get("edited_message")
     if not message_obj:
-        # Not a text message update (could be callback_query, etc.) — acknowledge
         return TelegramWebhookResponse(ok=True)
 
     text = message_obj.get("text", "")
-    chat = message_obj.get("chat", {})
-    chat_id = str(chat.get("id", ""))
-
+    chat_id = str(message_obj.get("chat", {}).get("id", ""))
     if not text or not chat_id:
         return TelegramWebhookResponse(ok=True)
 
-    # Validate webhook secret — check DB first, fall back to env var
+    # Validate webhook secret
     from app.models.telegram_credentials import TelegramCredentials
     tg_creds = db.get(TelegramCredentials, 1)
     webhook_secret = (
@@ -85,46 +66,26 @@ def webhook_inbound(
 
     # Check feature flag
     settings = _get_settings(db)
-    if not settings.telegram_conversational_enabled:
-        logger.info("tg_conversational_disabled")
-        raise HTTPException(
-            status_code=403,
-            detail="La funcion de Telegram conversacional no esta habilitada.",
-        )
+    if not getattr(settings, "telegram_agent_enabled", False):
+        logger.info("tg_agent_disabled")
+        raise HTTPException(status_code=403, detail="Telegram agent no habilitado.")
 
-    # Process message
+    # Process via Hermes 3 agent
     start = time.monotonic()
-    if getattr(settings, "telegram_agent_enabled", False):
-        from app.agent.channel_router import handle_channel_message
-        response_text = handle_channel_message(
-            db=db, channel="telegram", channel_id=chat_id, message=text,
-        )
-    else:
-        response_text = handle_inbound_message(db, chat_id, text)
+    response_text = handle_channel_message(
+        db=db, channel="telegram", channel_id=chat_id, message=text,
+    )
     elapsed_ms = int((time.monotonic() - start) * 1000)
 
-    # Detect intent for audit
-    clean = _sanitize(text)
-    intent_name: str | None = None
-    if clean:
-        intent, _ = _detect_intent(clean)
-        intent_name = intent.value
-
-    # Audit log
-    log_inbound(db, chat_id, text, intent_name)
+    # Audit
+    log_inbound(db, chat_id, text, "agent")
     log_outbound(db, chat_id, response_text, elapsed_ms)
 
-    # Send response back via Telegram (best-effort, don't fail the webhook)
+    # Send response
     try:
         tg_send_message(db, response_text, chat_id=chat_id, parse_mode="Markdown")
     except Exception:
         logger.exception("tg_send_response_failed", chat_id=chat_id[:6] + "***")
 
-    logger.info(
-        "tg_webhook_processed",
-        chat_id=chat_id[:6] + "***",
-        intent=intent_name,
-        latency_ms=elapsed_ms,
-    )
-
+    logger.info("tg_webhook_processed", chat_id=chat_id[:6] + "***", latency_ms=elapsed_ms)
     return TelegramWebhookResponse(ok=True)

@@ -117,9 +117,8 @@ def get_effective_rules(db: Session) -> dict:
         "whatsapp_alerts_enabled": row.whatsapp_alerts_enabled,
         "whatsapp_min_severity": row.whatsapp_min_severity,
         "whatsapp_categories": row.whatsapp_categories or [],
-        "whatsapp_openclaw_enrichment": row.whatsapp_openclaw_enrichment,
-        "whatsapp_conversational_enabled": row.whatsapp_conversational_enabled,
-        "whatsapp_actions_enabled": row.whatsapp_actions_enabled,
+        "telegram_agent_enabled": row.telegram_agent_enabled,
+        "whatsapp_agent_enabled": row.whatsapp_agent_enabled,
     }
 
 
@@ -166,16 +165,8 @@ def to_response_dict(row: OperationalSettings) -> dict:
         "whatsapp_alerts_enabled": row.whatsapp_alerts_enabled,
         "whatsapp_min_severity": row.whatsapp_min_severity,
         "whatsapp_categories": row.whatsapp_categories or [],
-        "whatsapp_openclaw_enrichment": row.whatsapp_openclaw_enrichment,
-        "whatsapp_conversational_enabled": row.whatsapp_conversational_enabled,
-        "whatsapp_actions_enabled": row.whatsapp_actions_enabled,
         "telegram_alerts_enabled": row.telegram_alerts_enabled,
-        "telegram_openclaw_enrichment": row.telegram_openclaw_enrichment,
-        "telegram_conversational_enabled": row.telegram_conversational_enabled,
-        "telegram_actions_enabled": row.telegram_actions_enabled,
-        "openclaw_model": row.openclaw_model,
-        "openclaw_max_response_chars": row.openclaw_max_response_chars,
-        "openclaw_rate_limit": row.openclaw_rate_limit,
-        "openclaw_rate_window_seconds": row.openclaw_rate_window_seconds,
+        "telegram_agent_enabled": row.telegram_agent_enabled,
+        "whatsapp_agent_enabled": row.whatsapp_agent_enabled,
         "updated_at": row.updated_at.isoformat() if row.updated_at else None,
     }

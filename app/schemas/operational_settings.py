@@ -47,21 +47,12 @@ class OperationalSettingsUpdate(BaseModel):
     whatsapp_alerts_enabled: bool | None = None
     whatsapp_min_severity: str | None = None
     whatsapp_categories: list[str] | None = None
-    whatsapp_openclaw_enrichment: bool | None = None
-    whatsapp_conversational_enabled: bool | None = None
-    whatsapp_actions_enabled: bool | None = None
-
     # Telegram
     telegram_alerts_enabled: bool | None = None
-    telegram_openclaw_enrichment: bool | None = None
-    telegram_conversational_enabled: bool | None = None
-    telegram_actions_enabled: bool | None = None
 
-    # OpenClaw configuration
-    openclaw_model: str | None = None
-    openclaw_max_response_chars: int | None = None
-    openclaw_rate_limit: int | None = None
-    openclaw_rate_window_seconds: int | None = None
+    # Hermes 3 agent per channel
+    telegram_agent_enabled: bool | None = None
+    whatsapp_agent_enabled: bool | None = None
 
     @field_validator("reviewer_confidence_threshold")
     @classmethod
@@ -77,12 +68,9 @@ class OperationalSettingsUpdate(BaseModel):
         "prioritize_meeting_replies", "allow_openclaw_briefs", "allow_reply_assistant_generation",
         "reviewer_confidence_threshold",
         "notifications_enabled", "notification_score_threshold",
-        "whatsapp_alerts_enabled", "whatsapp_openclaw_enrichment",
-        "whatsapp_conversational_enabled", "whatsapp_actions_enabled",
-        "telegram_alerts_enabled", "telegram_openclaw_enrichment",
-        "telegram_conversational_enabled", "telegram_actions_enabled",
-        "openclaw_model", "openclaw_max_response_chars",
-        "openclaw_rate_limit", "openclaw_rate_window_seconds",
+        "whatsapp_alerts_enabled",
+        "telegram_alerts_enabled",
+        "telegram_agent_enabled", "whatsapp_agent_enabled",
     })
 
     def to_update_dict(self) -> dict:
@@ -143,18 +131,9 @@ class OperationalSettingsResponse(BaseModel):
     whatsapp_alerts_enabled: bool
     whatsapp_min_severity: str
     whatsapp_categories: list[str]
-    whatsapp_openclaw_enrichment: bool
-    whatsapp_conversational_enabled: bool
-    whatsapp_actions_enabled: bool
     telegram_alerts_enabled: bool
-    telegram_openclaw_enrichment: bool
-    telegram_conversational_enabled: bool
-    telegram_actions_enabled: bool
-    # OpenClaw configuration
-    openclaw_model: str
-    openclaw_max_response_chars: int
-    openclaw_rate_limit: int
-    openclaw_rate_window_seconds: int
+    telegram_agent_enabled: bool
+    whatsapp_agent_enabled: bool
     updated_at: str | None
 
 
