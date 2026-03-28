@@ -15,6 +15,8 @@ import {
   Users,
   Mail,
   BarChart3,
+  PanelLeftClose,
+  PanelLeftOpen,
   ShieldAlert,
   ShieldOff,
   Sparkles,
@@ -41,7 +43,7 @@ const EXTRA_NAV_ITEMS = [
 export function Sidebar() {
   const pathname = usePathname();
   const [unreadCount, setUnreadCount] = useState(0);
-  const { isOpen: chatOpen, toggle: toggleChat } = useChatPanel();
+  const { isOpen: chatOpen, toggle: toggleChat, sidebarCollapsed: collapsed, toggleSidebar } = useChatPanel();
 
   useEffect(() => {
     let active = true;
@@ -63,35 +65,61 @@ export function Sidebar() {
   }, []);
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-sidebar-border bg-sidebar">
-      {/* Logo */}
-      <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-6">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600">
-          <Radar className="h-4.5 w-4.5 text-white" />
-        </div>
-        <div>
-          <span className="font-heading text-lg font-bold tracking-tight text-sidebar-foreground">ClawScout</span>
-          <span className="ml-1.5 rounded-md bg-violet-50 dark:bg-violet-950/40 px-1.5 py-0.5 text-[10px] font-medium text-violet-600 dark:text-violet-400">v1</span>
-        </div>
+    <aside
+      className={cn(
+        "fixed inset-y-0 left-0 z-40 flex flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300 ease-in-out",
+        collapsed ? "w-[68px]" : "w-64"
+      )}
+    >
+      {/* Header */}
+      <div className="flex h-16 items-center border-b border-sidebar-border px-3">
+        {collapsed ? (
+          <button
+            onClick={toggleSidebar}
+            className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600"
+            title="Expandir sidebar"
+          >
+            <PanelLeftOpen className="h-4 w-4 text-white" />
+          </button>
+        ) : (
+          <>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600 ml-3">
+              <Radar className="h-4.5 w-4.5 text-white" />
+            </div>
+            <div className="ml-3">
+              <span className="font-heading text-lg font-bold tracking-tight text-sidebar-foreground">ClawScout</span>
+              <span className="ml-1.5 rounded-md bg-violet-50 dark:bg-violet-950/40 px-1.5 py-0.5 text-[10px] font-medium text-violet-600 dark:text-violet-400">v2</span>
+            </div>
+            <button
+              onClick={toggleSidebar}
+              className="ml-auto rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              title="Minimizar sidebar"
+            >
+              <PanelLeftClose className="h-4 w-4" />
+            </button>
+          </>
+        )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      <nav className={cn("flex-1 space-y-1 py-4", collapsed ? "px-2" : "px-3")}>
         {NAV_ITEMS.map((item) => {
           const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
           return (
             <Link
               key={item.href}
               href={item.href}
+              title={collapsed ? item.label : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium font-heading transition-all duration-150",
+                "flex items-center rounded-xl text-sm font-medium font-heading transition-all duration-150",
+                collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5",
                 isActive
                   ? "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
-              <item.icon className={cn("h-[18px] w-[18px]", isActive ? "text-violet-600 dark:text-violet-400" : "")} />
-              {item.label}
+              <item.icon className={cn("h-[18px] w-[18px] shrink-0", isActive ? "text-violet-600 dark:text-violet-400" : "")} />
+              {!collapsed && item.label}
             </Link>
           );
         })}
@@ -103,17 +131,22 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              title={collapsed ? item.label : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium font-heading transition-all duration-150",
+                "relative flex items-center rounded-xl text-sm font-medium font-heading transition-all duration-150",
+                collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5",
                 isActive
                   ? "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
-              <item.icon className={cn("h-[18px] w-[18px]", isActive ? "text-violet-600 dark:text-violet-400" : "")} />
-              <span className="flex-1">{item.label}</span>
+              <item.icon className={cn("h-[18px] w-[18px] shrink-0", isActive ? "text-violet-600 dark:text-violet-400" : "")} />
+              {!collapsed && <span className="flex-1">{item.label}</span>}
               {item.badge && unreadCount > 0 && (
-                <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                <span className={cn(
+                  "bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1",
+                  collapsed && "absolute -top-1 -right-1 min-w-[16px] h-[16px] text-[9px]"
+                )}>
                   {unreadCount > 99 ? "99+" : unreadCount}
                 </span>
               )}
@@ -123,31 +156,39 @@ export function Sidebar() {
       </nav>
 
       {/* AI Activity */}
-      <div className="border-t border-sidebar-border">
-        <ActivityPulse />
-      </div>
+      {!collapsed && (
+        <div className="border-t border-sidebar-border">
+          <ActivityPulse />
+        </div>
+      )}
 
       {/* Footer */}
-      <div className="border-t border-sidebar-border p-3 space-y-1">
-        <ThemeToggle />
+      <div className={cn("border-t border-sidebar-border space-y-1", collapsed ? "p-2" : "p-3")}>
+        {!collapsed && <ThemeToggle />}
         <button
           onClick={toggleChat}
+          title={collapsed ? "Chat IA" : undefined}
           className={cn(
-            "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium font-heading transition-all duration-150",
+            "flex w-full items-center rounded-xl text-sm font-medium font-heading transition-all duration-150",
+            collapsed ? "justify-center py-2.5" : "gap-3 px-3 py-2.5",
             chatOpen
               ? "bg-violet-600 text-white"
               : "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-950/60"
           )}
         >
-          <Sparkles className="h-[18px] w-[18px]" />
-          Chat IA
+          <Sparkles className="h-[18px] w-[18px] shrink-0" />
+          {!collapsed && "Chat IA"}
         </button>
         <Link
           href="/settings"
-          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
+          title={collapsed ? "Configuración" : undefined}
+          className={cn(
+            "flex items-center rounded-xl text-sm font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground",
+            collapsed ? "justify-center py-2.5" : "gap-3 px-3 py-2.5"
+          )}
         >
-          <Settings className="h-[18px] w-[18px]" />
-          Configuración
+          <Settings className="h-[18px] w-[18px] shrink-0" />
+          {!collapsed && "Configuración"}
         </Link>
       </div>
     </aside>
