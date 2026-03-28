@@ -10,7 +10,7 @@ import { ThemedToaster } from "@/components/providers/themed-toaster";
 import "./globals.css";
 
 const satoshi = localFont({
-  src: "./fonts/Satoshi-Variable.woff2",
+  src: [{ path: "./fonts/Satoshi-Variable.woff2", style: "normal" }],
   variable: "--font-heading",
   display: "swap",
 });
