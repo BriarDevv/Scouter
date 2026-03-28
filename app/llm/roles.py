@@ -5,3 +5,4 @@ class LLMRole(StrEnum):
     LEADER = "leader"
     EXECUTOR = "executor"
     REVIEWER = "reviewer"
+    AGENT = "agent"

@@ -5,12 +5,14 @@ DEFAULT_SUPPORTED_MODELS = (
     "qwen3.5:4b",
     "qwen3.5:9b",
     "qwen3.5:27b",
+    "hermes3:8b",
 )
 
 DEFAULT_ROLE_MODEL_MAP = {
     LLMRole.LEADER: "qwen3.5:4b",
     LLMRole.EXECUTOR: "qwen3.5:9b",
     LLMRole.REVIEWER: "qwen3.5:27b",
+    LLMRole.AGENT: "hermes3:8b",
 }
 
 

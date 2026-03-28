@@ -19,6 +19,7 @@ from app.api.v1.notifications import router as notifications_router
 from app.api.v1.whatsapp import router as whatsapp_router
 from app.api.v1.telegram import router as telegram_router
 from app.api.v1.crawl import router as crawl_router
+from app.api.v1.chat import router as chat_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -41,3 +42,4 @@ api_router.include_router(notifications_router)
 api_router.include_router(whatsapp_router)
 api_router.include_router(telegram_router)
 api_router.include_router(crawl_router)
+api_router.include_router(chat_router)

@@ -40,6 +40,9 @@ import type {
   NotificationListResponse,
   NotificationCounts,
   WhatsAppCredentials,
+  ChatConversation,
+  ChatConversationSummary,
+  ChatConversationDetail,
 } from "@/types";
 import { API_BASE_URL } from "@/lib/constants";
 
@@ -600,4 +603,22 @@ export async function getLeadsWithCoords(): Promise<Lead[]> {
     l.latitude >= -55 && l.latitude <= -21 &&
     l.longitude >= -73 && l.longitude <= -53
   );
+}
+
+// ─── Chat ─────────────────────────────────────────────
+
+export async function createConversation(): Promise<ChatConversation> {
+  return apiFetch("/chat/conversations", { method: "POST" });
+}
+
+export async function listConversations(limit = 20): Promise<ChatConversationSummary[]> {
+  return apiFetch(`/chat/conversations?limit=${limit}`);
+}
+
+export async function getConversation(id: string): Promise<ChatConversationDetail> {
+  return apiFetch(`/chat/conversations/${id}`);
+}
+
+export async function deleteConversation(id: string): Promise<void> {
+  return apiFetch<void>(`/chat/conversations/${id}`, { method: "DELETE" });
 }

@@ -34,8 +34,10 @@ class Settings(BaseSettings):
     OLLAMA_LEADER_MODEL: str = DEFAULT_ROLE_MODEL_MAP[LLMRole.LEADER]
     OLLAMA_EXECUTOR_MODEL: str | None = None
     OLLAMA_REVIEWER_MODEL: str | None = DEFAULT_ROLE_MODEL_MAP[LLMRole.REVIEWER]
+    OLLAMA_AGENT_MODEL: str | None = DEFAULT_ROLE_MODEL_MAP[LLMRole.AGENT]
     OLLAMA_TIMEOUT: int = 120
     OLLAMA_REVIEWER_TIMEOUT: int = 360
+    OLLAMA_AGENT_TIMEOUT: int = 180
     OLLAMA_MAX_RETRIES: int = 3
 
     # Crawling
@@ -104,6 +106,7 @@ class Settings(BaseSettings):
             "OLLAMA_LEADER_MODEL": self.ollama_leader_model,
             "OLLAMA_EXECUTOR_MODEL": self.ollama_executor_model,
             "OLLAMA_REVIEWER_MODEL": self.ollama_reviewer_model,
+            "OLLAMA_AGENT_MODEL": self.ollama_agent_model,
         }
 
         for field_name, model_name in configured_models.items():
@@ -150,11 +153,17 @@ class Settings(BaseSettings):
         return configured or None
 
     @property
+    def ollama_agent_model(self) -> str | None:
+        configured = (self.OLLAMA_AGENT_MODEL or "").strip()
+        return configured or None
+
+    @property
     def ollama_models_by_role(self) -> dict[LLMRole, str | None]:
         return {
             LLMRole.LEADER: self.ollama_leader_model,
             LLMRole.EXECUTOR: self.ollama_executor_model,
             LLMRole.REVIEWER: self.ollama_reviewer_model,
+            LLMRole.AGENT: self.ollama_agent_model,
         }
 
     @property

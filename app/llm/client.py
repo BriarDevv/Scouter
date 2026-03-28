@@ -93,6 +93,8 @@ def _timeout_for_role(role: LLMRole | str) -> float:
     normalized_role = normalize_role(role)
     if normalized_role == LLMRole.REVIEWER:
         return float(settings.OLLAMA_REVIEWER_TIMEOUT)
+    if normalized_role == LLMRole.AGENT:
+        return float(settings.OLLAMA_AGENT_TIMEOUT)
     return float(settings.OLLAMA_TIMEOUT)
 
 

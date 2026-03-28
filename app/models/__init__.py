@@ -1,3 +1,4 @@
+from app.models.conversation import Conversation, Message, ToolCall
 from app.models.inbound_mail import EmailThread, InboundMessage
 from app.models.lead import Lead
 from app.models.lead_signal import LeadSignal
@@ -19,6 +20,9 @@ from app.models.whatsapp_audit import WhatsAppAuditLog
 from app.models.telegram_audit import TelegramAuditLog
 
 __all__ = [
+    "Conversation",
+    "Message",
+    "ToolCall",
     "EmailThread",
     "InboundMessage",
     "Lead",

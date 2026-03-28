@@ -11,6 +11,7 @@ import {
   Bell,
   Inbox,
   LayoutDashboard,
+  MessageSquare,
   Users,
   Mail,
   BarChart3,
@@ -23,6 +24,7 @@ import {
 
 const NAV_ITEMS = [
   { href: "/",            label: "Panel general", icon: LayoutDashboard },
+  { href: "/chat",        label: "Chat IA",       icon: MessageSquare },
   { href: "/leads",       label: "Leads",         icon: Users },
   { href: "/outreach",    label: "Outreach",      icon: Mail },
   { href: "/responses",   label: "Respuestas",    icon: Inbox },
