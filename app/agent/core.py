@@ -133,11 +133,23 @@ def _save_tool_call(
     return tc
 
 
+def _suggest_tools(name: str) -> str:
+    """Suggest similar tool names when a tool is not found."""
+    all_names = [t.name for t in registry.list_all()]
+    # Simple substring matching
+    matches = [n for n in all_names if name.replace("_", "") in n.replace("_", "")
+               or any(w in n for w in name.split("_") if len(w) > 3)]
+    if matches:
+        return f" Herramientas similares: {', '.join(matches[:5])}"
+    return f" Herramientas disponibles: {', '.join(all_names)}"
+
+
 def _execute_tool(db: Session, tool_name: str, arguments: dict) -> tuple[Any, str | None]:
     """Execute a tool and return (result, error)."""
     tool_def = registry.get(tool_name)
     if not tool_def or not tool_def.handler:
-        return None, f"Herramienta desconocida: {tool_name}"
+        hint = _suggest_tools(tool_name)
+        return None, f"Herramienta '{tool_name}' no existe.{hint}"
 
     try:
         validated_args = registry.validate_call(tool_name, arguments)
