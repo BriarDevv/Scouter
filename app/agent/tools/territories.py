@@ -40,6 +40,8 @@ def create_territory(
         color=color or "#8b5cf6",
     )
     territory = _create(db, data)
+    if not territory:
+        return {"error": "No se pudo crear el territorio"}
     return {
         "id": str(territory.id),
         "name": territory.name,

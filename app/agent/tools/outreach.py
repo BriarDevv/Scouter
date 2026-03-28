@@ -39,7 +39,11 @@ def generate_draft(db: Session, *, lead_id: str) -> dict:
     """Generate an outreach draft for a lead."""
     from app.services.outreach_service import generate_outreach_draft
 
-    draft = generate_outreach_draft(db, uuid.UUID(lead_id))
+    try:
+        lid = uuid.UUID(lead_id)
+    except ValueError:
+        return {"error": "ID de lead inválido"}
+    draft = generate_outreach_draft(db, lid)
     if not draft:
         return {"error": "No se pudo generar el borrador (lead no encontrado o sin email)"}
     return {
@@ -52,7 +56,11 @@ def generate_draft(db: Session, *, lead_id: str) -> dict:
 
 def approve_draft(db: Session, *, draft_id: str) -> dict:
     """Approve an outreach draft."""
-    draft = review_draft(db, uuid.UUID(draft_id), approved=True)
+    try:
+        did = uuid.UUID(draft_id)
+    except ValueError:
+        return {"error": "ID de borrador inválido"}
+    draft = review_draft(db, did, approved=True)
     if not draft:
         return {"error": "Borrador no encontrado"}
     return {"id": str(draft.id), "status": draft.status.value}
@@ -62,7 +70,11 @@ def reject_draft(
     db: Session, *, draft_id: str, reason: str | None = None
 ) -> dict:
     """Reject an outreach draft."""
-    draft = review_draft(db, uuid.UUID(draft_id), approved=False, feedback=reason)
+    try:
+        did = uuid.UUID(draft_id)
+    except ValueError:
+        return {"error": "ID de borrador inválido"}
+    draft = review_draft(db, did, approved=False, feedback=reason)
     if not draft:
         return {"error": "Borrador no encontrado"}
     return {"id": str(draft.id), "status": draft.status.value}

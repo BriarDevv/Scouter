@@ -45,6 +45,22 @@ MAX_TOOL_LOOPS = 5
 MAX_HISTORY_MESSAGES = 50
 
 
+def _build_system_context(db: Session) -> str:
+    """Gather a quick stats summary for the agent's system prompt."""
+    try:
+        from app.services.dashboard_service import get_dashboard_stats
+        stats = get_dashboard_stats(db)
+        return (
+            f"Total leads: {stats['total_leads']} | "
+            f"Contactados: {stats['contacted']} | "
+            f"Respondieron: {stats['replied']} | "
+            f"Ganados: {stats['won']} | "
+            f"Score promedio: {stats['avg_score']}"
+        )
+    except Exception:
+        return ""
+
+
 def _get_model() -> str:
     """Resolve the agent model name."""
     model = resolve_model_for_role(LLMRole.AGENT)
@@ -163,9 +179,10 @@ async def run_agent_turn(
     _save_message(db, conversation_id, "user", user_message)
     db.commit()
 
-    # Build system prompt
+    # Build system prompt with live context
     tools_schema = registry.to_hermes_schema()
-    system_prompt = build_agent_system_prompt(tools_schema)
+    system_context = _build_system_context(db)
+    system_prompt = build_agent_system_prompt(tools_schema, system_context=system_context)
 
     # Load conversation history
     history = _load_history(db, conversation_id)

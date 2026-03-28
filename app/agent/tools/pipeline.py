@@ -16,7 +16,10 @@ def run_full_pipeline(db: Session, *, lead_id: str) -> dict:
     from app.services.task_tracking_service import create_pipeline_run, queue_task_run
     from app.workers.tasks import task_enrich_lead
 
-    lead_uuid = uuid.UUID(lead_id)
+    try:
+        lead_uuid = uuid.UUID(lead_id)
+    except ValueError:
+        return {"error": "ID de lead inválido"}
     pipeline_run = create_pipeline_run(db, lead_id=lead_uuid)
     task = task_enrich_lead.delay(
         lead_id, str(pipeline_run.id), pipeline_run.correlation_id
@@ -78,7 +81,11 @@ def get_pipeline_status(
 ) -> dict:
     """Get pipeline run status."""
     if pipeline_run_id:
-        run = get_pipeline_run(db, uuid.UUID(pipeline_run_id))
+        try:
+            rid = uuid.UUID(pipeline_run_id)
+        except ValueError:
+            return {"error": "ID de pipeline run inválido"}
+        run = get_pipeline_run(db, rid)
         if not run:
             return {"error": "Pipeline run no encontrado"}
         return {

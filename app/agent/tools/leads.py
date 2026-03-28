@@ -69,7 +69,10 @@ def get_lead_detail(
     """Get detailed lead info by ID or business name."""
     lead = None
     if lead_id:
-        lead = get_lead(db, uuid.UUID(lead_id))
+        try:
+            lead = get_lead(db, uuid.UUID(lead_id))
+        except ValueError:
+            return {"error": "ID de lead inválido (debe ser UUID)"}
     elif business_name:
         stmt = select(Lead).where(
             Lead.business_name.ilike(f"%{business_name}%")
