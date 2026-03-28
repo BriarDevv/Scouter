@@ -25,7 +25,6 @@ from app.agent.events import (
     TurnComplete,
 )
 from app.agent.hermes_format import (
-    build_system_prompt,
     contains_tool_call,
     format_tool_result,
     parse_tool_calls,
