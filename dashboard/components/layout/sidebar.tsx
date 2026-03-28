@@ -41,9 +41,8 @@ const EXTRA_NAV_ITEMS = [
 ];
 
 /** Fade text: out fast, in after sidebar expands. */
-const LABEL_CLS = "whitespace-nowrap overflow-hidden transition-[opacity] ";
-const LABEL_HIDDEN = LABEL_CLS + "opacity-0 w-0 duration-100 delay-0";
-const LABEL_VISIBLE = LABEL_CLS + "opacity-100 w-auto duration-200 delay-150";
+const LABEL_HIDDEN = "whitespace-nowrap overflow-hidden opacity-0 max-w-0 transition-all duration-100 delay-0";
+const LABEL_VISIBLE = "whitespace-nowrap transition-[opacity] opacity-100 duration-200 delay-150";
 
 export function Sidebar() {
   const pathname = usePathname();
