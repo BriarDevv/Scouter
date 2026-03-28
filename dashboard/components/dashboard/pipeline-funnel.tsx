@@ -26,7 +26,7 @@ export function PipelineFunnel({ stages }: { stages: PipelineStage[] }) {
               <div className="flex-1">
                 <div className="relative h-8 w-full overflow-hidden rounded-lg bg-muted">
                   <div
-                    className="absolute inset-y-0 left-0 flex items-center rounded-lg px-3 transition-all duration-500"
+                    className="absolute inset-y-0 left-0 flex items-center rounded-lg px-3 transition-[width] duration-500"
                     style={{ width: `${widthPercent}%`, backgroundColor: stage.color }}
                   >
                     <span className="text-xs font-semibold text-white drop-shadow-sm font-data">

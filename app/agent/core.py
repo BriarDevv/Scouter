@@ -7,6 +7,7 @@ its native format.
 
 from __future__ import annotations
 
+import functools
 import time
 import uuid
 from collections.abc import AsyncGenerator
@@ -43,6 +44,12 @@ logger = get_logger(__name__)
 
 MAX_TOOL_LOOPS = 5
 MAX_HISTORY_MESSAGES = 50
+
+
+@functools.lru_cache(maxsize=1)
+def _cached_tools_schema() -> str:
+    """Cache the Hermes tool schema — it never changes at runtime."""
+    return registry.to_hermes_schema()
 
 
 def _build_system_context(db: Session) -> str:
@@ -207,8 +214,8 @@ async def run_agent_turn(
     _save_message(db, conversation_id, "user", user_message)
     db.commit()
 
-    # Build system prompt with live context
-    tools_schema = registry.to_hermes_schema()
+    # Build system prompt with live context (schema cached)
+    tools_schema = _cached_tools_schema()
     system_context = _build_system_context(db)
     system_prompt = build_agent_system_prompt(tools_schema, system_context=system_context)
 

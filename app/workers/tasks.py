@@ -164,7 +164,7 @@ def task_enrich_lead(
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
     finally:
         clear_tracking_context()
 
@@ -235,7 +235,7 @@ def task_score_lead(
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
     finally:
         clear_tracking_context()
 
@@ -350,7 +350,7 @@ def task_analyze_lead(
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
     finally:
         clear_tracking_context()
 
@@ -492,7 +492,7 @@ def task_generate_draft(
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
     finally:
         clear_tracking_context()
 
@@ -562,7 +562,7 @@ def task_review_lead(self, lead_id: str) -> dict:
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
     finally:
         clear_tracking_context()
 
@@ -653,7 +653,7 @@ def task_review_draft(self, draft_id: str) -> dict:
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
     finally:
         clear_tracking_context()
 
@@ -744,7 +744,7 @@ def task_review_inbound_message(self, message_id: str) -> dict:
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
     finally:
         clear_tracking_context()
 
@@ -852,7 +852,7 @@ def task_review_reply_assistant_draft(self, message_id: str) -> dict:
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
     finally:
         clear_tracking_context()
 

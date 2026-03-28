@@ -357,7 +357,7 @@ export function CrawlersSection() {
             {/* Progress bar */}
             <div className="h-2 rounded-full bg-violet-200 dark:bg-violet-900/50 overflow-hidden">
               <div
-                className="h-full rounded-full bg-violet-600 transition-all duration-500"
+                className="h-full rounded-full bg-violet-600 transition-[width] duration-500"
                 style={{
                   width: `${progress.total_cities ? ((progress.current_city_idx ?? 0) / progress.total_cities) * 100 : 0}%`,
                 }}

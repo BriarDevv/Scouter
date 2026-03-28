@@ -17,6 +17,8 @@ export function useChat(conversationId: string | null): UseChatReturn {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const streamBuf = useRef("");
+  const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const sendMessage = useCallback(async (content: string, overrideId?: string) => {
     const targetId = overrideId || conversationId;
@@ -91,13 +93,21 @@ export function useChat(conversationId: string | null): UseChatReturn {
             const data = JSON.parse(line.slice(6));
             switch (eventType) {
               case "text_delta":
-                setMessages(prev =>
-                  prev.map(m =>
-                    m.id === assistantId
-                      ? { ...m, content: (m.content || "") + data.content }
-                      : m
-                  )
-                );
+                streamBuf.current += data.content;
+                if (!flushTimer.current) {
+                  flushTimer.current = setTimeout(() => {
+                    const buf = streamBuf.current;
+                    streamBuf.current = "";
+                    flushTimer.current = null;
+                    setMessages(prev =>
+                      prev.map(m =>
+                        m.id === assistantId
+                          ? { ...m, content: (m.content || "") + buf }
+                          : m
+                      )
+                    );
+                  }, 50);
+                }
                 break;
               case "tool_start":
                 setMessages(prev =>
@@ -143,16 +153,23 @@ export function useChat(conversationId: string | null): UseChatReturn {
                   )
                 );
                 break;
-              case "turn_complete":
-                // Update the assistant message ID to the real one
+              case "turn_complete": {
+                // Flush any remaining streaming buffer
+                if (flushTimer.current) {
+                  clearTimeout(flushTimer.current);
+                  flushTimer.current = null;
+                }
+                const remaining = streamBuf.current;
+                streamBuf.current = "";
                 setMessages(prev =>
                   prev.map(m =>
                     m.id === assistantId
-                      ? { ...m, id: data.message_id }
+                      ? { ...m, content: (m.content || "") + remaining, id: data.message_id }
                       : m
                   )
                 );
                 break;
+              }
               case "error":
                 setError(data.error);
                 break;

@@ -36,6 +36,9 @@ celery_app.conf.update(
     },
     # Default queue for unmatched tasks
     task_default_queue="default",
+    # Worker stability — prevent memory leaks from long-running processes
+    worker_max_tasks_per_child=200,
+    worker_prefetch_multiplier=2,
     # Beat schedule — periodic maintenance
     beat_schedule={
         "sweep-stale-tasks": {

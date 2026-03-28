@@ -1,7 +1,7 @@
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func as sa_func, select
+from sqlalchemy import case, func as sa_func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.lead import Lead, LeadStatus
@@ -98,31 +98,107 @@ def _last_lead_at(db: Session) -> str | None:
     normalized = _normalize_timestamp(result)
     return normalized.isoformat() if normalized else None
 
-def get_dashboard_stats(db: Session, *, leads: list[Lead] | None = None) -> dict:
-    leads = leads if leads is not None else _load_leads(db)
-    today = _now_utc().date()
+def _status_at_or_beyond(stage: LeadStatus):
+    """Return a SQL CASE expression: 1 if lead has reached this stage, else 0."""
+    target_rank = PIPELINE_STAGE_ORDER[stage]
+    matching = [
+        s for s, rank in PIPELINE_STAGE_ORDER.items() if rank >= target_rank
+    ]
+    # Also include LOST (counts as having reached CONTACTED)
+    if target_rank <= PIPELINE_STAGE_ORDER.get(LeadStatus.CONTACTED, 99):
+        matching.append(LeadStatus.LOST)
+    return sa_func.sum(
+        case((Lead.status.in_(matching), 1), else_=0)
+    )
 
+
+def get_dashboard_stats(db: Session, *, leads: list[Lead] | None = None) -> dict:
+    # Legacy path: if pre-loaded leads are passed, use Python (for leader_service)
+    if leads is not None:
+        return _get_dashboard_stats_python(db, leads)
+
+    today = _now_utc().date()
+    today_start = datetime.combine(today, datetime.min.time(), tzinfo=UTC)
+
+    row = db.execute(
+        select(
+            sa_func.count(Lead.id).label("total"),
+            sa_func.count(case((Lead.created_at >= today_start, 1))).label("new_today"),
+            sa_func.avg(Lead.score).label("avg_score"),
+            _status_at_or_beyond(LeadStatus.QUALIFIED).label("qualified"),
+            _status_at_or_beyond(LeadStatus.APPROVED).label("approved"),
+            _status_at_or_beyond(LeadStatus.CONTACTED).label("contacted"),
+            _status_at_or_beyond(LeadStatus.OPENED).label("opened"),
+            _status_at_or_beyond(LeadStatus.REPLIED).label("replied"),
+            _status_at_or_beyond(LeadStatus.MEETING).label("meetings"),
+            sa_func.sum(case((Lead.status == LeadStatus.WON, 1), else_=0)).label("won"),
+            sa_func.sum(case((Lead.status == LeadStatus.LOST, 1), else_=0)).label("lost"),
+            sa_func.sum(case((Lead.status == LeadStatus.SUPPRESSED, 1), else_=0)).label("suppressed"),
+        )
+    ).one()
+
+    total = row.total or 0
+    contacted = row.contacted or 0
+    opened = row.opened or 0
+    replied = row.replied or 0
+    meetings = row.meetings or 0
+    won = row.won or 0
+
+    # Pipeline velocity: avg days from created_at to updated_at for won/lost leads
+    velocity_row = db.execute(
+        select(
+            sa_func.avg(
+                sa_func.extract("epoch", Lead.updated_at - Lead.created_at) / 86400
+            )
+        ).where(Lead.status.in_([LeadStatus.WON, LeadStatus.LOST]))
+    ).scalar()
+
+    return {
+        "total_leads": total,
+        "new_today": row.new_today or 0,
+        "qualified": row.qualified or 0,
+        "approved": row.approved or 0,
+        "contacted": contacted,
+        "replied": replied,
+        "meetings": meetings,
+        "won": won,
+        "lost": row.lost or 0,
+        "suppressed": row.suppressed or 0,
+        "avg_score": round(float(row.avg_score or 0), 1),
+        "conversion_rate": round(_safe_rate(won, contacted), 4),
+        "open_rate": round(_safe_rate(opened, contacted), 4),
+        "reply_rate": round(_safe_rate(replied, contacted), 4),
+        "positive_reply_rate": round(_safe_rate(meetings, replied), 4),
+        "meeting_rate": round(_safe_rate(meetings, contacted), 4),
+        "pipeline_velocity": round(float(velocity_row or 0), 1),
+        "last_lead_at": _last_lead_at(db),
+    }
+
+
+def _get_dashboard_stats_python(db: Session, leads: list[Lead]) -> dict:
+    """Fallback: compute stats from pre-loaded leads (used by leader_service)."""
+    today = _now_utc().date()
     total_leads = len(leads)
     scored_values = [lead.score for lead in leads if lead.score is not None]
-    new_today = sum(1 for lead in leads if _date_key(lead.created_at) == today.isoformat())
-    qualified = sum(1 for lead in leads if _reached_stage(lead.status, LeadStatus.QUALIFIED))
-    approved = sum(1 for lead in leads if _reached_stage(lead.status, LeadStatus.APPROVED))
-    contacted = sum(1 for lead in leads if _reached_stage(lead.status, LeadStatus.CONTACTED))
-    opened = sum(1 for lead in leads if _reached_stage(lead.status, LeadStatus.OPENED))
-    replied = sum(1 for lead in leads if _reached_stage(lead.status, LeadStatus.REPLIED))
-    meetings = sum(1 for lead in leads if _reached_stage(lead.status, LeadStatus.MEETING))
-    won = sum(1 for lead in leads if lead.status == LeadStatus.WON)
-    lost = sum(1 for lead in leads if lead.status == LeadStatus.LOST)
-    suppressed = sum(1 for lead in leads if lead.status == LeadStatus.SUPPRESSED)
+    new_today = sum(1 for l in leads if _date_key(l.created_at) == today.isoformat())
+    qualified = sum(1 for l in leads if _reached_stage(l.status, LeadStatus.QUALIFIED))
+    approved = sum(1 for l in leads if _reached_stage(l.status, LeadStatus.APPROVED))
+    contacted = sum(1 for l in leads if _reached_stage(l.status, LeadStatus.CONTACTED))
+    opened = sum(1 for l in leads if _reached_stage(l.status, LeadStatus.OPENED))
+    replied = sum(1 for l in leads if _reached_stage(l.status, LeadStatus.REPLIED))
+    meetings = sum(1 for l in leads if _reached_stage(l.status, LeadStatus.MEETING))
+    won = sum(1 for l in leads if l.status == LeadStatus.WON)
+    lost = sum(1 for l in leads if l.status == LeadStatus.LOST)
+    suppressed = sum(1 for l in leads if l.status == LeadStatus.SUPPRESSED)
 
     closed_cycle_days = []
     for lead in leads:
         if lead.status not in {LeadStatus.WON, LeadStatus.LOST}:
             continue
-        created_at = _normalize_timestamp(lead.created_at)
-        updated_at = _normalize_timestamp(lead.updated_at)
-        if created_at and updated_at:
-            closed_cycle_days.append((updated_at - created_at).total_seconds() / 86400)
+        ca = _normalize_timestamp(lead.created_at)
+        ua = _normalize_timestamp(lead.updated_at)
+        if ca and ua:
+            closed_cycle_days.append((ua - ca).total_seconds() / 86400)
 
     return {
         "total_leads": total_leads,

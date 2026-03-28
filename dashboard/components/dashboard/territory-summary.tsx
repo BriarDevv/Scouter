@@ -80,7 +80,7 @@ export function TerritorySummary() {
               </div>
               <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                 <div
-                  className="h-full rounded-full transition-all duration-500"
+                  className="h-full rounded-full transition-[width] duration-500"
                   style={{
                     width: `${(t.lead_count / maxCount) * 100}%`,
                     backgroundColor: t.color,

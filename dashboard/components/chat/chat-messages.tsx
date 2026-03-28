@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 import { Bot, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ChatToolCallCard } from "@/components/chat/chat-tool-call";
@@ -11,7 +11,7 @@ interface ChatMessagesProps {
   isStreaming: boolean;
 }
 
-export function ChatMessages({ messages, isStreaming }: ChatMessagesProps) {
+export const ChatMessages = memo(function ChatMessages({ messages, isStreaming }: ChatMessagesProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -93,4 +93,4 @@ export function ChatMessages({ messages, isStreaming }: ChatMessagesProps) {
       <div ref={bottomRef} />
     </div>
   );
-}
+});

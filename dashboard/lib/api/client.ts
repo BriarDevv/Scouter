@@ -51,17 +51,24 @@ const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (API_KEY) headers["X-API-Key"] = API_KEY;
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    headers,
-    ...options,
-  });
-  if (!res.ok) {
-    throw new Error(`API error: ${res.status} ${res.statusText}`);
+  const method = options?.method?.toUpperCase() || "GET";
+  const maxRetries = method === "GET" ? 2 : 0;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const res = await fetch(`${API_BASE_URL}${path}`, { headers, ...options });
+    if (res.status >= 500 && attempt < maxRetries) {
+      await new Promise((r) => setTimeout(r, 1000 * 2 ** attempt));
+      continue;
+    }
+    if (!res.ok) {
+      throw new Error(`API error: ${res.status} ${res.statusText}`);
+    }
+    if (res.status === 204) {
+      return undefined as T;
+    }
+    return res.json();
   }
-  if (res.status === 204) {
-    return undefined as T;
-  }
-  return res.json();
+  throw new Error("API error: max retries exceeded");
 }
 
 // ─── Leads ─────────────────────────────────────────────
