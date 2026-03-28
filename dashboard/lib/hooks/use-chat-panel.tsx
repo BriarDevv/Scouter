@@ -25,20 +25,14 @@ const ChatPanelContext = createContext<ChatPanelState | null>(null);
 const CHAT_STORAGE_KEY = "clawscout-chat-open";
 const SIDEBAR_STORAGE_KEY = "clawscout-sidebar-collapsed";
 
-export function ChatPanelProvider({ children }: { children: ReactNode }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+function readStorage(key: string): boolean {
+  try { return localStorage.getItem(key) === "true"; } catch { return false; }
+}
 
-  // Restore from localStorage on mount
-  useEffect(() => {
-    try {
-      if (localStorage.getItem(CHAT_STORAGE_KEY) === "true") setIsOpen(true);
-      if (localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true") setSidebarCollapsed(true);
-    } catch {
-      // SSR or localStorage unavailable
-    }
-  }, []);
+export function ChatPanelProvider({ children }: { children: ReactNode }) {
+  const [isOpen, setIsOpen] = useState(() => readStorage(CHAT_STORAGE_KEY));
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => readStorage(SIDEBAR_STORAGE_KEY));
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
 
   // Persist to localStorage
   useEffect(() => {
