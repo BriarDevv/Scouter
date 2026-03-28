@@ -40,13 +40,14 @@ def test_settings_rejects_models_outside_supported_catalog():
 
 def test_settings_normalizes_supported_model_catalog():
     settings = Settings(
-        OLLAMA_SUPPORTED_MODELS=" qwen3.5:4b, qwen3.5:9b ,qwen3.5:9b, qwen3.5:27b ",
+        OLLAMA_SUPPORTED_MODELS=" qwen3.5:4b, qwen3.5:9b ,qwen3.5:9b, qwen3.5:27b, hermes3:8b ",
     )
 
     assert settings.ollama_supported_models == (
         "qwen3.5:4b",
         "qwen3.5:9b",
         "qwen3.5:27b",
+        "hermes3:8b",
     )
 
 
