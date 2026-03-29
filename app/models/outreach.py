@@ -22,8 +22,9 @@ class OutreachDraft(Base):
     lead_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("leads.id", ondelete="CASCADE"), nullable=False
     )
-    subject: Mapped[str] = mapped_column(String(500), nullable=False)
+    subject: Mapped[str | None] = mapped_column(String(500), nullable=True)
     body: Mapped[str] = mapped_column(Text, nullable=False)
+    channel: Mapped[str] = mapped_column(String(20), default="email", nullable=False)
     status: Mapped[DraftStatus] = mapped_column(
         Enum(DraftStatus), nullable=False, default=DraftStatus.PENDING_REVIEW
     )
