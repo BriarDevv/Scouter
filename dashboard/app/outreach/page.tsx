@@ -255,6 +255,15 @@ export default function OutreachPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1.5">
                         <DraftStatusBadge status={draft.status} />
+                        {draft.channel === "whatsapp" ? (
+                          <span className="inline-flex items-center rounded-md bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300">
+                            WA
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-md bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 dark:text-blue-300">
+                            Email
+                          </span>
+                        )}
                         {lead && (
                           <Link href={`/leads/${lead.id}`} className="text-xs text-muted-foreground hover:text-violet-600 transition-colors">
                             {lead.business_name}
@@ -336,8 +345,13 @@ export default function OutreachPage() {
             {selectedDraft ? (
               <div className="mt-4 space-y-4">
                 <div className="rounded-xl border border-border bg-muted/60 p-3">
-                  <p className="text-sm font-medium text-foreground">{selectedDraft.subject}</p>
-                  <p className="mt-1 text-xs text-muted-foreground line-clamp-3">{selectedDraft.body}</p>
+                  {selectedDraft.channel !== "whatsapp" && (
+                    <p className="text-sm font-medium text-foreground">{selectedDraft.subject}</p>
+                  )}
+                  <p className={cn(
+                    "text-xs text-muted-foreground line-clamp-3",
+                    selectedDraft.channel !== "whatsapp" && "mt-1"
+                  )}>{selectedDraft.body}</p>
                   <p className="mt-2 text-xs text-muted-foreground font-data">
                     Generado <RelativeTime date={selectedDraft.generated_at} />
                   </p>

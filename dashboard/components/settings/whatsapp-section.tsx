@@ -420,6 +420,148 @@ export function OpenClawWhatsAppSection({ data, onSaved }: OpenClawWhatsAppProps
   );
 }
 
+// ─── Kapso WhatsApp Outreach ────────────────────────────────────────
+
+interface KapsoOutreachSectionProps {
+  data: OperationalSettings;
+  onSaved: (updated: OperationalSettings) => void;
+}
+
+export function KapsoOutreachSection({ data, onSaved }: KapsoOutreachSectionProps) {
+  const [enabled, setEnabled] = useState(data.whatsapp_outreach_enabled ?? false);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ status: string; message: string } | null>(null);
+
+  const handleToggle = async (value: boolean) => {
+    setEnabled(value);
+    setSaving(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/settings/operational`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ whatsapp_outreach_enabled: value }),
+      });
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      const updated = await res.json();
+      sileo.success({
+        title: value
+          ? "Outreach por WhatsApp activado"
+          : "Outreach por WhatsApp desactivado",
+      });
+      onSaved(updated);
+    } catch (err) {
+      setEnabled(!value);
+      sileo.error({
+        title: "Error al guardar",
+        description: err instanceof Error ? err.message : "Error desconocido.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/settings/test/kapso`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+      const result = await res.json();
+      setTestResult(result);
+      if (result.status === "ok") {
+        sileo.success({ title: "Kapso: conexion exitosa" });
+      } else {
+        sileo.error({ title: "Kapso: fallo la conexion", description: result.message });
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Error de red";
+      setTestResult({ status: "error", message: msg });
+      sileo.error({ title: "Error al testear Kapso", description: msg });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <SettingsSectionCard
+      title="WhatsApp Outreach (Kapso)"
+      description="Genera y envia borradores de outreach por WhatsApp usando la API de Kapso."
+      icon={MessageCircle}
+    >
+      <div className="grid gap-0 lg:grid-cols-2 lg:gap-x-8">
+        {/* Left: toggle + status */}
+        <div>
+          <FieldRow
+            label="Outreach por WhatsApp"
+            hint="Habilita la generacion de drafts de outreach para el canal WhatsApp"
+          >
+            <Toggle
+              checked={enabled}
+              onChange={handleToggle}
+              label={enabled ? "Activo" : "Inactivo"}
+              disabled={saving}
+            />
+          </FieldRow>
+        </div>
+
+        {/* Right: connection test */}
+        <div className="space-y-4">
+          <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Zap className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <p className="font-medium text-sm text-foreground">Conexion Kapso</p>
+            </div>
+
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                {testResult ? (
+                  <div className="flex items-center gap-1.5">
+                    {testResult.status === "ok" ? (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-rose-500" />
+                    )}
+                    <span
+                      className={`text-xs font-medium ${
+                        testResult.status === "ok" ? "text-emerald-700" : "text-rose-700"
+                      }`}
+                    >
+                      {testResult.message}
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-xs text-muted-foreground">Sin prueba realizada</span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleTest}
+                disabled={testing}
+                className="flex w-fit items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium text-foreground/80 transition hover:border-border disabled:opacity-50"
+              >
+                {testing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Wifi className="h-4 w-4" />
+                )}
+                Testear conexion
+              </button>
+            </div>
+          </div>
+
+          <p className="text-[10px] text-muted-foreground/60">
+            La API key de Kapso se configura en el archivo .env del servidor
+          </p>
+        </div>
+      </div>
+    </SettingsSectionCard>
+  );
+}
+
 // ─── Security indicator row ──────────────────────────────────────────
 
 function SecurityRow({ label, ok, detail }: { label: string; ok: boolean; detail: string }) {

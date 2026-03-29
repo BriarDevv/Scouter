@@ -505,6 +505,10 @@ export async function testWhatsApp() {
   );
 }
 
+export async function testKapsoConnection(): Promise<{ status: string; message: string }> {
+  return apiFetch("/settings/test/kapso", { method: "POST" });
+}
+
 // ─── AI Workspace ──────────────────────────────────────
 
 export async function getAIWorkspaceStatus(): Promise<import('@/types').AIWorkspaceStatus> {

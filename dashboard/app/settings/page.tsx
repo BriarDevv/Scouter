@@ -28,7 +28,7 @@ import { MailInboundSection } from "@/components/settings/mail-inbound-section";
 import { RulesSection } from "@/components/settings/rules-section";
 import { CredentialsSection } from "@/components/settings/credentials-section";
 import { NotificationsSection } from "@/components/settings/notifications-section";
-import { WhatsAppSection, OpenClawWhatsAppSection } from "@/components/settings/whatsapp-section";
+import { WhatsAppSection, OpenClawWhatsAppSection, KapsoOutreachSection } from "@/components/settings/whatsapp-section";
 import { TelegramSection, OpenClawTelegramSection } from "@/components/settings/telegram-section";
 import { AIWorkspaceSection } from "@/components/settings/ai-workspace-section";
 import { TerritoriesSection } from "@/components/settings/territories-section";
@@ -199,6 +199,9 @@ export default function SettingsPage() {
             {waCredsData ? (
               <WhatsAppSection data={waCredsData} onSaved={handleSavedWACreds} />
             ) : <NoDataNotice />}
+            {opData ? (
+              <KapsoOutreachSection data={opData} onSaved={handleSavedOps} />
+            ) : null}
             {opData ? (
               <OpenClawWhatsAppSection data={opData} onSaved={handleSavedOps} />
             ) : null}

@@ -119,6 +119,7 @@ export interface OutreachDraft {
   lead?: Lead | null;
   subject: string;
   body: string;
+  channel?: string; // "email" | "whatsapp"
   status: DraftStatus;
   generated_at: string;
   reviewed_at: string | null;
@@ -600,6 +601,7 @@ export interface OperationalSettings {
   whatsapp_categories: string[];
   whatsapp_openclaw_enrichment: boolean;
   whatsapp_conversational_enabled: boolean;
+  whatsapp_outreach_enabled: boolean;
   whatsapp_actions_enabled: boolean;
   // Telegram
   telegram_alerts_enabled: boolean;
