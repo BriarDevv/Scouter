@@ -96,3 +96,46 @@ def generate_draft_content(lead: Lead, db: Session | None = None) -> tuple[str, 
         logger.warning("draft_validation_warnings", lead_id=str(lead.id), warnings=warnings)
 
     return subject, body
+
+
+WA_WORD_LIMIT = 80
+WA_CHAR_LIMIT = 300
+
+
+def generate_whatsapp_draft_content(lead: Lead, db: Session | None = None) -> str:
+    """Generate WhatsApp message body via EXECUTOR model. Returns body string."""
+    from app.llm.client import generate_whatsapp_draft as llm_wa_generate
+
+    brand_ctx = get_brand_context(db) if db is not None else None
+    result = llm_wa_generate(
+        business_name=lead.business_name,
+        industry=lead.industry,
+        city=lead.city,
+        website_url=lead.website_url,
+        instagram_url=lead.instagram_url,
+        llm_summary=lead.llm_summary,
+        llm_suggested_angle=lead.llm_suggested_angle,
+        signals=list(lead.signals),
+    )
+
+    body = result["body"]
+    warnings: list[str] = []
+
+    if len(body.split()) > WA_WORD_LIMIT:
+        warnings.append(f"wa_body_words={len(body.split())} (limit {WA_WORD_LIMIT})")
+
+    if len(body) > WA_CHAR_LIMIT:
+        body = body[:WA_CHAR_LIMIT - 3] + "..."
+        warnings.append(f"wa_body_truncated_at={WA_CHAR_LIMIT}")
+
+    allowed = _collect_allowed_urls(lead, brand_ctx)
+    for url in _URL_RE.findall(body):
+        clean = url.rstrip("/.,;:!?")
+        if not any(clean.startswith(a) for a in allowed):
+            body = body.replace(url, "")
+            warnings.append(f"fabricated_url_removed={url}")
+
+    if warnings:
+        logger.warning("wa_draft_validation_warnings", lead_id=str(lead.id), warnings=warnings)
+
+    return body.strip()

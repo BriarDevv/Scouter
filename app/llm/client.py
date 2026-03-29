@@ -20,6 +20,8 @@ from app.llm.prompts import (
     GENERATE_OUTREACH_EMAIL_SYSTEM,
     GENERATE_REPLY_ASSISTANT_DRAFT_DATA,
     GENERATE_REPLY_ASSISTANT_DRAFT_SYSTEM,
+    GENERATE_WHATSAPP_DRAFT_DATA,
+    GENERATE_WHATSAPP_DRAFT_SYSTEM,
     REVIEW_INBOUND_REPLY_DATA,
     REVIEW_INBOUND_REPLY_SYSTEM,
     REVIEW_LEAD_DATA,
@@ -632,4 +634,46 @@ def review_reply_assistant_draft(
         }
     except Exception as e:
         logger.error("llm_review_reply_assistant_failed", role=_role_value(role), error=str(e))
+        return fallback
+
+
+def generate_whatsapp_draft(
+    business_name: str,
+    industry: str | None,
+    city: str | None,
+    website_url: str | None,
+    instagram_url: str | None,
+    llm_summary: str | None,
+    llm_suggested_angle: str | None,
+    signals: list,
+    role: LLMRole | str = LLMRole.EXECUTOR,
+) -> dict:
+    """Generate a WhatsApp outreach message. Returns dict with body."""
+    user_prompt = GENERATE_WHATSAPP_DRAFT_DATA.format(
+        business_name=business_name,
+        industry=industry or "Unknown",
+        city=city or "Unknown",
+        website_url=website_url or "None",
+        instagram_url=instagram_url or "None",
+        llm_summary=llm_summary or "No summary available",
+        llm_suggested_angle=llm_suggested_angle or "Web development services",
+        signals=_format_signals(signals),
+    )
+
+    fallback = {
+        "body": f"Hola! Vi que {business_name} podría mejorar su presencia digital. "
+        "Te interesaría charlar sobre cómo puedo ayudarte? 🚀",
+    }
+
+    try:
+        raw = _call_ollama_chat(
+            GENERATE_WHATSAPP_DRAFT_SYSTEM, user_prompt, role=role,
+        )
+        data = _extract_json(raw)
+        body = data.get("body")
+        if not body:
+            raise LLMParseError("Missing body in WhatsApp draft response")
+        return {"body": body}
+    except Exception as e:
+        logger.error("llm_whatsapp_draft_failed", role=_role_value(role), error=str(e))
         return fallback
