@@ -11,8 +11,9 @@ class OutreachDraftResponse(BaseModel):
 
     id: uuid.UUID
     lead_id: uuid.UUID
-    subject: str
+    subject: str | None = None
     body: str
+    channel: str = "email"
     status: DraftStatus
     generated_at: datetime
     reviewed_at: datetime | None
