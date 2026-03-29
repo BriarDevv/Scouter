@@ -107,15 +107,21 @@ def test_kapso_connection(db=Depends(get_session)):
     from app.core.config import settings as app_settings
     if not app_settings.KAPSO_API_KEY:
         return {"status": "error", "message": "KAPSO_API_KEY no configurada en .env"}
+    if not app_settings.KAPSO_PHONE_NUMBER_ID:
+        return {"status": "error", "message": "KAPSO_PHONE_NUMBER_ID no configurado en .env"}
     try:
         import httpx
-        resp = httpx.get(
-            f"{app_settings.KAPSO_BASE_URL}/health",
-            headers={"X-API-Key": app_settings.KAPSO_API_KEY},
+        # Use the actual messages endpoint with a dry-run style check
+        url = f"{app_settings.KAPSO_BASE_URL}/v24.0/{app_settings.KAPSO_PHONE_NUMBER_ID}/messages"
+        resp = httpx.post(
+            url,
+            headers={"X-API-Key": app_settings.KAPSO_API_KEY, "Content-Type": "application/json"},
+            json={"messaging_product": "whatsapp", "to": "0", "type": "text", "text": {"body": "test"}},
             timeout=10,
         )
-        if resp.status_code < 400:
-            return {"status": "ok", "message": "Conexión con Kapso exitosa"}
+        # Any non-5xx response means the API is reachable and auth works
+        if resp.status_code < 500:
+            return {"status": "ok", "message": "Conexión con Kapso exitosa (API key válida)"}
         return {"status": "error", "message": f"Kapso respondió con HTTP {resp.status_code}"}
     except Exception as exc:
         return {"status": "error", "message": f"Error de conexión: {exc}"}

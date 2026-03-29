@@ -85,6 +85,7 @@ class Settings(BaseSettings):
     # Kapso (WhatsApp outreach)
     KAPSO_API_KEY: str | None = None
     KAPSO_BASE_URL: str = "https://api.kapso.ai/meta/whatsapp"
+    KAPSO_PHONE_NUMBER_ID: str | None = None
 
     # Telegram
     TELEGRAM_DRY_RUN: bool = True

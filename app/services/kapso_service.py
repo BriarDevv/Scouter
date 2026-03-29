@@ -28,13 +28,19 @@ def send_whatsapp_message(phone: str, message: str) -> dict:
     """
     if not settings.KAPSO_API_KEY:
         raise KapsoError("KAPSO_API_KEY not configured")
+    if not settings.KAPSO_PHONE_NUMBER_ID:
+        raise KapsoError("KAPSO_PHONE_NUMBER_ID not configured")
 
-    url = f"{settings.KAPSO_BASE_URL}/messages"
+    url = (
+        f"{settings.KAPSO_BASE_URL}/v24.0"
+        f"/{settings.KAPSO_PHONE_NUMBER_ID}/messages"
+    )
     headers = {
         "X-API-Key": settings.KAPSO_API_KEY,
         "Content-Type": "application/json",
     }
     payload = {
+        "messaging_product": "whatsapp",
         "to": phone,
         "type": "text",
         "text": {"body": message},
