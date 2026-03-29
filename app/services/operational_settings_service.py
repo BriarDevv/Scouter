@@ -117,6 +117,7 @@ def get_effective_rules(db: Session) -> dict:
         "whatsapp_alerts_enabled": row.whatsapp_alerts_enabled,
         "whatsapp_min_severity": row.whatsapp_min_severity,
         "whatsapp_categories": row.whatsapp_categories or [],
+        "whatsapp_outreach_enabled": row.whatsapp_outreach_enabled,
         "telegram_agent_enabled": row.telegram_agent_enabled,
         "whatsapp_agent_enabled": row.whatsapp_agent_enabled,
     }
@@ -166,6 +167,7 @@ def to_response_dict(row: OperationalSettings) -> dict:
         "whatsapp_min_severity": row.whatsapp_min_severity,
         "whatsapp_categories": row.whatsapp_categories or [],
         "telegram_alerts_enabled": row.telegram_alerts_enabled,
+        "whatsapp_outreach_enabled": row.whatsapp_outreach_enabled,
         "telegram_agent_enabled": row.telegram_agent_enabled,
         "whatsapp_agent_enabled": row.whatsapp_agent_enabled,
         "updated_at": row.updated_at.isoformat() if row.updated_at else None,

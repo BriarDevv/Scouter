@@ -445,6 +445,18 @@ def task_generate_draft(
                 )
                 return {"status": "failed", "lead_id": lead_id}
 
+            # Generate WhatsApp draft if lead has phone and WA outreach is enabled
+            try:
+                wa_settings = get_cached_settings(db)
+                if wa_settings and getattr(wa_settings, "whatsapp_outreach_enabled", False):
+                    lead_obj = db.get(Lead, uuid.UUID(lead_id))
+                    if lead_obj and lead_obj.phone:
+                        from app.services.outreach_service import generate_whatsapp_draft
+                        generate_whatsapp_draft(db, uuid.UUID(lead_id))
+                        logger.info("wa_draft_generated_by_pipeline", lead_id=lead_id)
+            except Exception as wa_exc:
+                logger.warning("wa_draft_pipeline_failed", lead_id=lead_id, error=str(wa_exc))
+
             result = {"status": "ok", "lead_id": lead_id, "draft_id": str(draft.id)}
             mark_task_succeeded(
                 db,

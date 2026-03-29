@@ -77,6 +77,9 @@ class OperationalSettings(Base):
     # ── Telegram alerts (non-secret config; secrets in TelegramCredentials)
     telegram_alerts_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
+    # ── WhatsApp outreach (draft generation in pipeline)
+    whatsapp_outreach_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
     # ── Hermes 3 agent routing per channel
     telegram_agent_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     whatsapp_agent_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

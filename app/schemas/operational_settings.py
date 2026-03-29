@@ -50,6 +50,9 @@ class OperationalSettingsUpdate(BaseModel):
     # Telegram
     telegram_alerts_enabled: bool | None = None
 
+    # WhatsApp outreach (pipeline)
+    whatsapp_outreach_enabled: bool | None = None
+
     # Hermes 3 agent per channel
     telegram_agent_enabled: bool | None = None
     whatsapp_agent_enabled: bool | None = None
@@ -69,6 +72,7 @@ class OperationalSettingsUpdate(BaseModel):
         "reviewer_confidence_threshold",
         "notifications_enabled", "notification_score_threshold",
         "whatsapp_alerts_enabled",
+        "whatsapp_outreach_enabled",
         "telegram_alerts_enabled",
         "telegram_agent_enabled", "whatsapp_agent_enabled",
     })
@@ -132,6 +136,7 @@ class OperationalSettingsResponse(BaseModel):
     whatsapp_min_severity: str
     whatsapp_categories: list[str]
     telegram_alerts_enabled: bool
+    whatsapp_outreach_enabled: bool
     telegram_agent_enabled: bool
     whatsapp_agent_enabled: bool
     updated_at: str | None
@@ -149,3 +154,4 @@ class CredentialsStatusResponse(BaseModel):
     imap: list[CredentialStatusItem]
     all_smtp_ready: bool
     all_imap_ready: bool
+    kapso_api_key: bool = False

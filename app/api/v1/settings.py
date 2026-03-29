@@ -101,6 +101,26 @@ def test_imap_connection(db=Depends(get_session)):
     return result
 
 
+@router.post("/test/kapso")
+def test_kapso_connection(db=Depends(get_session)):
+    """Test Kapso API connectivity."""
+    from app.core.config import settings as app_settings
+    if not app_settings.KAPSO_API_KEY:
+        return {"status": "error", "message": "KAPSO_API_KEY no configurada en .env"}
+    try:
+        import httpx
+        resp = httpx.get(
+            f"{app_settings.KAPSO_BASE_URL}/health",
+            headers={"X-API-Key": app_settings.KAPSO_API_KEY},
+            timeout=10,
+        )
+        if resp.status_code < 400:
+            return {"status": "ok", "message": "Conexión con Kapso exitosa"}
+        return {"status": "error", "message": f"Kapso respondió con HTTP {resp.status_code}"}
+    except Exception as exc:
+        return {"status": "error", "message": f"Error de conexión: {exc}"}
+
+
 # ── Setup / readiness checklist ───────────────────────────────────────
 
 @router.get("/setup-status", response_model=SetupStatusResponse)
@@ -165,6 +185,7 @@ def credentials_status():
         imap=imap_items,
         all_smtp_ready=all(item.set for item in smtp_items if item.required),
         all_imap_ready=all(item.set for item in imap_items if item.required),
+        kapso_api_key=bool(env.KAPSO_API_KEY),
     )
 
 
