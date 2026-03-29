@@ -114,8 +114,10 @@ def test_kapso_connection(db=Depends(get_session)):
             headers={"X-API-Key": app_settings.KAPSO_API_KEY},
             timeout=10,
         )
-        if resp.status_code < 500:
+        if 200 <= resp.status_code < 300:
             return {"status": "ok", "message": "Conexión con Kapso exitosa"}
+        if resp.status_code in (401, 403):
+            return {"status": "error", "message": "API key inválida o sin permisos"}
         return {"status": "error", "message": f"Kapso respondió con HTTP {resp.status_code}"}
     except Exception as exc:
         return {"status": "error", "message": f"Error de conexión: {exc}"}

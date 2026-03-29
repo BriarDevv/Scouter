@@ -226,9 +226,10 @@ def send_whatsapp_draft(db: Session, draft_id: uuid.UUID) -> "OutreachDelivery":
     delivery = OutreachDelivery(
         draft_id=draft.id,
         lead_id=lead.id,
-        recipient_email=lead.phone,
+        recipient_email=lead.phone,  # reuse email field for phone
+        subject_snapshot=draft.body[:500],  # WA has no subject, store body preview
         provider="kapso",
-        external_message_id=result.get("message_id"),
+        provider_message_id=result.get("message_id"),
     )
     db.add(delivery)
 

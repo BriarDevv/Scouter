@@ -28,6 +28,7 @@ def list_drafts(
                 "id": str(d.id),
                 "lead_id": str(d.lead_id),
                 "subject": d.subject,
+                "channel": d.channel,
                 "status": d.status.value if d.status else None,
                 "generated_at": d.generated_at.isoformat() if d.generated_at else None,
             }
