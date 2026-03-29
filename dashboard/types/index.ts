@@ -528,9 +528,6 @@ export interface InboundMailSettings {
   whatsapp_alerts_enabled: boolean;
   whatsapp_min_severity: string;
   whatsapp_categories: string[];
-  whatsapp_openclaw_enrichment: boolean;
-  whatsapp_conversational_enabled: boolean;
-  whatsapp_actions_enabled: boolean;
   last_sync: MailLastSync | null;
   missing_requirements: string[];
 }
@@ -590,7 +587,6 @@ export interface OperationalSettings {
   reviewer_confidence_threshold: number;
   prioritize_quote_replies: boolean;
   prioritize_meeting_replies: boolean;
-  allow_openclaw_briefs: boolean;
   allow_reply_assistant_generation: boolean;
   use_reviewer_for_labels: string[];
   // Notifications & WhatsApp
@@ -599,20 +595,12 @@ export interface OperationalSettings {
   whatsapp_alerts_enabled: boolean;
   whatsapp_min_severity: string;
   whatsapp_categories: string[];
-  whatsapp_openclaw_enrichment: boolean;
-  whatsapp_conversational_enabled: boolean;
   whatsapp_outreach_enabled: boolean;
-  whatsapp_actions_enabled: boolean;
   // Telegram
   telegram_alerts_enabled: boolean;
-  telegram_openclaw_enrichment: boolean;
-  telegram_conversational_enabled: boolean;
-  telegram_actions_enabled: boolean;
-  // OpenClaw configuration
-  openclaw_model: string;
-  openclaw_max_response_chars: number;
-  openclaw_rate_limit: number;
-  openclaw_rate_window_seconds: number;
+  // Hermes 3 agent per channel
+  telegram_agent_enabled: boolean;
+  whatsapp_agent_enabled: boolean;
   updated_at: string | null;
 }
 

@@ -72,19 +72,18 @@ const FEATURES: FeatureToggle[] = [
     category: "mail",
   },
   {
-    key: "whatsapp_conversational_enabled",
-    label: "WhatsApp comandos",
-    hint: "Recibir y responder comandos por WhatsApp",
+    key: "whatsapp_outreach_enabled",
+    label: "WhatsApp outreach",
+    hint: "Genera drafts de WhatsApp en el pipeline",
     icon: MessageCircle,
     category: "whatsapp",
   },
   {
-    key: "whatsapp_openclaw_enrichment",
-    label: "OpenClaw chat",
-    hint: "Responde mensajes libres con IA (4b)",
+    key: "whatsapp_agent_enabled",
+    label: "Agente WhatsApp",
+    hint: "Hermes 3 responde mensajes por WhatsApp",
     icon: Brain,
     category: "whatsapp",
-    dependsOn: "whatsapp_conversational_enabled",
   },
 ];
 
