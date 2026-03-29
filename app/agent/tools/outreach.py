@@ -282,3 +282,76 @@ registry.register(ToolDefinition(
     category="outreach",
     handler=list_outreach_logs,
 ))
+
+
+# ---------------------------------------------------------------------------
+# WhatsApp draft tools
+# ---------------------------------------------------------------------------
+
+
+def generate_whatsapp_draft(db: Session, *, lead_id: str) -> dict:
+    """Generate a WhatsApp outreach draft for a lead."""
+    from app.services.outreach_service import generate_whatsapp_draft as _gen_wa
+
+    try:
+        lid = uuid.UUID(lead_id)
+    except ValueError:
+        return {"error": "ID de lead inválido"}
+    draft = _gen_wa(db, lid)
+    if not draft:
+        return {"error": "No se pudo generar (lead no encontrado o sin teléfono)"}
+    return {
+        "id": str(draft.id),
+        "channel": "whatsapp",
+        "body": draft.body,
+        "status": draft.status.value,
+    }
+
+
+def send_whatsapp_draft(db: Session, *, draft_id: str) -> dict:
+    """Send an approved WhatsApp draft via Kapso."""
+    from app.services.outreach_service import send_whatsapp_draft as _send_wa
+
+    try:
+        did = uuid.UUID(draft_id)
+    except ValueError:
+        return {"error": "ID de borrador inválido"}
+    try:
+        delivery = _send_wa(db, did)
+        return {
+            "id": str(delivery.id),
+            "status": "sent",
+            "recipient_phone": delivery.recipient_email,
+            "provider": "kapso",
+        }
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+registry.register(ToolDefinition(
+    name="generate_whatsapp_draft",
+    description=(
+        "Generar un borrador de mensaje WhatsApp para un lead "
+        "(requiere confirmación — el lead debe tener teléfono)"
+    ),
+    parameters=[
+        ToolParameter("lead_id", "string", "UUID del lead"),
+    ],
+    category="outreach",
+    requires_confirmation=True,
+    handler=generate_whatsapp_draft,
+))
+
+registry.register(ToolDefinition(
+    name="send_whatsapp_draft",
+    description=(
+        "Enviar un borrador de WhatsApp aprobado via Kapso "
+        "(requiere confirmación — envía mensaje real)"
+    ),
+    parameters=[
+        ToolParameter("draft_id", "string", "UUID del borrador de WhatsApp"),
+    ],
+    category="outreach",
+    requires_confirmation=True,
+    handler=send_whatsapp_draft,
+))

@@ -162,3 +162,93 @@ def update_draft(
         status=draft.status.value,
     )
     return draft
+
+
+def generate_whatsapp_draft(db: Session, lead_id: uuid.UUID) -> OutreachDraft | None:
+    """Generate a WhatsApp outreach draft for a lead."""
+    lead = db.get(Lead, lead_id)
+    if not lead:
+        return None
+
+    if not lead.phone:
+        logger.warning(
+            "wa_draft_skipped_no_phone", lead_id=str(lead_id), business=lead.business_name,
+        )
+        return None
+
+    from app.outreach.generator import generate_whatsapp_draft_content
+
+    body = generate_whatsapp_draft_content(lead, db=db)
+
+    draft = OutreachDraft(
+        lead_id=lead.id,
+        channel="whatsapp",
+        subject=None,
+        body=body,
+        status=DraftStatus.PENDING_REVIEW,
+    )
+    db.add(draft)
+    db.flush()
+
+    db.add(OutreachLog(
+        lead_id=lead.id,
+        draft_id=draft.id,
+        action=LogAction.GENERATED,
+        actor="system",
+    ))
+
+    db.commit()
+    db.refresh(draft)
+    logger.info("wa_draft_generated", lead_id=str(lead_id), draft_id=str(draft.id))
+    return draft
+
+
+def send_whatsapp_draft(db: Session, draft_id: uuid.UUID) -> "OutreachDelivery":
+    """Send an approved WhatsApp draft via Kapso."""
+    from datetime import datetime, timezone
+    from app.models.outreach_delivery import OutreachDelivery
+    from app.services.kapso_service import KapsoError, send_whatsapp_message
+
+    draft = db.get(OutreachDraft, draft_id)
+    if not draft:
+        raise ValueError("Draft not found")
+    if draft.channel != "whatsapp":
+        raise ValueError("Draft is not a WhatsApp draft")
+    if draft.status != DraftStatus.APPROVED:
+        raise ValueError(f"Draft status is {draft.status.value}, expected approved")
+
+    lead = db.get(Lead, draft.lead_id)
+    if not lead or not lead.phone:
+        raise ValueError("Lead has no phone number")
+
+    result = send_whatsapp_message(lead.phone, draft.body)
+
+    delivery = OutreachDelivery(
+        draft_id=draft.id,
+        lead_id=lead.id,
+        recipient_email=lead.phone,
+        provider="kapso",
+        external_message_id=result.get("message_id"),
+    )
+    db.add(delivery)
+
+    draft.status = DraftStatus.SENT
+    draft.sent_at = datetime.now(timezone.utc)
+
+    db.add(OutreachLog(
+        lead_id=lead.id,
+        draft_id=draft.id,
+        action=LogAction.SENT,
+        actor="system",
+    ))
+
+    if lead.status not in (
+        LeadStatus.CONTACTED, LeadStatus.OPENED, LeadStatus.REPLIED,
+        LeadStatus.MEETING, LeadStatus.WON, LeadStatus.LOST,
+    ):
+        lead.status = LeadStatus.CONTACTED
+
+    db.commit()
+    db.refresh(delivery)
+    logger.info("wa_draft_sent", draft_id=str(draft_id), phone=lead.phone[:6] + "***")
+    return delivery
