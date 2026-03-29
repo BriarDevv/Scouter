@@ -119,7 +119,7 @@ export function WhatsAppSection({ data, onSaved }: WhatsAppSectionProps) {
         <div className="mb-5">
           <p className="mb-2 text-xs font-medium text-muted-foreground">Proveedor</p>
           <div className="flex flex-wrap gap-2">
-            <span className="rounded-xl border border-slate-900 bg-foreground px-4 py-2 text-sm font-medium text-white">
+            <span className="rounded-xl border border-violet-700 bg-violet-600 px-4 py-2 text-sm font-medium text-white">
               {data.provider || "CallMeBot"}
             </span>
           </div>

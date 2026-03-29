@@ -36,7 +36,7 @@ export function SettingsSectionCard({
     <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
       <div className="mb-5 flex items-start gap-3">
         {Icon && (
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-foreground text-white">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white">
             <Icon className="h-4 w-4" />
           </div>
         )}
@@ -222,7 +222,7 @@ export function SaveButton({
     <button
       onClick={onClick}
       disabled={saving || disabled}
-      className="flex items-center gap-2 rounded-xl bg-foreground px-4 py-2 text-sm font-medium text-white transition hover:bg-foreground/80 disabled:opacity-50"
+      className="flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-700 disabled:opacity-50"
     >
       {saving ? (
         <Loader2 className="h-4 w-4 animate-spin" />
@@ -289,7 +289,7 @@ export function ProviderPicker({
           onClick={() => onChange(opt.id)}
           className={`rounded-xl border px-4 py-2 text-sm font-medium transition ${
             value === opt.id
-              ? "border-slate-900 bg-foreground text-white"
+              ? "border-violet-700 bg-violet-600 text-white"
               : "border-border bg-card text-muted-foreground hover:border-border"
           }`}
         >

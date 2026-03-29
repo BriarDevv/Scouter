@@ -23,7 +23,7 @@ export function LLMSection({ data }: { data: LLMSettings }) {
               className="flex items-center justify-between rounded-2xl border border-border bg-muted/70 px-4 py-3"
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-foreground text-white">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-600 text-white">
                   <Icon className="h-4 w-4" />
                 </div>
                 <span className="text-sm font-medium text-foreground">{label}</span>

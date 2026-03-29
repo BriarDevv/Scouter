@@ -74,14 +74,14 @@ export function MapSidebar({ cities, open, onToggle, isDarkMap = true }: MapSide
           <div className={cn("border-b px-4 py-3", d ? "border-white/10" : "border-black/8")}>
             <div className="flex items-center gap-2 mb-2">
               <MapPin className={cn("h-4 w-4", d ? "text-violet-400" : "text-violet-600")} />
-              <h3 className={cn("text-sm font-bold", d ? "text-white" : "text-gray-900")}>
+              <h3 className={cn("text-sm font-bold", d ? "text-white" : "text-foreground")}>
                 Ciudades ({cities.length})
               </h3>
             </div>
             <div className="grid grid-cols-3 gap-2">
               <div className={cn("rounded-lg px-2.5 py-1.5 text-center", d ? "bg-white/5" : "bg-black/5")}>
                 <p className={cn("text-xs", d ? "text-white/40" : "text-black/40")}>Leads</p>
-                <p className={cn("text-sm font-bold tabular-nums", d ? "text-white" : "text-gray-900")}>{totalLeads}</p>
+                <p className={cn("text-sm font-bold tabular-nums", d ? "text-white" : "text-foreground")}>{totalLeads}</p>
               </div>
               <div className={cn("rounded-lg px-2.5 py-1.5 text-center", d ? "bg-white/5" : "bg-black/5")}>
                 <p className={cn("text-xs", d ? "text-white/40" : "text-black/40")}>Calif.</p>
@@ -107,7 +107,7 @@ export function MapSidebar({ cities, open, onToggle, isDarkMap = true }: MapSide
                   "w-full rounded-lg border py-1.5 pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/40",
                   d
                     ? "border-white/10 bg-white/5 text-white placeholder:text-white/30"
-                    : "border-black/10 bg-black/5 text-gray-900 placeholder:text-black/30"
+                    : "border-border bg-muted text-foreground placeholder:text-muted-foreground"
                 )}
               />
             </div>
@@ -138,7 +138,7 @@ export function MapSidebar({ cities, open, onToggle, isDarkMap = true }: MapSide
                         )}
                       />
                       <div>
-                        <p className={cn("truncate text-sm font-medium", d ? "text-white/90" : "text-gray-900")}>{city.city}</p>
+                        <p className={cn("truncate text-sm font-medium", d ? "text-white/90" : "text-foreground")}>{city.city}</p>
                         <p className={cn("text-[11px]", d ? "text-white/35" : "text-black/40")}>
                           Score{" "}
                           <span className={cn("font-medium", getScoreColor(city.avg_score, d))}>

@@ -169,7 +169,7 @@ function FileEditorModal({
             <button
               onClick={handleSave}
               disabled={saving || loading}
-              className="flex items-center gap-2 rounded-xl bg-foreground px-4 py-2 text-sm font-medium text-white transition hover:bg-foreground/80 disabled:opacity-50"
+              className="flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-700 disabled:opacity-50"
             >
               {saving ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -262,7 +262,7 @@ function FileCard({
       {/* Header */}
       <div className="mb-3 flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-foreground text-white">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white">
             <Icon className="h-4 w-4" />
           </div>
           <div>
@@ -363,7 +363,7 @@ function SkillRow({ skill }: { skill: AIWorkspaceSkill }) {
   return (
     <div className="flex items-center justify-between rounded-2xl border border-border bg-muted/70 px-4 py-3">
       <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-foreground text-white">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-600 text-white">
           <Puzzle className="h-4 w-4" />
         </div>
         <div>
