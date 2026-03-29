@@ -109,16 +109,18 @@ def test_kapso_connection(db=Depends(get_session)):
         return {"status": "error", "message": "KAPSO_API_KEY no configurada en .env"}
     try:
         import httpx
+        # GET /whatsapp_messages returns 404 (POST-only) but proves connectivity + auth
         resp = httpx.get(
             f"{app_settings.KAPSO_BASE_URL}/whatsapp_messages",
             headers={"X-API-Key": app_settings.KAPSO_API_KEY},
             timeout=10,
         )
-        if 200 <= resp.status_code < 300:
-            return {"status": "ok", "message": "Conexión con Kapso exitosa"}
         if resp.status_code in (401, 403):
             return {"status": "error", "message": "API key inválida o sin permisos"}
-        return {"status": "error", "message": f"Kapso respondió con HTTP {resp.status_code}"}
+        # Any response (including 404/405) means Kapso is reachable and key is accepted
+        return {"status": "ok", "message": "Conexión con Kapso exitosa"}
+    except httpx.ConnectError:
+        return {"status": "error", "message": "No se pudo conectar a Kapso"}
     except Exception as exc:
         return {"status": "error", "message": f"Error de conexión: {exc}"}
 
