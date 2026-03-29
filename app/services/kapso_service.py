@@ -28,22 +28,18 @@ def send_whatsapp_message(phone: str, message: str) -> dict:
     """
     if not settings.KAPSO_API_KEY:
         raise KapsoError("KAPSO_API_KEY not configured")
-    if not settings.KAPSO_PHONE_NUMBER_ID:
-        raise KapsoError("KAPSO_PHONE_NUMBER_ID not configured")
 
-    url = (
-        f"{settings.KAPSO_BASE_URL}/v24.0"
-        f"/{settings.KAPSO_PHONE_NUMBER_ID}/messages"
-    )
+    url = f"{settings.KAPSO_BASE_URL}/whatsapp_messages"
     headers = {
         "X-API-Key": settings.KAPSO_API_KEY,
         "Content-Type": "application/json",
     }
     payload = {
-        "messaging_product": "whatsapp",
-        "to": phone,
-        "type": "text",
-        "text": {"body": message},
+        "message": {
+            "phone_number": phone,
+            "content": message,
+            "message_type": "text",
+        },
     }
 
     logger.info("kapso_send_request", phone=phone[:6] + "***", body_len=len(message))
@@ -53,14 +49,15 @@ def send_whatsapp_message(phone: str, message: str) -> dict:
             resp = client.post(url, json=payload, headers=headers)
             resp.raise_for_status()
             data = resp.json()
+            msg_data = data.get("data", {})
             logger.info(
                 "kapso_send_success",
                 phone=phone[:6] + "***",
-                message_id=data.get("id"),
+                message_id=msg_data.get("id"),
             )
             return {
-                "message_id": data.get("id"),
-                "status": "sent",
+                "message_id": msg_data.get("id"),
+                "status": msg_data.get("status", "sent"),
             }
     except httpx.HTTPStatusError as exc:
         logger.error("kapso_send_http_error", status=exc.response.status_code)
