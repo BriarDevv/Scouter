@@ -26,7 +26,6 @@ export function RulesSection({ data, onSaved }: RulesSectionProps) {
     reviewer_confidence_threshold: String(data.reviewer_confidence_threshold),
     prioritize_quote_replies: data.prioritize_quote_replies,
     prioritize_meeting_replies: data.prioritize_meeting_replies,
-
     allow_reply_assistant_generation: data.allow_reply_assistant_generation,
   });
 
@@ -43,7 +42,6 @@ export function RulesSection({ data, onSaved }: RulesSectionProps) {
         parseFloat(form.reviewer_confidence_threshold) || 0.7,
       prioritize_quote_replies: form.prioritize_quote_replies,
       prioritize_meeting_replies: form.prioritize_meeting_replies,
-
       allow_reply_assistant_generation: form.allow_reply_assistant_generation,
     }),
     [form]
