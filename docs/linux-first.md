@@ -31,7 +31,7 @@ Validated on WSL2 / Ubuntu with the repo cloned into `~/src/ClawScout`.
 
 ### 0. Preparación guiada del stack local
 
-Para validar prerequisitos, regenerar la config local de OpenClaw y obtener los comandos exactos de arranque:
+Para validar prerequisitos y obtener los comandos exactos de arranque:
 
 ```bash
 cd ~/src/ClawScout
@@ -186,26 +186,6 @@ python -m playwright install chromium
 
 ## E. Notas importantes de integración
 
-### OpenClaw: template versionado vs config viva
-
-- La configuración viva de OpenClaw sigue viviendo fuera del repo en `~/.openclaw/openclaw.json`.
-- El repo versiona solo una plantilla segura en:
-  - `infra/openclaw/openclaw.template.json`
-- La config real se regenera localmente con:
-  - `scripts/render-openclaw-config.sh`
-- El bridge WSL -> Ollama se restaura de forma reproducible con:
-  - `scripts/ensure-ollama-bridge.sh`
-- Esa plantilla no incluye:
-  - token del gateway
-  - metadata/runtime local
-  - paths personales
-- La config real se renderiza a partir de esa plantilla y del entorno WSL actual.
-- El renderer:
-  - autodetecta el host Windows desde `ip route show default`
-  - permite override con `OPENCLAW_OLLAMA_BASE_URL` o `OPENCLAW_OLLAMA_HOST`
-  - hace backup de `~/.openclaw/openclaw.json` antes de sobrescribir
-  - preserva localmente el token del gateway si ya existía
-
 ### Ollama desde WSL
 
 Solución validada hoy:
@@ -237,7 +217,6 @@ Importante:
 
 - la IP del bridge WSL puede cambiar tras reinicios de WSL o de red
 - el helper detecta la gateway actual desde `ip route show default` y relanza una segunda instancia de Ollama atada a esa IP
-- OpenClaw y ClawScout deben apuntar a la misma URL efectiva del bridge
 - si el `.env` local de ClawScout sigue apuntando a una URL vieja, actualizar `OLLAMA_BASE_URL`
 - esto es **temporal y reversible** hasta decidir si Ollama migra a WSL
 
@@ -297,11 +276,6 @@ curl "$OLLAMA_BASE_URL/api/tags"
 ```
 
 - Si falla tras reinicio de WSL, el helper vuelve a detectar la IP del gateway actual y relanza la instancia dedicada
-- Si OpenClaw sigue fallando al renderizar config, volver a correr:
-
-```bash
-bash scripts/render-openclaw-config.sh
-```
 
 ### DNS falla
 
@@ -406,8 +380,8 @@ No implementados todavía. Roadmap corto sugerido:
    - separar leader / executor / fallback models
    - conservar `qwen3.5:9b` como default operativo hasta que exista routing claro
 
-2. **OpenClaw líder**
-   - montar la capa líder sobre el backend actual
+2. **Hermes líder**
+   - montar la capa líder de Hermes sobre el backend actual
    - mantener ClawScout como source of truth
 
 3. **Tools / canales**
