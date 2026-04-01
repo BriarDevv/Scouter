@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { ActivityPulse } from "@/components/layout/activity-pulse";
-import { API_BASE_URL } from "@/lib/constants";
+import { getNotificationCounts } from "@/lib/api/client";
 import { useChatPanel } from "@/lib/hooks/use-chat-panel";
 import {
   Bell,
@@ -53,12 +53,9 @@ export function Sidebar() {
     let active = true;
     async function fetchNotificationCounts() {
       try {
-        const res = await fetch(`${API_BASE_URL}/notifications/counts`);
-        if (res.ok) {
-          const data = await res.json();
-          if (active) {
-            setUnreadCount(data.unread ?? 0);
-          }
+        const data = await getNotificationCounts();
+        if (active) {
+          setUnreadCount(data.total_unread ?? 0);
         }
       } catch {
         // Non-critical

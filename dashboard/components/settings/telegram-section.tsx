@@ -15,44 +15,14 @@ import {
 } from "./settings-primitives";
 import type { ConnectionTestResult } from "@/types";
 import type { OperationalSettings } from "@/types";
-import { API_BASE_URL } from "@/lib/constants";
+import {
+  updateTelegramCredentials,
+  testTelegramConnection,
+  updateOperationalSettings,
+} from "@/lib/api/client";
+import type { TelegramCredentials } from "@/lib/api/client";
 
-// ─── Types ───────────────────────────────────────────────────────────
-
-export interface TelegramCredentials {
-  bot_username: string | null;
-  bot_token_set: boolean;
-  chat_id: string | null;
-  webhook_url: string | null;
-  webhook_secret_set: boolean;
-  last_test_at: string | null;
-  last_test_ok: boolean | null;
-  last_test_error: string | null;
-  updated_at: string | null;
-}
-
-// ─── API helpers ─────────────────────────────────────────────────────
-
-async function updateTelegramCredentials(
-  updates: { bot_username?: string | null; bot_token?: string; chat_id?: string | null }
-): Promise<TelegramCredentials> {
-  const res = await fetch(`${API_BASE_URL}/settings/telegram-credentials`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(updates),
-  });
-  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
-  return res.json();
-}
-
-async function testTelegramConnection(): Promise<ConnectionTestResult> {
-  const res = await fetch(`${API_BASE_URL}/settings/test/telegram`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-  });
-  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
-  return res.json();
-}
+export type { TelegramCredentials };
 
 // ─── Telegram Credentials ────────────────────────────────────────────
 
@@ -241,13 +211,7 @@ export function HermesTelegramSection({ data, onSaved }: HermesTelegramProps) {
     setEnabled(value);
     setSaving(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/settings/operational`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ telegram_agent_enabled: value }),
-      });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
-      const updated = await res.json();
+      const updated = await updateOperationalSettings({ telegram_agent_enabled: value });
       sileo.success({
         title: value
           ? "Agente Hermes 3 activado en Telegram"

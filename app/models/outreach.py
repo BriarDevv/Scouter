@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, Text, Uuid, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -17,6 +17,9 @@ class DraftStatus(str, enum.Enum):
 
 class OutreachDraft(Base):
     __tablename__ = "outreach_drafts"
+    __table_args__ = (
+        Index("ix_outreach_drafts_lead_id", "lead_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     lead_id: Mapped[uuid.UUID] = mapped_column(
@@ -67,6 +70,10 @@ class LogAction(str, enum.Enum):
 
 class OutreachLog(Base):
     __tablename__ = "outreach_logs"
+    __table_args__ = (
+        Index("ix_outreach_logs_lead_id", "lead_id"),
+        Index("ix_outreach_logs_draft_id", "draft_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     lead_id: Mapped[uuid.UUID] = mapped_column(

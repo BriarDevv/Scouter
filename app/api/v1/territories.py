@@ -39,12 +39,6 @@ def create(data: TerritoryCreate, db: Session = Depends(get_session)):
     return create_territory(db, data)
 
 
-@router.get("/analytics", response_model=list[TerritoryWithStats])
-def analytics(db: Session = Depends(get_session)):
-    """Comparación cruzada de territorios con estadísticas completas."""
-    return get_all_territories_with_stats(db)
-
-
 @router.get("/{territory_id}", response_model=TerritoryWithStats)
 def get_one(territory_id: UUID, db: Session = Depends(get_session)):
     """Obtener un territorio con sus estadísticas."""

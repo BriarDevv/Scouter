@@ -43,7 +43,7 @@ class Message(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     conversation_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, ForeignKey("conversations.id"), nullable=False
+        Uuid, ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False
     )
     role: Mapped[str] = mapped_column(String(20), nullable=False)
     content: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -71,7 +71,7 @@ class ToolCall(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     message_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, ForeignKey("messages.id"), nullable=False
+        Uuid, ForeignKey("messages.id", ondelete="CASCADE"), nullable=False
     )
     tool_name: Mapped[str] = mapped_column(String(100), nullable=False)
     arguments_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)

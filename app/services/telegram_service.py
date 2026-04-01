@@ -1,4 +1,4 @@
-"""Telegram service — Bot API integration for alerts and OpenClaw messaging.
+"""Telegram service — Bot API integration for alerts and Hermes agent messaging.
 
 Uses the Telegram Bot API (https://core.telegram.org/bots/api).
 Secrets (bot_token) are write-only and never exposed in API responses.
@@ -35,10 +35,20 @@ def get_credentials(db: Session) -> TelegramCredentials:
     return _get_or_create_credentials(db)
 
 
+_ALLOWED_FIELDS = {
+    "bot_username", "bot_token", "chat_id", "webhook_url", "webhook_secret",
+}
+_SECRET_FIELDS = {"bot_token", "webhook_secret"}
+
+
 def update_credentials(db: Session, updates: dict) -> TelegramCredentials:
+    from app.core.crypto import encrypt_if_needed
+
     row = _get_or_create_credentials(db)
     for key, value in updates.items():
-        if hasattr(row, key):
+        if key in _ALLOWED_FIELDS:
+            if key in _SECRET_FIELDS and value:
+                value = encrypt_if_needed(value)
             setattr(row, key, value)
     db.commit()
     db.refresh(row)

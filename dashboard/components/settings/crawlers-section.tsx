@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { sileo } from "sileo";
 import { SettingsSectionCard, FieldRow, PasswordInput, SaveButton } from "./settings-primitives";
-import { API_BASE_URL } from "@/lib/constants";
+import { apiFetch } from "@/lib/api/client";
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -60,14 +60,12 @@ export function CrawlersSection() {
 
   // Fetch initial data
   useEffect(() => {
-    fetch(`${API_BASE_URL}/crawl/api-key-status`)
-      .then((r) => r.json())
+    apiFetch<ApiKeyStatus>("/crawl/api-key-status")
       .then(setApiKeyStatus)
       .catch(() => {});
 
-    fetch(`${API_BASE_URL}/territories`)
-      .then((r) => r.json())
-      .then((data: Territory[]) => {
+    apiFetch<Territory[]>("/territories")
+      .then((data) => {
         setTerritories(data);
         if (data.length > 0) setSelectedTerritoryId(data[0].id);
       })
@@ -80,9 +78,7 @@ export function CrawlersSection() {
 
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/crawl/territory/${selectedTerritoryId}/status`);
-        if (!res.ok) return;
-        const data: CrawlProgress = await res.json();
+        const data = await apiFetch<CrawlProgress>(`/crawl/territory/${selectedTerritoryId}/status`);
         setProgress(data);
         if (data.status === "done") {
           sileo.success({
@@ -101,9 +97,8 @@ export function CrawlersSection() {
   // Also check on territory change if there's a running crawl
   useEffect(() => {
     if (!selectedTerritoryId) return;
-    fetch(`${API_BASE_URL}/crawl/territory/${selectedTerritoryId}/status`)
-      .then((r) => r.json())
-      .then((data: CrawlProgress) => setProgress(data))
+    apiFetch<CrawlProgress>(`/crawl/territory/${selectedTerritoryId}/status`)
+      .then((data) => setProgress(data))
       .catch(() => setProgress({ status: "idle" }));
   }, [selectedTerritoryId]);
 
@@ -111,13 +106,10 @@ export function CrawlersSection() {
     if (!newApiKey.trim()) return;
     setSavingKey(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/crawl/api-key`, {
+      const data = await apiFetch<ApiKeyStatus & { configured: boolean; masked: string }>("/crawl/api-key", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ api_key: newApiKey.trim() }),
       });
-      if (!res.ok) throw new Error("Error al guardar");
-      const data = await res.json();
       sileo.success({ title: "API Key de Google Maps guardada" });
       setNewApiKey("");
       setApiKeyStatus({ configured: data.configured, masked: data.masked });
@@ -132,24 +124,22 @@ export function CrawlersSection() {
     if (!selectedTerritoryId) return;
     setStarting(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/crawl/territory`, {
+      const data = await apiFetch<Record<string, unknown>>("/crawl/territory", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           territory_id: selectedTerritoryId,
           categories: selectedCats.length > 0 ? selectedCats : null,
           only_without_website: onlyNoWebsite,
         }),
       });
-      const data = await res.json();
       if (data.ok) {
-        setProgress({ status: "running", territory: data.message });
-        sileo.success({ title: data.message });
+        setProgress({ status: "running", territory: data.message as string });
+        sileo.success({ title: data.message as string });
       } else {
-        sileo.error({ title: data.message ?? "Error al iniciar crawl" });
-        if (data.progress) setProgress(data.progress);
+        sileo.error({ title: (data.message as string) ?? "Error al iniciar crawl" });
+        if (data.progress) setProgress(data.progress as CrawlProgress);
       }
-    } catch (err) {
+    } catch {
       sileo.error({ title: "Error de conexion" });
     } finally {
       setStarting(false);
@@ -158,7 +148,7 @@ export function CrawlersSection() {
 
   const handleStop = async () => {
     if (!selectedTerritoryId) return;
-    await fetch(`${API_BASE_URL}/crawl/territory/${selectedTerritoryId}/stop`, { method: "POST" });
+    await apiFetch(`/crawl/territory/${selectedTerritoryId}/stop`, { method: "POST" });
     setProgress({ status: "idle" });
     sileo.success({ title: "Crawl detenido" });
   };

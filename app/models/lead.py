@@ -63,7 +63,7 @@ class Lead(Base):
 
     # Source
     source_id: Mapped[uuid.UUID | None] = mapped_column(
-        Uuid, ForeignKey("lead_sources.id"), nullable=True
+        Uuid, ForeignKey("lead_sources.id", ondelete="SET NULL"), nullable=True
     )
 
     # Pipeline state

@@ -96,10 +96,20 @@ def get_credentials(db: Session) -> WhatsAppCredentials:
     return _get_or_create_credentials(db)
 
 
+_ALLOWED_FIELDS = {
+    "provider", "phone_number", "api_key", "webhook_url", "webhook_secret",
+}
+_SECRET_FIELDS = {"api_key", "webhook_secret"}
+
+
 def update_credentials(db: Session, updates: dict) -> WhatsAppCredentials:
+    from app.core.crypto import encrypt_if_needed
+
     row = _get_or_create_credentials(db)
     for key, value in updates.items():
-        if hasattr(row, key):
+        if key in _ALLOWED_FIELDS:
+            if key in _SECRET_FIELDS and value:
+                value = encrypt_if_needed(value)
             setattr(row, key, value)
     db.commit()
     db.refresh(row)

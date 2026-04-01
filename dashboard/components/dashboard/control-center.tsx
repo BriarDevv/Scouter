@@ -20,11 +20,37 @@ import {
   getOperationalSettings,
   updateOperationalSettings,
   getTerritories,
+  apiFetch,
 } from "@/lib/api/client";
-import { API_BASE_URL } from "@/lib/constants";
 import type { HealthComponent, OperationalSettings, TerritoryWithStats } from "@/types";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
+
+interface PipelineBatchStatus {
+  status: string;
+  ok?: boolean;
+  message?: string;
+  task_id?: string;
+  processed?: number;
+  total?: number;
+  current_lead?: string | null;
+  current_step?: string;
+  error?: string;
+  crawl_rounds?: number;
+  leads_from_crawl?: number;
+}
+
+interface CrawlTerritoryStatus {
+  status: string;
+  ok?: boolean;
+  message?: string;
+  task_id?: string;
+  current_city?: string | null;
+  current_city_idx?: number;
+  total_cities?: number;
+  leads_created?: number;
+  error?: string;
+}
 
 interface FeatureToggle {
   key: keyof OperationalSettings;
@@ -142,8 +168,7 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
     let active = true;
     async function checkPipeline() {
       try {
-        const res = await fetch(`${API_BASE_URL}/pipelines/batch/status`);
-        const data = await res.json();
+        const data = await apiFetch<PipelineBatchStatus>("/pipelines/batch/status");
         if (!active) return;
         if (data.status === "running" || data.status === "stopping") {
           setPipelineStatus(data.status === "stopping" ? "stopping" : "running");
@@ -164,8 +189,7 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
     if (pipelineStatus !== "running") return;
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/pipelines/batch/status`);
-        const data = await res.json();
+        const data = await apiFetch<PipelineBatchStatus>("/pipelines/batch/status");
         if (data.status === "done") {
           setPipelineStatus("done");
           const crawlNote = data.crawl_rounds ? ` (${data.crawl_rounds} crawls, ${data.leads_from_crawl ?? 0} encontrados)` : "";
@@ -205,8 +229,7 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
           const territoryExists = data.some((t) => t.id === savedTerritoryId);
           const tid = territoryExists ? savedTerritoryId : data[0].id;
           setSelectedTerritoryId(tid);
-          fetch(`${API_BASE_URL}/crawl/territory/${tid}/status`)
-            .then((r) => r.json())
+          apiFetch<CrawlTerritoryStatus>(`/crawl/territory/${tid}/status`)
             .then((s) => {
               if (s.status === "running") {
                 setCrawlStatus("running");
@@ -225,8 +248,7 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
     if (crawlStatus !== "running" || !selectedTerritoryId) return;
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/crawl/territory/${selectedTerritoryId}/status`);
-        const data = await res.json();
+        const data = await apiFetch<CrawlTerritoryStatus>(`/crawl/territory/${selectedTerritoryId}/status`);
         if (data.task_id) setCrawlTaskId(data.task_id);
         if (data.status === "done") {
           setCrawlStatus("done");
@@ -268,8 +290,7 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
 
   async function handleRunPipeline() {
     try {
-      const res = await fetch(`${API_BASE_URL}/pipelines/batch`, { method: "POST" });
-      const data = await res.json();
+      const data = await apiFetch<PipelineBatchStatus>("/pipelines/batch", { method: "POST" });
       if (data.ok) {
         setPipelineStatus("running");
         setPipelineProgress("Iniciando...");
@@ -284,7 +305,7 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
 
   async function handleStopPipeline() {
     try {
-      await fetch(`${API_BASE_URL}/pipelines/batch/stop`, { method: "POST" });
+      await apiFetch("/pipelines/batch/stop", { method: "POST" });
       setPipelineStatus("stopping");
       setPipelineProgress("Deteniendo...");
     } catch {
@@ -295,12 +316,10 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
   async function handleStartCrawl() {
     if (!selectedTerritoryId) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/crawl/territory`, {
+      const data = await apiFetch<CrawlTerritoryStatus>("/crawl/territory", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ territory_id: selectedTerritoryId }),
       });
-      const data = await res.json();
       if (data.ok) {
         setCrawlStatus("running");
         setCrawlProgress("Iniciando...");
@@ -320,10 +339,10 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
     try {
       // Revoke the Celery task if we have its ID
       if (crawlTaskId) {
-        await fetch(`${API_BASE_URL}/tasks/${crawlTaskId}/revoke`, { method: "POST" });
+        await apiFetch(`/tasks/${crawlTaskId}/revoke`, { method: "POST" });
       }
       // Clear Redis status
-      await fetch(`${API_BASE_URL}/crawl/territory/${selectedTerritoryId}/stop`, { method: "POST" });
+      await apiFetch(`/crawl/territory/${selectedTerritoryId}/stop`, { method: "POST" });
       setCrawlStatus("idle");
       setCrawlProgress(null);
       setCrawlTaskId(null);

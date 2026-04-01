@@ -15,7 +15,12 @@ import {
 } from "./settings-primitives";
 import type { ConnectionTestResult } from "@/types";
 import type { OperationalSettings } from "@/types";
-import { API_BASE_URL } from "@/lib/constants";
+import {
+  updateWhatsAppCredentials,
+  testWhatsApp,
+  updateOperationalSettings,
+  testKapsoConnection,
+} from "@/lib/api/client";
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -29,29 +34,6 @@ export interface WhatsAppCredentials {
   last_test_ok: boolean | null;
   last_test_error: string | null;
   updated_at: string | null;
-}
-
-// ─── API helpers ─────────────────────────────────────────────────────
-
-async function updateWhatsAppCredentials(
-  updates: { phone_number?: string | null; api_key?: string }
-): Promise<WhatsAppCredentials> {
-  const res = await fetch(`${API_BASE_URL}/settings/whatsapp-credentials`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(updates),
-  });
-  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
-  return res.json();
-}
-
-async function testWhatsAppConnection(): Promise<ConnectionTestResult> {
-  const res = await fetch(`${API_BASE_URL}/settings/test/whatsapp`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-  });
-  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
-  return res.json();
 }
 
 // ─── WhatsApp Credentials (CallMeBot alertas) ────────────────────────
@@ -103,9 +85,10 @@ export function WhatsAppSection({ data, onSaved }: WhatsAppSectionProps) {
   };
 
   const handleTest = async (): Promise<ConnectionTestResult> => {
-    const r = await testWhatsAppConnection();
-    setLastTest({ at: new Date().toISOString(), ok: r.ok, error: r.error });
-    return r;
+    const r = await testWhatsApp();
+    const result: ConnectionTestResult = { ok: r.ok, error: r.error ?? null, sample_count: null };
+    setLastTest({ at: new Date().toISOString(), ok: result.ok, error: result.error });
+    return result;
   };
 
   return (
@@ -204,13 +187,7 @@ export function HermesWhatsAppSection({ data, onSaved }: HermesWhatsAppProps) {
     setEnabled(value);
     setSaving(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/settings/operational`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ whatsapp_agent_enabled: value }),
-      });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
-      const updated = await res.json();
+      const updated = await updateOperationalSettings({ whatsapp_agent_enabled: value });
       sileo.success({
         title: value
           ? "Agente Hermes 3 activado en WhatsApp"
@@ -266,13 +243,7 @@ export function KapsoOutreachSection({ data, onSaved }: KapsoOutreachSectionProp
     setEnabled(value);
     setSaving(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/settings/operational`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ whatsapp_outreach_enabled: value }),
-      });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
-      const updated = await res.json();
+      const updated = await updateOperationalSettings({ whatsapp_outreach_enabled: value });
       sileo.success({
         title: value
           ? "Outreach por WhatsApp activado"
@@ -294,12 +265,7 @@ export function KapsoOutreachSection({ data, onSaved }: KapsoOutreachSectionProp
     setTesting(true);
     setTestResult(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/settings/test/kapso`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
-      const result = await res.json();
+      const result = await testKapsoConnection();
       setTestResult(result);
       if (result.status === "ok") {
         sileo.success({ title: "Kapso: conexion exitosa" });

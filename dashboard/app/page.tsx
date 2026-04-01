@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatsGrid } from "@/components/dashboard/stats-grid";
 import { PipelineFunnel } from "@/components/dashboard/pipeline-funnel";
@@ -21,6 +20,7 @@ import {
 } from "@/lib/api/client";
 import type { DashboardStats, IndustryBreakdown, OutreachLog, PipelineStage, TimeSeriesPoint } from "@/types";
 import { TerritorySummary } from "@/components/dashboard/territory-summary";
+import { sileo } from "sileo";
 
 export default function OverviewPage() {
   const { components, loading: healthLoading, refresh: refreshHealth } = useSystemHealth();
@@ -30,11 +30,12 @@ export default function OverviewPage() {
   const [industryBreakdown, setIndustryBreakdown] = useState<IndustryBreakdown[]>([]);
   const [logs, setLogs] = useState<OutreachLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
-
-    async function loadOverview() {
+  const loadOverview = useCallback(async () => {
+    setError(null);
+    setLoading(true);
+    try {
       const [nextStats, nextPipeline, nextTimeSeries, nextIndustryBreakdown, nextLogs] =
         await Promise.all([
           getDashboardStats(),
@@ -44,22 +45,26 @@ export default function OverviewPage() {
           getOutreachLogs({ limit: 8 }),
         ]);
 
-      if (!active) return;
-
       setStats(nextStats);
       setPipeline(nextPipeline);
       setTimeSeries(nextTimeSeries);
       setIndustryBreakdown(nextIndustryBreakdown);
       setLogs(nextLogs);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      setError(message);
+      sileo.error({
+        title: "Error al cargar el panel",
+        description: message,
+      });
+    } finally {
       setLoading(false);
     }
-
-    void loadOverview();
-
-    return () => {
-      active = false;
-    };
   }, []);
+
+  useEffect(() => {
+    void loadOverview();
+  }, [loadOverview]);
 
   return (
     <div className="space-y-6">
@@ -69,6 +74,22 @@ export default function OverviewPage() {
       />
 
       <ControlCenter health={components} healthLoading={healthLoading} onRefreshHealth={refreshHealth} />
+
+      {/* Error state */}
+      {error && !loading && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-6 text-center space-y-3">
+          <p className="text-sm font-medium text-destructive">
+            No se pudo cargar el panel
+          </p>
+          <p className="text-xs text-muted-foreground">{error}</p>
+          <button
+            onClick={() => void loadOverview()}
+            className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 transition-colors"
+          >
+            Reintentar
+          </button>
+        </div>
+      )}
 
       {/* Key Metrics */}
       {loading ? (
