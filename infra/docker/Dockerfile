@@ -1,4 +1,4 @@
-FROM python:3.14-slim
+FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
@@ -13,9 +13,13 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml .
-RUN pip install --no-cache-dir -e ".[dev]"
+RUN pip install --no-cache-dir .
 
 COPY . .
+
+RUN addgroup --system --gid 1001 appuser && \
+    adduser --system --uid 1001 --ingroup appuser appuser
+USER appuser
 
 EXPOSE 8000
 

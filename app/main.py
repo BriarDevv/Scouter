@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -32,8 +32,8 @@ app = FastAPI(
     version="0.1.0",
     description="Private lead prospecting system for web development services",
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if settings.APP_ENV == "development" else None,
+    redoc_url="/redoc" if settings.APP_ENV == "development" else None,
 )
 
 app.state.limiter = limiter

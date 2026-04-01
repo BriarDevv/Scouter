@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 import os
 import time
 
@@ -12,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.agent.channel_router import handle_channel_message
 from app.api.deps import get_session
 from app.core.logging import get_logger
-from app.models.settings import OperationalSettings
+from app.services.operational_settings_service import get_or_create as get_settings
 from app.services.whatsapp_audit import log_inbound, log_outbound
 from app.services.whatsapp_service import send_alert
 
@@ -30,16 +31,6 @@ class InboundMessageBody(BaseModel):
 class WebhookResponse(BaseModel):
     ok: bool
     response: str
-
-
-def _get_settings(db: Session) -> OperationalSettings:
-    row = db.get(OperationalSettings, 1)
-    if not row:
-        row = OperationalSettings(id=1)
-        db.add(row)
-        db.commit()
-        db.refresh(row)
-    return row
 
 
 @router.get("/webhook")
@@ -62,12 +53,12 @@ def webhook_inbound(
         (wa_creds.webhook_secret if wa_creds and wa_creds.webhook_secret else None)
         or os.environ.get("WHATSAPP_WEBHOOK_SECRET", "")
     )
-    if not webhook_secret or x_webhook_secret != webhook_secret:
+    if not webhook_secret or not hmac.compare_digest(x_webhook_secret, webhook_secret):
         logger.warning("wa_webhook_auth_failed", phone=body.phone[:6] + "***")
         raise HTTPException(status_code=403, detail="Webhook secret invalido.")
 
     # Check feature flag
-    settings = _get_settings(db)
+    settings = get_settings(db)
     if not getattr(settings, "whatsapp_agent_enabled", False):
         logger.info("wa_agent_disabled")
         raise HTTPException(status_code=403, detail="WhatsApp agent no habilitado.")

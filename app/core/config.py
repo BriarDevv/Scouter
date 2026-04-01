@@ -123,6 +123,17 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
+    def validate_api_key(self):
+        if not self.API_KEY and self.APP_ENV != "development":
+            import warnings
+            warnings.warn(
+                "API_KEY is not set. The API is open without authentication. "
+                "Set API_KEY in .env to enable API key auth.",
+                stacklevel=2,
+            )
+        return self
+
+    @model_validator(mode="after")
     def validate_secret_key(self):
         if self.SECRET_KEY == "change-me-to-a-random-secret-key":
             if self.APP_ENV != "development":

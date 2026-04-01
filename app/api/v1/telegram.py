@@ -2,18 +2,18 @@
 
 from __future__ import annotations
 
+import hmac
 import os
 import time
-from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.agent.channel_router import handle_channel_message
 from app.api.deps import get_session
 from app.core.logging import get_logger
-from app.models.settings import OperationalSettings
+from app.services.operational_settings_service import get_or_create as get_settings
 from app.services.telegram_audit import log_inbound, log_outbound
 from app.services.telegram_service import send_message as tg_send_message
 
@@ -26,30 +26,34 @@ class TelegramWebhookResponse(BaseModel):
     ok: bool
 
 
-def _get_settings(db: Session) -> OperationalSettings:
-    row = db.get(OperationalSettings, 1)
-    if not row:
-        row = OperationalSettings(id=1)
-        db.add(row)
-        db.commit()
-        db.refresh(row)
-    return row
+class TelegramChat(BaseModel):
+    id: int
+
+
+class TelegramMessage(BaseModel):
+    text: str = ""
+    chat: TelegramChat
+
+
+class TelegramUpdate(BaseModel):
+    message: TelegramMessage | None = None
+    edited_message: TelegramMessage | None = None
 
 
 @router.post("/webhook", response_model=TelegramWebhookResponse)
 def webhook_inbound(
     request: Request,
-    body: dict[str, Any],
+    body: TelegramUpdate,
     db: Session = Depends(get_session),
     x_telegram_bot_api_secret_token: str = Header("", alias="X-Telegram-Bot-Api-Secret-Token"),
 ) -> TelegramWebhookResponse:
     """Receive Telegram updates, process via Hermes 3 agent, send response."""
-    message_obj = body.get("message") or body.get("edited_message")
+    message_obj = body.message or body.edited_message
     if not message_obj:
         return TelegramWebhookResponse(ok=True)
 
-    text = message_obj.get("text", "")
-    chat_id = str(message_obj.get("chat", {}).get("id", ""))
+    text = message_obj.text
+    chat_id = str(message_obj.chat.id)
     if not text or not chat_id:
         return TelegramWebhookResponse(ok=True)
 
@@ -60,12 +64,12 @@ def webhook_inbound(
         (tg_creds.webhook_secret if tg_creds and tg_creds.webhook_secret else None)
         or os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
     )
-    if not webhook_secret or x_telegram_bot_api_secret_token != webhook_secret:
+    if not webhook_secret or not hmac.compare_digest(x_telegram_bot_api_secret_token, webhook_secret):
         logger.warning("tg_webhook_auth_failed", chat_id=chat_id[:6] + "***")
         raise HTTPException(status_code=403, detail="Webhook secret invalido.")
 
     # Check feature flag
-    settings = _get_settings(db)
+    settings = get_settings(db)
     if not getattr(settings, "telegram_agent_enabled", False):
         logger.info("tg_agent_disabled")
         raise HTTPException(status_code=403, detail="Telegram agent no habilitado.")

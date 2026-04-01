@@ -1,9 +1,10 @@
 """Crawl endpoints: trigger Google Maps discovery and ingest leads."""
 
 import json as _json
+import re as _re
 
-from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 from redis import Redis
 
 from app.api.deps import get_session
@@ -102,12 +103,15 @@ def api_key_status():
     key = env.GOOGLE_MAPS_API_KEY
     return {
         "configured": bool(key),
-        "masked": f"{key[:10]}...{key[-4:]}" if key and len(key) > 14 else None,
+        "masked": f"...{key[-4:]}" if key and len(key) > 4 else None,
     }
 
 
+_API_KEY_PATTERN = _re.compile(r"^[a-zA-Z0-9_\-]{10,256}$")
+
+
 class ApiKeyUpdate(BaseModel):
-    api_key: str
+    api_key: str = Field(..., min_length=10, max_length=256)
 
 
 @router.patch("/api-key")
@@ -122,6 +126,9 @@ def update_api_key(body: ApiKeyUpdate):
 
     content = env_path.read_text()
     new_key = body.api_key.strip()
+
+    if not _API_KEY_PATTERN.match(new_key):
+        raise HTTPException(status_code=422, detail="Formato de API key inválido.")
 
     if "GOOGLE_MAPS_API_KEY" in content:
         content = re.sub(
@@ -138,5 +145,5 @@ def update_api_key(body: ApiKeyUpdate):
     return {
         "ok": True,
         "configured": True,
-        "masked": f"{new_key[:10]}...{new_key[-4:]}" if len(new_key) > 14 else new_key,
+        "masked": f"...{new_key[-4:]}" if len(new_key) > 4 else None,
     }
