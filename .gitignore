@@ -9,18 +9,7 @@ __pycache__/
 *$py.class
 *.so
 .Python
-/build/
-develop-eggs/
 /dist/
-downloads/
-eggs/
-.eggs/
-/lib/
-/lib64/
-/parts/
-/sdist/
-/var/
-/wheels/
 *.egg-info/
 .installed.cfg
 *.egg
@@ -28,8 +17,6 @@ clawscout.egg-info/
 
 # Virtual environments
 .venv/
-venv/
-ENV/
 
 # IDE
 .vscode/
@@ -44,9 +31,8 @@ ENV/
 # Testing
 .pytest_cache/
 .coverage
+coverage/
 htmlcov/
-.tox/
-.nox/
 
 # mypy
 .mypy_cache/
@@ -66,11 +52,9 @@ desktop.ini
 playwright-report/
 test-results/
 
-# Alembic
-alembic/versions/*.pyc
-
-# Test database
+# Test databases
 test.db
+*.sqlite
 
 # Secrets / credentials
 *.pem
