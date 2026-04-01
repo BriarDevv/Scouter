@@ -48,7 +48,7 @@ import { API_BASE_URL } from "@/lib/constants";
 
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
 
-async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (API_KEY) headers["X-API-Key"] = API_KEY;
   const method = options?.method?.toUpperCase() || "GET";
@@ -509,25 +509,35 @@ export async function testKapsoConnection(): Promise<{ status: string; message: 
   return apiFetch("/settings/test/kapso", { method: "POST" });
 }
 
-// ─── AI Workspace ──────────────────────────────────────
+// ─── Telegram ──────────────────────────────────────────
 
-export async function getAIWorkspaceStatus(): Promise<import('@/types').AIWorkspaceStatus> {
-  return apiFetch('/settings/ai-workspace');
+export interface TelegramCredentials {
+  bot_username: string | null;
+  bot_token_set: boolean;
+  chat_id: string | null;
+  webhook_url: string | null;
+  webhook_secret_set: boolean;
+  last_test_at: string | null;
+  last_test_ok: boolean | null;
+  last_test_error: string | null;
+  updated_at: string | null;
 }
 
-export async function getAIWorkspaceFile(key: string): Promise<import('@/types').AIWorkspaceFileContent> {
-  return apiFetch(`/settings/ai-workspace/${key}`);
+export async function getTelegramCredentials(): Promise<TelegramCredentials> {
+  return apiFetch("/settings/telegram-credentials");
 }
 
-export async function updateAIWorkspaceFile(key: string, content: string): Promise<{ key: string; filename: string; updated: boolean }> {
-  return apiFetch(`/settings/ai-workspace/${key}`, {
-    method: 'PUT',
-    body: JSON.stringify({ content }),
+export async function updateTelegramCredentials(
+  updates: { bot_username?: string | null; bot_token?: string; chat_id?: string | null }
+): Promise<TelegramCredentials> {
+  return apiFetch("/settings/telegram-credentials", {
+    method: "PATCH",
+    body: JSON.stringify(updates),
   });
 }
 
-export async function resetAIWorkspaceFile(key: string): Promise<{ key: string; filename: string; reset: boolean }> {
-  return apiFetch(`/settings/ai-workspace/${key}/reset`, { method: 'POST' });
+export async function testTelegramConnection(): Promise<ConnectionTestResult> {
+  return apiFetch("/settings/test/telegram", { method: "POST" });
 }
 
 // ─── System Health ─────────────────────────────────────────

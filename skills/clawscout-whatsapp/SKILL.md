@@ -1,7 +1,7 @@
 ---
 name: clawscout-whatsapp
 description: "WhatsApp integration status, credential management, and conversational channel configuration for ClawScout."
-metadata: { "openclaw": { "emoji": "💬", "os": ["linux"], "requires": { "bins": ["python3"] } } }
+metadata: { "hermes": { "emoji": "💬", "os": ["linux"], "requires": { "bins": ["python3"] } } }
 ---
 
 # ClawScout WhatsApp Skill

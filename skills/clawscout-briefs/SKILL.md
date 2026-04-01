@@ -1,7 +1,7 @@
 ---
 name: clawscout-briefs
 description: "Operational briefs and prioritization. Exec: cd /home/briar/src/ClawScout && .venv/bin/python scripts/opsctl.py --compact <cmd>. Commands: replies-digest --hours N | important-replies-brief --hours N | leads-priority --limit N | commercial-brief --hours N | settings-brief. Summarize the JSON output in Spanish."
-metadata: { "openclaw": { "emoji": "📋", "os": ["linux"], "requires": { "bins": ["python3"] } } }
+metadata: { "hermes": { "emoji": "📋", "os": ["linux"], "requires": { "bins": ["python3"] } } }
 ---
 
 # ClawScout Briefs Skill

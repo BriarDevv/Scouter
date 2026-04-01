@@ -11,8 +11,9 @@ import {
   getMailSettings,
   getOperationalSettings,
   getSetupStatus,
+  getWhatsAppCredentials,
+  getTelegramCredentials,
 } from "@/lib/api/client";
-import { API_BASE_URL } from "@/lib/constants";
 import type {
   MailCredentials,
   MailSettings,
@@ -30,23 +31,10 @@ import { CredentialsSection } from "@/components/settings/credentials-section";
 import { NotificationsSection } from "@/components/settings/notifications-section";
 import { WhatsAppSection, HermesWhatsAppSection, KapsoOutreachSection } from "@/components/settings/whatsapp-section";
 import { TelegramSection, HermesTelegramSection } from "@/components/settings/telegram-section";
-import { AIWorkspaceSection } from "@/components/settings/ai-workspace-section";
 import { TerritoriesSection } from "@/components/settings/territories-section";
 import { CrawlersSection } from "@/components/settings/crawlers-section";
 import type { WhatsAppCredentials } from "@/components/settings/whatsapp-section";
-import type { TelegramCredentials } from "@/components/settings/telegram-section";
-
-async function getWhatsAppCredentials(): Promise<WhatsAppCredentials> {
-  const res = await fetch(`${API_BASE_URL}/settings/whatsapp-credentials`);
-  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
-  return res.json();
-}
-
-async function getTelegramCredentials(): Promise<TelegramCredentials> {
-  const res = await fetch(`${API_BASE_URL}/settings/telegram-credentials`);
-  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
-  return res.json();
-}
+import type { TelegramCredentials } from "@/lib/api/client";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabId>("setup");
@@ -216,9 +204,6 @@ export default function SettingsPage() {
               <HermesTelegramSection data={opData} onSaved={handleSavedOps} />
             ) : null}
           </div>
-        </TabsContent>
-        <TabsContent value="ai-workspace">
-          <AIWorkspaceSection />
         </TabsContent>
         <TabsContent value="territories">
           <TerritoriesSection />

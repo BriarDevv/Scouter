@@ -37,7 +37,6 @@ class OperationalSettingsUpdate(BaseModel):
     reviewer_confidence_threshold: float | None = None
     prioritize_quote_replies: bool | None = None
     prioritize_meeting_replies: bool | None = None
-    allow_openclaw_briefs: bool | None = None
     allow_reply_assistant_generation: bool | None = None
     use_reviewer_for_labels: list[str] | None = None
 
@@ -68,7 +67,7 @@ class OperationalSettingsUpdate(BaseModel):
     _NON_NULLABLE: frozenset = frozenset({
         "require_approved_drafts", "auto_classify_inbound", "reply_assistant_enabled",
         "reviewer_enabled", "signature_include_portfolio", "signature_is_solo", "prioritize_quote_replies",
-        "prioritize_meeting_replies", "allow_openclaw_briefs", "allow_reply_assistant_generation",
+        "prioritize_meeting_replies", "allow_reply_assistant_generation",
         "reviewer_confidence_threshold",
         "notifications_enabled", "notification_score_threshold",
         "whatsapp_alerts_enabled",
@@ -127,7 +126,6 @@ class OperationalSettingsResponse(BaseModel):
     reviewer_confidence_threshold: float
     prioritize_quote_replies: bool
     prioritize_meeting_replies: bool
-    allow_openclaw_briefs: bool
     allow_reply_assistant_generation: bool
     use_reviewer_for_labels: list[str]
     notifications_enabled: bool

@@ -1,7 +1,7 @@
 ---
 name: clawscout-data
 description: "Exact grounded data from ClawScout. Exec: cd /home/briar/src/ClawScout && .venv/bin/python scripts/clawscoutctl.py --data-only --compact <cmd>. Commands: ops-overview | ops-top-leads --limit N | ops-replies-summary --hours N | ops-important-replies --limit N | positive-replies | quote-replies | meeting-replies | ops-recent-drafts --limit N | drafts-ready | recent-pipelines | task-health | running-tasks | failed-tasks | activity --limit N | ops-settings-llm | performance-summary. Return ONLY the JSON output."
-metadata: { "openclaw": { "emoji": "📊", "os": ["linux"], "requires": { "bins": ["python3"] } } }
+metadata: { "hermes": { "emoji": "📊", "os": ["linux"], "requires": { "bins": ["python3"] } } }
 ---
 
 # ClawScout Data Skill

@@ -1,5 +1,5 @@
 from app.models.conversation import Conversation, Message, ToolCall
-from app.models.inbound_mail import EmailThread, InboundMessage
+from app.models.inbound_mail import EmailThread, InboundMessage, InboundMailSyncRun
 from app.models.lead import Lead
 from app.models.lead_signal import LeadSignal
 from app.models.lead_source import LeadSource
@@ -25,6 +25,7 @@ __all__ = [
     "ToolCall",
     "EmailThread",
     "InboundMessage",
+    "InboundMailSyncRun",
     "Lead",
     "LeadSignal",
     "LeadSource",

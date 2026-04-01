@@ -21,36 +21,23 @@ Usage:
   scripts/start-local-stack.sh --help
 
 Modes:
-  default            Run checks, render OpenClaw config, and print exact local start commands.
+  default            Run checks and print exact local start commands.
   --launch           Additionally start selected services in tmux when safe.
 
 Services:
   backend
   worker
   dashboard
-  openclaw
 
 Examples:
   scripts/start-local-stack.sh
   scripts/start-local-stack.sh --launch
   scripts/start-local-stack.sh --launch --service backend --service worker
-
-Environment overrides:
-  OPENCLAW_OLLAMA_BASE_URL
-  OPENCLAW_OLLAMA_HOST
-  OPENCLAW_OLLAMA_PORT
-  OPENCLAW_WORKSPACE
-  OPENCLAW_LEADER_MODEL
-  OPENCLAW_EXECUTOR_MODEL
-  OPENCLAW_REVIEWER_MODEL
 EOF
 }
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
-RENDER_SCRIPT="$REPO_ROOT/scripts/render-openclaw-config.sh"
-ENSURE_OLLAMA_BRIDGE_SCRIPT="$REPO_ROOT/scripts/ensure-ollama-bridge.sh"
-OPENCLAW_CONFIG_PATH="${OPENCLAW_CONFIG_PATH:-$HOME/.openclaw/openclaw.json}"
 ENV_FILE="$REPO_ROOT/.env"
 LAUNCH_MODE=0
 declare -a REQUESTED_SERVICES=()
@@ -66,7 +53,7 @@ while [[ $# -gt 0 ]]; do
       REQUESTED_SERVICES+=("$2")
       shift 2
       ;;
-    --backend|--worker|--dashboard|--openclaw)
+    --backend|--worker|--dashboard)
       REQUESTED_SERVICES+=("${1#--}")
       shift
       ;;
@@ -93,12 +80,12 @@ normalize_services() {
   local item
   local -a normalized=()
   if [[ ${#REQUESTED_SERVICES[@]} -eq 0 ]]; then
-    REQUESTED_SERVICES=(backend worker dashboard openclaw)
+    REQUESTED_SERVICES=(backend worker dashboard)
   fi
 
   for item in "${REQUESTED_SERVICES[@]}"; do
     case "$item" in
-      backend|worker|dashboard|openclaw)
+      backend|worker|dashboard)
         if [[ ! " ${normalized[*]} " =~ " ${item} " ]]; then
           normalized+=("$item")
         fi
@@ -148,9 +135,6 @@ service_command() {
     dashboard)
       printf "cd %q && npm run dev -- --hostname 0.0.0.0 --port 3000" "$REPO_ROOT/dashboard"
       ;;
-    openclaw)
-      printf "%q gateway run --port 18789 --verbose" "$HOME/.openclaw/bin/openclaw"
-      ;;
     *)
       die "Servicio no soportado: $1"
       ;;
@@ -162,7 +146,6 @@ service_session() {
     backend) printf 'clawscout-api' ;;
     worker) printf 'clawscout-worker' ;;
     dashboard) printf 'clawscout-dashboard' ;;
-    openclaw) printf 'openclaw-gw' ;;
     *) die "Servicio no soportado: $1" ;;
   esac
 }
@@ -172,7 +155,6 @@ service_pattern() {
     backend) printf 'uvicorn app.main:app --host 0.0.0.0 --port 8000' ;;
     worker) printf 'celery -A app.workers.celery_app worker' ;;
     dashboard) printf 'next dev --hostname 0.0.0.0 --port 3000' ;;
-    openclaw) printf 'openclaw gateway run --port 18789' ;;
     *) die "Servicio no soportado: $1" ;;
   esac
 }
@@ -182,7 +164,6 @@ service_url() {
     backend) printf 'http://127.0.0.1:8000/docs' ;;
     worker) printf 'n/a (Celery worker)' ;;
     dashboard) printf 'http://127.0.0.1:3000' ;;
-    openclaw) printf 'http://127.0.0.1:18789/' ;;
     *) die "Servicio no soportado: $1" ;;
   esac
 }
@@ -243,48 +224,11 @@ show_prereq_status() {
   fi
 }
 
-render_openclaw_config() {
-  [[ -x "$RENDER_SCRIPT" ]] || die "No encontré el renderer de OpenClaw: $RENDER_SCRIPT"
-  "$RENDER_SCRIPT"
-}
-
-ensure_ollama_bridge() {
-  if [[ -r "$ENSURE_OLLAMA_BRIDGE_SCRIPT" ]]; then
-    bash "$ENSURE_OLLAMA_BRIDGE_SCRIPT" --quiet
-  else
-    warn "No encontré $ENSURE_OLLAMA_BRIDGE_SCRIPT; asumo que el bridge Ollama ya está operativo."
-  fi
-}
-
-show_openclaw_config_summary() {
-  python3 - "$OPENCLAW_CONFIG_PATH" <<'PY'
-import json
-import pathlib
-import sys
-
-path = pathlib.Path(sys.argv[1])
-data = json.loads(path.read_text(encoding="utf-8"))
-provider = data["models"]["providers"]["ollama"]
-defaults = data["agents"]["defaults"]
-aliases = {}
-for model_id, meta in defaults.get("models", {}).items():
-    alias = meta.get("alias")
-    if alias:
-      aliases[alias] = model_id.split("/", 1)[1] if "/" in model_id else model_id
-print(f"OPENCLAW_CONFIG_PATH={path}")
-print(f"OPENCLAW_WORKSPACE={defaults['workspace']}")
-print(f"OPENCLAW_OLLAMA_BASE_URL={provider['baseUrl']}")
-print(f"OPENCLAW_LEADER_MODEL={aliases.get('leader', '')}")
-print(f"OPENCLAW_EXECUTOR_MODEL={aliases.get('executor', '')}")
-print(f"OPENCLAW_REVIEWER_MODEL={aliases.get('reviewer', '')}")
-PY
-}
-
 print_start_guide() {
   local service
   printf '\n'
   log "Servicios locales"
-  for service in backend worker dashboard openclaw; do
+  for service in backend worker dashboard; do
     printf '  - %-10s %s\n' "$service" "$(service_url "$service")"
   done
 
@@ -294,13 +238,11 @@ print_start_guide() {
   printf '  - Backend    %s\n' "$(service_command backend)"
   printf '  - Worker     %s\n' "$(service_command worker)"
   printf '  - Dashboard  %s\n' "$(service_command dashboard)"
-  printf '  - OpenClaw   %s\n' "$(service_command openclaw)"
 
   printf '\n'
   log "Smoke checks"
   printf '  - API health      curl http://127.0.0.1:8000/health\n'
   printf '  - Dashboard       curl -I http://127.0.0.1:3000\n'
-  printf '  - OpenClaw        %q health\n' "$HOME/.openclaw/bin/openclaw"
   printf '  - Task status     curl http://127.0.0.1:8000/api/v1/tasks/<task_id>/status\n'
 
   if (( LAUNCH_MODE == 1 )); then
@@ -313,7 +255,7 @@ print_start_guide() {
 }
 
 main() {
-  local key value rendered_base_url clawscout_base_url=""
+  local key clawscout_base_url=""
 
   is_wsl || die "Este script está pensado para WSL/Linux-first."
 
@@ -332,40 +274,9 @@ main() {
   [[ -x "$REPO_ROOT/.venv/bin/uvicorn" ]] || warn "No encontré .venv/bin/uvicorn. Ejecutá 'pip install -e \".[dev]\"' en el venv Linux."
   [[ -x "$REPO_ROOT/.venv/bin/celery" ]] || warn "No encontré .venv/bin/celery. Ejecutá 'pip install -e \".[dev]\"' en el venv Linux."
   [[ -d "$REPO_ROOT/dashboard/node_modules" ]] || warn "No encontré dashboard/node_modules. Ejecutá 'cd dashboard && npm ci'."
-  [[ -x "$HOME/.openclaw/bin/openclaw" ]] || warn "No encontré ~/.openclaw/bin/openclaw. OpenClaw no podrá arrancar."
 
   normalize_services
   show_prereq_status
-  ensure_ollama_bridge
-  render_openclaw_config
-
-  declare -A rendered
-  while IFS='=' read -r key value; do
-    rendered["$key"]="$value"
-  done < <(show_openclaw_config_summary)
-
-  rendered_base_url="${rendered[OPENCLAW_OLLAMA_BASE_URL]:-}"
-  clawscout_base_url="$(parse_env_value "OLLAMA_BASE_URL" "$ENV_FILE" || true)"
-
-  printf '\n'
-  log "Config efectiva"
-  printf '  - Workspace   %s\n' "${rendered[OPENCLAW_WORKSPACE]:-}"
-  printf '  - Ollama      %s\n' "$rendered_base_url"
-  printf '  - Leader      %s\n' "${rendered[OPENCLAW_LEADER_MODEL]:-}"
-  printf '  - Executor    %s\n' "${rendered[OPENCLAW_EXECUTOR_MODEL]:-}"
-  printf '  - Reviewer    %s\n' "${rendered[OPENCLAW_REVIEWER_MODEL]:-}"
-
-  if [[ -n "$clawscout_base_url" && "$clawscout_base_url" != "$rendered_base_url" ]]; then
-    warn "OLLAMA_BASE_URL de ClawScout ($clawscout_base_url) no coincide con OpenClaw ($rendered_base_url)."
-  fi
-
-  if [[ -n "$rendered_base_url" ]]; then
-    if curl --silent --fail --max-time 5 "$rendered_base_url/api/tags" >/dev/null; then
-      log "Ollama accesible desde WSL: OK"
-    else
-      warn "No pude alcanzar Ollama en $rendered_base_url/api/tags"
-    fi
-  fi
 
   if (( LAUNCH_MODE == 1 )); then
     for key in "${REQUESTED_SERVICES[@]}"; do

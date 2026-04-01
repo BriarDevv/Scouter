@@ -36,11 +36,32 @@ def get_cached_settings(db: Session) -> OperationalSettings:
     return settings
 
 
+_ALLOWED_SETTINGS_FIELDS = {
+    "brand_name", "signature_name", "signature_role", "signature_company",
+    "portfolio_url", "website_url", "calendar_url", "signature_cta",
+    "signature_include_portfolio", "signature_is_solo",
+    "default_outreach_tone", "default_reply_tone", "default_closing_line",
+    "mail_enabled", "mail_from_email", "mail_from_name", "mail_reply_to",
+    "mail_send_timeout_seconds", "require_approved_drafts",
+    "mail_inbound_sync_enabled", "mail_inbound_mailbox", "mail_inbound_sync_limit",
+    "mail_inbound_timeout_seconds", "mail_inbound_search_criteria",
+    "auto_classify_inbound", "reply_assistant_enabled",
+    "reviewer_enabled", "reviewer_labels", "reviewer_confidence_threshold",
+    "prioritize_quote_replies", "prioritize_meeting_replies",
+    "allow_reply_assistant_generation",
+    "use_reviewer_for_labels",
+    "notifications_enabled", "notification_score_threshold",
+    "whatsapp_alerts_enabled", "whatsapp_min_severity", "whatsapp_categories",
+    "telegram_alerts_enabled", "whatsapp_outreach_enabled",
+    "telegram_agent_enabled", "whatsapp_agent_enabled",
+}
+
+
 def update_operational_settings(db: Session, updates: dict) -> OperationalSettings:
     """Partial update. Only touches fields present in updates."""
     row = get_or_create(db)
     for key, value in updates.items():
-        if hasattr(row, key):
+        if key in _ALLOWED_SETTINGS_FIELDS:
             setattr(row, key, value)
     row.updated_at = datetime.now(timezone.utc)
     db.commit()
@@ -109,7 +130,6 @@ def get_effective_rules(db: Session) -> dict:
         "reviewer_confidence_threshold": row.reviewer_confidence_threshold,
         "prioritize_quote_replies": row.prioritize_quote_replies,
         "prioritize_meeting_replies": row.prioritize_meeting_replies,
-        "allow_openclaw_briefs": row.allow_openclaw_briefs,
         "allow_reply_assistant_generation": row.allow_reply_assistant_generation,
         "use_reviewer_for_labels": row.use_reviewer_for_labels or [],
         "notifications_enabled": row.notifications_enabled,
@@ -158,7 +178,6 @@ def to_response_dict(row: OperationalSettings) -> dict:
         "reviewer_confidence_threshold": row.reviewer_confidence_threshold,
         "prioritize_quote_replies": row.prioritize_quote_replies,
         "prioritize_meeting_replies": row.prioritize_meeting_replies,
-        "allow_openclaw_briefs": row.allow_openclaw_briefs,
         "allow_reply_assistant_generation": row.allow_reply_assistant_generation,
         "use_reviewer_for_labels": row.use_reviewer_for_labels or [],
         "notifications_enabled": row.notifications_enabled,

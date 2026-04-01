@@ -55,7 +55,6 @@ class OperationalSettings(Base):
     reviewer_confidence_threshold: Mapped[float] = mapped_column(Float, default=0.7, nullable=False)
     prioritize_quote_replies: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     prioritize_meeting_replies: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    allow_openclaw_briefs: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     allow_reply_assistant_generation: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     use_reviewer_for_labels: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
 

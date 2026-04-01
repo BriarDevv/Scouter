@@ -8,7 +8,6 @@ export type TabId =
   | "notifications"
   | "whatsapp"
   | "telegram"
-  | "ai-workspace"
   | "territories"
   | "crawlers";
 
@@ -22,7 +21,6 @@ export const TABS: Array<{ id: TabId; label: string }> = [
   { id: "notifications", label: "Notificaciones" },
   { id: "whatsapp", label: "WhatsApp" },
   { id: "telegram", label: "Telegram" },
-  { id: "ai-workspace", label: "IA" },
   { id: "territories", label: "Territorios" },
   { id: "crawlers", label: "Crawlers" },
 ];
