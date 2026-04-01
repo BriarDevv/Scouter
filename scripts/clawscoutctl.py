@@ -190,7 +190,7 @@ class APIClient:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Thin local wrapper around the ClawScout HTTP API for OpenClaw leader workflows."
+        description="Thin local wrapper around the ClawScout HTTP API for leader workflows."
     )
     parser.add_argument(
         "--base-url",

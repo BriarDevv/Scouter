@@ -73,7 +73,7 @@ EMAIL_RE = re.compile(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", re.IGNORECASE)
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Inspect public websites with Playwright and return grounded JSON for OpenClaw."
+        description="Inspect public websites with Playwright and return grounded JSON for ClawScout."
     )
     parser.add_argument(
         "--timeout-ms",

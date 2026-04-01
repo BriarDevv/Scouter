@@ -11,6 +11,5 @@ __pycache__/
 .mypy_cache/
 *.pyc
 .dev-runtime/
-.openclaw.db
 docs/
 skills/

@@ -235,7 +235,6 @@ In ClawScout v1, **almost everything is manual**. There are no scheduled tasks, 
 | Automatic reviewer | Toggle in Settings | `reviewer_enabled` |
 | Mail inbound sync | Toggle in Settings | `mail_inbound_sync_enabled` |
 | WhatsApp alerts | Toggle in Settings | `whatsapp_alerts_enabled` |
-| OpenClaw | Separate process | Not managed by make up/down |
 
 Ollama models (4b, 9b, 27b) only consume VRAM when in use. Ollama automatically unloads them from memory after a few minutes of inactivity.
 
@@ -327,7 +326,6 @@ ClawScout/
 |   |   |-- outreach_service.py      #     Draft generation + sending
 |   |   |-- dashboard_service.py     #     Analytics aggregation
 |   |   |-- inbound_mail_service.py  #     IMAP sync + classification
-|   |   |-- ai_workspace_service.py  #     OpenClaw integration
 |   |   |-- operational_settings_service.py  # Feature toggle cache
 |   |   +-- ...                      #     Mail, WhatsApp, Telegram, replies, notifications
 |   |-- workers/
@@ -407,10 +405,8 @@ ClawScout/
 |   |-- seed.py                      #   Sample data loader
 |   |-- ensure-ollama-bridge.sh      #   Restore WSL <-> Windows Ollama connection
 |   |-- start-local-stack.sh         #   Guided setup with tmux
-|   |-- render-openclaw-config.sh    #   Generate OpenClaw config from template
-|   +-- validate-openclaw-grounding.sh  # Test OpenClaw workspace grounding
 |
-|-- skills/                          # OpenClaw agent skills (7 modules)
+|-- skills/                          # Hermes agent skills (7 modules)
 |   |-- clawscout-data/              #   Read-only grounded data queries
 |   |-- clawscout-actions/           #   Mutating operations (drafts, pipeline, reviews)
 |   |-- clawscout-briefs/            #   Operational summaries with leader model
@@ -420,8 +416,7 @@ ClawScout/
 |   +-- clawscout-whatsapp/          #   WhatsApp integration
 |
 |-- infra/
-|   |-- docker/Dockerfile            # Python backend container image
-|   +-- openclaw/openclaw.template.json  # OpenClaw config template
+|   +-- docker/Dockerfile            # Python backend container image
 |
 |-- tests/                           # Backend tests (pytest + SQLite)
 |   |-- conftest.py                  #   Fixtures, TestClient, session override
@@ -432,12 +427,12 @@ ClawScout/
 |   |-- SECURITY_AUDIT_PENDING.md    #   Security findings tracker
 |   +-- superpowers/plans/           #   Implementation plans
 |
-|-- AGENTS.md                        # OpenClaw agent framework documentation
-|-- SOUL.md                          # OpenClaw core principles
-|-- IDENTITY.md                      # OpenClaw agent identity (template)
-|-- HEARTBEAT.md                     # OpenClaw periodic tasks
-|-- TOOLS.md                         # OpenClaw environment notes
-|-- USER.md                          # OpenClaw user context
+|-- AGENTS.md                        # Agent framework documentation
+|-- SOUL.md                          # Hermes agent core principles
+|-- IDENTITY.md                      # Hermes agent identity (template)
+|-- HEARTBEAT.md                     # Periodic tasks configuration
+|-- TOOLS.md                         # Environment notes
+|-- USER.md                          # User context
 |-- AUDIT.md                         # Internal audit history
 |-- docker-compose.yml               # Service orchestration (6 services)
 |-- pyproject.toml                   # Python project config + dependencies
@@ -459,7 +454,7 @@ ClawScout/
 | Call the backend from frontend | `dashboard/lib/api/client.ts` |
 | Add an async task | `app/workers/tasks.py` + register queue in `celery_app.py` |
 | Add a database migration | `alembic revision --autogenerate -m "description"` |
-| Add an OpenClaw skill | `skills/<skill-name>/SKILL.md` |
+| Add a Hermes agent skill | `skills/<skill-name>/SKILL.md` |
 | Run pre-launch checks | `python scripts/preflight.py` |
 
 ## Dashboard Pages

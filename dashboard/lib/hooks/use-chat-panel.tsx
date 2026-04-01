@@ -44,11 +44,12 @@ export function ChatPanelProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!hydrated) return;
     try { localStorage.setItem(CHAT_STORAGE_KEY, String(isOpen)); } catch {}
-  }, [isOpen]);
+  }, [isOpen, hydrated]);
 
   useEffect(() => {
+    if (!hydrated) return;
     try { localStorage.setItem(SIDEBAR_STORAGE_KEY, String(sidebarCollapsed)); } catch {}
-  }, [sidebarCollapsed]);
+  }, [sidebarCollapsed, hydrated]);
 
   const toggle = useCallback(() => setIsOpen((prev) => !prev), []);
   const open = useCallback(() => setIsOpen(true), []);

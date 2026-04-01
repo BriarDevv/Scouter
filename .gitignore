@@ -98,5 +98,6 @@ celerybeat-schedule.db
 # ClawScout runtime
 logs/
 .pids/
-.openclaw.db
-.openclaw/
+
+# OMC
+.omc/
