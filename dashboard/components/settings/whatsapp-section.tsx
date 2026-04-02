@@ -172,7 +172,7 @@ export function WhatsAppSection({ data, onSaved }: WhatsAppSectionProps) {
   );
 }
 
-// ─── Agente Hermes 3 por WhatsApp ───────────────────────────────────
+// ─── Agente Mote por WhatsApp ───────────────────────────────────
 
 interface HermesWhatsAppProps {
   data: OperationalSettings;
@@ -190,8 +190,8 @@ export function HermesWhatsAppSection({ data, onSaved }: HermesWhatsAppProps) {
       const updated = await updateOperationalSettings({ whatsapp_agent_enabled: value });
       sileo.success({
         title: value
-          ? "Agente Hermes 3 activado en WhatsApp"
-          : "Agente Hermes 3 desactivado en WhatsApp",
+          ? "Agente Mote activado en WhatsApp"
+          : "Agente Mote desactivado en WhatsApp",
       });
       onSaved(updated);
     } catch (err) {
@@ -207,12 +207,12 @@ export function HermesWhatsAppSection({ data, onSaved }: HermesWhatsAppProps) {
 
   return (
     <SettingsSectionCard
-      title="Agente Hermes 3"
+      title="Agente Mote"
       description="Agente IA que responde mensajes de WhatsApp automaticamente."
       icon={MessageCircle}
     >
       <FieldRow
-        label="Agente Hermes 3"
+        label="Agente Mote"
         hint="Responde mensajes con IA"
       >
         <Toggle

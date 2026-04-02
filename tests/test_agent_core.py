@@ -131,7 +131,7 @@ def test_hermes_format_tool_result_with_error():
 def test_agent_prompt_includes_personality():
     from app.agent.prompts import build_agent_system_prompt
     prompt = build_agent_system_prompt("<tools></tools>")
-    assert "Hermes" in prompt
+    assert "Mote" in prompt
     assert "rioplatense" in prompt
 
 

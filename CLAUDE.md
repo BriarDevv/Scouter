@@ -55,7 +55,7 @@ Three roles with dedicated models (configurable via env):
 - Repo **must** live in WSL filesystem (`~/src/ClawScout`), not `/mnt/c/`
 - No auto-send in v1 — all outreach requires human approval
 - `celerybeat-schedule` is a binary runtime file (in `.gitignore`)
-- SOUL.md and IDENTITY.md are read by `app/agent/prompts.py` for Hermes agent personality — don't delete them
+- SOUL.md and IDENTITY.md are read by `app/agent/prompts.py` for Mote agent personality — don't delete them
 - Dedup hash: SHA-256 of (business_name + city + domain)
 
 ## Commit Style

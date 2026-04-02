@@ -167,7 +167,7 @@ export default function ChatPage() {
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold font-heading leading-none truncate">
-              {currentTitle || "Hermes"}
+              {currentTitle || "Mote"}
             </p>
             {!currentTitle && (
               <p className="text-xs text-muted-foreground mt-0.5">Agente IA · ClawScout</p>

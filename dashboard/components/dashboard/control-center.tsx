@@ -108,7 +108,7 @@ const FEATURES: FeatureToggle[] = [
   {
     key: "whatsapp_agent_enabled",
     label: "Agente WhatsApp",
-    hint: "Hermes 3 responde mensajes por WhatsApp",
+    hint: "Mote responde mensajes por WhatsApp",
     icon: Brain,
     category: "whatsapp",
   },

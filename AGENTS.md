@@ -1,13 +1,13 @@
 # ClawScout
 
 Private lead prospecting system for web development services.
-Python 3.12+ / FastAPI backend, Next.js 16 frontend, Hermes agent system.
+Python 3.12+ / FastAPI backend, Next.js 16 frontend, Mote agent system.
 
 ## Architecture
 
 ```
 app/                        Python backend (FastAPI)
-  agent/                    Hermes agentic chat (SSE streaming, 55 tools)
+  agent/                    Mote agentic chat (SSE streaming, 55 tools)
     core.py                   Agent loop: run_agent_turn() streams LLM + executes tools
     hermes_format.py          Parses <tool_call> XML from Hermes 3 models
     channel_router.py         Routes agent to Telegram / WhatsApp channels
@@ -98,7 +98,7 @@ app/                        Python backend (FastAPI)
 
 dashboard/                  Next.js 16 frontend (App Router, TypeScript strict)
   app/                      15 pages
-    page.tsx                  / — Hermes chat (full-page)
+    page.tsx                  / — Mote chat (full-page)
     panel/                    /panel — operational dashboard
     leads/                    /leads — lead list + /leads/[id] detail (with dossier + brief)
     dossiers/                 /dossiers — HIGH lead dossier candidates (NEW)
@@ -138,7 +138,7 @@ docs/                       Audits, roadmaps, specs, propuesta de negocio
 | LEADER | qwen3.5:4b | Orchestration, summaries, briefs |
 | EXECUTOR | qwen3.5:9b | Classification, draft generation, scoring, dossier, brief |
 | REVIEWER | qwen3.5:27b | Quality review, brief review, second opinions (async) |
-| AGENT | hermes3:8b | Hermes chat agent — the leader |
+| AGENT | hermes3:8b | Mote chat agent — the leader |
 
 ## Pipeline (HIGH leads)
 
@@ -169,9 +169,9 @@ Lead ingestion (Google Maps crawler)
 
 | File | Why it matters |
 |------|---------------|
-| `SOUL.md` | Hermes personality — read by `app/agent/prompts.py` at startup |
-| `IDENTITY.md` | Hermes identity — same |
-| `app/agent/core.py` | The Hermes agent loop — SSE streaming + tool execution |
+| `SOUL.md` | Mote personality — read by `app/agent/prompts.py` at startup |
+| `IDENTITY.md` | Mote identity — same |
+| `app/agent/core.py` | The Mote agent loop — SSE streaming + tool execution |
 | `app/api/v1/` | All REST endpoints — start here for API changes |
 | `app/services/` | All business logic — stateless, takes `db: Session` |
 | `app/models/__init__.py` | Model registry — new models must be exported here |

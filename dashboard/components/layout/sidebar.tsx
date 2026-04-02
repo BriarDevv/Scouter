@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 
 const NAV_ITEMS = [
-  { href: "/",            label: "Hermes",      icon: Sparkles },
+  { href: "/",            label: "Mote",        icon: Sparkles },
   { href: "/panel",       label: "Panel",       icon: LayoutDashboard },
   { href: "/leads",       label: "Leads",       icon: Users },
   { href: "/dossiers",    label: "Dossiers",    icon: FileSearch },
@@ -101,7 +101,7 @@ export function Sidebar() {
       <nav className="flex-1 space-y-0.5 px-2 py-3 overflow-y-auto overflow-x-hidden">
         {NAV_ITEMS.map((item) => {
           const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
-          const isHermes = item.href === "/";
+          const isMote = item.href === "/";
           return (
             <Link
               key={item.href}
@@ -110,7 +110,7 @@ export function Sidebar() {
               className={cn(
                 "flex items-center rounded-xl py-2 text-sm font-medium font-heading transition-all duration-[350ms] ease-in-out",
                 collapsed ? "px-[9px] gap-0" : "gap-2.5 px-3",
-                isActive && isHermes
+                isActive && isMote
                   ? "bg-violet-600 text-white shadow-sm dark:bg-white/15 dark:shadow-none"
                   : isActive
                   ? "bg-violet-50 dark:bg-white/10 text-violet-700 dark:text-white"
@@ -119,7 +119,7 @@ export function Sidebar() {
             >
               <item.icon className={cn(
                 "h-[18px] w-[18px] shrink-0",
-                isActive && isHermes ? "text-white" : isActive ? "text-violet-600 dark:text-white" : ""
+                isActive && isMote ? "text-white" : isActive ? "text-violet-600 dark:text-white" : ""
               )} />
               <span className={lbl}>{item.label}</span>
             </Link>

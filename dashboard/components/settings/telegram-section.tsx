@@ -196,7 +196,7 @@ export function TelegramSection({ data, onSaved }: TelegramSectionProps) {
   );
 }
 
-// ─── Agente Hermes 3 por Telegram ───────────────────────────────────
+// ─── Agente Mote por Telegram ───────────────────────────────────
 
 interface HermesTelegramProps {
   data: OperationalSettings;
@@ -214,8 +214,8 @@ export function HermesTelegramSection({ data, onSaved }: HermesTelegramProps) {
       const updated = await updateOperationalSettings({ telegram_agent_enabled: value });
       sileo.success({
         title: value
-          ? "Agente Hermes 3 activado en Telegram"
-          : "Agente Hermes 3 desactivado en Telegram",
+          ? "Agente Mote activado en Telegram"
+          : "Agente Mote desactivado en Telegram",
       });
       onSaved(updated);
     } catch (err) {
@@ -231,12 +231,12 @@ export function HermesTelegramSection({ data, onSaved }: HermesTelegramProps) {
 
   return (
     <SettingsSectionCard
-      title="Agente Hermes 3"
+      title="Agente Mote"
       description="Agente IA que responde mensajes de Telegram automaticamente."
       icon={Send}
     >
       <FieldRow
-        label="Agente Hermes 3"
+        label="Agente Mote"
         hint="Responde mensajes con IA"
       >
         <Toggle
