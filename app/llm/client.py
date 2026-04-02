@@ -833,7 +833,13 @@ def generate_commercial_brief(
             error=str(e),
         )
         result = fallback
+        result["_is_fallback"] = True
+
+    if result is None:
+        result = fallback
+        result["_is_fallback"] = True
 
     _, model = _resolve_role_model(role)
     result["model"] = model
+    result.setdefault("_is_fallback", False)
     return result

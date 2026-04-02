@@ -48,17 +48,25 @@ def get_pricing_matrix(db: Session) -> dict:
 def create_or_get_brief(
     db: Session, lead_id: uuid.UUID
 ) -> CommercialBrief:
-    """Return existing brief for lead or create a new PENDING one."""
+    """Return existing brief for lead or create a new PENDING one (race-safe)."""
     brief = (
         db.query(CommercialBrief).filter_by(lead_id=lead_id).first()
     )
     if not brief:
-        brief = CommercialBrief(
-            lead_id=lead_id, status=BriefStatus.PENDING
-        )
-        db.add(brief)
-        db.commit()
-        db.refresh(brief)
+        try:
+            brief = CommercialBrief(
+                lead_id=lead_id, status=BriefStatus.PENDING
+            )
+            db.add(brief)
+            db.commit()
+            db.refresh(brief)
+        except Exception:
+            db.rollback()
+            brief = db.query(CommercialBrief).filter_by(
+                lead_id=lead_id
+            ).first()
+            if not brief:
+                raise
     return brief
 
 
@@ -177,6 +185,7 @@ def generate_brief(
             brief.opportunity_score
         )
         brief.generator_model = llm_result.get("model")
+        brief.is_fallback = bool(llm_result.get("_is_fallback", False))
         brief.status = BriefStatus.GENERATED
         brief.updated_at = datetime.now(UTC)
         db.commit()

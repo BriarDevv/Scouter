@@ -19,8 +19,11 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    pass
+    op.add_column(
+        "commercial_briefs",
+        sa.Column("is_fallback", sa.Boolean(), nullable=False, server_default="false"),
+    )
 
 
 def downgrade() -> None:
-    pass
+    op.drop_column("commercial_briefs", "is_fallback")

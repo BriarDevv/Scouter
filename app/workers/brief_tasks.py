@@ -33,7 +33,8 @@ def _pipeline_uuid(pipeline_run_id: str | None) -> uuid.UUID | None:
     time_limit=150,
 )
 def task_generate_brief(
-    self, lead_id: str, pipeline_run_id: str | None = None
+    self, lead_id: str, pipeline_run_id: str | None = None,
+    correlation_id: str | None = None,
 ):
     """Generate a commercial brief for a lead asynchronously."""
     task_id = str(self.request.id)
@@ -123,7 +124,8 @@ def task_generate_brief(
     time_limit=360,
 )
 def task_review_brief(
-    self, lead_id: str, pipeline_run_id: str | None = None
+    self, lead_id: str, pipeline_run_id: str | None = None,
+    correlation_id: str | None = None,
 ):
     """Review a commercial brief with the REVIEWER model."""
     task_id = str(self.request.id)

@@ -14,13 +14,19 @@ logger = get_logger(__name__)
 
 
 def create_or_get_report(db: Session, lead_id: uuid.UUID) -> LeadResearchReport:
-    """Get existing report or create a new one."""
+    """Get existing report or create a new one (race-safe)."""
     report = db.query(LeadResearchReport).filter_by(lead_id=lead_id).first()
     if not report:
-        report = LeadResearchReport(lead_id=lead_id, status=ResearchStatus.PENDING)
-        db.add(report)
-        db.commit()
-        db.refresh(report)
+        try:
+            report = LeadResearchReport(lead_id=lead_id, status=ResearchStatus.PENDING)
+            db.add(report)
+            db.commit()
+            db.refresh(report)
+        except Exception:
+            db.rollback()
+            report = db.query(LeadResearchReport).filter_by(lead_id=lead_id).first()
+            if not report:
+                raise
     return report
 
 
@@ -31,6 +37,12 @@ def run_research(db: Session, lead_id: uuid.UUID) -> LeadResearchReport | None:
         return None
 
     report = create_or_get_report(db, lead_id)
+
+    # Idempotency: skip if already completed
+    if report.status == ResearchStatus.COMPLETED:
+        logger.info("research_skipped_already_completed", lead_id=str(lead_id))
+        return report
+
     report.status = ResearchStatus.RUNNING
     db.commit()
 

@@ -1387,14 +1387,47 @@ def task_batch_pipeline(self, status_filter: str = "new"):
                         lead.llm_quality = raw_quality if raw_quality in ("high", "medium", "low") else "unknown"
                         db.commit()
 
-                        # Step 4: Generate draft (only for high quality)
+                        # Step 4: HIGH lane — research + brief
+                        if lead.llm_quality == "high":
+                            progress["current_step"] = "research"
+                            redis.set(redis_key, _json.dumps(progress), ex=3600)
+                            try:
+                                from app.services.research_service import run_research
+                                run_research(db, lead.id)
+                            except Exception as res_exc:
+                                logger.warning(
+                                    "batch_research_failed",
+                                    lead=lead.business_name,
+                                    error=str(res_exc),
+                                )
+
+                            progress["current_step"] = "brief"
+                            redis.set(redis_key, _json.dumps(progress), ex=3600)
+                            try:
+                                from app.services.brief_service import generate_brief
+                                generate_brief(db, lead.id)
+                            except Exception as brief_exc:
+                                logger.warning(
+                                    "batch_brief_failed",
+                                    lead=lead.business_name,
+                                    error=str(brief_exc),
+                                )
+
+                        # Step 5: Generate draft (only for high quality with email)
                         progress["current_step"] = "draft"
                         redis.set(redis_key, _json.dumps(progress), ex=3600)
                         if lead.llm_quality == "high" and lead.email:
                             _generate_draft(db, lead.id)
                         else:
-                            reason = "no_email" if not lead.email else ("quality=%s" % lead.llm_quality)
-                            logger.info("batch_draft_skipped", lead=lead.business_name, reason=reason)
+                            reason = (
+                                "no_email" if not lead.email
+                                else ("quality=%s" % lead.llm_quality)
+                            )
+                            logger.info(
+                                "batch_draft_skipped",
+                                lead=lead.business_name,
+                                reason=reason,
+                            )
 
                         logger.info("batch_pipeline_lead_done", lead=lead.business_name, idx=total_processed + idx + 1)
 

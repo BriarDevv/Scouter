@@ -185,4 +185,4 @@ def test_janitor_marks_stale_tasks_as_failed(db):
     db.refresh(stale_task)
     assert stale_task.status == "failed"
     assert "stale" in stale_task.error.lower()
-    assert result["marked_failed"] >= 1
+    assert result["tasks_failed"] >= 1
