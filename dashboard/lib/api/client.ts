@@ -43,6 +43,8 @@ import type {
   ChatConversation,
   ChatConversationSummary,
   ChatConversationDetail,
+  LeadResearchReport,
+  CommercialBrief,
 } from "@/types";
 import { API_BASE_URL } from "@/lib/constants";
 
@@ -642,4 +644,56 @@ export async function getConversation(id: string): Promise<ChatConversationDetai
 
 export async function deleteConversation(id: string): Promise<void> {
   return apiFetch<void>(`/chat/conversations/${id}`, { method: "DELETE" });
+}
+
+// ─── Research / Dossier ─────────────────────────────────────────────
+
+export async function getLeadResearch(leadId: string): Promise<LeadResearchReport | null> {
+  try {
+    return await apiFetch<LeadResearchReport>(`/leads/${leadId}/research`);
+  } catch {
+    return null;
+  }
+}
+
+export async function runResearch(leadId: string): Promise<LeadResearchReport> {
+  return apiFetch<LeadResearchReport>(`/leads/${leadId}/research`, { method: "POST" });
+}
+
+// ─── Commercial Brief ───────────────────────────────────────────────
+
+export async function getCommercialBrief(leadId: string): Promise<CommercialBrief | null> {
+  try {
+    return await apiFetch<CommercialBrief>(`/briefs/leads/${leadId}`);
+  } catch {
+    return null;
+  }
+}
+
+export async function generateBrief(leadId: string): Promise<CommercialBrief> {
+  return apiFetch<CommercialBrief>(`/briefs/leads/${leadId}`, { method: "POST" });
+}
+
+export async function listBriefs(params?: { budget_tier?: string; contact_priority?: string; limit?: number }): Promise<CommercialBrief[]> {
+  const qs = new URLSearchParams();
+  if (params?.budget_tier) qs.set("budget_tier", params.budget_tier);
+  if (params?.contact_priority) qs.set("contact_priority", params.contact_priority);
+  if (params?.limit) qs.set("limit", String(params.limit));
+  const q = qs.toString();
+  return apiFetch<CommercialBrief[]>(`/briefs/${q ? `?${q}` : ""}`);
+}
+
+// ─── Export ─────────────────────────────────────────────────────────
+
+export function getExportUrl(format: "csv" | "json" | "xlsx", params?: { status?: string; quality?: string }): string {
+  const qs = new URLSearchParams({ format });
+  if (params?.status) qs.set("status", params.status);
+  if (params?.quality) qs.set("quality", params.quality);
+  return `${API_BASE_URL}/leads/export?${qs.toString()}`;
+}
+
+// ─── Runtime Mode ───────────────────────────────────────────────────
+
+export async function setRuntimeMode(mode: string): Promise<OperationalSettings> {
+  return apiFetch<OperationalSettings>(`/settings/runtime-mode?mode=${mode}`, { method: "POST" });
 }

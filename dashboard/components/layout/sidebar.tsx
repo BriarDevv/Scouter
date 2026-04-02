@@ -10,6 +10,8 @@ import { getNotificationCounts } from "@/lib/api/client";
 import { useChatPanel } from "@/lib/hooks/use-chat-panel";
 import {
   Bell,
+  Briefcase,
+  FileSearch,
   Inbox,
   LayoutDashboard,
   Users,
@@ -28,6 +30,8 @@ const NAV_ITEMS = [
   { href: "/",            label: "Hermes",      icon: Sparkles },
   { href: "/panel",       label: "Panel",       icon: LayoutDashboard },
   { href: "/leads",       label: "Leads",       icon: Users },
+  { href: "/dossiers",    label: "Dossiers",    icon: FileSearch },
+  { href: "/briefs",      label: "Briefs",      icon: Briefcase },
   { href: "/outreach",    label: "Outreach",    icon: Mail },
   { href: "/responses",   label: "Respuestas",  icon: Inbox },
   { href: "/performance", label: "Rendimiento", icon: BarChart3 },

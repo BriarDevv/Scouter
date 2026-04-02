@@ -19,10 +19,11 @@ import { sileo } from "sileo";
 import {
   getOperationalSettings,
   updateOperationalSettings,
+  setRuntimeMode,
   getTerritories,
   apiFetch,
 } from "@/lib/api/client";
-import type { HealthComponent, OperationalSettings, TerritoryWithStats } from "@/types";
+import type { HealthComponent, OperationalSettings, RuntimeMode, TerritoryWithStats } from "@/types";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -149,6 +150,8 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
   const [crawlStatus, setCrawlStatus] = useState<"idle" | "running" | "done" | "error">("idle");
   const [crawlProgress, setCrawlProgress] = useState<string | null>(null);
   const [crawlTaskId, setCrawlTaskId] = useState<string | null>(null);
+  const [runtimeMode, setRuntimeModeState] = useState<RuntimeMode>("safe");
+  const [savingMode, setSavingMode] = useState(false);
 
   const loadSettings = useCallback(async () => {
     if (isInitialSettings.current) setLoadingSettings(true);
@@ -353,6 +356,22 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
     }
   }
 
+  async function handleSetRuntimeMode(mode: RuntimeMode) {
+    setSavingMode(true);
+    try {
+      await setRuntimeMode(mode);
+      setRuntimeModeState(mode);
+      sileo.success({ title: `Modo: ${mode}` });
+    } catch (err) {
+      sileo.error({
+        title: "Error al cambiar modo",
+        description: err instanceof Error ? err.message : "Error desconocido",
+      });
+    } finally {
+      setSavingMode(false);
+    }
+  }
+
   const ollamaOk = health.find((c) => c.name === "ollama")?.status === "ok";
   const celeryOk = health.find((c) => c.name === "celery")?.status === "ok";
   const allOk = health.length > 0 && health.every((c) => c.status === "ok");
@@ -398,6 +417,39 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
           >
             <RefreshCw className={cn("h-4 w-4", healthLoading && "animate-spin")} />
           </button>
+        </div>
+      </div>
+
+      {/* Runtime Mode Selector */}
+      <div className="flex items-center justify-between border-b border-border px-5 py-2.5">
+        <div className="flex items-center gap-2">
+          <span className={cn(
+            "h-2.5 w-2.5 rounded-full",
+            runtimeMode === "safe" ? "bg-emerald-500" : runtimeMode === "assisted" ? "bg-amber-500" : "bg-red-500"
+          )} />
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Modo Runtime
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          {(["safe", "assisted", "auto"] as const).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => void handleSetRuntimeMode(mode)}
+              disabled={savingMode}
+              className={cn(
+                "rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
+                runtimeMode === mode
+                  ? mode === "safe" ? "bg-emerald-600 text-white"
+                    : mode === "assisted" ? "bg-amber-500 text-white"
+                    : "bg-red-600 text-white"
+                  : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              {mode === "safe" ? "Seguro" : mode === "assisted" ? "Asistido" : "Auto"}
+            </button>
+          ))}
+          {savingMode && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground ml-1" />}
         </div>
       </div>
 
