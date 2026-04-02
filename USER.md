@@ -1,17 +1,18 @@
-# USER.md - About Your Human
+# Usuario de ClawScout
 
-_Learn about the person you're helping. Update this as you go._
+- **Name:** Mateo
+- **Role:** Fundador / operador principal
+- **Language:** Espanol rioplatense (Argentina)
+- **Environment:** WSL2, tmux, oh-my-claudecode
 
-- **Name:**
-- **What to call them:**
-- **Pronouns:** _(optional)_
-- **Timezone:**
-- **Notes:**
+## Contexto
 
-## Context
+Mateo opera ClawScout como herramienta de prospeccion para su estudio de desarrollo web. Es el unico operador y tomador de decisiones. Los leads son negocios argentinos que podrian necesitar servicios web.
 
-_(What do they care about? What projects are they working on? What annoys them? What makes them laugh? Build this over time.)_
+## Preferencias
 
----
-
-The more you know, the better you can help. But remember — you're learning about a person, not building a dossier. Respect the difference.
+- Comunicacion directa, sin rodeos
+- Dark mode como modo principal del dashboard
+- Commits atomicos y ordenados
+- Best practice sobre hacks
+- No sobrecomplicar la UX
