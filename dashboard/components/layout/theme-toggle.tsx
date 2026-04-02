@@ -22,16 +22,17 @@ export function ThemeToggle({ collapsed = false }: { collapsed?: boolean }) {
       onClick={cycle}
       title={`Tema: ${LABEL[theme]}`}
       className={cn(
-        "w-full flex items-center rounded-xl py-2 text-sm font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground",
-        collapsed ? "justify-center px-0" : "gap-3 px-3"
+        "w-full flex items-center rounded-xl py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground",
+        "transition-all duration-[350ms] ease-in-out",
+        collapsed ? "px-[9px] gap-0" : "gap-3 px-3"
       )}
     >
       <Icon className="h-[18px] w-[18px] shrink-0" />
       <span className={cn(
-        "whitespace-nowrap overflow-hidden text-xs transition-[opacity]",
+        "whitespace-nowrap overflow-hidden text-xs transition-all duration-[350ms] ease-in-out",
         collapsed
-          ? "opacity-0 w-0 duration-100 delay-0"
-          : "opacity-100 w-auto duration-200 delay-150"
+          ? "opacity-0 max-w-0"
+          : "opacity-100 max-w-[200px]"
       )}>
         {LABEL[theme]}
       </span>

@@ -44,8 +44,8 @@ const BOTTOM_NAV_ITEMS = [
   { href: "/security",      label: "Seguridad",      icon: ShieldAlert, badge: false },
 ];
 
-const LABEL_HIDDEN = "whitespace-nowrap overflow-hidden opacity-0 max-w-0 transition-all duration-100 delay-0";
-const LABEL_VISIBLE = "whitespace-nowrap transition-[opacity] opacity-100 duration-200 delay-150";
+const LABEL_HIDDEN = "whitespace-nowrap overflow-hidden opacity-0 max-w-0 transition-all duration-[350ms] ease-in-out";
+const LABEL_VISIBLE = "whitespace-nowrap overflow-hidden max-w-[200px] transition-all opacity-100 duration-[350ms] ease-in-out delay-0";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -108,8 +108,8 @@ export function Sidebar() {
               href={item.href}
               title={collapsed ? item.label : undefined}
               className={cn(
-                "flex items-center rounded-xl py-2 text-sm font-medium font-heading transition-colors duration-150",
-                collapsed ? "justify-center px-0" : "gap-2.5 px-3",
+                "flex items-center rounded-xl py-2 text-sm font-medium font-heading transition-all duration-[350ms] ease-in-out",
+                collapsed ? "px-[9px] gap-0" : "gap-2.5 px-3",
                 isActive && isHermes
                   ? "bg-violet-600 text-white shadow-sm dark:bg-white/15 dark:shadow-none"
                   : isActive
@@ -136,8 +136,8 @@ export function Sidebar() {
               href={item.href}
               title={collapsed ? item.label : undefined}
               className={cn(
-                "relative flex items-center rounded-xl py-2 text-sm font-medium font-heading transition-colors duration-150",
-                collapsed ? "justify-center px-0" : "gap-2.5 px-3",
+                "relative flex items-center rounded-xl py-2 text-sm font-medium font-heading transition-all duration-[350ms] ease-in-out",
+                collapsed ? "px-[9px] gap-0" : "gap-2.5 px-3",
                 isActive
                   ? "bg-violet-50 dark:bg-white/10 text-violet-700 dark:text-white"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -173,8 +173,8 @@ export function Sidebar() {
           href="/settings"
           title={collapsed ? "Configuración" : undefined}
           className={cn(
-            "flex items-center rounded-xl py-2 text-sm font-medium font-heading transition-colors duration-150",
-            collapsed ? "justify-center px-0" : "gap-2.5 px-3",
+            "flex items-center rounded-xl py-2 text-sm font-medium font-heading transition-all duration-[350ms] ease-in-out",
+            collapsed ? "px-[9px] gap-0" : "gap-2.5 px-3",
             pathname.startsWith("/settings")
               ? "bg-violet-50 dark:bg-white/10 text-violet-700 dark:text-white"
               : "text-muted-foreground hover:bg-muted hover:text-foreground"
