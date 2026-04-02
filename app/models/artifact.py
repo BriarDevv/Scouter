@@ -23,7 +23,7 @@ class Artifact(Base):
         Uuid, ForeignKey("leads.id", ondelete="CASCADE"), nullable=False
     )
     artifact_type: Mapped[ArtifactType] = mapped_column(
-        Enum(ArtifactType), nullable=False
+        Enum(ArtifactType, values_callable=lambda x: [e.value for e in x]), nullable=False
     )
     file_path: Mapped[str] = mapped_column(Text, nullable=False)
     file_size: Mapped[int | None] = mapped_column(Integer, nullable=True)

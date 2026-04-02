@@ -1,13 +1,14 @@
 """Commercial brief schemas."""
 
 from datetime import datetime
+from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, field_serializer
 
 
 class CommercialBriefResponse(BaseModel):
-    id: str
-    lead_id: str
+    id: UUID
+    lead_id: UUID
     status: str
     opportunity_score: float | None = None
     budget_tier: str | None = None
@@ -26,8 +27,14 @@ class CommercialBriefResponse(BaseModel):
     generator_model: str | None = None
     reviewer_model: str | None = None
     reviewed_at: datetime | None = None
+    is_fallback: bool = False
     error: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_serializer("id", "lead_id")
+    @classmethod
+    def serialize_uuid(cls, v: UUID) -> str:
+        return str(v)

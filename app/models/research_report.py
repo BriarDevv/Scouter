@@ -30,27 +30,27 @@ class LeadResearchReport(Base):
         Uuid, ForeignKey("leads.id", ondelete="CASCADE"), nullable=False, unique=True
     )
     status: Mapped[ResearchStatus] = mapped_column(
-        Enum(ResearchStatus), nullable=False, default=ResearchStatus.PENDING
+        Enum(ResearchStatus, values_callable=lambda x: [e.value for e in x]), nullable=False, default=ResearchStatus.PENDING
     )
 
     # Website analysis
     website_exists: Mapped[bool | None] = mapped_column(nullable=True)
     website_url_verified: Mapped[str | None] = mapped_column(Text, nullable=True)
     website_confidence: Mapped[ConfidenceLevel | None] = mapped_column(
-        Enum(ConfidenceLevel), nullable=True
+        Enum(ConfidenceLevel, values_callable=lambda x: [e.value for e in x]), nullable=True
     )
 
     # Instagram analysis
     instagram_exists: Mapped[bool | None] = mapped_column(nullable=True)
     instagram_url_verified: Mapped[str | None] = mapped_column(Text, nullable=True)
     instagram_confidence: Mapped[ConfidenceLevel | None] = mapped_column(
-        Enum(ConfidenceLevel), nullable=True
+        Enum(ConfidenceLevel, values_callable=lambda x: [e.value for e in x]), nullable=True
     )
 
     # WhatsApp detection
     whatsapp_detected: Mapped[bool | None] = mapped_column(nullable=True)
     whatsapp_confidence: Mapped[ConfidenceLevel | None] = mapped_column(
-        Enum(ConfidenceLevel), nullable=True
+        Enum(ConfidenceLevel, values_callable=lambda x: [e.value for e in x]), nullable=True
     )
 
     # Rich data

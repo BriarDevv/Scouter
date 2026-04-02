@@ -83,7 +83,7 @@ cmd_start() {
         source "$PROJECT_DIR/.venv/bin/activate"
         nohup celery -A app.workers.celery_app worker \
             --loglevel=info --concurrency=4 \
-            -Q default,enrichment,scoring,llm,reviewer \
+            -Q default,enrichment,scoring,llm,reviewer,research \
             >>"$LOG_DIR/worker.log" 2>&1 &
         echo $! > "$PID_DIR/worker.pid"
         sleep 2

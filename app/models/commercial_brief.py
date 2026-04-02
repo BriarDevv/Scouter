@@ -83,13 +83,13 @@ class CommercialBrief(Base):
     )
 
     status: Mapped[BriefStatus] = mapped_column(
-        Enum(BriefStatus), nullable=False, default=BriefStatus.PENDING
+        Enum(BriefStatus, values_callable=lambda x: [e.value for e in x]), nullable=False, default=BriefStatus.PENDING
     )
     opportunity_score: Mapped[float | None] = mapped_column(
         Float, nullable=True
     )
     budget_tier: Mapped[BudgetTier | None] = mapped_column(
-        Enum(BudgetTier), nullable=True
+        Enum(BudgetTier, values_callable=lambda x: [e.value for e in x]), nullable=True
     )
     estimated_budget_min: Mapped[float | None] = mapped_column(
         Float, nullable=True
@@ -98,13 +98,13 @@ class CommercialBrief(Base):
         Float, nullable=True
     )
     estimated_scope: Mapped[EstimatedScope | None] = mapped_column(
-        Enum(EstimatedScope), nullable=True
+        Enum(EstimatedScope, values_callable=lambda x: [e.value for e in x]), nullable=True
     )
     recommended_contact_method: Mapped[ContactMethod | None] = mapped_column(
-        Enum(ContactMethod), nullable=True
+        Enum(ContactMethod, values_callable=lambda x: [e.value for e in x]), nullable=True
     )
     should_call: Mapped[CallDecision | None] = mapped_column(
-        Enum(CallDecision), nullable=True
+        Enum(CallDecision, values_callable=lambda x: [e.value for e in x]), nullable=True
     )
     call_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     why_this_lead_matters: Mapped[str | None] = mapped_column(
@@ -121,7 +121,7 @@ class CommercialBrief(Base):
         Boolean, nullable=True
     )
     contact_priority: Mapped[ContactPriority | None] = mapped_column(
-        Enum(ContactPriority), nullable=True
+        Enum(ContactPriority, values_callable=lambda x: [e.value for e in x]), nullable=True
     )
 
     generator_model: Mapped[str | None] = mapped_column(

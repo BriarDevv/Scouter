@@ -1,11 +1,14 @@
-from datetime import datetime
+"""Research report schemas."""
 
-from pydantic import BaseModel
+from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, field_serializer
 
 
 class ResearchReportResponse(BaseModel):
-    id: str
-    lead_id: str
+    id: UUID
+    lead_id: UUID
     status: str
     website_exists: bool | None = None
     website_url_verified: str | None = None
@@ -25,4 +28,9 @@ class ResearchReportResponse(BaseModel):
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_serializer("id", "lead_id")
+    @classmethod
+    def serialize_uuid(cls, v: UUID) -> str:
+        return str(v)

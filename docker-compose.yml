@@ -62,7 +62,7 @@ services:
     build:
       context: .
       dockerfile: infra/docker/Dockerfile
-    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=2
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=2 -Q default,enrichment,scoring,llm,reviewer,research
     env_file:
       - .env
     environment:
