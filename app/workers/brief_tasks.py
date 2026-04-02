@@ -209,21 +209,16 @@ def task_review_brief(
                 result=result,
                 current_step="brief_review",
                 pipeline_run_id=pipeline_uuid,
-                pipeline_status="succeeded" if pipeline_uuid else None,
             )
 
-            # Finalize pipeline — chain to draft generation
+            # Chain to draft generation (pipeline finalized there)
             if pipeline_uuid:
-                from app.services.task_tracking_service import update_pipeline_run
-                update_pipeline_run(
-                    db,
-                    pipeline_uuid,
-                    current_step="brief_reviewed",
-                    status="succeeded",
-                )
                 from app.workers.tasks import task_generate_draft
                 task_generate_draft.delay(lead_id, pipeline_run_id)
-                logger.info("draft_chained_from_brief_review", lead_id=lead_id)
+                logger.info(
+                    "draft_chained_from_brief_review",
+                    lead_id=lead_id,
+                )
 
             logger.info("task_review_brief_done", lead_id=lead_id, result=result)
             return result

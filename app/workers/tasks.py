@@ -2,10 +2,12 @@
 
 import json as _json
 import uuid
+from datetime import datetime, timezone
 
 from celery.exceptions import SoftTimeLimitExceeded
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import select
+
 from app.core.logging import get_logger
 from app.db.session import SessionLocal
 from app.llm.client import evaluate_lead_quality, summarize_business
@@ -176,6 +178,15 @@ def task_enrich_lead(
                 pipeline_run_id=pipeline_uuid,
             )
             logger.info("task_step_completed", task_name="task_enrich_lead", result=result)
+
+            # Chain to scoring
+            if pipeline_run_id:
+                task_score_lead.delay(
+                    lead_id,
+                    pipeline_run_id=pipeline_run_id,
+                    correlation_id=correlation_id,
+                )
+
             return result
     except Exception as exc:
         _track_failure(
@@ -272,6 +283,15 @@ def task_score_lead(
                 pipeline_run_id=pipeline_uuid,
             )
             logger.info("task_step_completed", task_name="task_score_lead", result=result)
+
+            # Chain to analysis
+            if pipeline_run_id:
+                task_analyze_lead.delay(
+                    lead_id,
+                    pipeline_run_id=pipeline_run_id,
+                    correlation_id=correlation_id,
+                )
+
             return result
     except Exception as exc:
         _track_failure(
@@ -395,10 +415,12 @@ def task_analyze_lead(
             )
             logger.info("task_step_completed", task_name="task_analyze_lead", result=result)
 
-            # Chain research for HIGH quality leads
+            # Chain next step based on quality
             if lead.llm_quality == "high":
                 try:
-                    task_research_lead.delay(lead_id, pipeline_run_id, correlation_id)
+                    task_research_lead.delay(
+                        lead_id, pipeline_run_id, correlation_id,
+                    )
                     logger.info(
                         "research_chained",
                         lead_id=lead_id,
@@ -410,6 +432,13 @@ def task_analyze_lead(
                         lead_id=lead_id,
                         error=str(chain_exc),
                     )
+            elif pipeline_run_id:
+                # Non-HIGH: chain directly to draft generation
+                task_generate_draft.delay(
+                    lead_id,
+                    pipeline_run_id=pipeline_run_id,
+                    correlation_id=correlation_id,
+                )
 
             return result
     except SoftTimeLimitExceeded:
@@ -526,6 +555,84 @@ def task_generate_draft(
                 logger.info("task_skipped_idempotent", task_name="task_generate_draft", lead_id=lead_id)
                 return result
 
+            # Check brief contact recommendation
+            from app.models.commercial_brief import CommercialBrief
+            brief = db.query(CommercialBrief).filter_by(
+                lead_id=uuid.UUID(lead_id),
+            ).first()
+
+            if brief and brief.recommended_contact_method:
+                method = brief.recommended_contact_method.value
+
+                if method in ("call", "manual_review"):
+                    # Don't auto-draft — requires human action
+                    result = {
+                        "status": "skipped",
+                        "lead_id": lead_id,
+                        "reason": (
+                            f"contact_method={method},"
+                            " skipping auto-draft"
+                        ),
+                    }
+                    mark_task_succeeded(
+                        db,
+                        task_id=task_id,
+                        result=result,
+                        current_step="draft_generation",
+                        pipeline_run_id=pipeline_uuid,
+                        pipeline_status=(
+                            "succeeded" if pipeline_uuid else None
+                        ),
+                    )
+                    if pipeline_uuid:
+                        with SessionLocal() as pdb:
+                            from app.services.task_tracking_service import (
+                                update_pipeline_run,
+                            )
+                            update_pipeline_run(
+                                pdb,
+                                pipeline_uuid,
+                                current_step="completed",
+                                status="succeeded",
+                                result=result,
+                                finished=True,
+                            )
+                    logger.info(
+                        "draft_skipped_contact_method",
+                        lead_id=lead_id,
+                        method=method,
+                    )
+                    return result
+
+                if method == "whatsapp":
+                    # Prefer WhatsApp draft if lead has phone
+                    lead_obj = db.get(Lead, uuid.UUID(lead_id))
+                    if lead_obj and lead_obj.phone:
+                        wa_settings = get_cached_settings(db)
+                        if wa_settings and getattr(
+                            wa_settings,
+                            "whatsapp_outreach_enabled",
+                            False,
+                        ):
+                            try:
+                                from app.services.outreach_service import (
+                                    generate_whatsapp_draft,
+                                )
+                                generate_whatsapp_draft(
+                                    db, uuid.UUID(lead_id),
+                                )
+                                logger.info(
+                                    "wa_draft_preferred_by_contact"
+                                    "_method",
+                                    lead_id=lead_id,
+                                )
+                            except Exception as wa_exc:
+                                logger.warning(
+                                    "wa_draft_preferred_failed",
+                                    lead_id=lead_id,
+                                    error=str(wa_exc),
+                                )
+
             if not _should_generate_draft(lead):
                 result = {
                     "status": "skipped",
@@ -578,6 +685,47 @@ def task_generate_draft(
                         logger.info("wa_draft_generated_by_pipeline", lead_id=lead_id)
             except Exception as wa_exc:
                 logger.warning("wa_draft_pipeline_failed", lead_id=lead_id, error=str(wa_exc))
+
+            # Auto-approve and send in auto mode
+            try:
+                ops = get_cached_settings(db)
+                if (
+                    not ops.require_approved_drafts
+                    and draft.status.value == "pending_review"
+                ):
+                    from app.models.outreach import DraftStatus
+                    draft.status = DraftStatus.APPROVED
+                    draft.reviewed_at = datetime.now(timezone.utc)
+                    db.commit()
+                    logger.info(
+                        "draft_auto_approved",
+                        lead_id=lead_id,
+                        draft_id=str(draft.id),
+                    )
+                    # Auto-send if mail is enabled
+                    if ops.mail_enabled:
+                        try:
+                            from app.services.mail_service import (
+                                send_draft as mail_send,
+                            )
+                            mail_send(db, draft.id)
+                            logger.info(
+                                "draft_auto_sent",
+                                lead_id=lead_id,
+                                draft_id=str(draft.id),
+                            )
+                        except Exception as send_exc:
+                            logger.warning(
+                                "draft_auto_send_failed",
+                                lead_id=lead_id,
+                                error=str(send_exc),
+                            )
+            except Exception as auto_exc:
+                logger.warning(
+                    "auto_approve_failed",
+                    lead_id=lead_id,
+                    error=str(auto_exc),
+                )
 
             result = {"status": "ok", "lead_id": lead_id, "draft_id": str(draft.id)}
             mark_task_succeeded(
@@ -998,9 +1146,11 @@ def task_full_pipeline(
     pipeline_run_id: str | None = None,
     correlation_id: str | None = None,
 ) -> dict:
-    """Run the full pipeline: enrich -> score -> analyze -> generate draft."""
-    from celery import chain
+    """Dispatch the pipeline: enrich -> score -> analyze.
 
+    Each step chains to the next via pipeline_run_id.
+    Analyze decides the path based on lead quality.
+    """
     task_id = str(self.request.id)
     queue = _queue_name(self.request, "default")
     pipeline_uuid = _pipeline_uuid(pipeline_run_id)
@@ -1025,34 +1175,16 @@ def task_full_pipeline(
                 current_step="pipeline_dispatch",
             )
 
-            pipeline = chain(
-                task_enrich_lead.si(
-                    lead_id,
-                    pipeline_run_id=pipeline_run_id,
-                    correlation_id=correlation_id,
-                ),
-                task_score_lead.si(
-                    lead_id,
-                    pipeline_run_id=pipeline_run_id,
-                    correlation_id=correlation_id,
-                ),
-                task_analyze_lead.si(
-                    lead_id,
-                    pipeline_run_id=pipeline_run_id,
-                    correlation_id=correlation_id,
-                ),
-                task_generate_draft.si(
-                    lead_id,
-                    pipeline_run_id=pipeline_run_id,
-                    correlation_id=correlation_id,
-                ),
+            # Dispatch only the first step; each step chains forward.
+            task_enrich_lead.delay(
+                lead_id,
+                pipeline_run_id=pipeline_run_id,
+                correlation_id=correlation_id,
             )
-            result = pipeline.apply_async()
             payload = {
                 "status": "pipeline_started",
                 "lead_id": lead_id,
                 "pipeline_run_id": pipeline_run_id,
-                "dispatched_task_id": str(result.id),
             }
             mark_task_succeeded(
                 db,
