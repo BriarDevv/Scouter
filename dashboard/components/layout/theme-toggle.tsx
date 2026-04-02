@@ -22,7 +22,7 @@ export function ThemeToggle({ collapsed = false }: { collapsed?: boolean }) {
       onClick={cycle}
       title={`Tema: ${LABEL[theme]}`}
       className={cn(
-        "flex items-center rounded-xl py-2 text-sm font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground",
+        "w-full flex items-center rounded-xl py-2 text-sm font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground",
         collapsed ? "justify-center px-0" : "gap-3 px-3"
       )}
     >
