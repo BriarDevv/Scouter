@@ -130,6 +130,31 @@ def task_enrich_lead(
                 current_step="enrichment",
             )
 
+            lead = db.get(Lead, uuid.UUID(lead_id))
+            if not lead:
+                error = "Lead not found"
+                mark_task_failed(
+                    db,
+                    task_id=task_id,
+                    error=error,
+                    current_step="enrichment",
+                    pipeline_run_id=pipeline_uuid,
+                )
+                return {"status": "not_found", "lead_id": lead_id}
+
+            # Idempotency guard: skip if already enriched (unless force)
+            if lead.enriched_at is not None:
+                result = {"status": "skipped", "lead_id": lead_id, "reason": "already_enriched"}
+                mark_task_succeeded(
+                    db,
+                    task_id=task_id,
+                    result=result,
+                    current_step="enrichment",
+                    pipeline_run_id=pipeline_uuid,
+                )
+                logger.info("task_skipped_idempotent", task_name="task_enrich_lead", lead_id=lead_id)
+                return result
+
             lead = enrich_lead(db, uuid.UUID(lead_id))
             if not lead:
                 error = "Lead not found"
@@ -201,7 +226,7 @@ def task_score_lead(
                 current_step="scoring",
             )
 
-            lead = score_lead(db, uuid.UUID(lead_id))
+            lead = db.get(Lead, uuid.UUID(lead_id))
             if not lead:
                 error = "Lead not found"
                 mark_task_failed(
@@ -212,6 +237,31 @@ def task_score_lead(
                     pipeline_run_id=pipeline_uuid,
                 )
                 return {"status": "not_found", "lead_id": lead_id}
+
+            # Idempotency guard: skip if already scored
+            if lead.scored_at is not None:
+                result = {"status": "skipped", "lead_id": lead_id, "reason": "already_scored", "score": lead.score}
+                mark_task_succeeded(
+                    db,
+                    task_id=task_id,
+                    result=result,
+                    current_step="scoring",
+                    pipeline_run_id=pipeline_uuid,
+                )
+                logger.info("task_skipped_idempotent", task_name="task_score_lead", lead_id=lead_id)
+                return result
+
+            lead = score_lead(db, uuid.UUID(lead_id))
+            if not lead:
+                error = "Score failed"
+                mark_task_failed(
+                    db,
+                    task_id=task_id,
+                    error=error,
+                    current_step="scoring",
+                    pipeline_run_id=pipeline_uuid,
+                )
+                return {"status": "failed", "lead_id": lead_id}
 
             result = {"status": "ok", "lead_id": lead_id, "score": lead.score}
             mark_task_succeeded(
@@ -283,6 +333,24 @@ def task_analyze_lead(
                     pipeline_run_id=pipeline_uuid,
                 )
                 return {"status": "not_found", "lead_id": lead_id}
+
+            # Idempotency guard: skip if already analyzed
+            if lead.llm_summary is not None:
+                result = {
+                    "status": "skipped",
+                    "lead_id": lead_id,
+                    "reason": "already_analyzed",
+                    "quality": lead.llm_quality,
+                }
+                mark_task_succeeded(
+                    db,
+                    task_id=task_id,
+                    result=result,
+                    current_step="analysis",
+                    pipeline_run_id=pipeline_uuid,
+                )
+                logger.info("task_skipped_idempotent", task_name="task_analyze_lead", lead_id=lead_id)
+                return result
 
             summary = summarize_business(
                 business_name=lead.business_name,
@@ -403,6 +471,43 @@ def task_generate_draft(
                     pipeline_run_id=pipeline_uuid,
                 )
                 return {"status": "not_found", "lead_id": lead_id}
+
+            # Idempotency guard: skip if a draft already exists for this lead
+            existing_draft = db.execute(
+                select(OutreachDraft).where(
+                    OutreachDraft.lead_id == uuid.UUID(lead_id),
+                    OutreachDraft.status.in_(["pending_review", "approved"]),
+                )
+            ).scalar_one_or_none()
+            if existing_draft:
+                result = {
+                    "status": "skipped",
+                    "lead_id": lead_id,
+                    "reason": "draft_already_exists",
+                    "draft_id": str(existing_draft.id),
+                }
+                mark_task_succeeded(
+                    db,
+                    task_id=task_id,
+                    result=result,
+                    current_step="draft_generation",
+                    pipeline_run_id=pipeline_uuid,
+                    pipeline_status="succeeded" if pipeline_uuid else None,
+                )
+                if pipeline_uuid:
+                    with SessionLocal() as pipeline_db:
+                        from app.services.task_tracking_service import update_pipeline_run
+
+                        update_pipeline_run(
+                            pipeline_db,
+                            pipeline_uuid,
+                            current_step="completed",
+                            status="succeeded",
+                            result=result,
+                            finished=True,
+                        )
+                logger.info("task_skipped_idempotent", task_name="task_generate_draft", lead_id=lead_id)
+                return result
 
             if not _should_generate_draft(lead):
                 result = {

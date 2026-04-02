@@ -14,6 +14,7 @@ import httpx
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.crypto import decrypt_safe
 from app.core.logging import get_logger
 from app.models.whatsapp_credentials import WhatsAppCredentials
 
@@ -153,7 +154,7 @@ def send_alert(
         return True
 
     provider = _get_provider(creds.provider)
-    return provider.send_message(creds.phone_number, text, creds.api_key)
+    return provider.send_message(creds.phone_number, text, decrypt_safe(creds.api_key))
 
 
 def test_whatsapp(db: Session) -> dict:
@@ -175,7 +176,7 @@ def test_whatsapp(db: Session) -> dict:
         return result
 
     provider = _get_provider(creds.provider)
-    result = provider.test_connection(creds.phone_number, creds.api_key)
+    result = provider.test_connection(creds.phone_number, decrypt_safe(creds.api_key))
     result["provider"] = creds.provider
 
     creds.last_test_at = datetime.now(timezone.utc)

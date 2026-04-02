@@ -1,7 +1,7 @@
 """Mail credentials — singleton row (id always = 1).
 
 Stores SMTP/IMAP connection details editable from the dashboard.
-Passwords are stored in plaintext; never exposed via API.
+Passwords are encrypted via Fernet (app.core.crypto) on write; never exposed via API.
 Resolution order for the mail providers: DB > .env fallback.
 """
 

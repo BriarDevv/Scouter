@@ -71,6 +71,14 @@ app.add_middleware(APIKeyMiddleware)
 
 app.include_router(api_router)
 
+# Prometheus metrics
+from prometheus_fastapi_instrumentator import Instrumentator
+Instrumentator(
+    should_group_status_codes=True,
+    should_ignore_untemplated=True,
+    excluded_handlers=["/health", "/health/detailed", "/metrics"],
+).instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
+
 
 @app.get("/health")
 def health():

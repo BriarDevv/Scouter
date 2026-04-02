@@ -12,6 +12,7 @@ import httpx
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.crypto import decrypt_safe
 from app.core.logging import get_logger
 from app.models.telegram_credentials import TelegramCredentials
 
@@ -91,7 +92,8 @@ def send_message(
 ) -> bool:
     """Send a Telegram message using configured credentials."""
     creds = _get_or_create_credentials(db)
-    if not creds.bot_token:
+    token = decrypt_safe(creds.bot_token)
+    if not token:
         logger.debug("telegram_send_skipped_no_token")
         return False
 
@@ -105,7 +107,7 @@ def send_message(
         return True
 
     try:
-        result = _call_telegram(creds.bot_token, "sendMessage", {
+        result = _call_telegram(token, "sendMessage", {
             "chat_id": target_chat,
             "text": text,
             "parse_mode": parse_mode,
@@ -145,7 +147,8 @@ def send_alert(
 def test_telegram(db: Session) -> dict:
     """Test Telegram Bot connectivity using configured credentials."""
     creds = _get_or_create_credentials(db)
-    if not creds.bot_token:
+    token = decrypt_safe(creds.bot_token)
+    if not token:
         result = {"ok": False, "error": "No hay bot token configurado.", "bot_username": None}
         creds.last_test_at = datetime.now(timezone.utc)
         creds.last_test_ok = False
@@ -155,7 +158,7 @@ def test_telegram(db: Session) -> dict:
 
     try:
         # Verify bot token with getMe
-        data = _call_telegram(creds.bot_token, "getMe")
+        data = _call_telegram(token, "getMe")
         if not data.get("ok"):
             raise ValueError("getMe returned ok=false")
 
