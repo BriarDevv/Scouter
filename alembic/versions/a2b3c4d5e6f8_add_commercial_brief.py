@@ -1,7 +1,7 @@
 """add commercial brief
 
 Revision ID: a2b3c4d5e6f8
-Revises: c3d4e5f6a7b9
+Revises: a2b3c4d5e6f7
 Create Date: 2026-04-02 12:00:00.000000
 
 """
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "a2b3c4d5e6f8"
-down_revision: Union[str, None] = "c3d4e5f6a7b9"
+down_revision: Union[str, None] = "a2b3c4d5e6f7"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -133,10 +133,20 @@ def upgrade() -> None:
         sa.UniqueConstraint("lead_id"),
     )
 
-    # pricing_matrix on operational_settings already added by prior migration
+    # Add runtime_mode and pricing_matrix to operational_settings
+    op.add_column(
+        "operational_settings",
+        sa.Column("runtime_mode", sa.String(), server_default="safe", nullable=False),
+    )
+    op.add_column(
+        "operational_settings",
+        sa.Column("pricing_matrix", sa.String(), nullable=True),
+    )
 
 
 def downgrade() -> None:
+    op.drop_column("operational_settings", "pricing_matrix")
+    op.drop_column("operational_settings", "runtime_mode")
     op.drop_table("commercial_briefs")
     op.execute("DROP TYPE IF EXISTS briefstatus")
     op.execute("DROP TYPE IF EXISTS budgettier")
