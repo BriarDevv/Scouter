@@ -115,11 +115,15 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <PageHeader title="Configuración" description="Ajustes operativos del sistema." />
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Cargando configuración…
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-[1400px] px-8 py-8">
+          <div className="space-y-6">
+            <PageHeader title="Configuración" description="Ajustes operativos del sistema." />
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Cargando configuración…
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -127,16 +131,22 @@ export default function SettingsPage() {
 
   if (loadError) {
     return (
-      <div className="space-y-6">
-        <PageHeader title="Configuración" description="Ajustes operativos del sistema." />
-        <EmptyState icon={Settings} title="Sin configuración disponible" description={loadError} />
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-[1400px] px-8 py-8">
+          <div className="space-y-6">
+            <PageHeader title="Configuración" description="Ajustes operativos del sistema." />
+            <EmptyState icon={Settings} title="Sin configuración disponible" description={loadError} />
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Configuración" description="Ajustes operativos del sistema." />
+    <div className="flex-1 overflow-y-auto">
+      <div className="mx-auto max-w-[1400px] px-8 py-8">
+        <div className="space-y-6">
+          <PageHeader title="Configuración" description="Ajustes operativos del sistema." />
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabId)}>
         <TabsList className="h-auto flex-wrap gap-1 rounded-2xl p-1">
@@ -218,6 +228,8 @@ export default function SettingsPage() {
           Última actualización: <RelativeTime date={opData.updated_at} />
         </p>
       )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -262,10 +262,12 @@ export default function SecurityPage() {
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Seguridad"
-        description="Alertas de seguridad y eventos del sistema"
+    <div className="flex-1 overflow-y-auto">
+      <div className="mx-auto max-w-[1400px] px-8 py-8">
+        <div className="space-y-6">
+          <PageHeader
+            title="Seguridad"
+            description="Alertas de seguridad y eventos del sistema"
       >
         <Button
           className="rounded-xl bg-violet-600 text-white hover:bg-violet-700"
@@ -546,6 +548,8 @@ export default function SecurityPage() {
           </div>
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 }

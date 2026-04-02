@@ -176,9 +176,11 @@ export default function ResponsesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Respuestas"
+    <div className="flex-1 overflow-y-auto">
+      <div className="mx-auto max-w-[1400px] px-8 py-8">
+        <div className="space-y-6">
+          <PageHeader
+            title="Respuestas"
         description="Inbox comercial grounded sobre inbound mail real, matching a deliveries y clasificación con executor."
       >
         <Button
@@ -498,6 +500,8 @@ export default function ResponsesPage() {
               )}
             </div>
           </CollapsibleSection>
+        </div>
+      </div>
         </div>
       </div>
     </div>

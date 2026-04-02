@@ -160,13 +160,17 @@ export default function PerformancePage() {
 
   if (loading) {
     return (
-      <div className="space-y-8">
-        <PageHeader title="Rendimiento" description="Métricas clave para evaluar la efectividad del sistema" />
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-[1400px] px-8 py-8">
+          <div className="space-y-8">
+            <PageHeader title="Rendimiento" description="Métricas clave para evaluar la efectividad del sistema" />
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
           {Array.from({ length: 5 }).map((_, i) => <SkeletonStatCard key={i} />)}
         </div>
         <div className="grid gap-6 lg:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} className="h-[280px]" />)}
+        </div>
+          </div>
         </div>
       </div>
     );
@@ -176,10 +180,12 @@ export default function PerformancePage() {
   const velocityValue = (v: number) => v > 0 ? `${v.toFixed(1)}d` : "Sin datos";
 
   return (
-    <div className="space-y-8">
-      <PageHeader
-        title="Rendimiento"
-        description="Métricas clave para evaluar la efectividad del sistema y tomar decisiones"
+    <div className="flex-1 overflow-y-auto">
+      <div className="mx-auto max-w-[1400px] px-8 py-8">
+        <div className="space-y-8">
+          <PageHeader
+            title="Rendimiento"
+            description="Métricas clave para evaluar la efectividad del sistema y tomar decisiones"
       />
 
       {/* Tabs */}
@@ -359,6 +365,8 @@ export default function PerformancePage() {
           </div>
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 }

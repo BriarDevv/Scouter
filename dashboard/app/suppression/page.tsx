@@ -97,9 +97,11 @@ export default function SuppressionPage() {
     : (displayItems ?? []);
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Lista de Supresión"
+    <div className="flex-1 overflow-y-auto">
+      <div className="mx-auto max-w-[1400px] px-8 py-8">
+        <div className="space-y-6">
+          <PageHeader
+            title="Lista de Supresión"
         description="Emails, dominios y teléfonos que no deben ser contactados"
       >
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -243,6 +245,8 @@ export default function SuppressionPage() {
           description="No hay entradas en la lista de supresión que coincidan con tu búsqueda."
         />
       )}
+        </div>
+      </div>
     </div>
   );
 }

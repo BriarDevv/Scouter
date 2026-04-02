@@ -179,15 +179,19 @@ export default function OutreachPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <PageHeader title="Outreach" description="Gestión de borradores y actividad comercial" />
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2 space-y-4">
-            <Skeleton className="h-9 w-full max-w-md" />
-            {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
-          </div>
-          <div>
-            <SkeletonCard className="h-64" />
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-[1400px] px-8 py-8">
+          <div className="space-y-6">
+            <PageHeader title="Outreach" description="Gestión de borradores y actividad comercial" />
+            <div className="grid gap-6 lg:grid-cols-3">
+              <div className="lg:col-span-2 space-y-4">
+                <Skeleton className="h-9 w-full max-w-md" />
+                {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
+              </div>
+              <div>
+                <SkeletonCard className="h-64" />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -195,11 +199,13 @@ export default function OutreachPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Outreach"
-        description="Gestión de borradores y actividad comercial"
-      />
+    <div className="flex-1 overflow-y-auto">
+      <div className="mx-auto max-w-[1400px] px-8 py-8">
+        <div className="space-y-6">
+          <PageHeader
+            title="Outreach"
+            description="Gestión de borradores y actividad comercial"
+          />
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left: Drafts list */}
@@ -444,6 +450,8 @@ export default function OutreachPage() {
               />
             )}
           </div>
+        </div>
+      </div>
         </div>
       </div>
     </div>

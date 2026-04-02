@@ -331,21 +331,27 @@ export default function ActivityPage() {
 
   if (loading) {
     return (
-      <div className="space-y-8">
-        <PageHeader title="Actividad IA" description="Monitor en tiempo real de tareas y pipelines" />
-        <div className="grid gap-4 md:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 rounded-2xl" />
-          ))}
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-[1400px] px-8 py-8">
+          <div className="space-y-8">
+            <PageHeader title="Actividad IA" description="Monitor en tiempo real de tareas y pipelines" />
+            <div className="grid gap-4 md:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-24 rounded-2xl" />
+              ))}
+            </div>
+            <SkeletonCard className="h-[400px]" />
+          </div>
         </div>
-        <SkeletonCard className="h-[400px]" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      <PageHeader title="Actividad IA" description="Monitor en tiempo real de tareas y pipelines">
+    <div className="flex-1 overflow-y-auto">
+      <div className="mx-auto max-w-[1400px] px-8 py-8">
+        <div className="space-y-8">
+          <PageHeader title="Actividad IA" description="Monitor en tiempo real de tareas y pipelines">
         <Button variant="outline" size="sm" onClick={loadData} className="gap-2">
           <RefreshCw className="h-3.5 w-3.5" />
           Actualizar
@@ -510,6 +516,8 @@ export default function ActivityPage() {
           description="Todavía no se ejecutó ninguna tarea. Ejecutá un pipeline desde la vista de un lead para ver la actividad acá."
         />
       )}
+        </div>
+      </div>
     </div>
   );
 }
