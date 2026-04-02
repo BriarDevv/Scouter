@@ -9,6 +9,7 @@ from app.agent.tools import (  # noqa: F401
     outreach,
     pipeline,
     replies,
+    research,
     reviews,
     settings,
     stats,

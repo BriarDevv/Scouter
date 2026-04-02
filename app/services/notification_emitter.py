@@ -226,6 +226,62 @@ def on_config_insecure(db: Session, *, detail: str) -> None:
     )
 
 
+def on_research_completed(
+    db: Session,
+    *,
+    lead_id: uuid.UUID,
+    business_name: str | None,
+    signals_count: int,
+) -> None:
+    """Emit notification when lead research/dossier is completed."""
+    _emit(
+        db,
+        type="research_completed",
+        category=NotificationCategory.BUSINESS,
+        severity=NotificationSeverity.INFO,
+        title=f"Dossier listo — {business_name or 'lead'}",
+        message=f"Investigacion completada con {signals_count} senales detectadas.",
+        source_kind="lead",
+        source_id=lead_id,
+        metadata={"business_name": business_name, "signals_count": signals_count},
+        dedup_key=f"research_completed:{lead_id}",
+    )
+
+
+def on_brief_generated(
+    db: Session,
+    *,
+    lead_id: uuid.UUID,
+    business_name: str | None,
+    opportunity_score: float | None,
+    should_call: str | None,
+) -> None:
+    """Emit notification when a commercial brief is generated for a HIGH lead."""
+    severity = NotificationSeverity.WARNING
+    if should_call == "yes":
+        severity = NotificationSeverity.HIGH
+
+    _emit(
+        db,
+        type="brief_generated",
+        category=NotificationCategory.BUSINESS,
+        severity=severity,
+        title=f"Brief comercial listo — {business_name or 'lead'}",
+        message=(
+            f"Opportunity score: {opportunity_score or 0:.0f}. "
+            f"Llamar: {should_call or 'pendiente'}."
+        ),
+        source_kind="lead",
+        source_id=lead_id,
+        metadata={
+            "business_name": business_name,
+            "opportunity_score": opportunity_score,
+            "should_call": should_call,
+        },
+        dedup_key=f"brief_generated:{lead_id}",
+    )
+
+
 def on_repeated_failures(
     db: Session,
     *,

@@ -26,6 +26,7 @@ from app.services.mail_credentials_service import (
     update_credentials,
 )
 from app.services.operational_settings_service import (
+    apply_runtime_mode,
     get_or_create,
     to_response_dict,
     update_operational_settings,
@@ -67,6 +68,16 @@ def patch_operational(body: OperationalSettingsUpdate, db=Depends(get_session)):
         raise HTTPException(status_code=422, detail="No fields to update provided.")
     row = update_operational_settings(db, updates)
     return to_response_dict(row)
+
+
+@router.post("/runtime-mode")
+def set_runtime_mode(mode: str, db=Depends(get_session)):
+    """Apply a runtime mode preset (safe | assisted | auto)."""
+    try:
+        row = apply_runtime_mode(db, mode)
+        return to_response_dict(row)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
 
 
 # ── Mail credentials (DB-stored, passwords write-only) ────────────────

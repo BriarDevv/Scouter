@@ -54,6 +54,7 @@ _ALLOWED_SETTINGS_FIELDS = {
     "whatsapp_alerts_enabled", "whatsapp_min_severity", "whatsapp_categories",
     "telegram_alerts_enabled", "whatsapp_outreach_enabled",
     "telegram_agent_enabled", "whatsapp_agent_enabled",
+    "runtime_mode", "pricing_matrix",
 }
 
 
@@ -68,6 +69,39 @@ def update_operational_settings(db: Session, updates: dict) -> OperationalSettin
     db.refresh(row)
     logger.info("operational_settings_updated", fields=list(updates.keys()))
     return row
+
+
+_RUNTIME_MODE_PRESETS = {
+    "safe": {
+        "require_approved_drafts": True,
+        "auto_classify_inbound": False,
+        "reply_assistant_enabled": False,
+        "reviewer_enabled": False,
+        "whatsapp_outreach_enabled": False,
+    },
+    "assisted": {
+        "require_approved_drafts": True,
+        "auto_classify_inbound": True,
+        "reply_assistant_enabled": True,
+        "reviewer_enabled": True,
+        "whatsapp_outreach_enabled": False,
+    },
+    "auto": {
+        "require_approved_drafts": False,
+        "auto_classify_inbound": True,
+        "reply_assistant_enabled": True,
+        "reviewer_enabled": True,
+        "whatsapp_outreach_enabled": True,
+    },
+}
+
+
+def apply_runtime_mode(db: Session, mode: str) -> OperationalSettings:
+    """Apply a runtime mode preset, setting multiple toggles atomically."""
+    if mode not in _RUNTIME_MODE_PRESETS:
+        raise ValueError(f"Invalid runtime mode: {mode}. Must be one of: safe, assisted, auto")
+    updates = {**_RUNTIME_MODE_PRESETS[mode], "runtime_mode": mode}
+    return update_operational_settings(db, updates)
 
 
 def _eff(db_val, env_val):
@@ -189,5 +223,7 @@ def to_response_dict(row: OperationalSettings) -> dict:
         "whatsapp_outreach_enabled": row.whatsapp_outreach_enabled,
         "telegram_agent_enabled": row.telegram_agent_enabled,
         "whatsapp_agent_enabled": row.whatsapp_agent_enabled,
+        "runtime_mode": row.runtime_mode,
+        "pricing_matrix": row.pricing_matrix,
         "updated_at": row.updated_at.isoformat() if row.updated_at else None,
     }

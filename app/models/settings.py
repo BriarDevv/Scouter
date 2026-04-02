@@ -82,3 +82,9 @@ class OperationalSettings(Base):
     # ── Hermes 3 agent routing per channel
     telegram_agent_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     whatsapp_agent_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # ── Runtime mode (safe | assisted | auto)
+    runtime_mode: Mapped[str] = mapped_column(String, default="safe", nullable=False)
+
+    # ── Pricing matrix (JSON string for budget estimation)
+    pricing_matrix: Mapped[str | None] = mapped_column(String, nullable=True)
