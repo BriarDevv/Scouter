@@ -71,9 +71,34 @@ def _validate_draft(subject: str, body: str, *, brand_ctx: dict | None, lead: Le
     return subject, body, warnings
 
 
+def _get_brief_angle(lead: Lead, db: Session | None) -> str | None:
+    """Return recommended angle from a CommercialBrief, if one exists."""
+    if db is None:
+        return None
+    try:
+        from app.models.commercial_brief import CommercialBrief
+
+        brief = db.query(CommercialBrief).filter_by(lead_id=lead.id).first()
+        if brief and brief.recommended_angle:
+            parts = [brief.recommended_angle]
+            if brief.why_this_lead_matters:
+                parts.append(brief.why_this_lead_matters)
+            return " | ".join(parts)
+    except Exception:
+        logger.debug("brief_angle_lookup_failed", lead_id=str(lead.id))
+    return None
+
+
 def generate_draft_content(lead: Lead, db: Session | None = None) -> tuple[str, str]:
     """Generate subject and body for an outreach email. Returns (subject, body)."""
     brand_ctx = get_brand_context(db) if db is not None else None
+
+    # Enrich suggested angle with CommercialBrief context if available
+    suggested_angle = lead.llm_suggested_angle
+    brief_angle = _get_brief_angle(lead, db)
+    if brief_angle:
+        suggested_angle = brief_angle
+
     result = llm_generate(
         business_name=lead.business_name,
         industry=lead.industry,
@@ -81,7 +106,7 @@ def generate_draft_content(lead: Lead, db: Session | None = None) -> tuple[str, 
         website_url=lead.website_url,
         instagram_url=lead.instagram_url,
         llm_summary=lead.llm_summary,
-        llm_suggested_angle=lead.llm_suggested_angle,
+        llm_suggested_angle=suggested_angle,
         signals=list(lead.signals),
         role=LLMRole.EXECUTOR,
         brand_context=brand_ctx,

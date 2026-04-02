@@ -16,8 +16,19 @@ from app.models.territory import Territory
 from app.models.telegram_credentials import TelegramCredentials
 from app.models.whatsapp_credentials import WhatsAppCredentials
 
+from app.models.research_report import LeadResearchReport, ResearchStatus, ConfidenceLevel
+from app.models.artifact import Artifact, ArtifactType
 from app.models.whatsapp_audit import WhatsAppAuditLog
 from app.models.telegram_audit import TelegramAuditLog
+from app.models.commercial_brief import (
+    CommercialBrief,
+    BriefStatus,
+    BudgetTier,
+    EstimatedScope,
+    ContactMethod,
+    CallDecision,
+    ContactPriority,
+)
 
 __all__ = [
     "Conversation",
@@ -44,6 +55,18 @@ __all__ = [
     "Territory",
     "TelegramCredentials",
     "WhatsAppCredentials",
+    "LeadResearchReport",
+    "ResearchStatus",
+    "ConfidenceLevel",
+    "Artifact",
+    "ArtifactType",
     "WhatsAppAuditLog",
     "TelegramAuditLog",
+    "CommercialBrief",
+    "BriefStatus",
+    "BudgetTier",
+    "EstimatedScope",
+    "ContactMethod",
+    "CallDecision",
+    "ContactPriority",
 ]
