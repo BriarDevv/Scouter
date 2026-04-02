@@ -394,6 +394,23 @@ def task_analyze_lead(
                 pipeline_run_id=pipeline_uuid,
             )
             logger.info("task_step_completed", task_name="task_analyze_lead", result=result)
+
+            # Chain research for HIGH quality leads
+            if lead.llm_quality == "high":
+                try:
+                    task_research_lead.delay(lead_id, pipeline_run_id, correlation_id)
+                    logger.info(
+                        "research_chained",
+                        lead_id=lead_id,
+                        quality=lead.llm_quality,
+                    )
+                except Exception as chain_exc:
+                    logger.warning(
+                        "research_chain_failed",
+                        lead_id=lead_id,
+                        error=str(chain_exc),
+                    )
+
             return result
     except SoftTimeLimitExceeded:
         logger.error("task_soft_time_limit", task_name="task_analyze_lead", task_id=task_id)
@@ -1469,3 +1486,105 @@ def task_crawl_territory(
     except Exception as exc:
         redis.set(redis_key, _json.dumps({"status": "error", "error": str(exc)}), ex=3600)
         logger.error("territory_crawl_error", territory_id=territory_id, error=str(exc))
+
+
+@celery_app.task(
+    bind=True,
+    max_retries=1,
+    default_retry_delay=30,
+    soft_time_limit=120,
+    time_limit=180,
+)
+def task_research_lead(
+    self,
+    lead_id: str,
+    pipeline_run_id: str | None = None,
+    correlation_id: str | None = None,
+) -> dict:
+    """Async task: run web research on a lead's digital presence."""
+    task_id = str(self.request.id)
+    queue = _queue_name(self.request, "research")
+    pipeline_uuid = _pipeline_uuid(pipeline_run_id)
+
+    try:
+        with SessionLocal() as db:
+            bind_tracking_context(
+                lead_id=lead_id,
+                task_id=task_id,
+                pipeline_run_id=pipeline_run_id,
+                correlation_id=correlation_id,
+                current_step="research",
+            )
+            mark_task_running(
+                db,
+                task_id=task_id,
+                task_name="task_research_lead",
+                queue=queue,
+                lead_id=uuid.UUID(lead_id),
+                pipeline_run_id=pipeline_uuid,
+                correlation_id=correlation_id,
+                current_step="research",
+            )
+
+            from app.services.research_service import run_research
+
+            report = run_research(db, uuid.UUID(lead_id))
+            if not report:
+                error = "Lead not found"
+                mark_task_failed(
+                    db,
+                    task_id=task_id,
+                    error=error,
+                    current_step="research",
+                    pipeline_run_id=pipeline_uuid,
+                )
+                return {"status": "not_found", "lead_id": lead_id}
+
+            result = {
+                "status": report.status.value,
+                "lead_id": lead_id,
+                "duration_ms": report.research_duration_ms,
+            }
+            mark_task_succeeded(
+                db,
+                task_id=task_id,
+                result=result,
+                current_step="research",
+                pipeline_run_id=pipeline_uuid,
+            )
+            logger.info(
+                "task_step_completed",
+                task_name="task_research_lead",
+                result=result,
+            )
+            return result
+    except SoftTimeLimitExceeded:
+        logger.error(
+            "task_soft_time_limit",
+            task_name="task_research_lead",
+            task_id=task_id,
+        )
+        with SessionLocal() as db:
+            mark_task_failed(
+                db,
+                task_id=task_id,
+                error="Soft time limit exceeded (2min)",
+                current_step="research",
+                pipeline_run_id=pipeline_uuid,
+            )
+        raise
+    except Exception as exc:
+        _track_failure(
+            task=self,
+            task_name="task_research_lead",
+            task_id=task_id,
+            lead_id=lead_id,
+            pipeline_run_id=pipeline_uuid,
+            correlation_id=correlation_id,
+            current_step="research",
+            queue=queue,
+            error=str(exc),
+        )
+        raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
+    finally:
+        clear_tracking_context()

@@ -33,6 +33,8 @@ celery_app.conf.update(
         "app.workers.tasks.task_review_inbound_message": {"queue": "reviewer"},
         "app.workers.tasks.task_review_reply_assistant_draft": {"queue": "reviewer"},
         "app.workers.tasks.task_crawl_territory": {"queue": "default"},
+        "app.workers.tasks.task_research_lead": {"queue": "research"},
+        "app.workers.brief_tasks.task_generate_brief": {"queue": "llm"},
     },
     # Default queue for unmatched tasks
     task_default_queue="default",
@@ -50,3 +52,4 @@ celery_app.conf.update(
 
 celery_app.autodiscover_tasks(["app.workers"])
 import app.workers.janitor  # noqa: F401 — register janitor beat task
+import app.workers.brief_tasks  # noqa: F401 — register brief tasks

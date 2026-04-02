@@ -14,6 +14,8 @@ from app.core.logging import get_logger
 from app.llm.prompts import (
     CLASSIFY_INBOUND_REPLY_DATA,
     CLASSIFY_INBOUND_REPLY_SYSTEM,
+    DOSSIER_DATA,
+    DOSSIER_SYSTEM,
     EVALUATE_LEAD_QUALITY_DATA,
     EVALUATE_LEAD_QUALITY_SYSTEM,
     GENERATE_OUTREACH_EMAIL_DATA,
@@ -677,3 +679,127 @@ def generate_whatsapp_draft(
     except Exception as e:
         logger.error("llm_whatsapp_draft_failed", role=_role_value(role), error=str(e))
         return fallback
+
+
+def generate_dossier(
+    *,
+    business_name: str,
+    industry: str | None,
+    city: str | None,
+    website_url: str | None,
+    instagram_url: str | None,
+    score: float | None,
+    signals: str | None,
+    html_metadata: str | None,
+    website_confidence: str | None,
+    instagram_confidence: str | None,
+    whatsapp_detected: bool | None,
+    role: LLMRole | str = LLMRole.EXECUTOR,
+) -> dict:
+    """Generate a structured dossier for a lead using the LLM."""
+    user_prompt = DOSSIER_DATA.format(
+        business_name=business_name,
+        industry=industry or "Unknown",
+        city=city or "Unknown",
+        website_url=website_url or "None",
+        instagram_url=instagram_url or "None",
+        score=score or 0,
+        signals=signals or "None",
+        html_metadata=html_metadata or "None",
+        website_confidence=website_confidence or "Unknown",
+        instagram_confidence=instagram_confidence or "Unknown",
+        whatsapp_detected="Si" if whatsapp_detected else "No",
+    )
+
+    fallback = {
+        "business_description": f"{business_name} - negocio en {city or 'ubicacion desconocida'}",
+        "digital_maturity": "unknown",
+        "key_findings": [],
+        "improvement_opportunities": [],
+        "overall_assessment": "Analisis no disponible.",
+    }
+
+    try:
+        raw = _call_ollama_chat(DOSSIER_SYSTEM, user_prompt, role=role)
+        data = _extract_json(raw)
+        return {
+            "business_description": data.get(
+                "business_description", fallback["business_description"]
+            ),
+            "digital_maturity": data.get("digital_maturity", "unknown"),
+            "key_findings": data.get("key_findings", []) or [],
+            "improvement_opportunities": data.get(
+                "improvement_opportunities", []
+            ) or [],
+            "overall_assessment": data.get(
+                "overall_assessment", fallback["overall_assessment"]
+            ),
+        }
+    except Exception as e:
+        logger.error("llm_dossier_failed", role=_role_value(role), error=str(e))
+        return fallback
+
+
+def generate_commercial_brief(
+    *,
+    business_name: str,
+    industry: str | None,
+    city: str | None,
+    website_url: str | None,
+    instagram_url: str | None,
+    score: float | None,
+    llm_summary: str | None,
+    signals: list[str],
+    research_data: dict,
+    pricing_matrix: dict,
+    role: LLMRole = LLMRole.EXECUTOR,
+) -> dict:
+    """Generate a commercial brief for a lead."""
+    from app.llm.prompts import COMMERCIAL_BRIEF_DATA, COMMERCIAL_BRIEF_SYSTEM
+
+    data_prompt = COMMERCIAL_BRIEF_DATA.format(
+        business_name=business_name,
+        industry=industry or "Desconocida",
+        city=city or "Desconocida",
+        website_url=website_url or "Sin website",
+        instagram_url=instagram_url or "Sin Instagram",
+        score=score or 0,
+        llm_summary=llm_summary or "Sin resumen",
+        signals=", ".join(signals) if signals else "Ninguna",
+        research_data=(
+            json.dumps(research_data, ensure_ascii=False)
+            if research_data
+            else "Sin datos"
+        ),
+        pricing_matrix=json.dumps(pricing_matrix, ensure_ascii=False),
+    )
+
+    fallback = {
+        "opportunity_score": 50,
+        "estimated_scope": "landing",
+        "recommended_contact_method": "manual_review",
+        "should_call": "maybe",
+        "call_reason": "No se pudo generar el análisis automáticamente",
+        "why_this_lead_matters": "Pendiente de revisión manual",
+        "main_business_signals": [],
+        "main_digital_gaps": [],
+        "recommended_angle": "Requiere revisión manual",
+        "demo_recommended": False,
+    }
+
+    try:
+        raw = _call_ollama_chat(
+            COMMERCIAL_BRIEF_SYSTEM, data_prompt, role=role
+        )
+        result = _extract_json(raw)
+    except Exception as e:
+        logger.error(
+            "llm_commercial_brief_failed",
+            role=_role_value(role),
+            error=str(e),
+        )
+        result = fallback
+
+    _, model = _resolve_role_model(role)
+    result["model"] = model
+    return result

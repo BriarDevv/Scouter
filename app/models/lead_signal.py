@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Text, Uuid, func
+from sqlalchemy import DateTime, Enum, Float, ForeignKey, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -32,6 +32,8 @@ class LeadSignal(Base):
     )
     signal_type: Mapped[SignalType] = mapped_column(Enum(SignalType), nullable=False)
     detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    source: Mapped[str | None] = mapped_column(String(50), nullable=True)
     detected_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

@@ -115,6 +115,15 @@ class Lead(Base):
     pipeline_runs: Mapped[list["PipelineRun"]] = relationship(  # noqa: F821
         "PipelineRun", back_populates="lead", cascade="all, delete-orphan"
     )
+    research_reports: Mapped[list["LeadResearchReport"]] = relationship(  # noqa: F821
+        "LeadResearchReport", back_populates="lead", cascade="all, delete-orphan"
+    )
+    artifacts: Mapped[list["Artifact"]] = relationship(  # noqa: F821
+        "Artifact", back_populates="lead", cascade="all, delete-orphan"
+    )
+    commercial_briefs: Mapped[list["CommercialBrief"]] = relationship(  # noqa: F821
+        "CommercialBrief", back_populates="lead", cascade="all, delete-orphan"
+    )
 
     @property
     def quality(self) -> LeadQuality:
