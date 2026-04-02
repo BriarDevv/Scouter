@@ -1,155 +1,193 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { PageHeader } from "@/components/layout/page-header";
-import { StatsGrid } from "@/components/dashboard/stats-grid";
-import { PipelineFunnel } from "@/components/dashboard/pipeline-funnel";
-import { AreaChartCard } from "@/components/charts/area-chart-card";
-import { IndustryChart } from "@/components/dashboard/industry-chart";
-import { RecentActivity } from "@/components/dashboard/recent-activity";
-import { ControlCenter } from "@/components/dashboard/control-center";
-import { CollapsibleSection } from "@/components/shared/collapsible-section";
-import { SkeletonStatCard, SkeletonCard } from "@/components/shared/skeleton";
-import { useSystemHealth } from "@/lib/hooks/use-system-health";
+import { useChat } from "@/lib/hooks/use-chat";
 import {
-  getDashboardStats,
-  getIndustryBreakdown,
-  getOutreachLogs,
-  getPipeline,
-  getTimeSeries,
+  createConversation,
+  deleteConversation,
+  getConversation,
+  listConversations,
 } from "@/lib/api/client";
-import type { DashboardStats, IndustryBreakdown, OutreachLog, PipelineStage, TimeSeriesPoint } from "@/types";
-import { TerritorySummary } from "@/components/dashboard/territory-summary";
-import { sileo } from "sileo";
+import { ChatMessages } from "@/components/chat/chat-messages";
+import { ChatInput } from "@/components/chat/chat-input";
+import { cn } from "@/lib/utils";
+import {
+  MessageSquarePlus,
+  MessagesSquare,
+  Sparkles,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import type { ChatConversationSummary } from "@/types";
 
-export default function OverviewPage() {
-  const { components, loading: healthLoading, refresh: refreshHealth } = useSystemHealth();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [pipeline, setPipeline] = useState<PipelineStage[]>([]);
-  const [timeSeries, setTimeSeries] = useState<TimeSeriesPoint[]>([]);
-  const [industryBreakdown, setIndustryBreakdown] = useState<IndustryBreakdown[]>([]);
-  const [logs, setLogs] = useState<OutreachLog[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export default function ChatPage() {
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<ChatConversationSummary[]>([]);
+  const [currentTitle, setCurrentTitle] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(true);
+  const [loadingList, setLoadingList] = useState(true);
 
-  const loadOverview = useCallback(async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      const [nextStats, nextPipeline, nextTimeSeries, nextIndustryBreakdown, nextLogs] =
-        await Promise.all([
-          getDashboardStats(),
-          getPipeline(),
-          getTimeSeries(30),
-          getIndustryBreakdown(),
-          getOutreachLogs({ limit: 8 }),
-        ]);
+  const { messages, isStreaming, error, sendMessage, setMessages } = useChat(activeConversationId);
 
-      setStats(nextStats);
-      setPipeline(nextPipeline);
-      setTimeSeries(nextTimeSeries);
-      setIndustryBreakdown(nextIndustryBreakdown);
-      setLogs(nextLogs);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Error desconocido";
-      setError(message);
-      sileo.error({
-        title: "Error al cargar el panel",
-        description: message,
-      });
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    listConversations()
+      .then(setConversations)
+      .catch(() => {})
+      .finally(() => setLoadingList(false));
   }, []);
 
   useEffect(() => {
-    void loadOverview();
-  }, [loadOverview]);
+    if (!activeConversationId) {
+      setCurrentTitle(null);
+      return;
+    }
+    getConversation(activeConversationId)
+      .then((detail) => {
+        setMessages(detail.messages);
+        setCurrentTitle(detail.title);
+      })
+      .catch(() => {});
+  }, [activeConversationId, setMessages]);
+
+  const handleNew = useCallback(async () => {
+    const conv = await createConversation();
+    setConversations((prev) => [{
+      id: conv.id, title: null, message_count: 0,
+      last_message_at: null, created_at: conv.created_at,
+    }, ...prev]);
+    setActiveConversationId(conv.id);
+    setMessages([]);
+    setCurrentTitle(null);
+  }, [setMessages]);
+
+  const handleDelete = useCallback(async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    await deleteConversation(id);
+    setConversations((prev) => prev.filter((c) => c.id !== id));
+    if (activeConversationId === id) {
+      setActiveConversationId(null);
+      setMessages([]);
+      setCurrentTitle(null);
+    }
+  }, [activeConversationId, setMessages]);
+
+  const handleSend = useCallback(async (content: string) => {
+    let targetId = activeConversationId;
+    if (!targetId) {
+      const conv = await createConversation();
+      targetId = conv.id;
+      setConversations((prev) => [{
+        id: conv.id, title: null, message_count: 0,
+        last_message_at: null, created_at: conv.created_at,
+      }, ...prev]);
+      setActiveConversationId(conv.id);
+    }
+    await sendMessage(content, targetId);
+  }, [activeConversationId, sendMessage]);
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Panel general"
-        description="Estado general del sistema de prospección"
-      />
-
-      <ControlCenter health={components} healthLoading={healthLoading} onRefreshHealth={refreshHealth} />
-
-      {/* Error state */}
-      {error && !loading && (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-6 text-center space-y-3">
-          <p className="text-sm font-medium text-destructive">
-            No se pudo cargar el panel
-          </p>
-          <p className="text-xs text-muted-foreground">{error}</p>
+    <div className="flex h-full overflow-hidden">
+      {/* History panel */}
+      <div className={cn(
+        "flex flex-col shrink-0 border-r border-border/40 bg-muted/20 transition-all duration-300",
+        historyOpen ? "w-60" : "w-0 overflow-hidden border-r-0"
+      )}>
+        <div className="flex items-center gap-2 px-3 py-3.5 border-b border-border/40 shrink-0">
+          <MessagesSquare className="h-3.5 w-3.5 text-violet-500 shrink-0" />
+          <span className="text-[11px] font-semibold font-heading text-muted-foreground uppercase tracking-wider flex-1">
+            Conversaciones
+          </span>
           <button
-            onClick={() => void loadOverview()}
-            className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 transition-colors"
+            onClick={() => void handleNew()}
+            className="h-6 w-6 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            title="Nueva conversación"
           >
-            Reintentar
+            <MessageSquarePlus className="h-3.5 w-3.5" />
           </button>
         </div>
-      )}
 
-      {/* Key Metrics */}
-      {loading ? (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => <SkeletonStatCard key={i} />)}
-        </div>
-      ) : (
-        <StatsGrid stats={stats!} />
-      )}
-
-      {/* Charts & Data */}
-      {loading ? (
-        <div className="grid gap-6 lg:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} className="h-[280px]" />)}
-        </div>
-      ) : (
-        <>
-          <CollapsibleSection title="Tendencias" defaultOpen>
-            <div className="grid gap-6 lg:grid-cols-3">
-              <AreaChartCard
-                title="Leads por Día"
-                subtitle="Últimos 30 días"
-                data={timeSeries}
-                dataKey="leads"
-                color="#8b5cf6"
-                gradientId="leadsGrad"
-              />
-              <AreaChartCard
-                title="Outreach por Día"
-                subtitle="Emails enviados"
-                data={timeSeries}
-                dataKey="outreach"
-                color="#06b6d4"
-                gradientId="outreachGrad"
-              />
-              <AreaChartCard
-                title="Respuestas por Día"
-                subtitle="Replies recibidos"
-                data={timeSeries}
-                dataKey="replies"
-                color="#10b981"
-                gradientId="repliesGrad"
-              />
+        <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+          {loadingList ? (
+            <div className="space-y-1 p-1">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-8 rounded-lg bg-muted/60 animate-pulse" />
+              ))}
             </div>
-          </CollapsibleSection>
+          ) : conversations.length === 0 ? (
+            <p className="px-3 py-8 text-xs text-muted-foreground text-center">
+              Sin conversaciones aún
+            </p>
+          ) : (
+            conversations.map(conv => (
+              <button
+                key={conv.id}
+                onClick={() => setActiveConversationId(conv.id)}
+                className={cn(
+                  "group w-full text-left rounded-xl px-3 py-2 transition-all flex items-center gap-2",
+                  activeConversationId === conv.id
+                    ? "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <span className="flex-1 truncate text-xs font-medium">
+                  {conv.title || "Nueva conversación"}
+                </span>
+                <span
+                  role="button"
+                  onClick={(e) => { void handleDelete(conv.id, e); }}
+                  className="opacity-0 group-hover:opacity-100 h-4 w-4 shrink-0 flex items-center justify-center text-muted-foreground hover:text-destructive transition-all"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
 
-          <CollapsibleSection title="Pipeline & Distribución" defaultOpen>
-            <div className="grid gap-6 lg:grid-cols-2">
-              <PipelineFunnel stages={pipeline} />
-              <IndustryChart data={industryBreakdown} />
-            </div>
-          </CollapsibleSection>
+      {/* Main chat */}
+      <div className="flex-1 flex flex-col min-w-0 relative">
+        {/* Toggle handle */}
+        <button
+          onClick={() => setHistoryOpen(!historyOpen)}
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-10 w-4 rounded-r-lg bg-border/30 hover:bg-border/60 text-muted-foreground flex items-center justify-center transition-colors"
+          title={historyOpen ? "Ocultar historial" : "Mostrar historial"}
+        >
+          {historyOpen
+            ? <ChevronLeft className="h-3 w-3" />
+            : <ChevronRight className="h-3 w-3" />
+          }
+        </button>
 
-          <CollapsibleSection title="Actividad Reciente" defaultOpen={false}>
-            <RecentActivity logs={logs} />
-          </CollapsibleSection>
-        </>
-      )}
+        {/* Header */}
+        <div className="flex items-center gap-3 px-6 py-3.5 border-b border-border/40 shrink-0">
+          <div className="h-7 w-7 rounded-lg bg-violet-100 dark:bg-violet-950/50 flex items-center justify-center shrink-0">
+            <Sparkles className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold font-heading leading-none truncate">
+              {currentTitle || "Hermes"}
+            </p>
+            {!currentTitle && (
+              <p className="text-xs text-muted-foreground mt-0.5">Agente IA · ClawScout</p>
+            )}
+          </div>
+          <button
+            onClick={() => void handleNew()}
+            className="ml-auto flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0"
+          >
+            <MessageSquarePlus className="h-3.5 w-3.5" />
+            Nueva
+          </button>
+        </div>
 
-      <TerritorySummary />
+        {/* Messages */}
+        <ChatMessages messages={messages} isStreaming={isStreaming} />
+
+        {/* Input */}
+        <ChatInput onSend={handleSend} disabled={isStreaming} error={error} />
+      </div>
     </div>
   );
 }

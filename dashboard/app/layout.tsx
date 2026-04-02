@@ -4,7 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Sidebar } from "@/components/layout/sidebar";
 import { LayoutShell } from "@/components/layout/layout-shell";
-import { ChatPanel } from "@/components/chat/chat-panel";
 import { ChatPanelProvider } from "@/lib/hooks/use-chat-panel";
 import { ThemedToaster } from "@/components/providers/themed-toaster";
 import "./globals.css";
@@ -38,19 +37,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("clawscout-theme");if(t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme:dark)").matches))document.documentElement.classList.add("dark")}catch(e){}})()`,
+            __html: `(function(){try{var t=localStorage.getItem("clawscout-theme");if(t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme:dark)").matches))document.documentElement.classList.add("dark");if(localStorage.getItem("clawscout-sidebar-collapsed")==="true")document.documentElement.classList.add("sidebar-collapsed")}catch(e){}})()`,
           }}
         />
       </head>
-      <body
-        className={`${satoshi.variable} ${geistSans.variable} ${geistMono.variable} antialiased bg-sidebar`}
-      >
+      <body className={`${satoshi.variable} ${geistSans.variable} ${geistMono.variable} antialiased bg-sidebar`}>
         <ThemeProvider>
           <TooltipProvider>
             <ChatPanelProvider>
               <Sidebar />
               <LayoutShell>{children}</LayoutShell>
-              <ChatPanel />
             </ChatPanelProvider>
             <ThemedToaster />
           </TooltipProvider>

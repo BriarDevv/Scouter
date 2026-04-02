@@ -21,7 +21,10 @@ export function ThemeToggle({ collapsed = false }: { collapsed?: boolean }) {
     <button
       onClick={cycle}
       title={`Tema: ${LABEL[theme]}`}
-      className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
+      className={cn(
+        "flex items-center rounded-xl py-2 text-sm font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground",
+        collapsed ? "justify-center px-0" : "gap-3 px-3"
+      )}
     >
       <Icon className="h-[18px] w-[18px] shrink-0" />
       <span className={cn(

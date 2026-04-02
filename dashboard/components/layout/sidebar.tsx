@@ -20,46 +20,41 @@ import {
   ShieldAlert,
   ShieldOff,
   Sparkles,
-  Radar,
   MapPin,
   Settings,
 } from "lucide-react";
 
 const NAV_ITEMS = [
-  { href: "/",            label: "Panel general", icon: LayoutDashboard },
-  { href: "/leads",       label: "Leads",         icon: Users },
-  { href: "/outreach",    label: "Outreach",      icon: Mail },
-  { href: "/responses",   label: "Respuestas",    icon: Inbox },
-  { href: "/performance", label: "Rendimiento",   icon: BarChart3 },
-  { href: "/map",         label: "Mapa",          icon: MapPin },
-  { href: "/suppression", label: "Supresión",     icon: ShieldOff },
+  { href: "/",            label: "Hermes",      icon: Sparkles },
+  { href: "/panel",       label: "Panel",       icon: LayoutDashboard },
+  { href: "/leads",       label: "Leads",       icon: Users },
+  { href: "/outreach",    label: "Outreach",    icon: Mail },
+  { href: "/responses",   label: "Respuestas",  icon: Inbox },
+  { href: "/performance", label: "Rendimiento", icon: BarChart3 },
+  { href: "/map",         label: "Mapa",        icon: MapPin },
+  { href: "/suppression", label: "Supresión",   icon: ShieldOff },
 ];
 
-const EXTRA_NAV_ITEMS = [
+const BOTTOM_NAV_ITEMS = [
   { href: "/notifications", label: "Notificaciones", icon: Bell,        badge: true },
   { href: "/security",      label: "Seguridad",      icon: ShieldAlert, badge: false },
 ];
 
-/** Fade text: out fast, in after sidebar expands. */
 const LABEL_HIDDEN = "whitespace-nowrap overflow-hidden opacity-0 max-w-0 transition-all duration-100 delay-0";
 const LABEL_VISIBLE = "whitespace-nowrap transition-[opacity] opacity-100 duration-200 delay-150";
 
 export function Sidebar() {
   const pathname = usePathname();
   const [unreadCount, setUnreadCount] = useState(0);
-  const { isOpen: chatOpen, toggle: toggleChat, sidebarCollapsed: collapsed, toggleSidebar } = useChatPanel();
+  const { sidebarCollapsed: collapsed, toggleSidebar } = useChatPanel();
 
   useEffect(() => {
     let active = true;
     async function fetchNotificationCounts() {
       try {
         const data = await getNotificationCounts();
-        if (active) {
-          setUnreadCount(data.total_unread ?? 0);
-        }
-      } catch {
-        // Non-critical
-      }
+        if (active) setUnreadCount(data.total_unread ?? 0);
+      } catch {}
     }
     fetchNotificationCounts();
     return () => { active = false; };
@@ -69,60 +64,67 @@ export function Sidebar() {
 
   return (
     <aside
+      suppressHydrationWarning
       className={cn(
-        "fixed inset-y-0 left-0 z-40 flex flex-col overflow-hidden bg-sidebar transition-all duration-300 ease-in-out",
-        collapsed ? "w-[68px]" : "w-64"
+        "fixed inset-y-0 left-0 z-40 flex flex-col overflow-hidden bg-sidebar",
+        "transition-[width] duration-[350ms] ease-in-out",
+        collapsed ? "w-[52px]" : "w-52"
       )}
     >
       {/* Header */}
-      <div className="flex h-16 items-center border-b border-sidebar-border px-3">
-        <button
-          onClick={toggleSidebar}
-          className="ml-[7px] flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-600"
-          title={collapsed ? "Expandir sidebar" : "Minimizar sidebar"}
-        >
-          {collapsed
-            ? <PanelLeftOpen className="h-4 w-4 text-white" />
-            : <Radar className="h-4.5 w-4.5 text-white" />
-          }
-        </button>
-        <div className={cn(lbl, "ml-3 flex items-center gap-1.5")}>
-          <span className="font-heading text-lg font-bold tracking-tight text-sidebar-foreground">ClawScout</span>
-          <span className="rounded-md bg-violet-50 dark:bg-violet-950/40 px-1.5 py-0.5 text-[10px] font-medium text-violet-600 dark:text-violet-400">v2</span>
+      <div className="flex h-14 items-center border-b border-sidebar-border px-2.5 shrink-0">
+        <div className={cn(lbl, "flex items-center gap-1.5 min-w-0 flex-1")}>
+          <span className="font-heading text-base font-bold tracking-tight text-sidebar-foreground">
+            ClawScout
+          </span>
+          <span className="rounded-md bg-violet-50 dark:bg-violet-950/40 px-1.5 py-0.5 text-[10px] font-medium text-violet-600 dark:text-violet-400 shrink-0">
+            v2
+          </span>
         </div>
         <button
           onClick={toggleSidebar}
-          className={cn(lbl, "ml-auto rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors")}
-          title="Minimizar sidebar"
+          className="flex h-8 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          title={collapsed ? "Expandir sidebar" : "Minimizar sidebar"}
         >
-          <PanelLeftClose className="h-4 w-4" />
+          {collapsed
+            ? <PanelLeftOpen className="h-4 w-4" />
+            : <PanelLeftClose className="h-4 w-4" />
+          }
         </button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      <nav className="flex-1 space-y-0.5 px-2 py-3 overflow-y-auto overflow-x-hidden">
         {NAV_ITEMS.map((item) => {
           const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+          const isHermes = item.href === "/";
           return (
             <Link
               key={item.href}
               href={item.href}
               title={collapsed ? item.label : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium font-heading transition-all duration-150",
-                isActive
+                "flex items-center rounded-xl py-2 text-sm font-medium font-heading transition-colors duration-150",
+                collapsed ? "justify-center px-0" : "gap-2.5 px-3",
+                isActive && isHermes
+                  ? "bg-violet-600 text-white shadow-sm"
+                  : isActive
                   ? "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
-              <item.icon className={cn("h-[18px] w-[18px] shrink-0", isActive ? "text-violet-600 dark:text-violet-400" : "")} />
+              <item.icon className={cn(
+                "h-[18px] w-[18px] shrink-0",
+                isActive && isHermes ? "text-white" : isActive ? "text-violet-600 dark:text-violet-400" : ""
+              )} />
               <span className={lbl}>{item.label}</span>
             </Link>
           );
         })}
 
-        {/* Notifications & Security */}
-        {EXTRA_NAV_ITEMS.map((item) => {
+        <div className="my-2 border-t border-sidebar-border/60" />
+
+        {BOTTOM_NAV_ITEMS.map((item) => {
           const isActive = pathname.startsWith(item.href);
           return (
             <Link
@@ -130,7 +132,8 @@ export function Sidebar() {
               href={item.href}
               title={collapsed ? item.label : undefined}
               className={cn(
-                "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium font-heading transition-all duration-150",
+                "relative flex items-center rounded-xl py-2 text-sm font-medium font-heading transition-colors duration-150",
+                collapsed ? "justify-center px-0" : "gap-2.5 px-3",
                 isActive
                   ? "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -140,8 +143,8 @@ export function Sidebar() {
               <span className={cn(lbl, "flex-1")}>{item.label}</span>
               {item.badge && unreadCount > 0 && (
                 <span className={cn(
-                  "bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 transition-all duration-200",
-                  collapsed && "absolute -top-1 right-0 min-w-[16px] h-[16px] text-[9px]"
+                  "bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1",
+                  collapsed && "absolute top-0 right-0 min-w-[16px] h-[16px] text-[9px]"
                 )}>
                   {unreadCount > 99 ? "99+" : unreadCount}
                 </span>
@@ -160,27 +163,20 @@ export function Sidebar() {
       </div>
 
       {/* Footer */}
-      <div className="border-t border-sidebar-border space-y-1 p-3">
+      <div className="border-t border-sidebar-border space-y-0.5 p-2 shrink-0">
         <ThemeToggle collapsed={collapsed} />
-        <button
-          onClick={toggleChat}
-          title={collapsed ? "Chat IA" : undefined}
-          className={cn(
-            "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium font-heading transition-all duration-150",
-            chatOpen
-              ? "bg-violet-600 text-white"
-              : "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-950/60"
-          )}
-        >
-          <Sparkles className="h-[18px] w-[18px] shrink-0" />
-          <span className={lbl}>Chat IA</span>
-        </button>
         <Link
           href="/settings"
           title={collapsed ? "Configuración" : undefined}
-          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
+          className={cn(
+            "flex items-center rounded-xl py-2 text-sm font-medium font-heading transition-colors duration-150",
+            collapsed ? "justify-center px-0" : "gap-2.5 px-3",
+            pathname.startsWith("/settings")
+              ? "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          )}
         >
-          <Settings className="h-[18px] w-[18px] shrink-0" />
+          <Settings className={cn("h-[18px] w-[18px] shrink-0", pathname.startsWith("/settings") ? "text-violet-600 dark:text-violet-400" : "")} />
           <span className={lbl}>Configuración</span>
         </Link>
       </div>

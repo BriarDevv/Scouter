@@ -27,20 +27,20 @@ const SIDEBAR_STORAGE_KEY = "clawscout-sidebar-collapsed";
 
 export function ChatPanelProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return document.documentElement.classList.contains("sidebar-collapsed");
+  });
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
-  // Restore from localStorage after hydration (avoids SSR mismatch)
   useEffect(() => {
     try {
       if (localStorage.getItem(CHAT_STORAGE_KEY) === "true") setIsOpen(true);
-      if (localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true") setSidebarCollapsed(true);
     } catch {}
     setHydrated(true);
   }, []);
 
-  // Persist to localStorage
   useEffect(() => {
     if (!hydrated) return;
     try { localStorage.setItem(CHAT_STORAGE_KEY, String(isOpen)); } catch {}
@@ -58,14 +58,9 @@ export function ChatPanelProvider({ children }: { children: ReactNode }) {
 
   return (
     <ChatPanelContext value={{
-      isOpen,
-      toggle,
-      open,
-      close,
-      activeConversationId,
-      setActiveConversationId,
-      sidebarCollapsed,
-      toggleSidebar,
+      isOpen, toggle, open, close,
+      activeConversationId, setActiveConversationId,
+      sidebarCollapsed, toggleSidebar,
     }}>
       {children}
     </ChatPanelContext>
