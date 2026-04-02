@@ -1540,6 +1540,70 @@ def task_research_lead(
                 )
                 return {"status": "not_found", "lead_id": lead_id}
 
+            # Generate dossier from research data
+            if report.status.value == "completed":
+                try:
+                    from app.llm.client import generate_dossier
+                    lead = db.get(Lead, uuid.UUID(lead_id))
+                    if lead and report:
+                        dossier = generate_dossier(
+                            business_name=lead.business_name,
+                            industry=lead.industry,
+                            city=lead.city,
+                            website_url=lead.website_url,
+                            instagram_url=lead.instagram_url,
+                            score=lead.score,
+                            signals=", ".join(
+                                s.get("type", "") for s in (report.detected_signals_json or [])
+                            ),
+                            html_metadata=str(report.html_metadata_json or {}),
+                            website_confidence=(
+                                report.website_confidence.value
+                                if report.website_confidence else "unknown"
+                            ),
+                            instagram_confidence=(
+                                report.instagram_confidence.value
+                                if report.instagram_confidence else "unknown"
+                            ),
+                            whatsapp_detected=str(report.whatsapp_detected or False),
+                        )
+                        if dossier:
+                            report.business_description = dossier.get("business_description")
+                            db.commit()
+                            logger.info("dossier_generated_in_pipeline", lead_id=lead_id)
+                except Exception as dossier_exc:
+                    logger.warning(
+                        "dossier_generation_failed_in_pipeline",
+                        lead_id=lead_id,
+                        error=str(dossier_exc),
+                    )
+
+                # Emit notification
+                try:
+                    from app.services.notification_emitter import on_research_completed
+                    lead = db.get(Lead, uuid.UUID(lead_id))
+                    on_research_completed(
+                        db,
+                        lead_id=uuid.UUID(lead_id),
+                        business_name=lead.business_name if lead else None,
+                        signals_count=len(report.detected_signals_json or []),
+                    )
+                except Exception:
+                    pass
+
+                # Chain: generate brief for HIGH leads
+                if pipeline_run_id:
+                    try:
+                        from app.workers.brief_tasks import task_generate_brief
+                        task_generate_brief.delay(lead_id, pipeline_run_id)
+                        logger.info("brief_chained_from_research", lead_id=lead_id)
+                    except Exception as chain_exc:
+                        logger.warning(
+                            "brief_chain_failed",
+                            lead_id=lead_id,
+                            error=str(chain_exc),
+                        )
+
             result = {
                 "status": report.status.value,
                 "lead_id": lead_id,

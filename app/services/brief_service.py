@@ -182,6 +182,21 @@ def generate_brief(
         db.commit()
         db.refresh(brief)
 
+        # Emit notification
+        try:
+            from app.services.notification_emitter import on_brief_generated
+            on_brief_generated(
+                db,
+                lead_id=lead_id,
+                business_name=lead.business_name,
+                opportunity_score=brief.opportunity_score,
+                should_call=(
+                    brief.should_call.value if brief.should_call else None
+                ),
+            )
+        except Exception:
+            pass
+
         logger.info(
             "brief_generated",
             lead_id=str(lead_id),

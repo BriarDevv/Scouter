@@ -35,6 +35,7 @@ celery_app.conf.update(
         "app.workers.tasks.task_crawl_territory": {"queue": "default"},
         "app.workers.tasks.task_research_lead": {"queue": "research"},
         "app.workers.brief_tasks.task_generate_brief": {"queue": "llm"},
+        "app.workers.brief_tasks.task_review_brief": {"queue": "reviewer"},
     },
     # Default queue for unmatched tasks
     task_default_queue="default",
