@@ -33,6 +33,7 @@ import { WhatsAppSection, HermesWhatsAppSection, KapsoOutreachSection } from "@/
 import { TelegramSection, HermesTelegramSection } from "@/components/settings/telegram-section";
 import { TerritoriesSection } from "@/components/settings/territories-section";
 import { CrawlersSection } from "@/components/settings/crawlers-section";
+import { PricingSection } from "@/components/settings/pricing-section";
 import type { WhatsAppCredentials } from "@/components/settings/whatsapp-section";
 import type { TelegramCredentials } from "@/lib/api/client";
 
@@ -180,6 +181,11 @@ export default function SettingsPage() {
         <TabsContent value="rules">
           {opData ? (
             <RulesSection data={opData} onSaved={handleSavedOps} />
+          ) : <NoDataNotice />}
+        </TabsContent>
+        <TabsContent value="pricing">
+          {opData ? (
+            <PricingSection data={opData} onSaved={handleSavedOps} />
           ) : <NoDataNotice />}
         </TabsContent>
         <TabsContent value="credentials">

@@ -158,6 +158,7 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
     try {
       const data = await getOperationalSettings();
       setSettings(data);
+      setRuntimeModeState((data.runtime_mode as RuntimeMode) ?? "safe");
     } catch {
       // Settings not available
     } finally {
