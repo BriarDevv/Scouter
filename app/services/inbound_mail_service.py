@@ -417,7 +417,7 @@ def _match_delivery(db: Session, payload: InboundMailMessage) -> DeliveryMatch:
         return DeliveryMatch(
             delivery=fallback_delivery,
             matched_via="subject_fallback",
-            match_confidence=0.4,
+            match_confidence=0.3,
         )
 
     return DeliveryMatch(delivery=None, reply_send=None, matched_via="unmatched", match_confidence=0.0)
@@ -482,8 +482,13 @@ def _find_delivery_by_subject_fallback(
     db: Session, payload: InboundMailMessage
 ) -> OutreachDelivery | None:
     from_email = _normalize_email(payload.from_email)
+    raw_subject = (payload.subject or "").strip()
     normalized_subject = _normalize_subject(payload.subject)
     if not from_email or not normalized_subject:
+        return None
+
+    # CC-8: Require the inbound subject starts with a reply prefix (Re:/Fwd:)
+    if not SUBJECT_PREFIX_RE.search(raw_subject):
         return None
 
     stmt = (
@@ -494,7 +499,10 @@ def _find_delivery_by_subject_fallback(
             OutreachDelivery.sent_at >= (datetime.now(UTC) - timedelta(days=30)),
         )
         .options(selectinload(OutreachDelivery.draft))
-        .order_by(OutreachDelivery.sent_at.desc(), OutreachDelivery.created_at.desc())
+        .order_by(
+            OutreachDelivery.sent_at.desc(),
+            OutreachDelivery.created_at.desc(),
+        )
         .limit(10)
     )
     deliveries = list(db.execute(stmt).scalars().all())

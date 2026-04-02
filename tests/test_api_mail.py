@@ -177,6 +177,31 @@ def test_send_draft_failure_persists_failed_delivery(client, db, monkeypatch):
     assert delivery.error == "smtp unavailable"
 
 
+def test_send_draft_rate_limited_after_3_failures(client, db):
+    """CC-7: re-send should be blocked after 3 failed deliveries."""
+    lead, draft = _create_approved_draft(db)
+    _configure_db_mail(db)
+
+    # Add 3 failed deliveries
+    for _ in range(3):
+        d = OutreachDelivery(
+            lead_id=lead.id,
+            draft_id=draft.id,
+            provider="smtp",
+            recipient_email="owner@example.com",
+            subject_snapshot="Approved subject",
+            status=OutreachDeliveryStatus.FAILED,
+            error="test failure",
+        )
+        db.add(d)
+    db.commit()
+
+    # Attempting to send should fail with rate limit
+    resp = client.post(f"/api/v1/outreach/drafts/{draft.id}/send")
+    assert resp.status_code == 429
+    assert "intentos fallidos" in resp.json()["detail"].lower()
+
+
 def test_outreach_delivery_enum_uses_lowercase_values():
     enum_values = list(OutreachDelivery.__table__.c.status.type.enums)
     assert enum_values == ["sending", "sent", "failed"]

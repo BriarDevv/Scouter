@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -42,6 +43,10 @@ class DraftRecipientMissingError(MailServiceError):
 
 class DraftAlreadySentError(MailServiceError):
     """Raised when a draft has already been sent."""
+
+
+class DraftSendRateLimitError(MailServiceError):
+    """Raised when a draft has too many failed send attempts or is in cooldown."""
 
 
 @dataclass(frozen=True)
@@ -167,6 +172,40 @@ def send_draft(db: Session, draft_id: uuid.UUID) -> OutreachDelivery | None:
         raise DraftAlreadySentError("Draft has already been sent.")
     if draft.status != DraftStatus.APPROVED:
         raise DraftNotApprovedError("Draft must be approved before sending.")
+
+    # CC-7: Rate limit re-sends — max 3 failed attempts per draft, 5min cooldown
+    failed_count = (
+        db.query(OutreachDelivery)
+        .filter(
+            OutreachDelivery.draft_id == draft_id,
+            OutreachDelivery.status == OutreachDeliveryStatus.FAILED,
+        )
+        .count()
+    )
+    if failed_count >= 3:
+        raise DraftSendRateLimitError(
+            "Demasiados intentos fallidos (3)."
+            " Revisá la configuración de mail."
+        )
+    if failed_count > 0:
+        last_failed = (
+            db.query(OutreachDelivery)
+            .filter(
+                OutreachDelivery.draft_id == draft_id,
+                OutreachDelivery.status == OutreachDeliveryStatus.FAILED,
+            )
+            .order_by(OutreachDelivery.created_at.desc())
+            .first()
+        )
+        if last_failed and last_failed.created_at:
+            cooldown = timedelta(minutes=5)
+            elapsed = datetime.now(timezone.utc) - last_failed.created_at
+            if elapsed < cooldown:
+                remaining = cooldown - elapsed
+                raise DraftSendRateLimitError(
+                    f"Cooldown activo."
+                    f" Reintentá en {int(remaining.total_seconds())}s."
+                )
 
     lead = draft.lead
     recipient_email = (lead.email or "").strip() if lead else ""

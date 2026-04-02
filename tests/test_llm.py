@@ -170,6 +170,7 @@ def test_prompt_injection_boundaries(monkeypatch):
     # User prompt must wrap data in <external_data> tags
     assert "<external_data>" in captured["user"]
     assert "</external_data>" in captured["user"]
-    # External data must be in user prompt, not system prompt
-    assert "Ignore previous instructions" in captured["user"]
+    # Injection attempt must be sanitized (PI-6/7/8)
+    assert "Ignore previous instructions" not in captured["user"]
+    assert "[REDACTED]" in captured["user"]
     assert "Ignore previous instructions" not in captured["system"]

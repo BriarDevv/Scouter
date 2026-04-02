@@ -36,6 +36,7 @@ from app.llm.prompts import (
     SUMMARIZE_BUSINESS_SYSTEM,
 )
 from app.llm.resolver import normalize_role, resolve_model_for_role
+from app.llm.sanitizer import sanitize_field
 from app.llm.roles import LLMRole
 
 logger = get_logger(__name__)
@@ -177,11 +178,11 @@ def summarize_business(
 ) -> str:
     """Generate a business summary using the local LLM."""
     user_prompt = SUMMARIZE_BUSINESS_DATA.format(
-        business_name=business_name,
-        industry=industry or "Unknown",
-        city=city or "Unknown",
-        website_url=website_url or "None",
-        instagram_url=instagram_url or "None",
+        business_name=sanitize_field(business_name),
+        industry=sanitize_field(industry) or "Unknown",
+        city=sanitize_field(city) or "Unknown",
+        website_url=sanitize_field(website_url) or "None",
+        instagram_url=sanitize_field(instagram_url) or "None",
         signals=_format_signals(signals),
     )
 
@@ -206,11 +207,11 @@ def evaluate_lead_quality(
 ) -> dict:
     """Evaluate lead quality using the local LLM. Returns dict with quality, reasoning, suggested_angle."""
     user_prompt = EVALUATE_LEAD_QUALITY_DATA.format(
-        business_name=business_name,
-        industry=industry or "Unknown",
-        city=city or "Unknown",
-        website_url=website_url or "None",
-        instagram_url=instagram_url or "None",
+        business_name=sanitize_field(business_name),
+        industry=sanitize_field(industry) or "Unknown",
+        city=sanitize_field(city) or "Unknown",
+        website_url=sanitize_field(website_url) or "None",
+        instagram_url=sanitize_field(instagram_url) or "None",
         signals=_format_signals(signals),
         score=score or 0,
     )
@@ -249,25 +250,34 @@ def generate_outreach_draft(
     """Generate an outreach email draft. Returns dict with subject and body."""
     bc = brand_context or {}
     user_prompt = GENERATE_OUTREACH_EMAIL_DATA.format(
-        business_name=business_name,
-        industry=industry or "Unknown",
-        city=city or "Unknown",
-        website_url=website_url or "None",
-        instagram_url=instagram_url or "None",
-        llm_summary=llm_summary or "No summary available",
-        llm_suggested_angle=llm_suggested_angle or "Web development services",
+        business_name=sanitize_field(business_name),
+        industry=sanitize_field(industry) or "Unknown",
+        city=sanitize_field(city) or "Unknown",
+        website_url=sanitize_field(website_url) or "None",
+        instagram_url=sanitize_field(instagram_url) or "None",
+        llm_summary=sanitize_field(llm_summary) or "No summary available",
+        llm_suggested_angle=sanitize_field(llm_suggested_angle)
+        or "Web development services",
         signals=_format_signals(signals),
         brand_name=bc.get("brand_name") or "No especificado",
         signature_name=bc.get("signature_name") or "No especificado",
         signature_role=bc.get("signature_role") or "No especificado",
         signature_company=bc.get("signature_company") or "No especificado",
-        brand_website_url=bc.get("website_url") or "No proporcionado — NO inventar URLs",
-        portfolio_url=bc.get("portfolio_url") or "No proporcionado — NO inventar URLs",
-        calendar_url=bc.get("calendar_url") or "No proporcionado — NO inventar URLs",
+        brand_website_url=bc.get("website_url")
+        or "No proporcionado — NO inventar URLs",
+        portfolio_url=bc.get("portfolio_url")
+        or "No proporcionado — NO inventar URLs",
+        calendar_url=bc.get("calendar_url")
+        or "No proporcionado — NO inventar URLs",
         signature_cta=bc.get("signature_cta") or "No especificado",
-        default_outreach_tone=bc.get("default_outreach_tone") or "profesional",
-        default_closing_line=bc.get("default_closing_line") or "No especificado",
-        signature_include_portfolio=bc.get("signature_include_portfolio", True) and bool(bc.get("portfolio_url")),
+        default_outreach_tone=bc.get("default_outreach_tone")
+        or "profesional",
+        default_closing_line=bc.get("default_closing_line")
+        or "No especificado",
+        signature_include_portfolio=bc.get(
+            "signature_include_portfolio", True
+        )
+        and bool(bc.get("portfolio_url")),
         sender_is_solo=bc.get("signature_is_solo", False),
     )
 
@@ -303,13 +313,14 @@ def review_lead(
 ) -> dict:
     """Run a reviewer pass on a lead. Returns verdict, confidence, reasoning, recommended_action, watchouts."""
     user_prompt = REVIEW_LEAD_DATA.format(
-        business_name=business_name,
-        industry=industry or "Unknown",
-        city=city or "Unknown",
-        website_url=website_url or "None",
-        instagram_url=instagram_url or "None",
-        llm_summary=llm_summary or "No summary available",
-        llm_suggested_angle=llm_suggested_angle or "No suggested angle available",
+        business_name=sanitize_field(business_name),
+        industry=sanitize_field(industry) or "Unknown",
+        city=sanitize_field(city) or "Unknown",
+        website_url=sanitize_field(website_url) or "None",
+        instagram_url=sanitize_field(instagram_url) or "None",
+        llm_summary=sanitize_field(llm_summary) or "No summary available",
+        llm_suggested_angle=sanitize_field(llm_suggested_angle)
+        or "No suggested angle available",
         signals=_format_signals(signals),
         score=score or 0,
     )
@@ -352,16 +363,17 @@ def review_outreach_draft(
 ) -> dict:
     """Run a reviewer pass on an outreach draft."""
     user_prompt = REVIEW_OUTREACH_DRAFT_DATA.format(
-        business_name=business_name,
-        industry=industry or "Unknown",
-        city=city or "Unknown",
-        website_url=website_url or "None",
-        instagram_url=instagram_url or "None",
-        llm_summary=llm_summary or "No summary available",
-        llm_suggested_angle=llm_suggested_angle or "No suggested angle available",
+        business_name=sanitize_field(business_name),
+        industry=sanitize_field(industry) or "Unknown",
+        city=sanitize_field(city) or "Unknown",
+        website_url=sanitize_field(website_url) or "None",
+        instagram_url=sanitize_field(instagram_url) or "None",
+        llm_summary=sanitize_field(llm_summary) or "No summary available",
+        llm_suggested_angle=sanitize_field(llm_suggested_angle)
+        or "No suggested angle available",
         signals=_format_signals(signals),
-        subject=subject,
-        body=body,
+        subject=sanitize_field(subject),
+        body=sanitize_field(body),
     )
 
     fallback = {
@@ -409,16 +421,16 @@ def classify_inbound_reply(
 ) -> dict:
     """Classify an inbound reply with the executor model."""
     user_prompt = CLASSIFY_INBOUND_REPLY_DATA.format(
-        business_name=business_name or "Unknown",
-        industry=industry or "Unknown",
-        city=city or "Unknown",
-        lead_email=lead_email or "Unknown",
-        outbound_subject=outbound_subject or "Unknown",
+        business_name=sanitize_field(business_name) or "Unknown",
+        industry=sanitize_field(industry) or "Unknown",
+        city=sanitize_field(city) or "Unknown",
+        lead_email=sanitize_field(lead_email) or "Unknown",
+        outbound_subject=sanitize_field(outbound_subject) or "Unknown",
         outbound_message_id=outbound_message_id or "Unknown",
-        from_email=from_email or "Unknown",
-        to_email=to_email or "Unknown",
-        subject=subject or "No subject",
-        body_text=body_text or "No body text available",
+        from_email=sanitize_field(from_email) or "Unknown",
+        to_email=sanitize_field(to_email) or "Unknown",
+        subject=sanitize_field(subject) or "No subject",
+        body_text=sanitize_field(body_text) or "No body text available",
     )
 
     try:
@@ -449,20 +461,24 @@ def review_inbound_reply(
 ) -> dict:
     """Run a reviewer pass on an inbound reply."""
     user_prompt = REVIEW_INBOUND_REPLY_DATA.format(
-        business_name=business_name or "Unknown",
-        industry=industry or "Unknown",
-        city=city or "Unknown",
-        lead_email=lead_email or "Unknown",
-        outbound_subject=outbound_subject or "Unknown",
+        business_name=sanitize_field(business_name) or "Unknown",
+        industry=sanitize_field(industry) or "Unknown",
+        city=sanitize_field(city) or "Unknown",
+        lead_email=sanitize_field(lead_email) or "Unknown",
+        outbound_subject=sanitize_field(outbound_subject) or "Unknown",
         outbound_message_id=outbound_message_id or "Unknown",
-        from_email=from_email or "Unknown",
-        to_email=to_email or "Unknown",
-        subject=subject or "No subject",
-        body_text=body_text or "No body text available",
+        from_email=sanitize_field(from_email) or "Unknown",
+        to_email=sanitize_field(to_email) or "Unknown",
+        subject=sanitize_field(subject) or "No subject",
+        body_text=sanitize_field(body_text) or "No body text available",
         classification_label=classification_label or "None",
-        classification_summary=classification_summary or "No executor summary available",
-        next_action_suggestion=next_action_suggestion or "No executor suggestion available",
-        should_escalate_reviewer="true" if should_escalate_reviewer else "false",
+        classification_summary=sanitize_field(classification_summary)
+        or "No executor summary available",
+        next_action_suggestion=sanitize_field(next_action_suggestion)
+        or "No executor suggestion available",
+        should_escalate_reviewer="true"
+        if should_escalate_reviewer
+        else "false",
     )
 
     fallback = {
@@ -513,29 +529,39 @@ def generate_reply_assistant_draft(
     """Generate a grounded response draft for a real inbound reply."""
     bc = brand_context or {}
     user_prompt = GENERATE_REPLY_ASSISTANT_DRAFT_DATA.format(
-        business_name=business_name or "Unknown",
-        industry=industry or "Unknown",
-        city=city or "Unknown",
-        lead_email=lead_email or "Unknown",
+        business_name=sanitize_field(business_name) or "Unknown",
+        industry=sanitize_field(industry) or "Unknown",
+        city=sanitize_field(city) or "Unknown",
+        lead_email=sanitize_field(lead_email) or "Unknown",
         classification_label=classification_label or "Unknown",
-        classification_summary=classification_summary or "No classification summary available",
-        next_action_suggestion=next_action_suggestion or "No next action suggestion available",
-        should_escalate_reviewer="true" if should_escalate_reviewer else "false",
-        outbound_subject=outbound_subject or "Unknown",
-        outbound_body=outbound_body or "Unknown",
-        thread_context=thread_context or "No previous thread context available",
-        from_email=from_email or "Unknown",
-        to_email=to_email or "Unknown",
-        subject=subject or "No subject",
-        body_text=body_text or "No body text available",
+        classification_summary=sanitize_field(classification_summary)
+        or "No classification summary available",
+        next_action_suggestion=sanitize_field(next_action_suggestion)
+        or "No next action suggestion available",
+        should_escalate_reviewer="true"
+        if should_escalate_reviewer
+        else "false",
+        outbound_subject=sanitize_field(outbound_subject) or "Unknown",
+        outbound_body=sanitize_field(outbound_body) or "Unknown",
+        thread_context=sanitize_field(thread_context)
+        or "No previous thread context available",
+        from_email=sanitize_field(from_email) or "Unknown",
+        to_email=sanitize_field(to_email) or "Unknown",
+        subject=sanitize_field(subject) or "No subject",
+        body_text=sanitize_field(body_text)
+        or "No body text available",
         brand_name=bc.get("brand_name") or "No especificado",
         signature_name=bc.get("signature_name") or "No especificado",
         signature_role=bc.get("signature_role") or "No especificado",
-        signature_company=bc.get("signature_company") or "No especificado",
-        brand_website_url=bc.get("website_url") or "No proporcionado — NO inventar URLs",
+        signature_company=bc.get("signature_company")
+        or "No especificado",
+        brand_website_url=bc.get("website_url")
+        or "No proporcionado — NO inventar URLs",
         signature_cta=bc.get("signature_cta") or "No especificado",
-        default_reply_tone=bc.get("default_reply_tone") or "profesional",
-        default_closing_line=bc.get("default_closing_line") or "No especificado",
+        default_reply_tone=bc.get("default_reply_tone")
+        or "profesional",
+        default_closing_line=bc.get("default_closing_line")
+        or "No especificado",
         sender_is_solo=bc.get("signature_is_solo", False),
     )
 
@@ -591,24 +617,31 @@ def review_reply_assistant_draft(
 ) -> dict:
     """Review an existing assisted reply draft without regenerating it."""
     user_prompt = REVIEW_REPLY_ASSISTANT_DRAFT_DATA.format(
-        business_name=business_name or "Unknown",
-        industry=industry or "Unknown",
-        city=city or "Unknown",
-        lead_email=lead_email or "Unknown",
+        business_name=sanitize_field(business_name) or "Unknown",
+        industry=sanitize_field(industry) or "Unknown",
+        city=sanitize_field(city) or "Unknown",
+        lead_email=sanitize_field(lead_email) or "Unknown",
         classification_label=classification_label or "Unknown",
-        classification_summary=classification_summary or "No classification summary available",
-        next_action_suggestion=next_action_suggestion or "No next action suggestion available",
-        reply_should_escalate_reviewer="true" if reply_should_escalate_reviewer else "false",
-        outbound_subject=outbound_subject or "Unknown",
-        outbound_body=outbound_body or "Unknown",
-        thread_context=thread_context or "No previous thread context available",
-        from_email=from_email or "Unknown",
-        to_email=to_email or "Unknown",
-        subject=subject or "No subject",
-        body_text=body_text or "No body text available",
-        draft_subject=draft_subject,
-        draft_body=draft_body,
-        draft_summary=draft_summary or "No draft summary available",
+        classification_summary=sanitize_field(classification_summary)
+        or "No classification summary available",
+        next_action_suggestion=sanitize_field(next_action_suggestion)
+        or "No next action suggestion available",
+        reply_should_escalate_reviewer="true"
+        if reply_should_escalate_reviewer
+        else "false",
+        outbound_subject=sanitize_field(outbound_subject) or "Unknown",
+        outbound_body=sanitize_field(outbound_body) or "Unknown",
+        thread_context=sanitize_field(thread_context)
+        or "No previous thread context available",
+        from_email=sanitize_field(from_email) or "Unknown",
+        to_email=sanitize_field(to_email) or "Unknown",
+        subject=sanitize_field(subject) or "No subject",
+        body_text=sanitize_field(body_text)
+        or "No body text available",
+        draft_subject=sanitize_field(draft_subject),
+        draft_body=sanitize_field(draft_body),
+        draft_summary=sanitize_field(draft_summary)
+        or "No draft summary available",
         suggested_tone=suggested_tone or "Unknown",
     )
 
@@ -652,13 +685,14 @@ def generate_whatsapp_draft(
 ) -> dict:
     """Generate a WhatsApp outreach message. Returns dict with body."""
     user_prompt = GENERATE_WHATSAPP_DRAFT_DATA.format(
-        business_name=business_name,
-        industry=industry or "Unknown",
-        city=city or "Unknown",
-        website_url=website_url or "None",
-        instagram_url=instagram_url or "None",
-        llm_summary=llm_summary or "No summary available",
-        llm_suggested_angle=llm_suggested_angle or "Web development services",
+        business_name=sanitize_field(business_name),
+        industry=sanitize_field(industry) or "Unknown",
+        city=sanitize_field(city) or "Unknown",
+        website_url=sanitize_field(website_url) or "None",
+        instagram_url=sanitize_field(instagram_url) or "None",
+        llm_summary=sanitize_field(llm_summary) or "No summary available",
+        llm_suggested_angle=sanitize_field(llm_suggested_angle)
+        or "Web development services",
         signals=_format_signals(signals),
     )
 
@@ -698,14 +732,14 @@ def generate_dossier(
 ) -> dict:
     """Generate a structured dossier for a lead using the LLM."""
     user_prompt = DOSSIER_DATA.format(
-        business_name=business_name,
-        industry=industry or "Unknown",
-        city=city or "Unknown",
-        website_url=website_url or "None",
-        instagram_url=instagram_url or "None",
+        business_name=sanitize_field(business_name),
+        industry=sanitize_field(industry) or "Unknown",
+        city=sanitize_field(city) or "Unknown",
+        website_url=sanitize_field(website_url) or "None",
+        instagram_url=sanitize_field(instagram_url) or "None",
         score=score or 0,
-        signals=signals or "None",
-        html_metadata=html_metadata or "None",
+        signals=sanitize_field(signals) or "None",
+        html_metadata=sanitize_field(html_metadata) or "None",
         website_confidence=website_confidence or "Unknown",
         instagram_confidence=instagram_confidence or "Unknown",
         whatsapp_detected="Si" if whatsapp_detected else "No",
@@ -758,13 +792,13 @@ def generate_commercial_brief(
     from app.llm.prompts import COMMERCIAL_BRIEF_DATA, COMMERCIAL_BRIEF_SYSTEM
 
     data_prompt = COMMERCIAL_BRIEF_DATA.format(
-        business_name=business_name,
-        industry=industry or "Desconocida",
-        city=city or "Desconocida",
-        website_url=website_url or "Sin website",
-        instagram_url=instagram_url or "Sin Instagram",
+        business_name=sanitize_field(business_name),
+        industry=sanitize_field(industry) or "Desconocida",
+        city=sanitize_field(city) or "Desconocida",
+        website_url=sanitize_field(website_url) or "Sin website",
+        instagram_url=sanitize_field(instagram_url) or "Sin Instagram",
         score=score or 0,
-        llm_summary=llm_summary or "Sin resumen",
+        llm_summary=sanitize_field(llm_summary) or "Sin resumen",
         signals=", ".join(signals) if signals else "Ninguna",
         research_data=(
             json.dumps(research_data, ensure_ascii=False)

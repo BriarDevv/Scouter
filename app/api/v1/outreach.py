@@ -26,6 +26,7 @@ from app.services.mail_service import (
     DraftAlreadySentError,
     DraftNotApprovedError,
     DraftRecipientMissingError,
+    DraftSendRateLimitError,
     MailDisabledError,
     list_deliveries,
     send_draft,
@@ -94,6 +95,8 @@ def send_draft_by_id(draft_id: uuid.UUID, db: Session = Depends(get_session)):
         delivery = send_draft(db, draft_id)
     except MailDisabledError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
+    except DraftSendRateLimitError as exc:
+        raise HTTPException(status_code=429, detail=str(exc))
     except DraftNotApprovedError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     except DraftAlreadySentError as exc:
