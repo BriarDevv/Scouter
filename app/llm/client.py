@@ -26,9 +26,13 @@ from app.llm.contracts import (
     LeadQualityResult,
     LeadReviewResult,
     OutreachDraftResult,
+    OutreachDraftReviewResult,
+    ReplyAssistantDraftResult,
+    ReplyAssistantDraftReviewResult,
     ReplyClassificationResult,
     StructuredInvocationResult,
     TextInvocationResult,
+    WhatsAppDraftResult,
 )
 from app.llm.invocation_metadata import (
     LLMInvocationMetadata,
@@ -44,17 +48,11 @@ from app.llm.prompt_registry import (
     LEAD_QUALITY_PROMPT,
     LEAD_REVIEW_PROMPT,
     OUTREACH_DRAFT_PROMPT,
+    OUTREACH_DRAFT_REVIEW_PROMPT,
+    REPLY_ASSISTANT_DRAFT_PROMPT,
+    REPLY_ASSISTANT_DRAFT_REVIEW_PROMPT,
+    WHATSAPP_DRAFT_PROMPT,
     PromptDefinition,
-)
-from app.llm.prompts import (
-    GENERATE_REPLY_ASSISTANT_DRAFT_DATA,
-    GENERATE_REPLY_ASSISTANT_DRAFT_SYSTEM,
-    GENERATE_WHATSAPP_DRAFT_DATA,
-    GENERATE_WHATSAPP_DRAFT_SYSTEM,
-    REVIEW_OUTREACH_DRAFT_DATA,
-    REVIEW_OUTREACH_DRAFT_SYSTEM,
-    REVIEW_REPLY_ASSISTANT_DRAFT_DATA,
-    REVIEW_REPLY_ASSISTANT_DRAFT_SYSTEM,
 )
 from app.llm.resolver import normalize_role, resolve_model_for_role
 from app.llm.roles import LLMRole
@@ -904,61 +902,77 @@ def review_outreach_draft(
     role: LLMRole | str = LLMRole.REVIEWER,
 ) -> dict:
     """Run a reviewer pass on an outreach draft."""
-    user_prompt = REVIEW_OUTREACH_DRAFT_DATA.format(
-        business_name=sanitize_field(business_name),
-        industry=sanitize_field(industry) or "Unknown",
-        city=sanitize_field(city) or "Unknown",
-        website_url=sanitize_field(website_url) or "None",
-        instagram_url=sanitize_field(instagram_url) or "None",
-        llm_summary=sanitize_field(llm_summary) or "No summary available",
-        llm_suggested_angle=sanitize_field(llm_suggested_angle)
-        or "No suggested angle available",
-        signals=_format_signals(signals),
-        subject=sanitize_field(subject),
-        body=sanitize_field(body),
+    result = review_outreach_draft_structured(
+        business_name=business_name,
+        industry=industry,
+        city=city,
+        website_url=website_url,
+        instagram_url=instagram_url,
+        llm_summary=llm_summary,
+        llm_suggested_angle=llm_suggested_angle,
+        signals=signals,
+        subject=subject,
+        body=body,
+        role=role,
+    )
+    if result.parsed is None:
+        return _review_outreach_draft_fallback().model_dump()
+    return result.parsed.model_dump()
+
+
+def _review_outreach_draft_fallback() -> OutreachDraftReviewResult:
+    return OutreachDraftReviewResult(
+        verdict="revise",
+        confidence="low",
+        reasoning="Reviewer analysis unavailable.",
+        strengths=[],
+        concerns=["Reviewer output unavailable"],
+        suggested_changes=["Review this draft manually before sending."],
+        revised_subject=None,
+        revised_body=None,
     )
 
-    fallback = {
-        "verdict": "revise",
-        "confidence": "low",
-        "reasoning": "Reviewer analysis unavailable.",
-        "strengths": [],
-        "concerns": ["Reviewer output unavailable"],
-        "suggested_changes": ["Review this draft manually before sending."],
-        "revised_subject": None,
-        "revised_body": None,
-    }
 
-    try:
-        raw = _call_ollama_chat(REVIEW_OUTREACH_DRAFT_SYSTEM, user_prompt, role=role)
-        data = _extract_json(raw)
-        result = {
-            "verdict": data.get("verdict", "revise"),
-            "confidence": data.get("confidence", "medium"),
-            "reasoning": data.get("reasoning", "No reasoning provided"),
-            "strengths": data.get("strengths", []) or [],
-            "concerns": data.get("concerns", []) or [],
-            "suggested_changes": data.get("suggested_changes", []) or [],
-            "revised_subject": data.get("revised_subject"),
-            "revised_body": data.get("revised_body"),
-        }
-        _record_public_invocation(
-            "review_outreach_draft",
-            role,
-            fallback_used=False,
-            degraded=False,
-        )
-        return result
-    except Exception as e:
-        logger.error("llm_review_draft_failed", role=_role_value(role), error=str(e))
-        _record_public_invocation(
-            "review_outreach_draft",
-            role,
-            fallback_used=True,
-            degraded=True,
-            error=str(e),
-        )
-        return fallback
+def review_outreach_draft_structured(
+    *,
+    business_name: str,
+    industry: str | None,
+    city: str | None,
+    website_url: str | None,
+    instagram_url: str | None,
+    llm_summary: str | None,
+    llm_suggested_angle: str | None,
+    signals: list,
+    subject: str,
+    body: str,
+    role: LLMRole | str = LLMRole.REVIEWER,
+    target_type: str | None = None,
+    target_id: str | None = None,
+    tags: dict[str, object] | None = None,
+) -> StructuredInvocationResult[OutreachDraftReviewResult]:
+    prompt_args = {
+        "business_name": sanitize_field(business_name),
+        "industry": sanitize_field(industry) or "Unknown",
+        "city": sanitize_field(city) or "Unknown",
+        "website_url": sanitize_field(website_url) or "None",
+        "instagram_url": sanitize_field(instagram_url) or "None",
+        "llm_summary": sanitize_field(llm_summary) or "No summary available",
+        "llm_suggested_angle": sanitize_field(llm_suggested_angle)
+        or "No suggested angle available",
+        "signals": _format_signals(signals),
+        "subject": sanitize_field(subject),
+        "body": sanitize_field(body),
+    }
+    return invoke_structured(
+        function_name="review_outreach_draft",
+        prompt=OUTREACH_DRAFT_REVIEW_PROMPT,
+        prompt_args=prompt_args,
+        role=role,
+        fallback_factory=_review_outreach_draft_fallback,
+        target_type=target_type,
+        target_id=target_id,
+        tags=tags,
+    )
 
 
 def classify_inbound_reply(
@@ -1160,83 +1174,112 @@ def generate_reply_assistant_draft(
     brand_context: dict | None = None,
 ) -> dict:
     """Generate a grounded response draft for a real inbound reply."""
-    bc = brand_context or {}
-    user_prompt = GENERATE_REPLY_ASSISTANT_DRAFT_DATA.format(
-        business_name=sanitize_field(business_name) or "Unknown",
-        industry=sanitize_field(industry) or "Unknown",
-        city=sanitize_field(city) or "Unknown",
-        lead_email=sanitize_field(lead_email) or "Unknown",
-        classification_label=classification_label or "Unknown",
-        classification_summary=sanitize_field(classification_summary)
-        or "No classification summary available",
-        next_action_suggestion=sanitize_field(next_action_suggestion)
-        or "No next action suggestion available",
-        should_escalate_reviewer="true"
-        if should_escalate_reviewer
-        else "false",
-        outbound_subject=sanitize_field(outbound_subject) or "Unknown",
-        outbound_body=sanitize_field(outbound_body) or "Unknown",
-        thread_context=sanitize_field(thread_context)
-        or "No previous thread context available",
-        from_email=sanitize_field(from_email) or "Unknown",
-        to_email=sanitize_field(to_email) or "Unknown",
-        subject=sanitize_field(subject) or "No subject",
-        body_text=sanitize_field(body_text)
-        or "No body text available",
-        brand_name=bc.get("brand_name") or "No especificado",
-        signature_name=bc.get("signature_name") or "No especificado",
-        signature_role=bc.get("signature_role") or "No especificado",
-        signature_company=bc.get("signature_company")
-        or "No especificado",
-        brand_website_url=bc.get("website_url")
-        or "No proporcionado — NO inventar URLs",
-        signature_cta=bc.get("signature_cta") or "No especificado",
-        default_reply_tone=bc.get("default_reply_tone")
-        or "profesional",
-        default_closing_line=bc.get("default_closing_line")
-        or "No especificado",
-        sender_is_solo=bc.get("signature_is_solo", False),
+    result = generate_reply_assistant_draft_structured(
+        business_name=business_name,
+        industry=industry,
+        city=city,
+        lead_email=lead_email,
+        classification_label=classification_label,
+        classification_summary=classification_summary,
+        next_action_suggestion=next_action_suggestion,
+        should_escalate_reviewer=should_escalate_reviewer,
+        outbound_subject=outbound_subject,
+        outbound_body=outbound_body,
+        thread_context=thread_context,
+        from_email=from_email,
+        to_email=to_email,
+        subject=subject,
+        body_text=body_text,
+        role=role,
+        brand_context=brand_context,
+    )
+    if result.parsed is None:
+        return _reply_assistant_draft_fallback(subject).model_dump()
+    return result.parsed.model_dump()
+
+
+def _reply_assistant_draft_fallback(
+    subject: str | None,
+) -> ReplyAssistantDraftResult:
+    return ReplyAssistantDraftResult(
+        subject=subject or "Re: Consulta",
+        body="Gracias por tu mensaje. Quedo atento para seguir la conversación.",
+        summary="Draft de respuesta generado con fallback por indisponibilidad del LLM.",
+        suggested_tone="professional",
+        should_escalate_reviewer=True,
     )
 
-    fallback = {
-        "subject": subject or "Re: Consulta",
-        "body": "Gracias por tu mensaje. Quedo atento para seguir la conversación.",
-        "summary": "Draft de respuesta generado con fallback por indisponibilidad del LLM.",
-        "suggested_tone": "professional",
-        "should_escalate_reviewer": True,
-    }
 
-    try:
-        raw = _call_ollama_chat(GENERATE_REPLY_ASSISTANT_DRAFT_SYSTEM, user_prompt, role=role)
-        data = _extract_json(raw)
-        subject_value = data.get("subject")
-        body_value = data.get("body")
-        if not subject_value or not body_value:
-            raise LLMParseError("Missing subject or body in reply assistant response")
-        result = {
-            "subject": str(subject_value).strip(),
-            "body": str(body_value).strip(),
-            "summary": str(data.get("summary", "")).strip() or None,
-            "suggested_tone": str(data.get("suggested_tone", "")).strip() or None,
-            "should_escalate_reviewer": bool(data.get("should_escalate_reviewer")),
-        }
-        _record_public_invocation(
-            "generate_reply_assistant_draft",
-            role,
-            fallback_used=False,
-            degraded=False,
-        )
-        return result
-    except Exception as e:
-        logger.error("llm_reply_assistant_failed", role=_role_value(role), error=str(e))
-        _record_public_invocation(
-            "generate_reply_assistant_draft",
-            role,
-            fallback_used=True,
-            degraded=True,
-            error=str(e),
-        )
-        return fallback
+def generate_reply_assistant_draft_structured(
+    *,
+    business_name: str | None,
+    industry: str | None,
+    city: str | None,
+    lead_email: str | None,
+    classification_label: str | None,
+    classification_summary: str | None,
+    next_action_suggestion: str | None,
+    should_escalate_reviewer: bool,
+    outbound_subject: str | None,
+    outbound_body: str | None,
+    thread_context: str | None,
+    from_email: str | None,
+    to_email: str | None,
+    subject: str | None,
+    body_text: str | None,
+    role: LLMRole | str = LLMRole.EXECUTOR,
+    brand_context: dict | None = None,
+    target_type: str | None = None,
+    target_id: str | None = None,
+    tags: dict[str, object] | None = None,
+) -> StructuredInvocationResult[ReplyAssistantDraftResult]:
+    bc = brand_context or {}
+    prompt_args = {
+        "business_name": sanitize_field(business_name) or "Unknown",
+        "industry": sanitize_field(industry) or "Unknown",
+        "city": sanitize_field(city) or "Unknown",
+        "lead_email": sanitize_field(lead_email) or "Unknown",
+        "classification_label": classification_label or "Unknown",
+        "classification_summary": sanitize_field(classification_summary)
+        or "No classification summary available",
+        "next_action_suggestion": sanitize_field(next_action_suggestion)
+        or "No next action suggestion available",
+        "should_escalate_reviewer": "true"
+        if should_escalate_reviewer
+        else "false",
+        "outbound_subject": sanitize_field(outbound_subject) or "Unknown",
+        "outbound_body": sanitize_field(outbound_body) or "Unknown",
+        "thread_context": sanitize_field(thread_context)
+        or "No previous thread context available",
+        "from_email": sanitize_field(from_email) or "Unknown",
+        "to_email": sanitize_field(to_email) or "Unknown",
+        "subject": sanitize_field(subject) or "No subject",
+        "body_text": sanitize_field(body_text)
+        or "No body text available",
+        "brand_name": bc.get("brand_name") or "No especificado",
+        "signature_name": bc.get("signature_name") or "No especificado",
+        "signature_role": bc.get("signature_role") or "No especificado",
+        "signature_company": bc.get("signature_company")
+        or "No especificado",
+        "brand_website_url": bc.get("website_url")
+        or "No proporcionado — NO inventar URLs",
+        "signature_cta": bc.get("signature_cta") or "No especificado",
+        "default_reply_tone": bc.get("default_reply_tone")
+        or "profesional",
+        "default_closing_line": bc.get("default_closing_line")
+        or "No especificado",
+        "sender_is_solo": bc.get("signature_is_solo", False),
+    }
+    return invoke_structured(
+        function_name="generate_reply_assistant_draft",
+        prompt=REPLY_ASSISTANT_DRAFT_PROMPT,
+        prompt_args=prompt_args,
+        role=role,
+        fallback_factory=lambda: _reply_assistant_draft_fallback(subject),
+        target_type=target_type,
+        target_id=target_id,
+        tags=tags,
+    )
 
 
 def review_reply_assistant_draft(
@@ -1263,74 +1306,109 @@ def review_reply_assistant_draft(
     role: LLMRole | str = LLMRole.REVIEWER,
 ) -> dict:
     """Review an existing assisted reply draft without regenerating it."""
-    user_prompt = REVIEW_REPLY_ASSISTANT_DRAFT_DATA.format(
-        business_name=sanitize_field(business_name) or "Unknown",
-        industry=sanitize_field(industry) or "Unknown",
-        city=sanitize_field(city) or "Unknown",
-        lead_email=sanitize_field(lead_email) or "Unknown",
-        classification_label=classification_label or "Unknown",
-        classification_summary=sanitize_field(classification_summary)
-        or "No classification summary available",
-        next_action_suggestion=sanitize_field(next_action_suggestion)
-        or "No next action suggestion available",
-        reply_should_escalate_reviewer="true"
-        if reply_should_escalate_reviewer
-        else "false",
-        outbound_subject=sanitize_field(outbound_subject) or "Unknown",
-        outbound_body=sanitize_field(outbound_body) or "Unknown",
-        thread_context=sanitize_field(thread_context)
-        or "No previous thread context available",
-        from_email=sanitize_field(from_email) or "Unknown",
-        to_email=sanitize_field(to_email) or "Unknown",
-        subject=sanitize_field(subject) or "No subject",
-        body_text=sanitize_field(body_text)
-        or "No body text available",
-        draft_subject=sanitize_field(draft_subject),
-        draft_body=sanitize_field(draft_body),
-        draft_summary=sanitize_field(draft_summary)
-        or "No draft summary available",
-        suggested_tone=suggested_tone or "Unknown",
+    result = review_reply_assistant_draft_structured(
+        business_name=business_name,
+        industry=industry,
+        city=city,
+        lead_email=lead_email,
+        classification_label=classification_label,
+        classification_summary=classification_summary,
+        next_action_suggestion=next_action_suggestion,
+        reply_should_escalate_reviewer=reply_should_escalate_reviewer,
+        outbound_subject=outbound_subject,
+        outbound_body=outbound_body,
+        thread_context=thread_context,
+        from_email=from_email,
+        to_email=to_email,
+        subject=subject,
+        body_text=body_text,
+        draft_subject=draft_subject,
+        draft_body=draft_body,
+        draft_summary=draft_summary,
+        suggested_tone=suggested_tone,
+        role=role,
+    )
+    if result.parsed is None:
+        return _review_reply_assistant_draft_fallback().model_dump()
+    return result.parsed.model_dump()
+
+
+def _review_reply_assistant_draft_fallback() -> ReplyAssistantDraftReviewResult:
+    return ReplyAssistantDraftReviewResult(
+        summary="Reviewer analysis unavailable.",
+        feedback="No se pudo revisar el draft de forma automática. Conviene revisarlo manualmente.",
+        suggested_edits=["Revisar manualmente antes de usar este draft."],
+        recommended_action="edit_before_sending",
+        should_use_as_is=False,
+        should_edit=True,
+        should_escalate=True,
     )
 
-    fallback = {
-        "summary": "Reviewer analysis unavailable.",
-        "feedback": "No se pudo revisar el draft de forma automática. Conviene revisarlo manualmente.",
-        "suggested_edits": ["Revisar manualmente antes de usar este draft."],
-        "recommended_action": "edit_before_sending",
-        "should_use_as_is": False,
-        "should_edit": True,
-        "should_escalate": True,
-    }
 
-    try:
-        raw = _call_ollama_chat(REVIEW_REPLY_ASSISTANT_DRAFT_SYSTEM, user_prompt, role=role)
-        data = _extract_json(raw)
-        result = {
-            "summary": str(data.get("summary", "")).strip() or fallback["summary"],
-            "feedback": str(data.get("feedback", "")).strip() or fallback["feedback"],
-            "suggested_edits": [str(item).strip() for item in (data.get("suggested_edits", []) or []) if str(item).strip()],
-            "recommended_action": str(data.get("recommended_action", "")).strip() or fallback["recommended_action"],
-            "should_use_as_is": bool(data.get("should_use_as_is")),
-            "should_edit": bool(data.get("should_edit")),
-            "should_escalate": bool(data.get("should_escalate")),
-        }
-        _record_public_invocation(
-            "review_reply_assistant_draft",
-            role,
-            fallback_used=False,
-            degraded=False,
-        )
-        return result
-    except Exception as e:
-        logger.error("llm_review_reply_assistant_failed", role=_role_value(role), error=str(e))
-        _record_public_invocation(
-            "review_reply_assistant_draft",
-            role,
-            fallback_used=True,
-            degraded=True,
-            error=str(e),
-        )
-        return fallback
+def review_reply_assistant_draft_structured(
+    *,
+    business_name: str | None,
+    industry: str | None,
+    city: str | None,
+    lead_email: str | None,
+    classification_label: str | None,
+    classification_summary: str | None,
+    next_action_suggestion: str | None,
+    reply_should_escalate_reviewer: bool,
+    outbound_subject: str | None,
+    outbound_body: str | None,
+    thread_context: str | None,
+    from_email: str | None,
+    to_email: str | None,
+    subject: str | None,
+    body_text: str | None,
+    draft_subject: str,
+    draft_body: str,
+    draft_summary: str | None,
+    suggested_tone: str | None,
+    role: LLMRole | str = LLMRole.REVIEWER,
+    target_type: str | None = None,
+    target_id: str | None = None,
+    tags: dict[str, object] | None = None,
+) -> StructuredInvocationResult[ReplyAssistantDraftReviewResult]:
+    prompt_args = {
+        "business_name": sanitize_field(business_name) or "Unknown",
+        "industry": sanitize_field(industry) or "Unknown",
+        "city": sanitize_field(city) or "Unknown",
+        "lead_email": sanitize_field(lead_email) or "Unknown",
+        "classification_label": classification_label or "Unknown",
+        "classification_summary": sanitize_field(classification_summary)
+        or "No classification summary available",
+        "next_action_suggestion": sanitize_field(next_action_suggestion)
+        or "No next action suggestion available",
+        "reply_should_escalate_reviewer": "true"
+        if reply_should_escalate_reviewer
+        else "false",
+        "outbound_subject": sanitize_field(outbound_subject) or "Unknown",
+        "outbound_body": sanitize_field(outbound_body) or "Unknown",
+        "thread_context": sanitize_field(thread_context)
+        or "No previous thread context available",
+        "from_email": sanitize_field(from_email) or "Unknown",
+        "to_email": sanitize_field(to_email) or "Unknown",
+        "subject": sanitize_field(subject) or "No subject",
+        "body_text": sanitize_field(body_text)
+        or "No body text available",
+        "draft_subject": sanitize_field(draft_subject),
+        "draft_body": sanitize_field(draft_body),
+        "draft_summary": sanitize_field(draft_summary)
+        or "No draft summary available",
+        "suggested_tone": suggested_tone or "Unknown",
+    }
+    return invoke_structured(
+        function_name="review_reply_assistant_draft",
+        prompt=REPLY_ASSISTANT_DRAFT_REVIEW_PROMPT,
+        prompt_args=prompt_args,
+        role=role,
+        fallback_factory=_review_reply_assistant_draft_fallback,
+        target_type=target_type,
+        target_id=target_id,
+        tags=tags,
+    )
 
 
 def generate_whatsapp_draft(
@@ -1345,48 +1423,67 @@ def generate_whatsapp_draft(
     role: LLMRole | str = LLMRole.EXECUTOR,
 ) -> dict:
     """Generate a WhatsApp outreach message. Returns dict with body."""
-    user_prompt = GENERATE_WHATSAPP_DRAFT_DATA.format(
-        business_name=sanitize_field(business_name),
-        industry=sanitize_field(industry) or "Unknown",
-        city=sanitize_field(city) or "Unknown",
-        website_url=sanitize_field(website_url) or "None",
-        instagram_url=sanitize_field(instagram_url) or "None",
-        llm_summary=sanitize_field(llm_summary) or "No summary available",
-        llm_suggested_angle=sanitize_field(llm_suggested_angle)
-        or "Web development services",
-        signals=_format_signals(signals),
+    result = generate_whatsapp_draft_structured(
+        business_name=business_name,
+        industry=industry,
+        city=city,
+        website_url=website_url,
+        instagram_url=instagram_url,
+        llm_summary=llm_summary,
+        llm_suggested_angle=llm_suggested_angle,
+        signals=signals,
+        role=role,
+    )
+    if result.parsed is None:
+        return _whatsapp_draft_fallback(business_name).model_dump()
+    return result.parsed.model_dump()
+
+
+def _whatsapp_draft_fallback(business_name: str) -> WhatsAppDraftResult:
+    return WhatsAppDraftResult(
+        body=(
+            f"Hola! Vi que {business_name} podría mejorar su presencia digital. "
+            "Te interesaría charlar sobre cómo puedo ayudarte? 🚀"
+        )
     )
 
-    fallback = {
-        "body": f"Hola! Vi que {business_name} podría mejorar su presencia digital. "
-        "Te interesaría charlar sobre cómo puedo ayudarte? 🚀",
-    }
 
-    try:
-        raw = _call_ollama_chat(
-            GENERATE_WHATSAPP_DRAFT_SYSTEM, user_prompt, role=role,
-        )
-        data = _extract_json(raw)
-        body = data.get("body")
-        if not body:
-            raise LLMParseError("Missing body in WhatsApp draft response")
-        _record_public_invocation(
-            "generate_whatsapp_draft",
-            role,
-            fallback_used=False,
-            degraded=False,
-        )
-        return {"body": body}
-    except Exception as e:
-        logger.error("llm_whatsapp_draft_failed", role=_role_value(role), error=str(e))
-        _record_public_invocation(
-            "generate_whatsapp_draft",
-            role,
-            fallback_used=True,
-            degraded=True,
-            error=str(e),
-        )
-        return fallback
+def generate_whatsapp_draft_structured(
+    *,
+    business_name: str,
+    industry: str | None,
+    city: str | None,
+    website_url: str | None,
+    instagram_url: str | None,
+    llm_summary: str | None,
+    llm_suggested_angle: str | None,
+    signals: list,
+    role: LLMRole | str = LLMRole.EXECUTOR,
+    target_type: str | None = None,
+    target_id: str | None = None,
+    tags: dict[str, object] | None = None,
+) -> StructuredInvocationResult[WhatsAppDraftResult]:
+    prompt_args = {
+        "business_name": sanitize_field(business_name),
+        "industry": sanitize_field(industry) or "Unknown",
+        "city": sanitize_field(city) or "Unknown",
+        "website_url": sanitize_field(website_url) or "None",
+        "instagram_url": sanitize_field(instagram_url) or "None",
+        "llm_summary": sanitize_field(llm_summary) or "No summary available",
+        "llm_suggested_angle": sanitize_field(llm_suggested_angle)
+        or "Web development services",
+        "signals": _format_signals(signals),
+    }
+    return invoke_structured(
+        function_name="generate_whatsapp_draft",
+        prompt=WHATSAPP_DRAFT_PROMPT,
+        prompt_args=prompt_args,
+        role=role,
+        fallback_factory=lambda: _whatsapp_draft_fallback(business_name),
+        target_type=target_type,
+        target_id=target_id,
+        tags=tags,
+    )
 
 
 def generate_dossier(

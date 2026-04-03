@@ -13,7 +13,11 @@ from app.llm.contracts import (
     LeadQualityResult,
     LeadReviewResult,
     OutreachDraftResult,
+    OutreachDraftReviewResult,
+    ReplyAssistantDraftResult,
+    ReplyAssistantDraftReviewResult,
     ReplyClassificationResult,
+    WhatsAppDraftResult,
 )
 from app.llm.prompts import (
     CLASSIFY_INBOUND_REPLY_DATA,
@@ -26,12 +30,20 @@ from app.llm.prompts import (
     EVALUATE_LEAD_QUALITY_SYSTEM,
     GENERATE_OUTREACH_EMAIL_DATA,
     GENERATE_OUTREACH_EMAIL_SYSTEM,
+    GENERATE_REPLY_ASSISTANT_DRAFT_DATA,
+    GENERATE_REPLY_ASSISTANT_DRAFT_SYSTEM,
+    GENERATE_WHATSAPP_DRAFT_DATA,
+    GENERATE_WHATSAPP_DRAFT_SYSTEM,
     REVIEW_COMMERCIAL_BRIEF_DATA,
     REVIEW_COMMERCIAL_BRIEF_SYSTEM,
     REVIEW_INBOUND_REPLY_DATA,
     REVIEW_INBOUND_REPLY_SYSTEM,
     REVIEW_LEAD_DATA,
     REVIEW_LEAD_SYSTEM,
+    REVIEW_OUTREACH_DRAFT_DATA,
+    REVIEW_OUTREACH_DRAFT_SYSTEM,
+    REVIEW_REPLY_ASSISTANT_DRAFT_DATA,
+    REVIEW_REPLY_ASSISTANT_DRAFT_SYSTEM,
     SUMMARIZE_BUSINESS_DATA,
     SUMMARIZE_BUSINESS_SYSTEM,
 )
@@ -84,6 +96,17 @@ OUTREACH_DRAFT_PROMPT = PromptDefinition(
 )
 
 
+OUTREACH_DRAFT_REVIEW_PROMPT = PromptDefinition(
+    prompt_id="outreach_draft.review",
+    prompt_version="v1",
+    owner="app.llm.client",
+    system_prompt=REVIEW_OUTREACH_DRAFT_SYSTEM,
+    user_prompt_template=REVIEW_OUTREACH_DRAFT_DATA,
+    response_model=OutreachDraftReviewResult,
+    tags=("lead", "outreach", "review"),
+)
+
+
 LEAD_REVIEW_PROMPT = PromptDefinition(
     prompt_id="lead_review.generate",
     prompt_version="v1",
@@ -92,6 +115,39 @@ LEAD_REVIEW_PROMPT = PromptDefinition(
     user_prompt_template=REVIEW_LEAD_DATA,
     response_model=LeadReviewResult,
     tags=("lead", "review"),
+)
+
+
+REPLY_ASSISTANT_DRAFT_PROMPT = PromptDefinition(
+    prompt_id="reply_assistant_draft.generate",
+    prompt_version="v1",
+    owner="app.llm.client",
+    system_prompt=GENERATE_REPLY_ASSISTANT_DRAFT_SYSTEM,
+    user_prompt_template=GENERATE_REPLY_ASSISTANT_DRAFT_DATA,
+    response_model=ReplyAssistantDraftResult,
+    tags=("inbox", "reply_assistant"),
+)
+
+
+REPLY_ASSISTANT_DRAFT_REVIEW_PROMPT = PromptDefinition(
+    prompt_id="reply_assistant_draft.review",
+    prompt_version="v1",
+    owner="app.llm.client",
+    system_prompt=REVIEW_REPLY_ASSISTANT_DRAFT_SYSTEM,
+    user_prompt_template=REVIEW_REPLY_ASSISTANT_DRAFT_DATA,
+    response_model=ReplyAssistantDraftReviewResult,
+    tags=("inbox", "reply_assistant", "review"),
+)
+
+
+WHATSAPP_DRAFT_PROMPT = PromptDefinition(
+    prompt_id="whatsapp_draft.generate",
+    prompt_version="v1",
+    owner="app.llm.client",
+    system_prompt=GENERATE_WHATSAPP_DRAFT_SYSTEM,
+    user_prompt_template=GENERATE_WHATSAPP_DRAFT_DATA,
+    response_model=WhatsAppDraftResult,
+    tags=("lead", "outreach", "whatsapp"),
 )
 
 
@@ -154,7 +210,11 @@ PROMPT_REGISTRY: dict[str, PromptDefinition[BaseModel]] = {
     BUSINESS_SUMMARY_PROMPT.prompt_id: BUSINESS_SUMMARY_PROMPT,
     LEAD_QUALITY_PROMPT.prompt_id: LEAD_QUALITY_PROMPT,
     OUTREACH_DRAFT_PROMPT.prompt_id: OUTREACH_DRAFT_PROMPT,
+    OUTREACH_DRAFT_REVIEW_PROMPT.prompt_id: OUTREACH_DRAFT_REVIEW_PROMPT,
     LEAD_REVIEW_PROMPT.prompt_id: LEAD_REVIEW_PROMPT,
+    REPLY_ASSISTANT_DRAFT_PROMPT.prompt_id: REPLY_ASSISTANT_DRAFT_PROMPT,
+    REPLY_ASSISTANT_DRAFT_REVIEW_PROMPT.prompt_id: REPLY_ASSISTANT_DRAFT_REVIEW_PROMPT,
+    WHATSAPP_DRAFT_PROMPT.prompt_id: WHATSAPP_DRAFT_PROMPT,
     DOSSIER_PROMPT.prompt_id: DOSSIER_PROMPT,
     INBOUND_REPLY_CLASSIFICATION_PROMPT.prompt_id: INBOUND_REPLY_CLASSIFICATION_PROMPT,
     INBOUND_REPLY_REVIEW_PROMPT.prompt_id: INBOUND_REPLY_REVIEW_PROMPT,

@@ -28,6 +28,19 @@ class OutreachDraftResult(BaseModel):
     body: str
 
 
+class OutreachDraftReviewResult(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    verdict: Literal["approve", "revise", "skip"]
+    confidence: Literal["high", "medium", "low"]
+    reasoning: str
+    strengths: list[str] = Field(default_factory=list)
+    concerns: list[str] = Field(default_factory=list)
+    suggested_changes: list[str] = Field(default_factory=list)
+    revised_subject: str | None = None
+    revised_body: str | None = None
+
+
 class LeadReviewResult(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -68,6 +81,39 @@ class InboundReplyReviewResult(BaseModel):
     recommended_action: str
     suggested_response_angle: str | None = None
     watchouts: list[str] = Field(default_factory=list)
+
+
+class ReplyAssistantDraftResult(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    subject: str
+    body: str
+    summary: str | None = None
+    suggested_tone: str | None = None
+    should_escalate_reviewer: bool
+
+
+class ReplyAssistantDraftReviewResult(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    summary: str
+    feedback: str
+    suggested_edits: list[str] = Field(default_factory=list)
+    recommended_action: Literal[
+        "use_as_is",
+        "edit_before_sending",
+        "escalate_to_reviewer",
+        "skip_reply",
+    ]
+    should_use_as_is: bool
+    should_edit: bool
+    should_escalate: bool
+
+
+class WhatsAppDraftResult(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    body: str
 
 
 class DossierResult(BaseModel):
