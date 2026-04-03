@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
-  Globe, Key, Search, Loader2, MapPin, CheckCircle2, XCircle,
+  Key, Search, Loader2, CheckCircle2, XCircle,
   Power, PowerOff, ChevronDown,
 } from "lucide-react";
 import { sileo } from "sileo";
-import { SettingsSectionCard, FieldRow, PasswordInput, SaveButton } from "./settings-primitives";
+import { SettingsSectionCard, FieldRow } from "./settings-primitives";
 import { apiFetch } from "@/lib/api/client";
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -14,6 +14,9 @@ import { apiFetch } from "@/lib/api/client";
 interface ApiKeyStatus {
   configured: boolean;
   masked: string | null;
+  managed_by: string;
+  mutable_via_api: boolean;
+  instructions: string;
 }
 
 interface Territory {
@@ -48,8 +51,6 @@ const DEFAULT_CATEGORIES = [
 
 export function CrawlersSection() {
   const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus | null>(null);
-  const [newApiKey, setNewApiKey] = useState("");
-  const [savingKey, setSavingKey] = useState(false);
 
   const [territories, setTerritories] = useState<Territory[]>([]);
   const [selectedTerritoryId, setSelectedTerritoryId] = useState<string>("");
@@ -102,24 +103,6 @@ export function CrawlersSection() {
       .catch(() => setProgress({ status: "idle" }));
   }, [selectedTerritoryId]);
 
-  const handleSaveKey = async () => {
-    if (!newApiKey.trim()) return;
-    setSavingKey(true);
-    try {
-      const data = await apiFetch<ApiKeyStatus & { configured: boolean; masked: string }>("/crawl/api-key", {
-        method: "PATCH",
-        body: JSON.stringify({ api_key: newApiKey.trim() }),
-      });
-      sileo.success({ title: "API Key de Google Maps guardada" });
-      setNewApiKey("");
-      setApiKeyStatus({ configured: data.configured, masked: data.masked });
-    } catch {
-      sileo.error({ title: "Error al guardar API Key" });
-    } finally {
-      setSavingKey(false);
-    }
-  };
-
   const handleStart = async () => {
     if (!selectedTerritoryId) return;
     setStarting(true);
@@ -169,24 +152,25 @@ export function CrawlersSection() {
       {/* API Key */}
       <SettingsSectionCard
         title="Google Maps API"
-        description="Configura tu API Key de Google Maps para buscar negocios automaticamente."
+        description="La API Key de Google Maps es configuración de deploy. Este panel solo muestra el estado actual."
         icon={Key}
       >
         <div className="grid gap-0 lg:grid-cols-2 lg:gap-x-8">
           <div>
-            <FieldRow label="API Key" hint="Se guarda en el servidor de forma segura">
-              <PasswordInput
-                value={newApiKey}
-                onChange={(v) => setNewApiKey(v as string)}
-                alreadySet={apiKeyStatus?.configured ?? false}
-                placeholder="AIzaSy..."
-              />
+            <FieldRow label="Origen" hint="Se administra fuera de la aplicación">
+              <div className="rounded-xl border border-border bg-muted px-3 py-2 text-sm text-foreground">
+                Variable de entorno: <span className="font-mono">GOOGLE_MAPS_API_KEY</span>
+              </div>
             </FieldRow>
             {apiKeyStatus?.configured && apiKeyStatus.masked && (
               <p className="mt-1 text-[10px] text-muted-foreground">
                 Actual: {apiKeyStatus.masked}
               </p>
             )}
+            <p className="mt-3 text-xs text-muted-foreground">
+              {apiKeyStatus?.instructions ??
+                "Definí GOOGLE_MAPS_API_KEY en el entorno y reiniciá la API/worker."}
+            </p>
           </div>
           <div className="flex items-end pb-5">
             <span
@@ -203,9 +187,6 @@ export function CrawlersSection() {
               )}
             </span>
           </div>
-        </div>
-        <div className="flex justify-end">
-          <SaveButton onClick={handleSaveKey} saving={savingKey} />
         </div>
       </SettingsSectionCard>
 

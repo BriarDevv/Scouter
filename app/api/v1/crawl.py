@@ -1,15 +1,15 @@
 """Crawl endpoints: trigger Google Maps discovery and ingest leads."""
 
 import json as _json
-import re as _re
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from redis import Redis
 
 from app.api.deps import get_session
 from app.core.config import settings as env
 from app.crawlers.google_maps_crawler import DEFAULT_CATEGORIES
+from app.services.deploy_config_service import get_google_maps_api_key_status
 
 router = APIRouter(prefix="/crawl", tags=["crawl"])
 
@@ -30,8 +30,10 @@ def start_territory_crawl(body: TerritoryCrawlRequest, db=Depends(get_session)):
         raise HTTPException(status_code=400, detail="Google Maps API key no configurada.")
 
     # Verify territory exists
-    from app.models.territory import Territory
     import uuid
+
+    from app.models.territory import Territory
+
     territory = db.get(Territory, uuid.UUID(body.territory_id))
     if not territory:
         raise HTTPException(status_code=404, detail="Territorio no encontrado.")
@@ -43,7 +45,11 @@ def start_territory_crawl(body: TerritoryCrawlRequest, db=Depends(get_session)):
     if existing:
         data = _json.loads(existing)
         if data.get("status") == "running":
-            return {"ok": False, "message": "Ya hay un crawl en curso para este territorio.", "progress": data}
+            return {
+                "ok": False,
+                "message": "Ya hay un crawl en curso para este territorio.",
+                "progress": data,
+            }
 
     # Launch Celery task
     from app.workers.tasks import task_crawl_territory
@@ -55,9 +61,26 @@ def start_territory_crawl(body: TerritoryCrawlRequest, db=Depends(get_session)):
     )
 
     # Store task_id in Redis so frontend can revoke it after reload
-    redis.set(redis_key, _json.dumps({"status": "running", "task_id": str(result.id), "territory": territory.name}), ex=3600)
+    redis.set(
+        redis_key,
+        _json.dumps(
+            {
+                "status": "running",
+                "task_id": str(result.id),
+                "territory": territory.name,
+            }
+        ),
+        ex=3600,
+    )
 
-    return {"ok": True, "task_id": str(result.id), "message": f"Crawl iniciado para {territory.name} ({len(territory.cities)} ciudades)."}
+    return {
+        "ok": True,
+        "task_id": str(result.id),
+        "message": (
+            f"Crawl iniciado para {territory.name} "
+            f"({len(territory.cities)} ciudades)."
+        ),
+    }
 
 
 @router.get("/territory/{territory_id}/status")
@@ -100,50 +123,24 @@ def get_categories():
 @router.get("/api-key-status")
 def api_key_status():
     """Check if Google Maps API key is configured."""
-    key = env.GOOGLE_MAPS_API_KEY
-    return {
-        "configured": bool(key),
-        "masked": f"...{key[-4:]}" if key and len(key) > 4 else None,
-    }
-
-
-_API_KEY_PATTERN = _re.compile(r"^[a-zA-Z0-9_\-]{10,256}$")
+    return get_google_maps_api_key_status()
 
 
 class ApiKeyUpdate(BaseModel):
-    api_key: str = Field(..., min_length=10, max_length=256)
+    api_key: str
 
 
 @router.patch("/api-key")
 def update_api_key(body: ApiKeyUpdate):
-    """Update the Google Maps API key in .env file."""
-    from pathlib import Path
-    import re
-
-    env_path = Path(__file__).resolve().parent.parent.parent.parent / ".env"
-    if not env_path.exists():
-        raise HTTPException(status_code=404, detail=".env file not found")
-
-    content = env_path.read_text()
-    new_key = body.api_key.strip()
-
-    if not _API_KEY_PATTERN.match(new_key):
-        raise HTTPException(status_code=422, detail="Formato de API key inválido.")
-
-    if "GOOGLE_MAPS_API_KEY" in content:
-        content = re.sub(
-            r"GOOGLE_MAPS_API_KEY=.*",
-            f"GOOGLE_MAPS_API_KEY={new_key}",
-            content,
-        )
-    else:
-        content = content.rstrip() + f"\nGOOGLE_MAPS_API_KEY={new_key}\n"
-
-    env_path.write_text(content)
-    env.GOOGLE_MAPS_API_KEY = new_key
-
-    return {
-        "ok": True,
-        "configured": True,
-        "masked": f"...{new_key[-4:]}" if len(new_key) > 4 else None,
-    }
+    """Reject runtime API-key mutation for deploy-managed crawler config."""
+    _ = body  # keep backward-compatible request validation shape
+    status = get_google_maps_api_key_status()
+    raise HTTPException(
+        status_code=409,
+        detail={
+            **status,
+            "message": (
+                "GOOGLE_MAPS_API_KEY es configuración de deploy y no puede modificarse desde HTTP."
+            ),
+        },
+    )

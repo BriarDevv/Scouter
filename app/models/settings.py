@@ -1,7 +1,8 @@
 """Operational settings — singleton row persisted in DB (id always = 1).
 
 Non-secret, non-infra configuration editable from the dashboard.
-Secret values (SMTP/IMAP passwords, keys) remain in .env only.
+Deploy-time config stays in environment variables. Runtime product policy lives
+here. Secrets live in dedicated credential tables/services.
 """
 
 from datetime import datetime, timezone
