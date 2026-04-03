@@ -62,9 +62,9 @@ def test_analyze_skips_already_analyzed(db):
     db.add(lead)
     db.commit()
 
-    with patch("app.workers.pipeline_tasks.summarize_business") as mock_llm:
+    with patch("app.workers.pipeline_tasks.run_lead_analysis_step") as mock_analysis:
         from app.workers.pipeline_tasks import task_analyze_lead
         result = task_analyze_lead(str(lead.id))
         assert result["status"] == "skipped"
         assert result["reason"] == "already_analyzed"
-        mock_llm.assert_not_called()
+        mock_analysis.assert_not_called()
