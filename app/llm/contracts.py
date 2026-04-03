@@ -28,6 +28,20 @@ class OutreachDraftResult(BaseModel):
     body: str
 
 
+class ReviewCorrectionItem(BaseModel):
+    """Structured correction from reviewer — enables aggregation and learning."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    category: Literal[
+        "tone", "cta", "personalization", "length",
+        "accuracy", "relevance", "format", "language",
+    ]
+    severity: Literal["critical", "important", "suggestion"] = "suggestion"
+    issue: str
+    suggestion: str | None = None
+
+
 class OutreachDraftReviewResult(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -37,6 +51,7 @@ class OutreachDraftReviewResult(BaseModel):
     strengths: list[str] = Field(default_factory=list)
     concerns: list[str] = Field(default_factory=list)
     suggested_changes: list[str] = Field(default_factory=list)
+    corrections: list[ReviewCorrectionItem] = Field(default_factory=list)
     revised_subject: str | None = None
     revised_body: str | None = None
 
@@ -49,6 +64,7 @@ class LeadReviewResult(BaseModel):
     reasoning: str
     recommended_action: str
     watchouts: list[str] = Field(default_factory=list)
+    corrections: list[ReviewCorrectionItem] = Field(default_factory=list)
 
 
 class ReplyClassificationResult(BaseModel):
@@ -161,6 +177,7 @@ class CommercialBriefReviewResult(BaseModel):
     approved: bool
     feedback: str
     suggested_changes: str | None = None
+    corrections: list[ReviewCorrectionItem] = Field(default_factory=list)
 
 
 class StructuredInvocationResult[ParsedT: BaseModel](BaseModel):
