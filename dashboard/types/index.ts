@@ -26,13 +26,18 @@ export type SignalType =
   | "no_mobile_friendly"
   | "slow_load"
   | "has_website"
-  | "has_custom_domain";
+  | "has_custom_domain"
+  | "website_error";
 
 export type DraftStatus = "pending_review" | "approved" | "rejected" | "sent";
 
 export type LeadQuality = "high" | "medium" | "low" | "unknown";
 
-export type InboundClassificationStatus = "pending" | "classified" | "failed";
+export type InboundClassificationStatus =
+  | "pending"
+  | "classifying"
+  | "classified"
+  | "failed";
 
 export type InboundClassificationLabel =
   | "interested"
