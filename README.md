@@ -255,8 +255,8 @@ Export the full environment (DB, secrets, configs) to move ClawScout to another 
 # On the current machine
 bash scripts/export.sh
 
-# Copy the export folder to the new machine, then:
-bash scripts/import.sh /path/to/clawscout-export-YYYYMMDD-HHMM/
+# Copy the export ZIP (or folder) to the new machine, then:
+bash scripts/import.sh /path/to/clawscout-export-YYYYMMDD-HHMM.zip
 
 # Download Ollama models (listed by import.sh)
 ollama pull qwen3.5:4b && ollama pull qwen3.5:9b
@@ -265,7 +265,7 @@ ollama pull qwen3.5:27b && ollama pull hermes3:8b
 make up  # done
 ```
 
-The export includes `.env` (secrets/keys), full Postgres dump (leads, chats, briefs, credentials, settings — everything), storage artifacts, and Claude/OMC configs. Ollama models (~15 GB) are listed but downloaded separately.
+The export includes `.env` (secrets/keys), full Postgres dump (leads, chats, briefs, credentials, settings — everything), storage artifacts, and Claude/OMC configs. `export.sh` now leaves both the export folder and a ready-to-move ZIP. Ollama models (~15 GB) are listed but downloaded separately.
 
 **Important:** never regenerate `SECRET_KEY` after importing a DB — credentials are encrypted with it.
 

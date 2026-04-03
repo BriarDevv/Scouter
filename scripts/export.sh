@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
 # ============================================================================
 # ClawScout Export — empaqueta todo lo necesario para migrar a otra PC
-# Uso: bash scripts/export.sh [carpeta-destino]
+# Uso: bash scripts/export.sh [carpeta-destino|zip-destino]
 # ============================================================================
 set -euo pipefail
 
-EXPORT_DIR="${1:-clawscout-export-$(date +%Y%m%d-%H%M)}"
+INPUT_PATH="${1:-clawscout-export-$(date +%Y%m%d-%H%M)}"
+if [[ "$INPUT_PATH" == *.zip ]]; then
+  ZIP_PATH="$INPUT_PATH"
+  EXPORT_DIR="${INPUT_PATH%.zip}"
+else
+  EXPORT_DIR="$INPUT_PATH"
+  ZIP_PATH="${EXPORT_DIR}.zip"
+fi
+
 mkdir -p "$EXPORT_DIR"
 
 echo "╔══════════════════════════════════════╗"
@@ -68,14 +76,35 @@ else
 fi
 
 # ── Resumen ─────────────────────────────────────────────────────────
+echo "→ Generando ZIP..."
+rm -f "$ZIP_PATH"
+python3 - "$EXPORT_DIR" "$ZIP_PATH" <<'PY'
+import sys
+import zipfile
+from pathlib import Path
+
+export_dir = Path(sys.argv[1])
+zip_path = Path(sys.argv[2])
+
+with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+    for path in sorted(export_dir.rglob("*")):
+        if path.is_dir():
+            continue
+        zf.write(path, path.relative_to(export_dir.parent))
+PY
+echo "✔ ZIP generado ($(du -h "$ZIP_PATH" | cut -f1))"
+
 echo ""
 echo "════════════════════════════════════════"
 echo "Export completo en: $EXPORT_DIR/"
+echo "ZIP listo en:        $ZIP_PATH"
 echo ""
 ls -lh "$EXPORT_DIR/"
 echo ""
+ls -lh "$ZIP_PATH"
+echo ""
 echo "Próximo paso:"
-echo "  1. Copiá la carpeta '$EXPORT_DIR/' a USB/nube"
+echo "  1. Copiá '$ZIP_PATH' o la carpeta '$EXPORT_DIR/' a USB/nube"
 echo "  2. En la PC nueva: seguí el README para instalar"
-echo "  3. Después: bash scripts/import.sh $EXPORT_DIR/"
+echo "  3. Después: bash scripts/import.sh $ZIP_PATH"
 echo "════════════════════════════════════════"

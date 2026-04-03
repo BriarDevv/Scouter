@@ -2,14 +2,43 @@
 # ============================================================================
 # ClawScout Import — restaura un export en una PC nueva
 # Prerequisito: seguir el README primero (WSL, Docker, Ollama, Python, Node)
-# Uso: bash scripts/import.sh <carpeta-export>
+# Uso: bash scripts/import.sh <carpeta-export|archivo.zip>
 # ============================================================================
 set -euo pipefail
 
-IMPORT_DIR="${1:?Uso: bash scripts/import.sh <carpeta-export>}"
+INPUT_PATH="${1:?Uso: bash scripts/import.sh <carpeta-export|archivo.zip>}"
+TEMP_IMPORT_DIR=""
 
-if [ ! -d "$IMPORT_DIR" ]; then
-  echo "ERROR: No existe la carpeta '$IMPORT_DIR'"
+cleanup() {
+  if [ -n "$TEMP_IMPORT_DIR" ] && [ -d "$TEMP_IMPORT_DIR" ]; then
+    rm -rf "$TEMP_IMPORT_DIR"
+  fi
+}
+trap cleanup EXIT
+
+if [ -d "$INPUT_PATH" ]; then
+  IMPORT_DIR="$INPUT_PATH"
+elif [ -f "$INPUT_PATH" ] && [[ "$INPUT_PATH" == *.zip ]]; then
+  TEMP_IMPORT_DIR="$(mktemp -d /tmp/clawscout-import-XXXXXX)"
+  echo "→ Descomprimiendo ZIP..."
+  python3 - "$INPUT_PATH" "$TEMP_IMPORT_DIR" <<'PY'
+import sys
+import zipfile
+from pathlib import Path
+
+zip_path = Path(sys.argv[1])
+dest = Path(sys.argv[2])
+with zipfile.ZipFile(zip_path) as zf:
+    zf.extractall(dest)
+PY
+  ROOT_DIRS=$(find "$TEMP_IMPORT_DIR" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
+  if [ "$ROOT_DIRS" -eq 1 ]; then
+    IMPORT_DIR=$(find "$TEMP_IMPORT_DIR" -mindepth 1 -maxdepth 1 -type d | head -1)
+  else
+    IMPORT_DIR="$TEMP_IMPORT_DIR"
+  fi
+else
+  echo "ERROR: '$INPUT_PATH' no es una carpeta ni un .zip válido"
   exit 1
 fi
 
