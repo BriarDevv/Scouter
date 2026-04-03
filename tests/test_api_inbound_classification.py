@@ -1,5 +1,7 @@
 from datetime import UTC, datetime
 
+from app.llm.invocation_metadata import LLMInvocationMetadata
+from app.llm.types import LLMInvocationStatus
 from app.models.inbound_mail import InboundMailClassificationStatus
 from app.models.lead import Lead, LeadStatus
 from app.models.outreach import DraftStatus, OutreachDraft
@@ -161,6 +163,46 @@ def test_classify_inbound_message_failure_persists_error(client, db, monkeypatch
     assert payload["classification_label"] is None
     assert payload["classification_role"] == "executor"
     assert payload["classification_model"] == "qwen3.5:9b"
+
+
+def test_classify_inbound_message_uses_actual_invocation_metadata(client, db, monkeypatch):
+    monkeypatch.setattr("app.core.config.settings.MAIL_INBOUND_ENABLED", True)
+    _seed_inbound_message(db, monkeypatch, delivery_message_id="out-xyz", suffix="003")
+
+    def fake_classifier(**kwargs):
+        return {
+            "label": "interested",
+            "summary": "Quiere avanzar.",
+            "confidence": 0.8,
+            "next_action_suggestion": "Responder con próximos pasos.",
+            "should_escalate_reviewer": False,
+        }
+
+    monkeypatch.setattr(
+        "app.services.inbox.reply_classification_service.llm_classify_inbound_reply",
+        fake_classifier,
+    )
+    monkeypatch.setattr(
+        "app.services.inbox.reply_classification_service.peek_last_invocation",
+        lambda: LLMInvocationMetadata(
+            function_name="classify_inbound_reply",
+            prompt_id="inbound_reply.classify",
+            prompt_version="v1",
+            role="executor",
+            status=LLMInvocationStatus.DEGRADED,
+            model="qwen3.5:9b-instrumented",
+            fallback_used=False,
+            degraded=True,
+            parse_valid=True,
+        ),
+    )
+
+    message = client.get("/api/v1/mail/inbound/messages").json()[0]
+    resp = client.post(f"/api/v1/mail/inbound/messages/{message['id']}/classify")
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["classification_role"] == "executor"
+    assert payload["classification_model"] == "qwen3.5:9b-instrumented"
 
 
 def test_classify_pending_endpoint_and_filter(client, db, monkeypatch):

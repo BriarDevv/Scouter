@@ -8,9 +8,11 @@ from app.llm.client import (
     _call_ollama_chat,
     _ChatCompletion,
     _extract_json,
+    classify_inbound_reply,
     evaluate_lead_quality,
     generate_dossier,
     generate_outreach_draft,
+    review_inbound_reply,
     review_lead,
     summarize_business,
 )
@@ -286,3 +288,63 @@ def test_generate_dossier_uses_structured_path(monkeypatch):
 
     assert payload["digital_maturity"] == "basic"
     assert payload["business_description"] == "Negocio claro"
+
+
+def test_classify_inbound_reply_raises_with_prompt_metadata(monkeypatch):
+    clear_last_invocation()
+
+    def broken_chat(system_prompt, user_prompt, role=LLMRole.EXECUTOR, format_schema=None):
+        raise RuntimeError("classifier unavailable")
+
+    monkeypatch.setattr("app.llm.client._chat_completion", broken_chat)
+
+    with pytest.raises(Exception):
+        classify_inbound_reply(
+            business_name="Test Corp",
+            industry="Tech",
+            city="CABA",
+            lead_email="lead@example.com",
+            outbound_subject="Hola",
+            outbound_message_id="msg-1",
+            from_email="lead@example.com",
+            to_email="ops@example.com",
+            subject="Re: Hola",
+            body_text="Me interesa",
+        )
+
+    metadata = pop_last_invocation()
+    assert metadata is not None
+    assert metadata.prompt_id == "inbound_reply.classify"
+    assert metadata.status.value in {"failed", "parse_failed"}
+
+
+def test_review_inbound_reply_structured_fallback(monkeypatch):
+    clear_last_invocation()
+
+    def broken_chat(system_prompt, user_prompt, role=LLMRole.REVIEWER, format_schema=None):
+        raise RuntimeError("reviewer unavailable")
+
+    monkeypatch.setattr("app.llm.client._chat_completion", broken_chat)
+
+    payload = review_inbound_reply(
+        business_name="Test Corp",
+        industry="Tech",
+        city="CABA",
+        lead_email="lead@example.com",
+        outbound_subject="Hola",
+        outbound_message_id="msg-1",
+        from_email="lead@example.com",
+        to_email="ops@example.com",
+        subject="Re: Hola",
+        body_text="Me interesa",
+        classification_label="interested",
+        classification_summary="Quiere avanzar",
+        next_action_suggestion="Responder",
+        should_escalate_reviewer=False,
+    )
+
+    metadata = pop_last_invocation()
+    assert payload["verdict"] == "consider_reply"
+    assert metadata is not None
+    assert metadata.prompt_id == "inbound_reply.review"
+    assert metadata.fallback_used is True

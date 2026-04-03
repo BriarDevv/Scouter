@@ -20,16 +20,24 @@ class TestPromptInjectionBoundaries:
     """Verify that untrusted external data is isolated from system instructions."""
 
     def _capture_call(self, monkeypatch):
-        """Helper: monkeypatch _call_ollama_chat to capture system/user messages."""
+        """Helper: monkeypatch _chat_completion to capture system/user messages."""
         captured = {}
 
-        def fake_call(system_prompt, user_prompt, role=LLMRole.EXECUTOR):
+        def fake_chat(system_prompt, user_prompt, role=LLMRole.EXECUTOR, format_schema=None):
             captured["system"] = system_prompt
             captured["user"] = user_prompt
             captured["role"] = role
-            return '{"label": "spam_or_irrelevant", "summary": "spam", "confidence": 0.9, "next_action_suggestion": "ignore", "should_escalate_reviewer": false}'
+            return _ChatCompletion(
+                text=(
+                    '{"label": "spam_or_irrelevant", "summary": "spam", '
+                    '"confidence": 0.9, "next_action_suggestion": "ignore", '
+                    '"should_escalate_reviewer": false}'
+                ),
+                model="qwen3.5:9b",
+                latency_ms=14,
+            )
 
-        monkeypatch.setattr("app.llm.client._call_ollama_chat", fake_call)
+        monkeypatch.setattr("app.llm.client._chat_completion", fake_chat)
         return captured
 
     def test_malicious_email_body_stays_in_user_message(self, monkeypatch):
@@ -145,11 +153,19 @@ class TestPromptInjectionBoundaries:
         """Reviewer system prompt must warn about potential executor contamination."""
         captured = {}
 
-        def fake_call(system_prompt, user_prompt, role=LLMRole.REVIEWER):
+        def fake_chat(system_prompt, user_prompt, role=LLMRole.REVIEWER, format_schema=None):
             captured["system"] = system_prompt
-            return '{"verdict": "ignore", "confidence": "high", "reasoning": "test", "recommended_action": "ignore", "suggested_response_angle": null, "watchouts": []}'
+            return _ChatCompletion(
+                text=(
+                    '{"verdict": "ignore", "confidence": "high", '
+                    '"reasoning": "test", "recommended_action": "ignore", '
+                    '"suggested_response_angle": null, "watchouts": []}'
+                ),
+                model="qwen3.5:27b",
+                latency_ms=21,
+            )
 
-        monkeypatch.setattr("app.llm.client._call_ollama_chat", fake_call)
+        monkeypatch.setattr("app.llm.client._chat_completion", fake_chat)
 
         review_inbound_reply(
             business_name="Test",
