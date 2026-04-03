@@ -15,6 +15,39 @@ class LeadQualityResult(BaseModel):
     suggested_angle: str
 
 
+class BusinessSummaryResult(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    summary: str
+
+
+class OutreachDraftResult(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    subject: str
+    body: str
+
+
+class LeadReviewResult(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    verdict: Literal["priority", "worth_follow_up", "not_now"]
+    confidence: Literal["high", "medium", "low"]
+    reasoning: str
+    recommended_action: str
+    watchouts: list[str] = Field(default_factory=list)
+
+
+class DossierResult(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    business_description: str
+    digital_maturity: Literal["none", "basic", "intermediate", "advanced", "unknown"]
+    key_findings: list[str] = Field(default_factory=list)
+    improvement_opportunities: list[str] = Field(default_factory=list)
+    overall_assessment: str
+
+
 class CommercialBriefResult(BaseModel):
     model_config = ConfigDict(extra="ignore")
 

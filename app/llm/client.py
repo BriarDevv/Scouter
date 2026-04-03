@@ -18,9 +18,13 @@ from app.core.config import settings
 from app.core.logging import get_logger
 from app.db.session import SessionLocal
 from app.llm.contracts import (
+    BusinessSummaryResult,
     CommercialBriefResult,
     CommercialBriefReviewResult,
+    DossierResult,
     LeadQualityResult,
+    LeadReviewResult,
+    OutreachDraftResult,
     StructuredInvocationResult,
     TextInvocationResult,
 )
@@ -29,32 +33,28 @@ from app.llm.invocation_metadata import (
     record_invocation,
 )
 from app.llm.prompt_registry import (
+    BUSINESS_SUMMARY_PROMPT,
     COMMERCIAL_BRIEF_PROMPT,
     COMMERCIAL_BRIEF_REVIEW_PROMPT,
+    DOSSIER_PROMPT,
     LEAD_QUALITY_PROMPT,
+    LEAD_REVIEW_PROMPT,
+    OUTREACH_DRAFT_PROMPT,
     PromptDefinition,
 )
 from app.llm.prompts import (
     CLASSIFY_INBOUND_REPLY_DATA,
     CLASSIFY_INBOUND_REPLY_SYSTEM,
-    DOSSIER_DATA,
-    DOSSIER_SYSTEM,
-    GENERATE_OUTREACH_EMAIL_DATA,
-    GENERATE_OUTREACH_EMAIL_SYSTEM,
     GENERATE_REPLY_ASSISTANT_DRAFT_DATA,
     GENERATE_REPLY_ASSISTANT_DRAFT_SYSTEM,
     GENERATE_WHATSAPP_DRAFT_DATA,
     GENERATE_WHATSAPP_DRAFT_SYSTEM,
     REVIEW_INBOUND_REPLY_DATA,
     REVIEW_INBOUND_REPLY_SYSTEM,
-    REVIEW_LEAD_DATA,
-    REVIEW_LEAD_SYSTEM,
     REVIEW_OUTREACH_DRAFT_DATA,
     REVIEW_OUTREACH_DRAFT_SYSTEM,
     REVIEW_REPLY_ASSISTANT_DRAFT_DATA,
     REVIEW_REPLY_ASSISTANT_DRAFT_SYSTEM,
-    SUMMARIZE_BUSINESS_DATA,
-    SUMMARIZE_BUSINESS_SYSTEM,
 )
 from app.llm.resolver import normalize_role, resolve_model_for_role
 from app.llm.roles import LLMRole
@@ -562,6 +562,56 @@ def _format_signals(signals: list) -> str:
     return ", ".join(f"{s.signal_type.value}: {s.detail or 'N/A'}" for s in signals)
 
 
+def _business_summary_fallback(
+    business_name: str,
+    industry: str | None,
+    city: str | None,
+) -> BusinessSummaryResult:
+    return BusinessSummaryResult(
+        summary=(
+            f"[LLM unavailable] {business_name} - "
+            f"{industry or 'Unknown industry'} in {city or 'Unknown location'}"
+        )
+    )
+
+
+def summarize_business_structured(
+    *,
+    business_name: str,
+    industry: str | None,
+    city: str | None,
+    website_url: str | None,
+    instagram_url: str | None,
+    signals: list,
+    role: LLMRole | str = LLMRole.EXECUTOR,
+    target_type: str | None = None,
+    target_id: str | None = None,
+    tags: dict[str, object] | None = None,
+) -> StructuredInvocationResult[BusinessSummaryResult]:
+    prompt_args = {
+        "business_name": sanitize_field(business_name),
+        "industry": sanitize_field(industry) or "Unknown",
+        "city": sanitize_field(city) or "Unknown",
+        "website_url": sanitize_field(website_url) or "None",
+        "instagram_url": sanitize_field(instagram_url) or "None",
+        "signals": _format_signals(signals),
+    }
+    return invoke_structured(
+        function_name="summarize_business",
+        prompt=BUSINESS_SUMMARY_PROMPT,
+        prompt_args=prompt_args,
+        role=role,
+        fallback_factory=lambda: _business_summary_fallback(
+            business_name,
+            industry,
+            city,
+        ),
+        target_type=target_type,
+        target_id=target_id,
+        tags=tags,
+    )
+
+
 def summarize_business(
     business_name: str,
     industry: str | None,
@@ -572,35 +622,22 @@ def summarize_business(
     role: LLMRole | str = LLMRole.EXECUTOR,
 ) -> str:
     """Generate a business summary using the local LLM."""
-    user_prompt = SUMMARIZE_BUSINESS_DATA.format(
-        business_name=sanitize_field(business_name),
-        industry=sanitize_field(industry) or "Unknown",
-        city=sanitize_field(city) or "Unknown",
-        website_url=sanitize_field(website_url) or "None",
-        instagram_url=sanitize_field(instagram_url) or "None",
-        signals=_format_signals(signals),
+    result = summarize_business_structured(
+        business_name=business_name,
+        industry=industry,
+        city=city,
+        website_url=website_url,
+        instagram_url=instagram_url,
+        signals=signals,
+        role=role,
     )
-
-    try:
-        raw = _call_ollama_chat(SUMMARIZE_BUSINESS_SYSTEM, user_prompt, role=role)
-        data = _extract_json(raw)
-        _record_public_invocation(
-            "summarize_business",
-            role,
-            fallback_used=False,
-            degraded=False,
-        )
-        return data.get("summary", raw)
-    except Exception as e:
-        logger.error("llm_summarize_failed", role=_role_value(role), error=str(e))
-        _record_public_invocation(
-            "summarize_business",
-            role,
-            fallback_used=True,
-            degraded=True,
-            error=str(e),
-        )
-        return f"[LLM unavailable] {business_name} - {industry or 'Unknown industry'} in {city or 'Unknown location'}"
+    if result.parsed is None:
+        return _business_summary_fallback(
+            business_name,
+            industry,
+            city,
+        ).summary
+    return result.parsed.summary
 
 
 def _lead_quality_fallback() -> LeadQualityResult:
@@ -685,68 +722,92 @@ def generate_outreach_draft(
     brand_context: dict | None = None,
 ) -> dict:
     """Generate an outreach email draft. Returns dict with subject and body."""
+    result = generate_outreach_draft_structured(
+        business_name=business_name,
+        industry=industry,
+        city=city,
+        website_url=website_url,
+        instagram_url=instagram_url,
+        llm_summary=llm_summary,
+        llm_suggested_angle=llm_suggested_angle,
+        signals=signals,
+        role=role,
+        brand_context=brand_context,
+    )
+    if result.parsed is None:
+        return _outreach_draft_fallback(business_name).model_dump()
+    return result.parsed.model_dump()
+
+
+def _outreach_draft_fallback(business_name: str) -> OutreachDraftResult:
+    return OutreachDraftResult(
+        subject=f"Propuesta de desarrollo web para {business_name}",
+        body=(
+            f"Hola,\n\nSoy desarrollador web y noté que {business_name} podría "
+            "beneficiarse de una mejora en su presencia digital.\n\n"
+            "Me encantaría charlar sobre cómo puedo ayudarlos.\n\nSaludos."
+        ),
+    )
+
+
+def generate_outreach_draft_structured(
+    *,
+    business_name: str,
+    industry: str | None,
+    city: str | None,
+    website_url: str | None,
+    instagram_url: str | None,
+    llm_summary: str | None,
+    llm_suggested_angle: str | None,
+    signals: list,
+    role: LLMRole | str = LLMRole.EXECUTOR,
+    brand_context: dict | None = None,
+    target_type: str | None = None,
+    target_id: str | None = None,
+    tags: dict[str, object] | None = None,
+) -> StructuredInvocationResult[OutreachDraftResult]:
     bc = brand_context or {}
-    user_prompt = GENERATE_OUTREACH_EMAIL_DATA.format(
-        business_name=sanitize_field(business_name),
-        industry=sanitize_field(industry) or "Unknown",
-        city=sanitize_field(city) or "Unknown",
-        website_url=sanitize_field(website_url) or "None",
-        instagram_url=sanitize_field(instagram_url) or "None",
-        llm_summary=sanitize_field(llm_summary) or "No summary available",
-        llm_suggested_angle=sanitize_field(llm_suggested_angle)
+    user_prompt_args = {
+        "business_name": sanitize_field(business_name),
+        "industry": sanitize_field(industry) or "Unknown",
+        "city": sanitize_field(city) or "Unknown",
+        "website_url": sanitize_field(website_url) or "None",
+        "instagram_url": sanitize_field(instagram_url) or "None",
+        "llm_summary": sanitize_field(llm_summary) or "No summary available",
+        "llm_suggested_angle": sanitize_field(llm_suggested_angle)
         or "Web development services",
-        signals=_format_signals(signals),
-        brand_name=bc.get("brand_name") or "No especificado",
-        signature_name=bc.get("signature_name") or "No especificado",
-        signature_role=bc.get("signature_role") or "No especificado",
-        signature_company=bc.get("signature_company") or "No especificado",
-        brand_website_url=bc.get("website_url")
+        "signals": _format_signals(signals),
+        "brand_name": bc.get("brand_name") or "No especificado",
+        "signature_name": bc.get("signature_name") or "No especificado",
+        "signature_role": bc.get("signature_role") or "No especificado",
+        "signature_company": bc.get("signature_company") or "No especificado",
+        "brand_website_url": bc.get("website_url")
         or "No proporcionado — NO inventar URLs",
-        portfolio_url=bc.get("portfolio_url")
+        "portfolio_url": bc.get("portfolio_url")
         or "No proporcionado — NO inventar URLs",
-        calendar_url=bc.get("calendar_url")
+        "calendar_url": bc.get("calendar_url")
         or "No proporcionado — NO inventar URLs",
-        signature_cta=bc.get("signature_cta") or "No especificado",
-        default_outreach_tone=bc.get("default_outreach_tone")
+        "signature_cta": bc.get("signature_cta") or "No especificado",
+        "default_outreach_tone": bc.get("default_outreach_tone")
         or "profesional",
-        default_closing_line=bc.get("default_closing_line")
+        "default_closing_line": bc.get("default_closing_line")
         or "No especificado",
-        signature_include_portfolio=bc.get(
+        "signature_include_portfolio": bc.get(
             "signature_include_portfolio", True
         )
         and bool(bc.get("portfolio_url")),
-        sender_is_solo=bc.get("signature_is_solo", False),
-    )
-
-    fallback = {
-        "subject": f"Propuesta de desarrollo web para {business_name}",
-        "body": f"Hola,\n\nSoy desarrollador web y noté que {business_name} podría beneficiarse de una mejora en su presencia digital.\n\nMe encantaría charlar sobre cómo puedo ayudarlos.\n\nSaludos.",
+        "sender_is_solo": bc.get("signature_is_solo", False),
     }
-
-    try:
-        raw = _call_ollama_chat(GENERATE_OUTREACH_EMAIL_SYSTEM, user_prompt, role=role)
-        data = _extract_json(raw)
-        subject = data.get("subject")
-        body = data.get("body")
-        if not subject or not body:
-            raise LLMParseError("Missing subject or body in LLM response")
-        _record_public_invocation(
-            "generate_outreach_draft",
-            role,
-            fallback_used=False,
-            degraded=False,
-        )
-        return {"subject": subject, "body": body}
-    except Exception as e:
-        logger.error("llm_outreach_failed", role=_role_value(role), error=str(e))
-        _record_public_invocation(
-            "generate_outreach_draft",
-            role,
-            fallback_used=True,
-            degraded=True,
-            error=str(e),
-        )
-        return fallback
+    return invoke_structured(
+        function_name="generate_outreach_draft",
+        prompt=OUTREACH_DRAFT_PROMPT,
+        prompt_args=user_prompt_args,
+        role=role,
+        fallback_factory=lambda: _outreach_draft_fallback(business_name),
+        target_type=target_type,
+        target_id=target_id,
+        tags=tags,
+    )
 
 
 def review_lead(
@@ -762,54 +823,71 @@ def review_lead(
     role: LLMRole | str = LLMRole.REVIEWER,
 ) -> dict:
     """Run a reviewer pass on a lead. Returns verdict, confidence, reasoning, recommended_action, watchouts."""
-    user_prompt = REVIEW_LEAD_DATA.format(
-        business_name=sanitize_field(business_name),
-        industry=sanitize_field(industry) or "Unknown",
-        city=sanitize_field(city) or "Unknown",
-        website_url=sanitize_field(website_url) or "None",
-        instagram_url=sanitize_field(instagram_url) or "None",
-        llm_summary=sanitize_field(llm_summary) or "No summary available",
-        llm_suggested_angle=sanitize_field(llm_suggested_angle)
-        or "No suggested angle available",
-        signals=_format_signals(signals),
-        score=score or 0,
+    result = review_lead_structured(
+        business_name=business_name,
+        industry=industry,
+        city=city,
+        website_url=website_url,
+        instagram_url=instagram_url,
+        llm_summary=llm_summary,
+        llm_suggested_angle=llm_suggested_angle,
+        signals=signals,
+        score=score,
+        role=role,
+    )
+    if result.parsed is None:
+        return _lead_review_fallback().model_dump()
+    return result.parsed.model_dump()
+
+
+def _lead_review_fallback() -> LeadReviewResult:
+    return LeadReviewResult(
+        verdict="worth_follow_up",
+        confidence="low",
+        reasoning="Reviewer analysis unavailable.",
+        recommended_action="Review this lead manually before taking action.",
+        watchouts=["Reviewer output unavailable"],
     )
 
-    fallback = {
-        "verdict": "worth_follow_up",
-        "confidence": "low",
-        "reasoning": "Reviewer analysis unavailable.",
-        "recommended_action": "Review this lead manually before taking action.",
-        "watchouts": ["Reviewer output unavailable"],
-    }
 
-    try:
-        raw = _call_ollama_chat(REVIEW_LEAD_SYSTEM, user_prompt, role=role)
-        data = _extract_json(raw)
-        result = {
-            "verdict": data.get("verdict", "worth_follow_up"),
-            "confidence": data.get("confidence", "medium"),
-            "reasoning": data.get("reasoning", "No reasoning provided"),
-            "recommended_action": data.get("recommended_action", "Review manually"),
-            "watchouts": data.get("watchouts", []) or [],
-        }
-        _record_public_invocation(
-            "review_lead",
-            role,
-            fallback_used=False,
-            degraded=False,
-        )
-        return result
-    except Exception as e:
-        logger.error("llm_review_lead_failed", role=_role_value(role), error=str(e))
-        _record_public_invocation(
-            "review_lead",
-            role,
-            fallback_used=True,
-            degraded=True,
-            error=str(e),
-        )
-        return fallback
+def review_lead_structured(
+    *,
+    business_name: str,
+    industry: str | None,
+    city: str | None,
+    website_url: str | None,
+    instagram_url: str | None,
+    llm_summary: str | None,
+    llm_suggested_angle: str | None,
+    signals: list,
+    score: float | None,
+    role: LLMRole | str = LLMRole.REVIEWER,
+    target_type: str | None = None,
+    target_id: str | None = None,
+    tags: dict[str, object] | None = None,
+) -> StructuredInvocationResult[LeadReviewResult]:
+    prompt_args = {
+        "business_name": sanitize_field(business_name),
+        "industry": sanitize_field(industry) or "Unknown",
+        "city": sanitize_field(city) or "Unknown",
+        "website_url": sanitize_field(website_url) or "None",
+        "instagram_url": sanitize_field(instagram_url) or "None",
+        "llm_summary": sanitize_field(llm_summary) or "No summary available",
+        "llm_suggested_angle": sanitize_field(llm_suggested_angle)
+        or "No suggested angle available",
+        "signals": _format_signals(signals),
+        "score": score or 0,
+    }
+    return invoke_structured(
+        function_name="review_lead",
+        prompt=LEAD_REVIEW_PROMPT,
+        prompt_args=prompt_args,
+        role=role,
+        fallback_factory=_lead_review_fallback,
+        target_type=target_type,
+        target_id=target_id,
+        tags=tags,
+    )
 
 
 def review_outreach_draft(
@@ -1278,61 +1356,81 @@ def generate_dossier(
     role: LLMRole | str = LLMRole.EXECUTOR,
 ) -> dict:
     """Generate a structured dossier for a lead using the LLM."""
-    user_prompt = DOSSIER_DATA.format(
-        business_name=sanitize_field(business_name),
-        industry=sanitize_field(industry) or "Unknown",
-        city=sanitize_field(city) or "Unknown",
-        website_url=sanitize_field(website_url) or "None",
-        instagram_url=sanitize_field(instagram_url) or "None",
-        score=score or 0,
-        signals=sanitize_field(signals) or "None",
-        html_metadata=sanitize_field(html_metadata) or "None",
-        website_confidence=website_confidence or "Unknown",
-        instagram_confidence=instagram_confidence or "Unknown",
-        whatsapp_detected="Si" if whatsapp_detected else "No",
+    result = generate_dossier_structured(
+        business_name=business_name,
+        industry=industry,
+        city=city,
+        website_url=website_url,
+        instagram_url=instagram_url,
+        score=score,
+        signals=signals,
+        html_metadata=html_metadata,
+        website_confidence=website_confidence,
+        instagram_confidence=instagram_confidence,
+        whatsapp_detected=whatsapp_detected,
+        role=role,
+    )
+    if result.parsed is None:
+        return _dossier_fallback(business_name, city).model_dump()
+    return result.parsed.model_dump()
+
+
+def _dossier_fallback(
+    business_name: str,
+    city: str | None,
+) -> DossierResult:
+    return DossierResult(
+        business_description=(
+            f"{business_name} - negocio en {city or 'ubicacion desconocida'}"
+        ),
+        digital_maturity="unknown",
+        key_findings=[],
+        improvement_opportunities=[],
+        overall_assessment="Analisis no disponible.",
     )
 
-    fallback = {
-        "business_description": f"{business_name} - negocio en {city or 'ubicacion desconocida'}",
-        "digital_maturity": "unknown",
-        "key_findings": [],
-        "improvement_opportunities": [],
-        "overall_assessment": "Analisis no disponible.",
-    }
 
-    try:
-        raw = _call_ollama_chat(DOSSIER_SYSTEM, user_prompt, role=role)
-        data = _extract_json(raw)
-        result = {
-            "business_description": data.get(
-                "business_description", fallback["business_description"]
-            ),
-            "digital_maturity": data.get("digital_maturity", "unknown"),
-            "key_findings": data.get("key_findings", []) or [],
-            "improvement_opportunities": data.get(
-                "improvement_opportunities", []
-            ) or [],
-            "overall_assessment": data.get(
-                "overall_assessment", fallback["overall_assessment"]
-            ),
-        }
-        _record_public_invocation(
-            "generate_dossier",
-            role,
-            fallback_used=False,
-            degraded=False,
-        )
-        return result
-    except Exception as e:
-        logger.error("llm_dossier_failed", role=_role_value(role), error=str(e))
-        _record_public_invocation(
-            "generate_dossier",
-            role,
-            fallback_used=True,
-            degraded=True,
-            error=str(e),
-        )
-        return fallback
+def generate_dossier_structured(
+    *,
+    business_name: str,
+    industry: str | None,
+    city: str | None,
+    website_url: str | None,
+    instagram_url: str | None,
+    score: float | None,
+    signals: str | None,
+    html_metadata: str | None,
+    website_confidence: str | None,
+    instagram_confidence: str | None,
+    whatsapp_detected: bool | None,
+    role: LLMRole | str = LLMRole.EXECUTOR,
+    target_type: str | None = None,
+    target_id: str | None = None,
+    tags: dict[str, object] | None = None,
+) -> StructuredInvocationResult[DossierResult]:
+    prompt_args = {
+        "business_name": sanitize_field(business_name),
+        "industry": sanitize_field(industry) or "Unknown",
+        "city": sanitize_field(city) or "Unknown",
+        "website_url": sanitize_field(website_url) or "None",
+        "instagram_url": sanitize_field(instagram_url) or "None",
+        "score": score or 0,
+        "signals": sanitize_field(signals) or "None",
+        "html_metadata": sanitize_field(html_metadata) or "None",
+        "website_confidence": website_confidence or "Unknown",
+        "instagram_confidence": instagram_confidence or "Unknown",
+        "whatsapp_detected": "Si" if whatsapp_detected else "No",
+    }
+    return invoke_structured(
+        function_name="generate_dossier",
+        prompt=DOSSIER_PROMPT,
+        prompt_args=prompt_args,
+        role=role,
+        fallback_factory=lambda: _dossier_fallback(business_name, city),
+        target_type=target_type,
+        target_id=target_id,
+        tags=tags,
+    )
 
 
 def _commercial_brief_fallback() -> CommercialBriefResult:
