@@ -1,7 +1,7 @@
 # ClawScout Pipeline Gap Closure Plan
 
 **Fecha:** 2026-04-02
-**Basado en:** `docs/audits/clawscout-pipeline-runtime-audit.md`
+**Basado en:** `docs/archive/audits/clawscout-pipeline-runtime-audit.md`
 
 ---
 

@@ -1,8 +1,8 @@
 # ClawScout -- Next Phase Plan
 
 **Fecha:** 2026-04-02
-**Basado en:** Auditoria real del repositorio (`docs/audits/clawscout-audit-current-state.md`)
-**Vision objetivo:** `docs/clawscout_propuesta.md`
+**Basado en:** Auditoria real del repositorio (`docs/archive/audits/clawscout-audit-current-state.md`)
+**Vision objetivo:** `docs/product/proposal.md`
 **Estado de implementacion:** Phase 0-4 DONE (2026-04-02). Phase 5 POSTERGADA.
 
 ### Implementation Summary
@@ -34,7 +34,7 @@
 - **CC-7:** Rate limit en re-send de drafts fallidos (max 3 intentos por draft, cooldown 5min)
 - **CC-8:** Mejorar thread matching -- agregar Message-ID match como primer criterio antes de subject fallback
 - **Archivos:** `app/llm/prompts.py`, `app/services/outreach_service.py`, `app/services/inbound_mail_service.py`
-- Actualizar `docs/SECURITY_AUDIT_PENDING.md` marcando SEC-9 como resuelto
+- Actualizar `docs/operations/security-backlog.md` marcando SEC-9 como resuelto
 
 ### 0.3 Docker hardening (30min)
 - Crear `.dockerignore`: `.env`, `.git/`, `node_modules/`, `*.db`, `*.key`, `*.pem`, `tests/`, `__pycache__/`

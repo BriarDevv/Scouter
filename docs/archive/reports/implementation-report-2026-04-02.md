@@ -328,9 +328,9 @@ tests/test_brief.py
 .dockerignore
 
 # Docs
-docs/audits/clawscout-audit-current-state.md
-docs/audits/implementation-report-2026-04-02.md
-docs/roadmaps/clawscout-next-phase-plan.md
+docs/archive/audits/clawscout-audit-current-state.md
+docs/archive/reports/implementation-report-2026-04-02.md
+docs/archive/roadmaps/clawscout-next-phase-plan.md
 ```
 
 ---

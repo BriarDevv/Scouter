@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-04-02 (auditoría inicial) · Actualizado: 2026-04-02 (post-implementación Phase 0–4)
 **Branch:** `main`
-**Metodologia:** Inspeccion de codigo real del repositorio. Contraste contra `docs/clawscout_propuesta.md` (vision objetivo).
+**Metodologia:** Inspeccion de codigo real del repositorio. Contraste contra `docs/product/proposal.md` (vision objetivo).
 
 ---
 
@@ -141,7 +141,7 @@ ClawScout HOY es:
 
 ## 6. Product / Code Mismatches
 
-Contradicciones concretas entre `docs/clawscout_propuesta.md` y el codigo real:
+Contradicciones concretas entre `docs/product/proposal.md` y el codigo real:
 
 ### 6.1 "Hermes coordina investigacion con Playwright"
 - **Vision (seccion 4):** "Playwright recolecta evidencia y senales publicas del negocio"
@@ -184,7 +184,7 @@ Contradicciones concretas entre `docs/clawscout_propuesta.md` y el codigo real:
 | Item | Archivo | Impacto |
 |------|---------|---------|
 | WA/TG credentials encrypt sin decrypt on read | `app/services/whatsapp_service.py`, `telegram_service.py` | Credenciales cifradas se pasan verbatim a APIs externas = auth failures silenciosos |
-| 4 findings de seguridad abiertos (PI-6/7/8, CC-7, CC-8) | `docs/SECURITY_AUDIT_PENDING.md` | Prompt injection en LLM, re-send sin limite, subject-based fallback matching |
+| 4 findings de seguridad abiertos (PI-6/7/8, CC-7, CC-8) | `docs/operations/security-backlog.md` | Prompt injection en LLM, re-send sin limite, subject-based fallback matching |
 
 ### YELLOW -- Necesita atencion
 
