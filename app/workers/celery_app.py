@@ -52,5 +52,10 @@ celery_app.conf.update(
 )
 
 celery_app.autodiscover_tasks(["app.workers"])
-import app.workers.janitor  # noqa: F401 — register janitor beat task
-import app.workers.brief_tasks  # noqa: F401 — register brief tasks
+import app.workers.batch_tasks  # noqa: E402, F401 — register batch tasks
+import app.workers.brief_tasks  # noqa: E402, F401 — register brief tasks
+import app.workers.crawl_tasks  # noqa: E402, F401 — register crawl tasks
+import app.workers.janitor  # noqa: E402, F401 — register janitor beat task
+import app.workers.pipeline_tasks  # noqa: E402, F401 — register pipeline tasks
+import app.workers.research_tasks  # noqa: E402, F401 — register research tasks
+import app.workers.review_tasks  # noqa: E402, F401 — register review tasks

@@ -1,0 +1,257 @@
+"""Celery tasks for lead research."""
+
+import uuid
+
+from celery.exceptions import SoftTimeLimitExceeded
+
+from app.core.logging import get_logger
+from app.db.session import SessionLocal
+from app.models.lead import Lead
+from app.services.task_tracking_service import (
+    bind_tracking_context,
+    clear_tracking_context,
+    mark_task_failed,
+    mark_task_retrying,
+    mark_task_running,
+    mark_task_succeeded,
+)
+from app.workers.celery_app import celery_app
+
+logger = get_logger(__name__)
+
+
+def _queue_name(request, fallback: str) -> str:
+    delivery_info = getattr(request, "delivery_info", None) or {}
+    return delivery_info.get("routing_key") or delivery_info.get("queue") or fallback
+
+
+def _pipeline_uuid(pipeline_run_id: str | None) -> uuid.UUID | None:
+    return uuid.UUID(pipeline_run_id) if pipeline_run_id else None
+
+
+def _track_failure(
+    *,
+    task,
+    task_name: str,
+    task_id: str,
+    lead_id: str | None,
+    pipeline_run_id: uuid.UUID | None,
+    correlation_id: str | None,
+    current_step: str,
+    queue: str,
+    error: str,
+) -> None:
+    with SessionLocal() as db:
+        bind_tracking_context(
+            lead_id=lead_id,
+            task_id=task_id,
+            pipeline_run_id=str(pipeline_run_id) if pipeline_run_id else None,
+            correlation_id=correlation_id,
+            current_step=current_step,
+        )
+        mark_task_running(
+            db,
+            task_id=task_id,
+            task_name=task_name,
+            queue=queue,
+            lead_id=uuid.UUID(lead_id) if lead_id else None,
+            pipeline_run_id=pipeline_run_id,
+            correlation_id=correlation_id,
+            current_step=current_step,
+        )
+        if task.request.retries >= task.max_retries:
+            mark_task_failed(
+                db,
+                task_id=task_id,
+                error=error,
+                current_step=current_step,
+                pipeline_run_id=pipeline_run_id,
+            )
+        else:
+            mark_task_retrying(
+                db,
+                task_id=task_id,
+                error=error,
+                current_step=current_step,
+                pipeline_run_id=pipeline_run_id,
+            )
+        logger.error("task_step_failed", task_name=task_name, error=error)
+        clear_tracking_context()
+
+
+@celery_app.task(
+    name="app.workers.tasks.task_research_lead",
+    bind=True,
+    max_retries=1,
+    default_retry_delay=30,
+    soft_time_limit=120,
+    time_limit=180,
+)
+def task_research_lead(
+    self,
+    lead_id: str,
+    pipeline_run_id: str | None = None,
+    correlation_id: str | None = None,
+) -> dict:
+    """Async task: run web research on a lead's digital presence."""
+    task_id = str(self.request.id)
+    queue = _queue_name(self.request, "research")
+    pipeline_uuid = _pipeline_uuid(pipeline_run_id)
+
+    try:
+        with SessionLocal() as db:
+            bind_tracking_context(
+                lead_id=lead_id,
+                task_id=task_id,
+                pipeline_run_id=pipeline_run_id,
+                correlation_id=correlation_id,
+                current_step="research",
+            )
+            mark_task_running(
+                db,
+                task_id=task_id,
+                task_name="task_research_lead",
+                queue=queue,
+                lead_id=uuid.UUID(lead_id),
+                pipeline_run_id=pipeline_uuid,
+                correlation_id=correlation_id,
+                current_step="research",
+            )
+
+            from app.services.research_service import run_research
+
+            report = run_research(db, uuid.UUID(lead_id))
+            if not report:
+                error = "Lead not found"
+                mark_task_failed(
+                    db,
+                    task_id=task_id,
+                    error=error,
+                    current_step="research",
+                    pipeline_run_id=pipeline_uuid,
+                )
+                return {"status": "not_found", "lead_id": lead_id}
+
+            # Generate dossier from research data
+            if report.status.value == "completed":
+                try:
+                    from app.llm.client import generate_dossier
+                    lead = db.get(Lead, uuid.UUID(lead_id))
+                    if lead and report:
+                        dossier = generate_dossier(
+                            business_name=lead.business_name,
+                            industry=lead.industry,
+                            city=lead.city,
+                            website_url=lead.website_url,
+                            instagram_url=lead.instagram_url,
+                            score=lead.score,
+                            signals=", ".join(
+                                s.get("type", "")
+                                for s in (report.detected_signals_json or [])
+                            ),
+                            html_metadata=str(report.html_metadata_json or {}),
+                            website_confidence=(
+                                report.website_confidence.value
+                                if report.website_confidence else "unknown"
+                            ),
+                            instagram_confidence=(
+                                report.instagram_confidence.value
+                                if report.instagram_confidence else "unknown"
+                            ),
+                            whatsapp_detected=str(
+                                report.whatsapp_detected or False
+                            ),
+                        )
+                        if dossier:
+                            report.business_description = dossier.get(
+                                "business_description"
+                            )
+                            db.commit()
+                            logger.info(
+                                "dossier_generated_in_pipeline", lead_id=lead_id
+                            )
+                except Exception as dossier_exc:
+                    logger.warning(
+                        "dossier_generation_failed_in_pipeline",
+                        lead_id=lead_id,
+                        error=str(dossier_exc),
+                    )
+
+                # Emit notification
+                try:
+                    from app.services.notification_emitter import (
+                        on_research_completed,
+                    )
+                    lead = db.get(Lead, uuid.UUID(lead_id))
+                    on_research_completed(
+                        db,
+                        lead_id=uuid.UUID(lead_id),
+                        business_name=lead.business_name if lead else None,
+                        signals_count=len(report.detected_signals_json or []),
+                    )
+                except Exception:
+                    pass
+
+                # Chain: generate brief for HIGH leads
+                if pipeline_run_id:
+                    try:
+                        from app.workers.brief_tasks import task_generate_brief
+                        task_generate_brief.delay(lead_id, pipeline_run_id)
+                        logger.info(
+                            "brief_chained_from_research", lead_id=lead_id
+                        )
+                    except Exception as chain_exc:
+                        logger.warning(
+                            "brief_chain_failed",
+                            lead_id=lead_id,
+                            error=str(chain_exc),
+                        )
+
+            result = {
+                "status": report.status.value,
+                "lead_id": lead_id,
+                "duration_ms": report.research_duration_ms,
+            }
+            mark_task_succeeded(
+                db,
+                task_id=task_id,
+                result=result,
+                current_step="research",
+                pipeline_run_id=pipeline_uuid,
+            )
+            logger.info(
+                "task_step_completed",
+                task_name="task_research_lead",
+                result=result,
+            )
+            return result
+    except SoftTimeLimitExceeded:
+        logger.error(
+            "task_soft_time_limit",
+            task_name="task_research_lead",
+            task_id=task_id,
+        )
+        with SessionLocal() as db:
+            mark_task_failed(
+                db,
+                task_id=task_id,
+                error="Soft time limit exceeded (2min)",
+                current_step="research",
+                pipeline_run_id=pipeline_uuid,
+            )
+        raise
+    except Exception as exc:
+        _track_failure(
+            task=self,
+            task_name="task_research_lead",
+            task_id=task_id,
+            lead_id=lead_id,
+            pipeline_run_id=pipeline_uuid,
+            correlation_id=correlation_id,
+            current_step="research",
+            queue=queue,
+            error=str(exc),
+        )
+        raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
+    finally:
+        clear_tracking_context()

@@ -19,8 +19,8 @@ def test_enrich_skips_already_enriched(db):
     db.add(lead)
     db.commit()
 
-    with patch("app.workers.tasks.enrich_lead") as mock_enrich:
-        from app.workers.tasks import task_enrich_lead
+    with patch("app.workers.pipeline_tasks.enrich_lead") as mock_enrich:
+        from app.workers.pipeline_tasks import task_enrich_lead
         result = task_enrich_lead(str(lead.id))
         assert result["status"] == "skipped"
         assert result["reason"] == "already_enriched"
@@ -40,8 +40,8 @@ def test_score_skips_already_scored(db):
     db.add(lead)
     db.commit()
 
-    with patch("app.workers.tasks.score_lead") as mock_score:
-        from app.workers.tasks import task_score_lead
+    with patch("app.workers.pipeline_tasks.score_lead") as mock_score:
+        from app.workers.pipeline_tasks import task_score_lead
         result = task_score_lead(str(lead.id))
         assert result["status"] == "skipped"
         assert result["reason"] == "already_scored"
@@ -62,8 +62,8 @@ def test_analyze_skips_already_analyzed(db):
     db.add(lead)
     db.commit()
 
-    with patch("app.workers.tasks.summarize_business") as mock_llm:
-        from app.workers.tasks import task_analyze_lead
+    with patch("app.workers.pipeline_tasks.summarize_business") as mock_llm:
+        from app.workers.pipeline_tasks import task_analyze_lead
         result = task_analyze_lead(str(lead.id))
         assert result["status"] == "skipped"
         assert result["reason"] == "already_analyzed"
