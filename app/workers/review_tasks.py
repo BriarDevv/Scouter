@@ -8,15 +8,9 @@ from app.core.logging import get_logger
 from app.db.session import SessionLocal
 from app.models.inbound_mail import InboundMessage
 from app.models.outreach import OutreachDraft
-from app.services.settings.operational_settings_service import get_cached_settings
 from app.services.inbox.reply_draft_review_service import (
     mark_reply_assistant_review_failed,
     review_reply_assistant_draft_with_reviewer,
-)
-from app.services.review_service import (
-    review_draft_with_reviewer,
-    review_inbound_message_with_reviewer,
-    review_lead_with_reviewer,
 )
 from app.services.pipeline.task_tracking_service import (
     bind_tracking_context,
@@ -24,8 +18,14 @@ from app.services.pipeline.task_tracking_service import (
     mark_task_failed,
     mark_task_retrying,
     mark_task_running,
-    mark_task_succeeded,
+    tracked_task_step,
 )
+from app.services.review_service import (
+    review_draft_with_reviewer,
+    review_inbound_message_with_reviewer,
+    review_lead_with_reviewer,
+)
+from app.services.settings.operational_settings_service import get_cached_settings
 from app.workers.celery_app import celery_app
 
 logger = get_logger(__name__)
@@ -98,20 +98,14 @@ def task_review_lead(self, lead_id: str) -> dict:
     queue = _queue_name(self.request, "reviewer")
 
     try:
-        with SessionLocal() as db:
-            bind_tracking_context(
-                lead_id=lead_id,
-                task_id=task_id,
-                current_step="lead_review",
-            )
-            mark_task_running(
-                db,
-                task_id=task_id,
-                task_name="task_review_lead",
-                queue=queue,
-                lead_id=uuid.UUID(lead_id),
-                current_step="lead_review",
-            )
+        with SessionLocal() as db, tracked_task_step(
+            db,
+            task_id=task_id,
+            task_name="task_review_lead",
+            queue=queue,
+            lead_id=uuid.UUID(lead_id),
+            current_step="lead_review",
+        ) as tracker:
 
             ops = get_cached_settings(db)
             if not ops.reviewer_enabled:
@@ -120,20 +114,13 @@ def task_review_lead(self, lead_id: str) -> dict:
                     "reason": "reviewer_disabled",
                     "lead_id": lead_id,
                 }
-                mark_task_succeeded(
-                    db, task_id=task_id, result=result, current_step="lead_review"
-                )
+                tracker.succeed(result)
                 return result
 
             payload = review_lead_with_reviewer(db, uuid.UUID(lead_id))
             if not payload:
                 error = "Lead not found"
-                mark_task_failed(
-                    db,
-                    task_id=task_id,
-                    error=error,
-                    current_step="lead_review",
-                )
+                tracker.fail(error)
                 return {"status": "not_found", "lead_id": lead_id}
 
             result = {
@@ -142,12 +129,7 @@ def task_review_lead(self, lead_id: str) -> dict:
                 **payload,
             }
             result = jsonable_encoder(result)
-            mark_task_succeeded(
-                db,
-                task_id=task_id,
-                result=result,
-                current_step="lead_review",
-            )
+            tracker.succeed(result)
             logger.info(
                 "task_step_completed", task_name="task_review_lead", result=result
             )
@@ -165,8 +147,6 @@ def task_review_lead(self, lead_id: str) -> dict:
             error=str(exc),
         )
         raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
-    finally:
-        clear_tracking_context()
 
 
 @celery_app.task(
@@ -184,78 +164,47 @@ def task_review_draft(self, draft_id: str) -> dict:
     try:
         with SessionLocal() as db:
             draft = db.get(OutreachDraft, uuid.UUID(draft_id))
-            if not draft or not draft.lead_id:
-                bind_tracking_context(task_id=task_id, current_step="draft_review")
-                mark_task_running(
-                    db,
-                    task_id=task_id,
-                    task_name="task_review_draft",
-                    queue=queue,
-                    current_step="draft_review",
-                )
-                error = "Draft not found"
-                mark_task_failed(
-                    db,
-                    task_id=task_id,
-                    error=error,
-                    current_step="draft_review",
-                )
-                return {"status": "not_found", "draft_id": draft_id}
-
-            lead_id = str(draft.lead_id)
-            bind_tracking_context(
-                lead_id=lead_id,
-                task_id=task_id,
-                current_step="draft_review",
-            )
-            mark_task_running(
+            lead_id = str(draft.lead_id) if draft and draft.lead_id else None
+            with tracked_task_step(
                 db,
                 task_id=task_id,
                 task_name="task_review_draft",
                 queue=queue,
-                lead_id=uuid.UUID(lead_id),
+                lead_id=uuid.UUID(lead_id) if lead_id else None,
                 current_step="draft_review",
-            )
+            ) as tracker:
+                if not draft or not draft.lead_id:
+                    error = "Draft not found"
+                    tracker.fail(error)
+                    return {"status": "not_found", "draft_id": draft_id}
 
-            ops = get_cached_settings(db)
-            if not ops.reviewer_enabled:
+                ops = get_cached_settings(db)
+                if not ops.reviewer_enabled:
+                    result = {
+                        "status": "skipped",
+                        "reason": "reviewer_disabled",
+                        "draft_id": draft_id,
+                    }
+                    tracker.succeed(result)
+                    return result
+
+                draft_payload = review_draft_with_reviewer(db, uuid.UUID(draft_id))
+                if not draft_payload:
+                    error = "Draft not found"
+                    tracker.fail(error)
+                    return {"status": "not_found", "draft_id": draft_id}
+
                 result = {
-                    "status": "skipped",
-                    "reason": "reviewer_disabled",
+                    "status": "ok",
                     "draft_id": draft_id,
+                    **draft_payload,
                 }
-                mark_task_succeeded(
-                    db, task_id=task_id, result=result, current_step="draft_review"
+                result = jsonable_encoder(result)
+                tracker.succeed(result)
+                logger.info(
+                    "task_step_completed", task_name="task_review_draft", result=result
                 )
                 return result
-
-            draft_payload = review_draft_with_reviewer(db, uuid.UUID(draft_id))
-            if not draft_payload:
-                error = "Draft not found"
-                mark_task_failed(
-                    db,
-                    task_id=task_id,
-                    error=error,
-                    current_step="draft_review",
-                )
-                return {"status": "not_found", "draft_id": draft_id}
-
-            result = {
-                "status": "ok",
-                "draft_id": draft_id,
-                **draft_payload,
-            }
-            result = jsonable_encoder(result)
-            mark_task_succeeded(
-                db,
-                task_id=task_id,
-                result=result,
-                current_step="draft_review",
-            )
-            logger.info(
-                "task_step_completed", task_name="task_review_draft", result=result
-            )
-            return result
     except Exception as exc:
         _track_failure(
             task=self,
@@ -269,8 +218,6 @@ def task_review_draft(self, draft_id: str) -> dict:
             error=str(exc),
         )
         raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
-    finally:
-        clear_tracking_context()
 
 
 @celery_app.task(
@@ -288,87 +235,52 @@ def task_review_inbound_message(self, message_id: str) -> dict:
     try:
         with SessionLocal() as db:
             message = db.get(InboundMessage, uuid.UUID(message_id))
-            if not message:
-                bind_tracking_context(
-                    task_id=task_id, current_step="inbound_reply_review"
-                )
-                mark_task_running(
-                    db,
-                    task_id=task_id,
-                    task_name="task_review_inbound_message",
-                    queue=queue,
-                    current_step="inbound_reply_review",
-                )
-                error = "Inbound message not found"
-                mark_task_failed(
-                    db,
-                    task_id=task_id,
-                    error=error,
-                    current_step="inbound_reply_review",
-                )
-                return {"status": "not_found", "inbound_message_id": message_id}
-
             lead_id = str(message.lead_id) if message.lead_id else None
-            bind_tracking_context(
-                lead_id=lead_id,
-                task_id=task_id,
-                current_step="inbound_reply_review",
-            )
-            mark_task_running(
+            with tracked_task_step(
                 db,
                 task_id=task_id,
                 task_name="task_review_inbound_message",
                 queue=queue,
                 lead_id=uuid.UUID(lead_id) if lead_id else None,
+                correlation_id=None,
                 current_step="inbound_reply_review",
-            )
+            ) as tracker:
+                if not message:
+                    error = "Inbound message not found"
+                    tracker.fail(error)
+                    return {"status": "not_found", "inbound_message_id": message_id}
 
-            ops = get_cached_settings(db)
-            if not ops.reviewer_enabled:
+                ops = get_cached_settings(db)
+                if not ops.reviewer_enabled:
+                    result = {
+                        "status": "skipped",
+                        "reason": "reviewer_disabled",
+                        "inbound_message_id": message_id,
+                    }
+                    tracker.succeed(result)
+                    return result
+
+                payload = review_inbound_message_with_reviewer(
+                    db, uuid.UUID(message_id)
+                )
+                if not payload:
+                    error = "Inbound message not found"
+                    tracker.fail(error)
+                    return {"status": "not_found", "inbound_message_id": message_id}
+
                 result = {
-                    "status": "skipped",
-                    "reason": "reviewer_disabled",
+                    "status": "ok",
                     "inbound_message_id": message_id,
+                    **payload,
                 }
-                mark_task_succeeded(
-                    db,
-                    task_id=task_id,
+                result = jsonable_encoder(result)
+                tracker.succeed(result)
+                logger.info(
+                    "task_step_completed",
+                    task_name="task_review_inbound_message",
                     result=result,
-                    current_step="inbound_reply_review",
                 )
                 return result
-
-            payload = review_inbound_message_with_reviewer(
-                db, uuid.UUID(message_id)
-            )
-            if not payload:
-                error = "Inbound message not found"
-                mark_task_failed(
-                    db,
-                    task_id=task_id,
-                    error=error,
-                    current_step="inbound_reply_review",
-                )
-                return {"status": "not_found", "inbound_message_id": message_id}
-
-            result = {
-                "status": "ok",
-                "inbound_message_id": message_id,
-                **payload,
-            }
-            result = jsonable_encoder(result)
-            mark_task_succeeded(
-                db,
-                task_id=task_id,
-                result=result,
-                current_step="inbound_reply_review",
-            )
-            logger.info(
-                "task_step_completed",
-                task_name="task_review_inbound_message",
-                result=result,
-            )
-            return result
     except Exception as exc:
         _track_failure(
             task=self,
@@ -382,8 +294,6 @@ def task_review_inbound_message(self, message_id: str) -> dict:
             error=str(exc),
         )
         raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
-    finally:
-        clear_tracking_context()
 
 
 @celery_app.task(
@@ -401,93 +311,58 @@ def task_review_reply_assistant_draft(self, message_id: str) -> dict:
     try:
         with SessionLocal() as db:
             message = db.get(InboundMessage, uuid.UUID(message_id))
-            if not message:
-                bind_tracking_context(
-                    task_id=task_id, current_step="reply_draft_review"
-                )
-                mark_task_running(
-                    db,
-                    task_id=task_id,
-                    task_name="task_review_reply_assistant_draft",
-                    queue=queue,
-                    current_step="reply_draft_review",
-                )
-                error = "Inbound message not found"
-                mark_task_failed(
-                    db,
-                    task_id=task_id,
-                    error=error,
-                    current_step="reply_draft_review",
-                )
-                return {"status": "not_found", "inbound_message_id": message_id}
-
-            lead_id = str(message.lead_id) if message.lead_id else None
-            bind_tracking_context(
-                lead_id=lead_id,
-                task_id=task_id,
-                current_step="reply_draft_review",
-            )
-            mark_task_running(
+            lead_id = str(message.lead_id) if message and message.lead_id else None
+            with tracked_task_step(
                 db,
                 task_id=task_id,
                 task_name="task_review_reply_assistant_draft",
                 queue=queue,
                 lead_id=uuid.UUID(lead_id) if lead_id else None,
+                correlation_id=None,
                 current_step="reply_draft_review",
-            )
+            ) as tracker:
+                if not message:
+                    error = "Inbound message not found"
+                    tracker.fail(error)
+                    return {"status": "not_found", "inbound_message_id": message_id}
 
-            ops = get_cached_settings(db)
-            if not ops.reviewer_enabled:
+                ops = get_cached_settings(db)
+                if not ops.reviewer_enabled:
+                    result = {
+                        "status": "skipped",
+                        "reason": "reviewer_disabled",
+                        "inbound_message_id": message_id,
+                    }
+                    tracker.succeed(result)
+                    return result
+
+                payload = review_reply_assistant_draft_with_reviewer(
+                    db, uuid.UUID(message_id)
+                )
+                if not payload:
+                    error = "Reply assistant draft not found"
+                    mark_reply_assistant_review_failed(
+                        db,
+                        uuid.UUID(message_id),
+                        error=error,
+                        task_id=task_id,
+                    )
+                    tracker.fail(error)
+                    return {"status": "not_found", "inbound_message_id": message_id}
+
                 result = {
-                    "status": "skipped",
-                    "reason": "reviewer_disabled",
+                    "status": "ok",
                     "inbound_message_id": message_id,
+                    **payload,
                 }
-                mark_task_succeeded(
-                    db,
-                    task_id=task_id,
+                result = jsonable_encoder(result)
+                tracker.succeed(result)
+                logger.info(
+                    "task_step_completed",
+                    task_name="task_review_reply_assistant_draft",
                     result=result,
-                    current_step="reply_draft_review",
                 )
                 return result
-
-            payload = review_reply_assistant_draft_with_reviewer(
-                db, uuid.UUID(message_id)
-            )
-            if not payload:
-                error = "Reply assistant draft not found"
-                mark_reply_assistant_review_failed(
-                    db,
-                    uuid.UUID(message_id),
-                    error=error,
-                    task_id=task_id,
-                )
-                mark_task_failed(
-                    db,
-                    task_id=task_id,
-                    error=error,
-                    current_step="reply_draft_review",
-                )
-                return {"status": "not_found", "inbound_message_id": message_id}
-
-            result = {
-                "status": "ok",
-                "inbound_message_id": message_id,
-                **payload,
-            }
-            result = jsonable_encoder(result)
-            mark_task_succeeded(
-                db,
-                task_id=task_id,
-                result=result,
-                current_step="reply_draft_review",
-            )
-            logger.info(
-                "task_step_completed",
-                task_name="task_review_reply_assistant_draft",
-                result=result,
-            )
-            return result
     except Exception as exc:
         with SessionLocal() as failure_db:
             mark_reply_assistant_review_failed(
@@ -508,5 +383,3 @@ def task_review_reply_assistant_draft(self, message_id: str) -> dict:
             error=str(exc),
         )
         raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
-    finally:
-        clear_tracking_context()

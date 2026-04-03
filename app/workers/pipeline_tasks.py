@@ -16,7 +16,7 @@ from app.services.pipeline.task_tracking_service import (
     mark_task_failed,
     mark_task_retrying,
     mark_task_running,
-    mark_task_succeeded,
+    tracked_task_step,
 )
 from app.workers.celery_app import celery_app
 from app.workflows.lead_pipeline import (
@@ -114,47 +114,27 @@ def task_enrich_lead(
     pipeline_uuid = _pipeline_uuid(pipeline_run_id)
 
     try:
-        with SessionLocal() as db:
-            bind_tracking_context(
-                lead_id=lead_id,
-                task_id=task_id,
-                pipeline_run_id=pipeline_run_id,
-                correlation_id=correlation_id,
-                current_step="enrichment",
-            )
-            mark_task_running(
-                db,
-                task_id=task_id,
-                task_name="task_enrich_lead",
-                queue=queue,
-                lead_id=uuid.UUID(lead_id),
-                pipeline_run_id=pipeline_uuid,
-                correlation_id=correlation_id,
-                current_step="enrichment",
-            )
+        with SessionLocal() as db, tracked_task_step(
+            db,
+            task_id=task_id,
+            task_name="task_enrich_lead",
+            queue=queue,
+            lead_id=uuid.UUID(lead_id),
+            pipeline_run_id=pipeline_uuid,
+            correlation_id=correlation_id,
+            current_step="enrichment",
+        ) as tracker:
 
             lead = db.get(Lead, uuid.UUID(lead_id))
             if not lead:
                 error = "Lead not found"
-                mark_task_failed(
-                    db,
-                    task_id=task_id,
-                    error=error,
-                    current_step="enrichment",
-                    pipeline_run_id=pipeline_uuid,
-                )
+                tracker.fail(error)
                 return {"status": "not_found", "lead_id": lead_id}
 
             # Idempotency guard: skip if already enriched (unless force)
             if lead.enriched_at is not None:
                 result = {"status": "skipped", "lead_id": lead_id, "reason": "already_enriched"}
-                mark_task_succeeded(
-                    db,
-                    task_id=task_id,
-                    result=result,
-                    current_step="enrichment",
-                    pipeline_run_id=pipeline_uuid,
-                )
+                tracker.succeed(result)
                 logger.info(
                     "task_skipped_idempotent",
                     task_name="task_enrich_lead",
@@ -165,23 +145,11 @@ def task_enrich_lead(
             lead = enrich_lead(db, uuid.UUID(lead_id))
             if not lead:
                 error = "Lead not found"
-                mark_task_failed(
-                    db,
-                    task_id=task_id,
-                    error=error,
-                    current_step="enrichment",
-                    pipeline_run_id=pipeline_uuid,
-                )
+                tracker.fail(error)
                 return {"status": "not_found", "lead_id": lead_id}
 
             result = {"status": "ok", "lead_id": lead_id, "signals": len(lead.signals)}
-            mark_task_succeeded(
-                db,
-                task_id=task_id,
-                result=result,
-                current_step="enrichment",
-                pipeline_run_id=pipeline_uuid,
-            )
+            tracker.succeed(result)
             logger.info("task_step_completed", task_name="task_enrich_lead", result=result)
 
             # Chain to scoring
@@ -206,8 +174,6 @@ def task_enrich_lead(
             error=str(exc),
         )
         raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
-    finally:
-        clear_tracking_context()
 
 
 @celery_app.task(
@@ -228,35 +194,21 @@ def task_score_lead(
     pipeline_uuid = _pipeline_uuid(pipeline_run_id)
 
     try:
-        with SessionLocal() as db:
-            bind_tracking_context(
-                lead_id=lead_id,
-                task_id=task_id,
-                pipeline_run_id=pipeline_run_id,
-                correlation_id=correlation_id,
-                current_step="scoring",
-            )
-            mark_task_running(
-                db,
-                task_id=task_id,
-                task_name="task_score_lead",
-                queue=queue,
-                lead_id=uuid.UUID(lead_id),
-                pipeline_run_id=pipeline_uuid,
-                correlation_id=correlation_id,
-                current_step="scoring",
-            )
+        with SessionLocal() as db, tracked_task_step(
+            db,
+            task_id=task_id,
+            task_name="task_score_lead",
+            queue=queue,
+            lead_id=uuid.UUID(lead_id),
+            pipeline_run_id=pipeline_uuid,
+            correlation_id=correlation_id,
+            current_step="scoring",
+        ) as tracker:
 
             lead = db.get(Lead, uuid.UUID(lead_id))
             if not lead:
                 error = "Lead not found"
-                mark_task_failed(
-                    db,
-                    task_id=task_id,
-                    error=error,
-                    current_step="scoring",
-                    pipeline_run_id=pipeline_uuid,
-                )
+                tracker.fail(error)
                 return {"status": "not_found", "lead_id": lead_id}
 
             # Idempotency guard: skip if already scored
@@ -267,13 +219,7 @@ def task_score_lead(
                     "reason": "already_scored",
                     "score": lead.score,
                 }
-                mark_task_succeeded(
-                    db,
-                    task_id=task_id,
-                    result=result,
-                    current_step="scoring",
-                    pipeline_run_id=pipeline_uuid,
-                )
+                tracker.succeed(result)
                 logger.info(
                     "task_skipped_idempotent",
                     task_name="task_score_lead",
@@ -284,23 +230,11 @@ def task_score_lead(
             lead = score_lead(db, uuid.UUID(lead_id))
             if not lead:
                 error = "Score failed"
-                mark_task_failed(
-                    db,
-                    task_id=task_id,
-                    error=error,
-                    current_step="scoring",
-                    pipeline_run_id=pipeline_uuid,
-                )
+                tracker.fail(error)
                 return {"status": "failed", "lead_id": lead_id}
 
             result = {"status": "ok", "lead_id": lead_id, "score": lead.score}
-            mark_task_succeeded(
-                db,
-                task_id=task_id,
-                result=result,
-                current_step="scoring",
-                pipeline_run_id=pipeline_uuid,
-            )
+            tracker.succeed(result)
             logger.info("task_step_completed", task_name="task_score_lead", result=result)
 
             # Chain to analysis
@@ -325,8 +259,6 @@ def task_score_lead(
             error=str(exc),
         )
         raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
-    finally:
-        clear_tracking_context()
 
 
 @celery_app.task(
@@ -349,35 +281,21 @@ def task_analyze_lead(
     pipeline_uuid = _pipeline_uuid(pipeline_run_id)
 
     try:
-        with SessionLocal() as db:
-            bind_tracking_context(
-                lead_id=lead_id,
-                task_id=task_id,
-                pipeline_run_id=pipeline_run_id,
-                correlation_id=correlation_id,
-                current_step="analysis",
-            )
-            mark_task_running(
-                db,
-                task_id=task_id,
-                task_name="task_analyze_lead",
-                queue=queue,
-                lead_id=uuid.UUID(lead_id),
-                pipeline_run_id=pipeline_uuid,
-                correlation_id=correlation_id,
-                current_step="analysis",
-            )
+        with SessionLocal() as db, tracked_task_step(
+            db,
+            task_id=task_id,
+            task_name="task_analyze_lead",
+            queue=queue,
+            lead_id=uuid.UUID(lead_id),
+            pipeline_run_id=pipeline_uuid,
+            correlation_id=correlation_id,
+            current_step="analysis",
+        ) as tracker:
 
             lead = db.get(Lead, uuid.UUID(lead_id))
             if not lead:
                 error = "Lead not found"
-                mark_task_failed(
-                    db,
-                    task_id=task_id,
-                    error=error,
-                    current_step="analysis",
-                    pipeline_run_id=pipeline_uuid,
-                )
+                tracker.fail(error)
                 return {"status": "not_found", "lead_id": lead_id}
 
             # Idempotency guard: skip if already analyzed
@@ -388,13 +306,7 @@ def task_analyze_lead(
                     "reason": "already_analyzed",
                     "quality": lead.llm_quality,
                 }
-                mark_task_succeeded(
-                    db,
-                    task_id=task_id,
-                    result=result,
-                    current_step="analysis",
-                    pipeline_run_id=pipeline_uuid,
-                )
+                tracker.succeed(result)
                 logger.info(
                     "task_skipped_idempotent",
                     task_name="task_analyze_lead",
@@ -415,13 +327,7 @@ def task_analyze_lead(
                 "lead_id": lead_id,
                 "quality": analysis.quality,
             }
-            mark_task_succeeded(
-                db,
-                task_id=task_id,
-                result=result,
-                current_step="analysis",
-                pipeline_run_id=pipeline_uuid,
-            )
+            tracker.succeed(result)
             logger.info(
                 "task_step_completed", task_name="task_analyze_lead", result=result
             )
@@ -480,8 +386,6 @@ def task_analyze_lead(
             error=str(exc),
         )
         raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
-    finally:
-        clear_tracking_context()
 
 
 @celery_app.task(
@@ -504,66 +408,36 @@ def task_generate_draft(
     pipeline_uuid = _pipeline_uuid(pipeline_run_id)
 
     try:
-        with SessionLocal() as db:
-            bind_tracking_context(
-                lead_id=lead_id,
-                task_id=task_id,
-                pipeline_run_id=pipeline_run_id,
-                correlation_id=correlation_id,
-                current_step="draft_generation",
-            )
-            mark_task_running(
-                db,
-                task_id=task_id,
-                task_name="task_generate_draft",
-                queue=queue,
-                lead_id=uuid.UUID(lead_id),
-                pipeline_run_id=pipeline_uuid,
-                correlation_id=correlation_id,
-                current_step="draft_generation",
-            )
+        with SessionLocal() as db, tracked_task_step(
+            db,
+            task_id=task_id,
+            task_name="task_generate_draft",
+            queue=queue,
+            lead_id=uuid.UUID(lead_id),
+            pipeline_run_id=pipeline_uuid,
+            correlation_id=correlation_id,
+            current_step="draft_generation",
+        ) as tracker:
 
             lead = db.get(Lead, uuid.UUID(lead_id))
             if not lead:
                 error = "Lead not found"
-                mark_task_failed(
-                    db,
-                    task_id=task_id,
-                    error=error,
-                    current_step="draft_generation",
-                    pipeline_run_id=pipeline_uuid,
-                )
+                tracker.fail(error)
                 return {"status": "not_found", "lead_id": lead_id}
 
             workflow_result = run_draft_generation_step(db, uuid.UUID(lead_id))
             result = workflow_result.to_payload()
 
             if workflow_result.status == "not_found":
-                mark_task_failed(
-                    db,
-                    task_id=task_id,
-                    error="Lead not found",
-                    current_step="draft_generation",
-                    pipeline_run_id=pipeline_uuid,
-                )
+                tracker.fail("Lead not found")
                 return result
 
             if workflow_result.status == "failed":
-                mark_task_failed(
-                    db,
-                    task_id=task_id,
-                    error=str(workflow_result.reason or "Draft generation failed"),
-                    current_step="draft_generation",
-                    pipeline_run_id=pipeline_uuid,
-                )
+                tracker.fail(str(workflow_result.reason or "Draft generation failed"))
                 return result
 
-            mark_task_succeeded(
-                db,
-                task_id=task_id,
-                result=result,
-                current_step="draft_generation",
-                pipeline_run_id=pipeline_uuid,
+            tracker.succeed(
+                result,
                 pipeline_status="succeeded" if pipeline_uuid else None,
             )
             if pipeline_uuid:
@@ -613,8 +487,6 @@ def task_generate_draft(
             error=str(exc),
         )
         raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
-    finally:
-        clear_tracking_context()
 
 
 @celery_app.task(
@@ -637,24 +509,16 @@ def task_full_pipeline(
     pipeline_uuid = _pipeline_uuid(pipeline_run_id)
 
     try:
-        with SessionLocal() as db:
-            bind_tracking_context(
-                lead_id=lead_id,
-                task_id=task_id,
-                pipeline_run_id=pipeline_run_id,
-                correlation_id=correlation_id,
-                current_step="pipeline_dispatch",
-            )
-            mark_task_running(
-                db,
-                task_id=task_id,
-                task_name="task_full_pipeline",
-                queue=queue,
-                lead_id=uuid.UUID(lead_id),
-                pipeline_run_id=pipeline_uuid,
-                correlation_id=correlation_id,
-                current_step="pipeline_dispatch",
-            )
+        with SessionLocal() as db, tracked_task_step(
+            db,
+            task_id=task_id,
+            task_name="task_full_pipeline",
+            queue=queue,
+            lead_id=uuid.UUID(lead_id),
+            pipeline_run_id=pipeline_uuid,
+            correlation_id=correlation_id,
+            current_step="pipeline_dispatch",
+        ) as tracker:
 
             # Dispatch only the first step; each step chains forward.
             task_enrich_lead.delay(
@@ -667,14 +531,7 @@ def task_full_pipeline(
                 "lead_id": lead_id,
                 "pipeline_run_id": pipeline_run_id,
             }
-            mark_task_succeeded(
-                db,
-                task_id=task_id,
-                result=payload,
-                current_step="pipeline_dispatch",
-                pipeline_run_id=pipeline_uuid,
-                pipeline_status="running" if pipeline_uuid else None,
-            )
+            tracker.succeed(payload, pipeline_status="running" if pipeline_uuid else None)
             logger.info("pipeline_dispatched", result=payload)
             return payload
     except Exception as exc:
@@ -690,5 +547,3 @@ def task_full_pipeline(
             error=str(exc),
         )
         raise
-    finally:
-        clear_tracking_context()

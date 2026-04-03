@@ -5,6 +5,7 @@ import uuid
 from app.core.logging import get_logger
 from app.db.session import SessionLocal
 from app.models.lead import Lead
+from app.services.leads.scoring_service import score_lead
 from app.services.pipeline.operational_task_service import (
     BATCH_PIPELINE_SCOPE_KEY,
     RESCORE_ALL_REDIS_KEY,
@@ -14,11 +15,8 @@ from app.services.pipeline.operational_task_service import (
     persist_rescore_all_state,
     should_stop_operational_task,
 )
-from app.services.leads.scoring_service import score_lead
 from app.services.pipeline.task_tracking_service import (
-    bind_tracking_context,
-    clear_tracking_context,
-    mark_task_running,
+    tracked_task_step,
 )
 from app.workers.celery_app import celery_app
 from app.workflows.batch_pipeline import run_batch_pipeline_workflow
@@ -52,29 +50,21 @@ def task_batch_pipeline(
     task_id = _request_task_id(self.request)
     queue = _queue_name(self.request, "default")
 
-    try:
-        with SessionLocal() as db:
-            bind_tracking_context(
-                task_id=task_id,
-                correlation_id=correlation_id,
-                current_step="batch_dispatch",
-            )
-            mark_task_running(
-                db,
-                task_id=task_id,
-                task_name="task_batch_pipeline",
-                queue=queue,
-                correlation_id=correlation_id,
-                scope_key=BATCH_PIPELINE_SCOPE_KEY,
-                current_step="batch_dispatch",
-            )
-        return run_batch_pipeline_workflow(
-            task_id=task_id,
-            status_filter=status_filter,
-            correlation_id=correlation_id,
-        )
-    finally:
-        clear_tracking_context()
+    with SessionLocal() as db, tracked_task_step(
+        db,
+        task_id=task_id,
+        task_name="task_batch_pipeline",
+        queue=queue,
+        correlation_id=correlation_id,
+        scope_key=BATCH_PIPELINE_SCOPE_KEY,
+        current_step="batch_dispatch",
+    ):
+        pass
+    return run_batch_pipeline_workflow(
+        task_id=task_id,
+        status_filter=status_filter,
+        correlation_id=correlation_id,
+    )
 
 
 # ── Re-score task ─────────────────────────────────────────────────────
@@ -96,21 +86,15 @@ def task_rescore_all(self, correlation_id: str | None = None):
     errors = 0
 
     try:
-        with SessionLocal() as db:
-            bind_tracking_context(
-                task_id=task_id,
-                correlation_id=correlation_id,
-                current_step=current_step,
-            )
-            mark_task_running(
-                db,
-                task_id=task_id,
-                task_name="task_rescore_all",
-                queue=queue,
-                correlation_id=correlation_id,
-                scope_key=RESCORE_ALL_SCOPE_KEY,
-                current_step=current_step,
-            )
+        with SessionLocal() as db, tracked_task_step(
+            db,
+            task_id=task_id,
+            task_name="task_rescore_all",
+            queue=queue,
+            correlation_id=correlation_id,
+            scope_key=RESCORE_ALL_SCOPE_KEY,
+            current_step=current_step,
+        ):
             lead_ids = [
                 row
                 for (row,) in db.query(Lead.id).filter(Lead.score.isnot(None)).all()
@@ -262,5 +246,3 @@ def task_rescore_all(self, correlation_id: str | None = None):
         )
         logger.error("rescore_all_error", error=str(exc))
         raise
-    finally:
-        clear_tracking_context()

@@ -13,7 +13,7 @@ from app.services.pipeline.task_tracking_service import (
     mark_task_failed,
     mark_task_retrying,
     mark_task_running,
-    mark_task_succeeded,
+    tracked_task_step,
 )
 from app.workers.celery_app import celery_app
 
@@ -99,37 +99,23 @@ def task_research_lead(
     pipeline_uuid = _pipeline_uuid(pipeline_run_id)
 
     try:
-        with SessionLocal() as db:
-            bind_tracking_context(
-                lead_id=lead_id,
-                task_id=task_id,
-                pipeline_run_id=pipeline_run_id,
-                correlation_id=correlation_id,
-                current_step="research",
-            )
-            mark_task_running(
-                db,
-                task_id=task_id,
-                task_name="task_research_lead",
-                queue=queue,
-                lead_id=uuid.UUID(lead_id),
-                pipeline_run_id=pipeline_uuid,
-                correlation_id=correlation_id,
-                current_step="research",
-            )
+        with SessionLocal() as db, tracked_task_step(
+            db,
+            task_id=task_id,
+            task_name="task_research_lead",
+            queue=queue,
+            lead_id=uuid.UUID(lead_id),
+            pipeline_run_id=pipeline_uuid,
+            correlation_id=correlation_id,
+            current_step="research",
+        ) as tracker:
 
             from app.services.research.research_service import run_research
 
             report = run_research(db, uuid.UUID(lead_id))
             if not report:
                 error = "Lead not found"
-                mark_task_failed(
-                    db,
-                    task_id=task_id,
-                    error=error,
-                    current_step="research",
-                    pipeline_run_id=pipeline_uuid,
-                )
+                tracker.fail(error)
                 return {"status": "not_found", "lead_id": lead_id}
 
             # Generate dossier from research data
@@ -212,13 +198,7 @@ def task_research_lead(
                 "lead_id": lead_id,
                 "duration_ms": report.research_duration_ms,
             }
-            mark_task_succeeded(
-                db,
-                task_id=task_id,
-                result=result,
-                current_step="research",
-                pipeline_run_id=pipeline_uuid,
-            )
+            tracker.succeed(result)
             logger.info(
                 "task_step_completed",
                 task_name="task_research_lead",
@@ -253,5 +233,3 @@ def task_research_lead(
             error=str(exc),
         )
         raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
-    finally:
-        clear_tracking_context()
