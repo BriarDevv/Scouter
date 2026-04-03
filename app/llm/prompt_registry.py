@@ -9,11 +9,15 @@ from app.llm.contracts import (
     CommercialBriefResult,
     CommercialBriefReviewResult,
     DossierResult,
+    InboundReplyReviewResult,
     LeadQualityResult,
     LeadReviewResult,
     OutreachDraftResult,
+    ReplyClassificationResult,
 )
 from app.llm.prompts import (
+    CLASSIFY_INBOUND_REPLY_DATA,
+    CLASSIFY_INBOUND_REPLY_SYSTEM,
     COMMERCIAL_BRIEF_DATA,
     COMMERCIAL_BRIEF_SYSTEM,
     DOSSIER_DATA,
@@ -24,6 +28,8 @@ from app.llm.prompts import (
     GENERATE_OUTREACH_EMAIL_SYSTEM,
     REVIEW_COMMERCIAL_BRIEF_DATA,
     REVIEW_COMMERCIAL_BRIEF_SYSTEM,
+    REVIEW_INBOUND_REPLY_DATA,
+    REVIEW_INBOUND_REPLY_SYSTEM,
     REVIEW_LEAD_DATA,
     REVIEW_LEAD_SYSTEM,
     SUMMARIZE_BUSINESS_DATA,
@@ -100,6 +106,28 @@ DOSSIER_PROMPT = PromptDefinition(
 )
 
 
+INBOUND_REPLY_CLASSIFICATION_PROMPT = PromptDefinition(
+    prompt_id="inbound_reply.classify",
+    prompt_version="v1",
+    owner="app.llm.client",
+    system_prompt=CLASSIFY_INBOUND_REPLY_SYSTEM,
+    user_prompt_template=CLASSIFY_INBOUND_REPLY_DATA,
+    response_model=ReplyClassificationResult,
+    tags=("inbox", "classification"),
+)
+
+
+INBOUND_REPLY_REVIEW_PROMPT = PromptDefinition(
+    prompt_id="inbound_reply.review",
+    prompt_version="v1",
+    owner="app.llm.client",
+    system_prompt=REVIEW_INBOUND_REPLY_SYSTEM,
+    user_prompt_template=REVIEW_INBOUND_REPLY_DATA,
+    response_model=InboundReplyReviewResult,
+    tags=("inbox", "review"),
+)
+
+
 COMMERCIAL_BRIEF_PROMPT = PromptDefinition(
     prompt_id="commercial_brief.generate",
     prompt_version="v1",
@@ -128,6 +156,8 @@ PROMPT_REGISTRY: dict[str, PromptDefinition[BaseModel]] = {
     OUTREACH_DRAFT_PROMPT.prompt_id: OUTREACH_DRAFT_PROMPT,
     LEAD_REVIEW_PROMPT.prompt_id: LEAD_REVIEW_PROMPT,
     DOSSIER_PROMPT.prompt_id: DOSSIER_PROMPT,
+    INBOUND_REPLY_CLASSIFICATION_PROMPT.prompt_id: INBOUND_REPLY_CLASSIFICATION_PROMPT,
+    INBOUND_REPLY_REVIEW_PROMPT.prompt_id: INBOUND_REPLY_REVIEW_PROMPT,
     COMMERCIAL_BRIEF_PROMPT.prompt_id: COMMERCIAL_BRIEF_PROMPT,
     COMMERCIAL_BRIEF_REVIEW_PROMPT.prompt_id: COMMERCIAL_BRIEF_REVIEW_PROMPT,
 }

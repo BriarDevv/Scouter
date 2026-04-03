@@ -22,9 +22,11 @@ from app.llm.contracts import (
     CommercialBriefResult,
     CommercialBriefReviewResult,
     DossierResult,
+    InboundReplyReviewResult,
     LeadQualityResult,
     LeadReviewResult,
     OutreachDraftResult,
+    ReplyClassificationResult,
     StructuredInvocationResult,
     TextInvocationResult,
 )
@@ -37,20 +39,18 @@ from app.llm.prompt_registry import (
     COMMERCIAL_BRIEF_PROMPT,
     COMMERCIAL_BRIEF_REVIEW_PROMPT,
     DOSSIER_PROMPT,
+    INBOUND_REPLY_CLASSIFICATION_PROMPT,
+    INBOUND_REPLY_REVIEW_PROMPT,
     LEAD_QUALITY_PROMPT,
     LEAD_REVIEW_PROMPT,
     OUTREACH_DRAFT_PROMPT,
     PromptDefinition,
 )
 from app.llm.prompts import (
-    CLASSIFY_INBOUND_REPLY_DATA,
-    CLASSIFY_INBOUND_REPLY_SYSTEM,
     GENERATE_REPLY_ASSISTANT_DRAFT_DATA,
     GENERATE_REPLY_ASSISTANT_DRAFT_SYSTEM,
     GENERATE_WHATSAPP_DRAFT_DATA,
     GENERATE_WHATSAPP_DRAFT_SYSTEM,
-    REVIEW_INBOUND_REPLY_DATA,
-    REVIEW_INBOUND_REPLY_SYSTEM,
     REVIEW_OUTREACH_DRAFT_DATA,
     REVIEW_OUTREACH_DRAFT_SYSTEM,
     REVIEW_REPLY_ASSISTANT_DRAFT_DATA,
@@ -976,39 +976,62 @@ def classify_inbound_reply(
     role: LLMRole | str = LLMRole.EXECUTOR,
 ) -> dict:
     """Classify an inbound reply with the executor model."""
-    user_prompt = CLASSIFY_INBOUND_REPLY_DATA.format(
-        business_name=sanitize_field(business_name) or "Unknown",
-        industry=sanitize_field(industry) or "Unknown",
-        city=sanitize_field(city) or "Unknown",
-        lead_email=sanitize_field(lead_email) or "Unknown",
-        outbound_subject=sanitize_field(outbound_subject) or "Unknown",
-        outbound_message_id=outbound_message_id or "Unknown",
-        from_email=sanitize_field(from_email) or "Unknown",
-        to_email=sanitize_field(to_email) or "Unknown",
-        subject=sanitize_field(subject) or "No subject",
-        body_text=sanitize_field(body_text) or "No body text available",
+    result = classify_inbound_reply_structured(
+        business_name=business_name,
+        industry=industry,
+        city=city,
+        lead_email=lead_email,
+        outbound_subject=outbound_subject,
+        outbound_message_id=outbound_message_id,
+        from_email=from_email,
+        to_email=to_email,
+        subject=subject,
+        body_text=body_text,
+        role=role,
     )
+    if result.parsed is None:
+        raise LLMError(result.error or "Inbound reply classification failed")
+    return result.parsed.model_dump()
 
-    try:
-        raw = _call_ollama_chat(CLASSIFY_INBOUND_REPLY_SYSTEM, user_prompt, role=role)
-        result = _extract_json(raw)
-        _record_public_invocation(
-            "classify_inbound_reply",
-            role,
-            fallback_used=False,
-            degraded=False,
-        )
-        return result
-    except Exception as e:
-        logger.error("llm_classify_inbound_failed", role=_role_value(role), error=str(e))
-        _record_public_invocation(
-            "classify_inbound_reply",
-            role,
-            fallback_used=False,
-            degraded=True,
-            error=str(e),
-        )
-        raise
+
+def classify_inbound_reply_structured(
+    *,
+    business_name: str | None,
+    industry: str | None,
+    city: str | None,
+    lead_email: str | None,
+    outbound_subject: str | None,
+    outbound_message_id: str | None,
+    from_email: str | None,
+    to_email: str | None,
+    subject: str | None,
+    body_text: str | None,
+    role: LLMRole | str = LLMRole.EXECUTOR,
+    target_type: str | None = None,
+    target_id: str | None = None,
+    tags: dict[str, object] | None = None,
+) -> StructuredInvocationResult[ReplyClassificationResult]:
+    prompt_args = {
+        "business_name": sanitize_field(business_name) or "Unknown",
+        "industry": sanitize_field(industry) or "Unknown",
+        "city": sanitize_field(city) or "Unknown",
+        "lead_email": sanitize_field(lead_email) or "Unknown",
+        "outbound_subject": sanitize_field(outbound_subject) or "Unknown",
+        "outbound_message_id": outbound_message_id or "Unknown",
+        "from_email": sanitize_field(from_email) or "Unknown",
+        "to_email": sanitize_field(to_email) or "Unknown",
+        "subject": sanitize_field(subject) or "No subject",
+        "body_text": sanitize_field(body_text) or "No body text available",
+    }
+    return invoke_structured(
+        function_name="classify_inbound_reply",
+        prompt=INBOUND_REPLY_CLASSIFICATION_PROMPT,
+        prompt_args=prompt_args,
+        role=role,
+        target_type=target_type,
+        target_id=target_id,
+        tags=tags,
+    )
 
 
 def review_inbound_reply(
@@ -1030,64 +1053,90 @@ def review_inbound_reply(
     role: LLMRole | str = LLMRole.REVIEWER,
 ) -> dict:
     """Run a reviewer pass on an inbound reply."""
-    user_prompt = REVIEW_INBOUND_REPLY_DATA.format(
-        business_name=sanitize_field(business_name) or "Unknown",
-        industry=sanitize_field(industry) or "Unknown",
-        city=sanitize_field(city) or "Unknown",
-        lead_email=sanitize_field(lead_email) or "Unknown",
-        outbound_subject=sanitize_field(outbound_subject) or "Unknown",
-        outbound_message_id=outbound_message_id or "Unknown",
-        from_email=sanitize_field(from_email) or "Unknown",
-        to_email=sanitize_field(to_email) or "Unknown",
-        subject=sanitize_field(subject) or "No subject",
-        body_text=sanitize_field(body_text) or "No body text available",
-        classification_label=classification_label or "None",
-        classification_summary=sanitize_field(classification_summary)
-        or "No executor summary available",
-        next_action_suggestion=sanitize_field(next_action_suggestion)
-        or "No executor suggestion available",
-        should_escalate_reviewer="true"
-        if should_escalate_reviewer
-        else "false",
+    result = review_inbound_reply_structured(
+        business_name=business_name,
+        industry=industry,
+        city=city,
+        lead_email=lead_email,
+        outbound_subject=outbound_subject,
+        outbound_message_id=outbound_message_id,
+        from_email=from_email,
+        to_email=to_email,
+        subject=subject,
+        body_text=body_text,
+        classification_label=classification_label,
+        classification_summary=classification_summary,
+        next_action_suggestion=next_action_suggestion,
+        should_escalate_reviewer=should_escalate_reviewer,
+        role=role,
+    )
+    if result.parsed is None:
+        return _review_inbound_reply_fallback().model_dump()
+    return result.parsed.model_dump()
+
+
+def _review_inbound_reply_fallback() -> InboundReplyReviewResult:
+    return InboundReplyReviewResult(
+        verdict="consider_reply",
+        confidence="low",
+        reasoning="Reviewer analysis unavailable.",
+        recommended_action="Review this reply manually before responding.",
+        suggested_response_angle=None,
+        watchouts=["Reviewer output unavailable"],
     )
 
-    fallback = {
-        "verdict": "consider_reply",
-        "confidence": "low",
-        "reasoning": "Reviewer analysis unavailable.",
-        "recommended_action": "Review this reply manually before responding.",
-        "suggested_response_angle": None,
-        "watchouts": ["Reviewer output unavailable"],
-    }
 
-    try:
-        raw = _call_ollama_chat(REVIEW_INBOUND_REPLY_SYSTEM, user_prompt, role=role)
-        data = _extract_json(raw)
-        result = {
-            "verdict": data.get("verdict", "consider_reply"),
-            "confidence": data.get("confidence", "medium"),
-            "reasoning": data.get("reasoning", "No reasoning provided"),
-            "recommended_action": data.get("recommended_action", "Review manually"),
-            "suggested_response_angle": data.get("suggested_response_angle"),
-            "watchouts": data.get("watchouts", []) or [],
-        }
-        _record_public_invocation(
-            "review_inbound_reply",
-            role,
-            fallback_used=False,
-            degraded=False,
-        )
-        return result
-    except Exception as e:
-        logger.error("llm_review_inbound_failed", role=_role_value(role), error=str(e))
-        _record_public_invocation(
-            "review_inbound_reply",
-            role,
-            fallback_used=True,
-            degraded=True,
-            error=str(e),
-        )
-        return fallback
+def review_inbound_reply_structured(
+    *,
+    business_name: str | None,
+    industry: str | None,
+    city: str | None,
+    lead_email: str | None,
+    outbound_subject: str | None,
+    outbound_message_id: str | None,
+    from_email: str | None,
+    to_email: str | None,
+    subject: str | None,
+    body_text: str | None,
+    classification_label: str | None,
+    classification_summary: str | None,
+    next_action_suggestion: str | None,
+    should_escalate_reviewer: bool,
+    role: LLMRole | str = LLMRole.REVIEWER,
+    target_type: str | None = None,
+    target_id: str | None = None,
+    tags: dict[str, object] | None = None,
+) -> StructuredInvocationResult[InboundReplyReviewResult]:
+    prompt_args = {
+        "business_name": sanitize_field(business_name) or "Unknown",
+        "industry": sanitize_field(industry) or "Unknown",
+        "city": sanitize_field(city) or "Unknown",
+        "lead_email": sanitize_field(lead_email) or "Unknown",
+        "outbound_subject": sanitize_field(outbound_subject) or "Unknown",
+        "outbound_message_id": outbound_message_id or "Unknown",
+        "from_email": sanitize_field(from_email) or "Unknown",
+        "to_email": sanitize_field(to_email) or "Unknown",
+        "subject": sanitize_field(subject) or "No subject",
+        "body_text": sanitize_field(body_text) or "No body text available",
+        "classification_label": classification_label or "None",
+        "classification_summary": sanitize_field(classification_summary)
+        or "No executor summary available",
+        "next_action_suggestion": sanitize_field(next_action_suggestion)
+        or "No executor suggestion available",
+        "should_escalate_reviewer": "true"
+        if should_escalate_reviewer
+        else "false",
+    }
+    return invoke_structured(
+        function_name="review_inbound_reply",
+        prompt=INBOUND_REPLY_REVIEW_PROMPT,
+        prompt_args=prompt_args,
+        role=role,
+        fallback_factory=_review_inbound_reply_fallback,
+        target_type=target_type,
+        target_id=target_id,
+        tags=tags,
+    )
 
 
 def generate_reply_assistant_draft(

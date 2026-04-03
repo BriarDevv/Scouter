@@ -38,6 +38,38 @@ class LeadReviewResult(BaseModel):
     watchouts: list[str] = Field(default_factory=list)
 
 
+class ReplyClassificationResult(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    label: Literal[
+        "interested",
+        "not_interested",
+        "neutral",
+        "asked_for_quote",
+        "asked_for_meeting",
+        "asked_for_more_info",
+        "wrong_contact",
+        "out_of_office",
+        "spam_or_irrelevant",
+        "needs_human_review",
+    ]
+    summary: str
+    confidence: float = Field(ge=0, le=1)
+    next_action_suggestion: str
+    should_escalate_reviewer: bool
+
+
+class InboundReplyReviewResult(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    verdict: Literal["reply_now", "consider_reply", "ignore", "escalate_human"]
+    confidence: Literal["high", "medium", "low"]
+    reasoning: str
+    recommended_action: str
+    suggested_response_angle: str | None = None
+    watchouts: list[str] = Field(default_factory=list)
+
+
 class DossierResult(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
