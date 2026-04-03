@@ -4,17 +4,10 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
-  InboundClassificationStatusBadge,
-  InboundReplyLabelBadge,
   QualityBadge,
-  ScoreBadge,
   StatusBadge,
 } from "@/components/shared/status-badge";
-import { INBOUND_MATCH_VIA_LABELS } from "@/lib/constants";
-import { SIGNAL_CONFIG } from "@/lib/constants";
 import { RelativeTime } from "@/components/shared/relative-time";
-import { ReplyDraftPanel } from "@/components/shared/reply-draft-panel";
-import { CollapsibleSection } from "@/components/shared/collapsible-section";
 import { Skeleton, SkeletonCard } from "@/components/shared/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import {
@@ -22,7 +15,6 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
-import { formatDateTime, extractDomain } from "@/lib/formatters";
 import {
   generateDraft,
   generateBrief,
@@ -49,81 +41,23 @@ import type {
   InboundMessage,
   Lead,
   LeadResearchReport,
-  LeadSignal,
   PipelineRunSummary,
   TaskStatusRecord,
 } from "@/types";
 import {
-  ArrowLeft, Globe, Instagram, Mail, Phone, MapPin, Building2, ShieldCheck,
-  RefreshCw, FileText, CheckCircle, XCircle, Sparkles, Clock,
-  MessageSquare, GitBranch, StickyNote, Loader2, Star, Map as MapIcon, ExternalLink,
-  FileSearch, Briefcase, AlertCircle,
+  ArrowLeft, RefreshCw, FileText, CheckCircle, ShieldCheck,
+  Loader2,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { sileo } from "sileo";
 
-function InfoRow({ icon: Icon, label, value, href }: { icon: typeof Globe; label: string; value: string | null; href?: string }) {
-  if (!value) return null;
-  return (
-    <div className="flex items-center gap-3 py-2">
-      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-      <span className="text-sm text-muted-foreground w-24 shrink-0">{label}</span>
-      {href ? (
-        <a href={href} target="_blank" rel="noopener noreferrer" className="text-sm text-violet-600 dark:text-violet-400 hover:underline truncate font-data">
-          {value}
-        </a>
-      ) : (
-        <span className="text-sm text-foreground truncate font-data">{value}</span>
-      )}
-    </div>
-  );
-}
-
-function SignalsList({ signals, onRunPipeline, isRunning }: { signals: LeadSignal[]; onRunPipeline: () => void; isRunning: boolean }) {
-  return (
-    <div className="space-y-2">
-      {signals.map((s) => {
-        const config = SIGNAL_CONFIG[s.signal_type];
-        return (
-          <div
-            key={s.id}
-            className={cn(
-              "flex items-center gap-3 rounded-xl px-3 py-2 text-sm",
-              config?.severity === "positive"
-                ? "bg-emerald-50/60 dark:bg-emerald-950/20"
-                : "bg-muted"
-            )}
-          >
-            <span className="text-base">{config?.emoji || "?"}</span>
-            <div>
-              <span className="font-medium text-foreground/80">{config?.label || s.signal_type}</span>
-              {s.detail && <span className="text-muted-foreground"> — {s.detail}</span>}
-            </div>
-          </div>
-        );
-      })}
-      {signals.length === 0 && (
-        <EmptyState
-          icon={Sparkles}
-          title="Sin señales detectadas"
-          description="Ejecutá el pipeline para detectar señales."
-          className="py-6"
-        >
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-xl gap-1.5"
-            onClick={onRunPipeline}
-            disabled={isRunning}
-          >
-            {isRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-            Ejecutar Pipeline
-          </Button>
-        </EmptyState>
-      )}
-    </div>
-  );
-}
+import { LeadContactCard } from "@/components/leads/lead-contact-card";
+import { LeadAnalysisSection } from "@/components/leads/lead-analysis-section";
+import { LeadDossierSection } from "@/components/leads/lead-dossier-section";
+import { LeadBriefSection } from "@/components/leads/lead-brief-section";
+import { LeadOutreachSection } from "@/components/leads/lead-outreach-section";
+import { LeadPipelineSection } from "@/components/leads/lead-pipeline-section";
+import { LeadRepliesSection } from "@/components/leads/lead-replies-section";
+import { LeadTimelineSection } from "@/components/leads/lead-timeline-section";
 
 function LeadDetailSkeleton() {
   return (
@@ -444,9 +378,6 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     );
   }
 
-  const threadById = new Map<string, EmailThreadSummary>(inboundThreads.map((thread) => [thread.id, thread]));
-  const latestInboundMessage = inboundMessages[0] ?? null;
-
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto max-w-[1400px] px-8 py-8">
@@ -554,706 +485,55 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       {/* Main grid */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left column: Info + Score + Signals */}
-        <div className="space-y-6 lg:col-span-1">
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <h3 className="text-sm font-semibold text-foreground mb-3 font-heading">Datos de contacto</h3>
-            <div className="divide-y divide-border/50">
-              <div className="flex items-center gap-3 py-2">
-                <Globe className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground w-24 shrink-0">Website</span>
-                {lead.website_url ? (
-                  <a href={lead.website_url} target="_blank" rel="noopener noreferrer" className="text-sm text-violet-600 dark:text-violet-400 hover:underline truncate font-data">
-                    {extractDomain(lead.website_url)}
-                  </a>
-                ) : (
-                  <span className="text-sm text-muted-foreground/50 font-data">Sin website</span>
-                )}
-              </div>
-              <div className="flex items-center gap-3 py-2">
-                <Instagram className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground w-24 shrink-0">Instagram</span>
-                {lead.instagram_url ? (
-                  <a href={lead.instagram_url} target="_blank" rel="noopener noreferrer" className="text-sm text-violet-600 dark:text-violet-400 hover:underline truncate font-data">
-                    @{lead.instagram_url.split("/").pop()}
-                  </a>
-                ) : (
-                  <span className="text-sm text-muted-foreground/50 font-data">Sin Instagram</span>
-                )}
-              </div>
-              <InfoRow icon={Mail} label="Email" value={lead.email} href={lead.email ? `mailto:${lead.email}` : undefined} />
-              <InfoRow icon={Phone} label="Teléfono" value={lead.phone} />
-              <InfoRow icon={MapPin} label="Ubicación" value={lead.city ? `${lead.city}${lead.zone ? `, ${lead.zone}` : ""}` : null} />
-              <InfoRow icon={MapPin} label="Dirección" value={lead.address} />
-              <InfoRow icon={Building2} label="Rubro" value={lead.industry} />
-              <InfoRow icon={MapIcon} label="Google Maps" value={lead.google_maps_url ? "Ver en Maps" : null} href={lead.google_maps_url || undefined} />
-              {lead.rating !== null && lead.rating !== undefined && (
-                <div className="flex items-center gap-3 py-2">
-                  <Star className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground w-24 shrink-0">Rating</span>
-                  <span className="text-sm text-foreground font-data">
-                    {lead.rating.toFixed(1)} / 5
-                    {lead.review_count !== null && lead.review_count !== undefined && (
-                      <span className="text-muted-foreground ml-1">({lead.review_count} reseñas)</span>
-                    )}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <h3 className="text-sm font-semibold text-foreground mb-3 font-heading">Score</h3>
-            <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
-                <span className="text-2xl font-bold text-foreground font-data">{lead.score !== null ? lead.score.toFixed(0) : "—"}</span>
-              </div>
-              <div>
-                <ScoreBadge score={lead.score} />
-                <p className="mt-1 text-xs text-muted-foreground">de 100 puntos posibles</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <h3 className="text-sm font-semibold text-foreground mb-3 font-heading">Señales Detectadas</h3>
-            <SignalsList
-              signals={lead.signals ?? []}
-              onRunPipeline={() => void handleRunPipeline()}
-              isRunning={isRunningPipeline}
-            />
-          </div>
-        </div>
+        <LeadContactCard
+          lead={lead}
+          isRunningPipeline={isRunningPipeline}
+          onRunPipeline={() => void handleRunPipeline()}
+        />
 
         {/* Right column: Collapsible sections */}
         <div className="space-y-6 lg:col-span-2">
-          {/* LLM Summary — always open */}
-          <CollapsibleSection
-            title="Análisis IA"
-            icon={Sparkles}
-            defaultOpen
-          >
-            {lead.llm_summary ? (
-              <div className="space-y-3">
-                <p className="text-sm text-foreground/80 leading-relaxed">{lead.llm_summary}</p>
-                {lead.llm_quality_assessment && (
-                  <div className="rounded-xl bg-muted/60 p-3">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Evaluación de calidad</p>
-                    <p className="text-sm text-foreground/80">{lead.llm_quality_assessment}</p>
-                  </div>
-                )}
-                {lead.llm_suggested_angle && (
-                  <div className="rounded-xl bg-muted/60 p-3">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Ángulo comercial sugerido</p>
-                    <p className="text-sm text-foreground/80">{lead.llm_suggested_angle}</p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <EmptyState
-                icon={Sparkles}
-                title="Análisis IA no disponible"
-                description="Ejecutá el pipeline para generar el análisis con el modelo configurado en Ollama."
-                className="py-6"
-              >
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-xl gap-1.5"
-                  onClick={() => void handleRunPipeline()}
-                  disabled={isRunningPipeline}
-                >
-                  {isRunningPipeline ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                  Ejecutar Análisis
-                </Button>
-              </EmptyState>
-            )}
-          </CollapsibleSection>
+          <LeadAnalysisSection
+            lead={lead}
+            isRunningPipeline={isRunningPipeline}
+            onRunPipeline={() => void handleRunPipeline()}
+          />
 
-          {/* Dossier */}
-          <CollapsibleSection
-            title="Dossier"
-            icon={FileSearch}
-            defaultOpen={!!research}
-            badge={
-              research ? (
-                <span className={cn(
-                  "rounded-full px-2 py-0.5 text-xs font-medium",
-                  research.status === "completed" ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300"
-                    : research.status === "running" ? "bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300"
-                    : research.status === "failed" ? "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300"
-                    : "bg-muted text-muted-foreground"
-                )}>{research.status}</span>
-              ) : undefined
-            }
-          >
-            {research && research.status === "completed" ? (
-              <div className="space-y-3">
-                {/* Website */}
-                <div className="flex items-center gap-3 rounded-xl bg-muted/60 px-3 py-2">
-                  <Globe className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span className="text-sm text-muted-foreground w-24 shrink-0">Website</span>
-                  <span className={cn("text-sm font-medium", research.website_exists ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>
-                    {research.website_exists ? "Existe" : "No detectado"}
-                  </span>
-                  {research.website_confidence && (
-                    <span className={cn(
-                      "rounded-md px-1.5 py-0.5 text-[10px] font-medium",
-                      research.website_confidence === "confirmed" ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"
-                        : research.website_confidence === "probable" ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
-                        : research.website_confidence === "mismatch" ? "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300"
-                        : "bg-muted text-muted-foreground"
-                    )}>{research.website_confidence}</span>
-                  )}
-                  {research.website_url_verified && (
-                    <a href={research.website_url_verified} target="_blank" rel="noopener noreferrer" className="text-xs text-violet-600 dark:text-violet-400 hover:underline truncate">
-                      {research.website_url_verified}
-                    </a>
-                  )}
-                </div>
-                {/* Instagram */}
-                <div className="flex items-center gap-3 rounded-xl bg-muted/60 px-3 py-2">
-                  <Instagram className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span className="text-sm text-muted-foreground w-24 shrink-0">Instagram</span>
-                  <span className={cn("text-sm font-medium", research.instagram_exists ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>
-                    {research.instagram_exists ? "Existe" : "No detectado"}
-                  </span>
-                  {research.instagram_confidence && (
-                    <span className={cn(
-                      "rounded-md px-1.5 py-0.5 text-[10px] font-medium",
-                      research.instagram_confidence === "confirmed" ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"
-                        : research.instagram_confidence === "probable" ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
-                        : "bg-muted text-muted-foreground"
-                    )}>{research.instagram_confidence}</span>
-                  )}
-                </div>
-                {/* WhatsApp */}
-                <div className="flex items-center gap-3 rounded-xl bg-muted/60 px-3 py-2">
-                  <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span className="text-sm text-muted-foreground w-24 shrink-0">WhatsApp</span>
-                  <span className={cn("text-sm font-medium", research.whatsapp_detected ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>
-                    {research.whatsapp_detected ? "Detectado" : "No detectado"}
-                  </span>
-                  {research.whatsapp_confidence && (
-                    <span className={cn(
-                      "rounded-md px-1.5 py-0.5 text-[10px] font-medium",
-                      research.whatsapp_confidence === "confirmed" ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"
-                        : "bg-muted text-muted-foreground"
-                    )}>{research.whatsapp_confidence}</span>
-                  )}
-                </div>
-                {/* Business description */}
-                {research.business_description && (
-                  <div className="rounded-xl bg-muted/60 p-3">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Descripcion del negocio</p>
-                    <p className="text-sm text-foreground/80">{research.business_description}</p>
-                  </div>
-                )}
-                {/* Detected signals */}
-                {research.detected_signals_json && research.detected_signals_json.length > 0 && (
-                  <div className="rounded-xl bg-muted/60 p-3">
-                    <p className="text-xs font-medium text-muted-foreground mb-2">Senales detectadas</p>
-                    <div className="space-y-1">
-                      {research.detected_signals_json.map((sig, i) => (
-                        <div key={i} className="flex items-center gap-2 text-sm">
-                          <span className="font-medium text-foreground/80">{sig.type}</span>
-                          <span className="text-muted-foreground">{sig.detail}</span>
-                          {sig.confidence != null && (
-                            <span className="text-xs text-muted-foreground">({(sig.confidence * 100).toFixed(0)}%)</span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {/* HTML metadata */}
-                {research.html_metadata_json && (
-                  <div className="rounded-xl bg-muted/60 p-3">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Metadata HTML</p>
-                    {research.html_metadata_json.title ? (
-                      <p className="text-sm text-foreground/80">Titulo: {String(research.html_metadata_json.title)}</p>
-                    ) : null}
-                    {research.html_metadata_json.description ? (
-                      <p className="text-sm text-foreground/80">Descripcion: {String(research.html_metadata_json.description)}</p>
-                    ) : null}
-                  </div>
-                )}
-                {/* Duration */}
-                {research.research_duration_ms != null && (
-                  <p className="text-xs text-muted-foreground">
-                    Duracion: {(research.research_duration_ms / 1000).toFixed(1)}s
-                    {research.researcher_model && ` · Modelo: ${research.researcher_model}`}
-                  </p>
-                )}
-              </div>
-            ) : research && research.status === "failed" ? (
-              <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
-                <AlertCircle className="h-4 w-4" />
-                {research.error || "Error en la investigacion"}
-              </div>
-            ) : (
-              <EmptyState
-                icon={FileSearch}
-                title="Sin investigacion"
-                description="Ejecuta una investigacion para obtener el dossier de este lead."
-                className="py-6"
-              >
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-xl gap-1.5"
-                  onClick={() => void handleRunResearch()}
-                  disabled={isRunningResearch}
-                >
-                  {isRunningResearch ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileSearch className="h-3.5 w-3.5" />}
-                  Investigar
-                </Button>
-              </EmptyState>
-            )}
-          </CollapsibleSection>
+          <LeadDossierSection
+            research={research}
+            isRunningResearch={isRunningResearch}
+            onRunResearch={() => void handleRunResearch()}
+          />
 
-          {/* Commercial Brief */}
-          <CollapsibleSection
-            title="Brief Comercial"
-            icon={Briefcase}
-            defaultOpen={!!brief}
-            badge={
-              brief ? (
-                <span className={cn(
-                  "rounded-full px-2 py-0.5 text-xs font-medium",
-                  brief.status === "generated" || brief.status === "reviewed" ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300"
-                    : brief.status === "failed" ? "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300"
-                    : "bg-muted text-muted-foreground"
-                )}>{brief.status}</span>
-              ) : undefined
-            }
-          >
-            {brief && (brief.status === "generated" || brief.status === "reviewed") ? (
-              <div className="space-y-3">
-                {/* Opportunity score + budget */}
-                <div className="flex items-center gap-4">
-                  <div className={cn(
-                    "flex h-16 w-16 items-center justify-center rounded-2xl",
-                    (brief.opportunity_score ?? 0) >= 70 ? "bg-emerald-50 dark:bg-emerald-950/30"
-                      : (brief.opportunity_score ?? 0) >= 40 ? "bg-amber-50 dark:bg-amber-950/30"
-                      : "bg-red-50 dark:bg-red-950/30"
-                  )}>
-                    <span className={cn(
-                      "text-2xl font-bold font-data",
-                      (brief.opportunity_score ?? 0) >= 70 ? "text-emerald-600 dark:text-emerald-400"
-                        : (brief.opportunity_score ?? 0) >= 40 ? "text-amber-600 dark:text-amber-400"
-                        : "text-red-600 dark:text-red-400"
-                    )}>{brief.opportunity_score?.toFixed(0) ?? "—"}</span>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {brief.budget_tier && (
-                        <span className={cn(
-                          "rounded-md px-1.5 py-0.5 text-[10px] font-medium",
-                          brief.budget_tier === "premium" ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"
-                            : brief.budget_tier === "high" ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
-                            : brief.budget_tier === "medium" ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
-                            : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-                        )}>{brief.budget_tier.toUpperCase()}</span>
-                      )}
-                      {brief.estimated_scope && (
-                        <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                          {brief.estimated_scope.replace(/_/g, " ")}
-                        </span>
-                      )}
-                      {brief.contact_priority && (
-                        <span className={cn(
-                          "rounded-md px-1.5 py-0.5 text-[10px] font-medium",
-                          brief.contact_priority === "immediate" ? "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300"
-                            : brief.contact_priority === "high" ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
-                            : "bg-muted text-muted-foreground"
-                        )}>{brief.contact_priority}</span>
-                      )}
-                    </div>
-                    {brief.estimated_budget_min != null && brief.estimated_budget_max != null && (
-                      <p className="text-sm font-mono text-foreground">USD {brief.estimated_budget_min} – {brief.estimated_budget_max}</p>
-                    )}
-                  </div>
-                </div>
-                {/* Contact method + call */}
-                <div className="flex flex-wrap items-center gap-3 rounded-xl bg-muted/60 px-3 py-2">
-                  {brief.recommended_contact_method && (
-                    <span className="text-sm text-foreground">Contacto: <span className="font-medium">{brief.recommended_contact_method.replace(/_/g, " ")}</span></span>
-                  )}
-                  {brief.should_call && (
-                    <span className={cn(
-                      "rounded-full px-2 py-0.5 text-xs font-medium",
-                      brief.should_call === "yes" ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300"
-                        : brief.should_call === "maybe" ? "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300"
-                        : "bg-muted text-muted-foreground"
-                    )}>Llamar: {brief.should_call}</span>
-                  )}
-                  {brief.demo_recommended && (
-                    <span className="rounded-full bg-violet-50 dark:bg-violet-950/30 px-2 py-0.5 text-xs font-medium text-violet-700 dark:text-violet-300">
-                      Demo recomendada
-                    </span>
-                  )}
-                </div>
-                {brief.call_reason && (
-                  <p className="text-sm text-muted-foreground"><span className="font-medium text-foreground/80">Razon de llamada:</span> {brief.call_reason}</p>
-                )}
-                {/* Why this lead matters */}
-                {brief.why_this_lead_matters && (
-                  <div className="rounded-xl bg-muted/60 p-3">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Por que importa este lead</p>
-                    <p className="text-sm text-foreground/80">{brief.why_this_lead_matters}</p>
-                  </div>
-                )}
-                {/* Business signals */}
-                {brief.main_business_signals && brief.main_business_signals.length > 0 && (
-                  <div className="rounded-xl bg-muted/60 p-3">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Senales de negocio</p>
-                    <ul className="list-disc list-inside space-y-0.5">
-                      {brief.main_business_signals.map((sig, i) => (
-                        <li key={i} className="text-sm text-foreground/80">{sig}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {/* Digital gaps */}
-                {brief.main_digital_gaps && brief.main_digital_gaps.length > 0 && (
-                  <div className="rounded-xl bg-muted/60 p-3">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Brechas digitales</p>
-                    <ul className="list-disc list-inside space-y-0.5">
-                      {brief.main_digital_gaps.map((gap, i) => (
-                        <li key={i} className="text-sm text-foreground/80">{gap}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {/* Recommended angle */}
-                {brief.recommended_angle && (
-                  <div className="rounded-xl bg-muted/60 p-3">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Angulo recomendado</p>
-                    <p className="text-sm text-foreground/80">{brief.recommended_angle}</p>
-                  </div>
-                )}
-              </div>
-            ) : brief && brief.status === "failed" ? (
-              <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
-                <AlertCircle className="h-4 w-4" />
-                {brief.error || "Error al generar brief"}
-              </div>
-            ) : (
-              <EmptyState
-                icon={Briefcase}
-                title="Sin brief comercial"
-                description="Genera un brief comercial para evaluar la oportunidad."
-                className="py-6"
-              >
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-xl gap-1.5"
-                  onClick={() => void handleGenerateBrief()}
-                  disabled={isGeneratingBrief}
-                >
-                  {isGeneratingBrief ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Briefcase className="h-3.5 w-3.5" />}
-                  Generar Brief
-                </Button>
-              </EmptyState>
-            )}
-          </CollapsibleSection>
+          <LeadBriefSection
+            brief={brief}
+            isGeneratingBrief={isGeneratingBrief}
+            onGenerateBrief={() => void handleGenerateBrief()}
+          />
 
-          {/* Drafts — always open */}
-          <CollapsibleSection
-            title="Borradores de Outreach"
-            icon={FileText}
-            defaultOpen
-            badge={
-              drafts.length > 0 ? (
-                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{drafts.length}</span>
-              ) : undefined
-            }
-          >
-            {drafts.length > 0 ? (
-              <div className="space-y-3">
-                {drafts.map((draft) => (
-                  <div key={draft.id} className="rounded-xl border border-border p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-foreground">{draft.subject}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground font-data">
-                          <RelativeTime date={draft.generated_at} />
-                        </span>
-                        <span className={cn(
-                          "rounded-full px-2 py-0.5 text-xs font-medium",
-                          draft.status === "pending_review" && "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300",
-                          draft.status === "approved" && "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300",
-                          draft.status === "sent" && "bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300",
-                          draft.status === "rejected" && "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300",
-                        )}>
-                          {draft.status === "pending_review" ? "Pendiente" : draft.status === "approved" ? "Aprobado" : draft.status === "sent" ? "Enviado" : "Rechazado"}
-                        </span>
-                      </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{draft.body}</p>
-                    {draft.status === "pending_review" && (
-                      <div className="mt-3 flex gap-2">
-                        <Button
-                          size="sm"
-                          className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 gap-1.5"
-                          onClick={() => void handleReviewDraft(draft.id, true)}
-                          disabled={isReviewingDraftId === draft.id}
-                        >
-                          {isReviewingDraftId === draft.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
-                          Aprobar
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="rounded-xl gap-1.5 text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-950/20"
-                          onClick={() => void handleReviewDraft(draft.id, false)}
-                          disabled={isReviewingDraftId === draft.id}
-                        >
-                          <XCircle className="h-3.5 w-3.5" /> Rechazar
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <EmptyState
-                icon={FileText}
-                title="Sin borradores"
-                description="Generá un borrador de outreach para este lead."
-                className="py-6"
-              >
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-xl gap-1.5"
-                  onClick={() => void handleGenerateDraft()}
-                  disabled={isGeneratingDraft}
-                >
-                  {isGeneratingDraft ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
-                  Generar Draft
-                </Button>
-              </EmptyState>
-            )}
-          </CollapsibleSection>
+          <LeadOutreachSection
+            drafts={drafts}
+            isGeneratingDraft={isGeneratingDraft}
+            isReviewingDraftId={isReviewingDraftId}
+            onGenerateDraft={() => void handleGenerateDraft()}
+            onReviewDraft={(draftId, approved) => void handleReviewDraft(draftId, approved)}
+          />
 
-          {/* Pipeline Runs — collapsed by default */}
-          <CollapsibleSection
-            title="Pipeline Async"
-            icon={GitBranch}
-            defaultOpen={false}
-            badge={
-              latestTask?.task_id ? (
-                <span className="text-xs text-muted-foreground font-data">task {latestTask.task_id.slice(0, 8)}</span>
-              ) : undefined
-            }
-          >
-            {latestTask && (
-              <div className="mb-4 rounded-xl border border-violet-100 dark:border-violet-900/30 bg-violet-50/40 dark:bg-violet-950/20 p-3">
-                <p className="text-xs font-medium text-violet-700 dark:text-violet-300">Última task</p>
-                <p className="mt-1 text-sm text-foreground/80">
-                  {latestTask.status} {latestTask.current_step ? `· ${latestTask.current_step}` : ""}
-                </p>
-                {latestTask.pipeline_run_id && (
-                  <p className="mt-1 text-xs text-muted-foreground font-data">run {latestTask.pipeline_run_id.slice(0, 8)}</p>
-                )}
-              </div>
-            )}
-            {pipelineRuns.length > 0 ? (
-              <div className="space-y-3">
-                {pipelineRuns.map((run) => (
-                  <div key={run.id} className="rounded-xl border border-border p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-medium text-foreground">
-                          {run.status} {run.current_step ? `· ${run.current_step}` : ""}
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground font-data">
-                          run {run.id.slice(0, 8)} · <RelativeTime date={run.updated_at} />
-                        </p>
-                      </div>
-                      {run.root_task_id && (
-                        <span className="text-xs text-muted-foreground font-data">{run.root_task_id.slice(0, 8)}</span>
-                      )}
-                    </div>
-                    {run.error && <p className="mt-2 text-xs text-red-600">{run.error}</p>}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-6">Sin ejecuciones async registradas</p>
-            )}
-          </CollapsibleSection>
+          <LeadPipelineSection
+            pipelineRuns={pipelineRuns}
+            latestTask={latestTask}
+          />
 
-          {/* Inbound Replies — open by default */}
-          <CollapsibleSection
-            title="Replies del lead"
-            subtitle="Inbound real vinculado por delivery/thread y clasificado por el executor."
-            icon={MessageSquare}
-            defaultOpen
-            badge={
-              <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-                {inboundMessages.length} replies
-              </span>
-            }
-          >
-            {latestInboundMessage && (
-              <div className="mb-4 space-y-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <InboundClassificationStatusBadge status={latestInboundMessage.classification_status} />
-                  <InboundReplyLabelBadge label={latestInboundMessage.classification_label} />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    Última reply: {latestInboundMessage.from_name || latestInboundMessage.from_email || "Remitente desconocido"}
-                  </p>
-                  <p className="text-xs text-muted-foreground font-data">
-                    {latestInboundMessage.subject || "(sin asunto)"}
-                  </p>
-                </div>
-                {latestInboundMessage.summary && (
-                  <p className="text-sm text-foreground/80">{latestInboundMessage.summary}</p>
-                )}
-                {latestInboundMessage.next_action_suggestion && (
-                  <p className="text-sm text-muted-foreground">
-                    <span className="font-medium text-foreground/80">Siguiente paso:</span>{" "}
-                    {latestInboundMessage.next_action_suggestion}
-                  </p>
-                )}
-                <ReplyDraftPanel
-                  messageId={latestInboundMessage.id}
-                  draft={latestInboundMessage.reply_assistant_draft ?? null}
-                  compact
-                  onRefresh={refreshLeadContext}
-                />
-              </div>
-            )}
-            {inboundMessages.length > 0 ? (
-              <div className="space-y-3">
-                {inboundMessages.map((message) => {
-                  const thread = message.thread_id ? threadById.get(message.thread_id) : undefined;
-                  return (
-                    <div key={message.id} className="rounded-xl border border-border p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="space-y-2">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <InboundClassificationStatusBadge status={message.classification_status} />
-                            <InboundReplyLabelBadge label={message.classification_label} />
-                            {message.should_escalate_reviewer && (
-                              <span className="inline-flex items-center rounded-full bg-fuchsia-50 dark:bg-fuchsia-950/30 px-2.5 py-0.5 text-xs font-medium text-fuchsia-700 dark:text-fuchsia-300">
-                                Sugerir reviewer
-                              </span>
-                            )}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-foreground">
-                              {message.from_name || message.from_email || "Remitente desconocido"}
-                            </p>
-                            <p className="text-xs text-muted-foreground font-data">
-                              {message.subject || "(sin asunto)"}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right text-xs text-muted-foreground font-data">
-                          <div>{formatDateTime(message.received_at || message.created_at)}</div>
-                          <div className="mt-1">
-                            <RelativeTime date={message.received_at || message.created_at} />
-                          </div>
-                        </div>
-                      </div>
+          <LeadRepliesSection
+            inboundMessages={inboundMessages}
+            inboundThreads={inboundThreads}
+            onRefresh={() => void refreshLeadContext()}
+          />
 
-                      {message.summary && (
-                        <p className="mt-3 text-sm text-foreground/80">{message.summary}</p>
-                      )}
-                      {message.next_action_suggestion && (
-                        <p className="mt-2 text-sm text-muted-foreground">
-                          <span className="font-medium text-foreground/80">Siguiente paso:</span>{" "}
-                          {message.next_action_suggestion}
-                        </p>
-                      )}
-                      {message.classification_error && (
-                        <p className="mt-2 text-sm text-rose-600">{message.classification_error}</p>
-                      )}
-                      {message.body_snippet && (
-                        <p className="mt-3 border-l-2 border-muted-foreground/30 pl-3 text-sm text-muted-foreground">
-                          {message.body_snippet}
-                        </p>
-                      )}
-
-                      <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                        {thread && (
-                          <span>
-                            {INBOUND_MATCH_VIA_LABELS[thread.matched_via] || thread.matched_via}
-                            {thread.match_confidence !== null ? ` · ${thread.match_confidence.toFixed(2)}` : ""}
-                            {" · "}
-                            {thread.message_count} mensaje(s)
-                          </span>
-                        )}
-                        {message.classification_model && (
-                          <span className="font-data">
-                            {message.classification_role} · {message.classification_model}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <EmptyState
-                icon={MessageSquare}
-                title="Sin replies inbound"
-                description="Este lead todavía no tiene replies inbound vinculadas."
-                className="py-6"
-              />
-            )}
-          </CollapsibleSection>
-
-          {/* Timeline — collapsed by default */}
-          <CollapsibleSection
-            title="Timeline"
-            icon={Clock}
-            defaultOpen={false}
-            badge={
-              logs.length > 0 ? (
-                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{logs.length}</span>
-              ) : undefined
-            }
-          >
-            {logs.length > 0 ? (
-              <div className="space-y-3">
-                {logs.map((log) => (
-                  <div key={log.id} className="flex items-start gap-3">
-                    <div className="mt-0.5 h-2 w-2 rounded-full bg-muted-foreground/30 shrink-0" />
-                    <div>
-                      <p className="text-sm text-foreground/80">
-                        <span className="font-medium capitalize">{log.action}</span>
-                        {log.detail && <span className="text-muted-foreground"> — {log.detail}</span>}
-                      </p>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1 font-data">
-                        <Clock className="h-3 w-3" />
-                        {formatDateTime(log.created_at)} · {log.actor}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-6">Sin actividad registrada</p>
-            )}
-          </CollapsibleSection>
-
-          {/* Notes — open only if notes exist */}
-          {lead.notes && (
-            <CollapsibleSection
-              title="Notas"
-              icon={StickyNote}
-              defaultOpen
-            >
-              <p className="text-sm text-muted-foreground">{lead.notes}</p>
-            </CollapsibleSection>
-          )}
+          <LeadTimelineSection
+            logs={logs}
+            notes={lead.notes}
+          />
         </div>
       </div>
         </div>
