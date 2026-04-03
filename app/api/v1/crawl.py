@@ -1,10 +1,10 @@
 """Crawl endpoints: trigger Google Maps discovery and ingest leads."""
 
-import json as _json
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
-from redis import Redis
+from sqlalchemy.orm import Session
 
 from app.api.deps import get_session
 from app.api.request_context import get_correlation_id
@@ -12,12 +12,15 @@ from app.core.config import settings as env
 from app.crawlers.google_maps_crawler import DEFAULT_CATEGORIES
 from app.services.deploy_config_service import get_google_maps_api_key_status
 from app.services.operational_task_service import (
+    get_territory_crawl_status_snapshot,
     get_territory_crawl_task_run,
-    serialize_territory_crawl_status,
+    load_territory_crawl_legacy_status,
+    mark_territory_crawl_legacy_stop_requested,
 )
 from app.services.task_tracking_service import queue_task_run, request_task_stop
 
 router = APIRouter(prefix="/crawl", tags=["crawl"])
+DbSession = Annotated[Session, Depends(get_session)]
 
 
 # ── Territory-based crawl (async via Celery) ──────────────────────────
@@ -33,7 +36,7 @@ class TerritoryCrawlRequest(BaseModel):
 def start_territory_crawl(
     body: TerritoryCrawlRequest,
     request: Request,
-    db=Depends(get_session),
+    db: DbSession,
 ):
     """Start a crawl for all cities in a territory (async via Celery)."""
     if not env.GOOGLE_MAPS_API_KEY:
@@ -54,23 +57,16 @@ def start_territory_crawl(
         return {
             "ok": False,
             "message": "Ya hay un crawl en curso para este territorio.",
-            "progress": serialize_territory_crawl_status(existing_task),
+            "progress": get_territory_crawl_status_snapshot(db, body.territory_id),
         }
 
-    try:
-        redis = Redis.from_url(env.REDIS_URL)
-        redis_key = f"crawl:territory:{body.territory_id}"
-        existing = redis.get(redis_key)
-    except Exception:
-        existing = None
-    if existing:
-        data = _json.loads(existing)
-        if data.get("status") in {"running", "stopping"}:
-            return {
-                "ok": False,
-                "message": "Ya hay un crawl en curso para este territorio.",
-                "progress": data,
-            }
+    legacy = load_territory_crawl_legacy_status(body.territory_id)
+    if legacy.get("status") in {"running", "stopping"}:
+        return {
+            "ok": False,
+            "message": "Ya hay un crawl en curso para este territorio.",
+            "progress": legacy,
+        }
 
     # Launch Celery task
     from app.workers.tasks import task_crawl_territory
@@ -105,25 +101,13 @@ def start_territory_crawl(
 
 
 @router.get("/territory/{territory_id}/status")
-def get_territory_crawl_status(territory_id: str, db=Depends(get_session)):
+def get_territory_crawl_status(territory_id: str, db: DbSession):
     """Poll crawl progress for a territory."""
-    task_run = get_territory_crawl_task_run(db, territory_id)
-    if task_run:
-        return serialize_territory_crawl_status(task_run)
-
-    try:
-        redis = Redis.from_url(env.REDIS_URL)
-        redis_key = f"crawl:territory:{territory_id}"
-        data = redis.get(redis_key)
-    except Exception:
-        data = None
-    if not data:
-        return {"status": "idle"}
-    return _json.loads(data)
+    return get_territory_crawl_status_snapshot(db, territory_id)
 
 
 @router.post("/territory/{territory_id}/stop")
-def stop_territory_crawl(territory_id: str, db=Depends(get_session)):
+def stop_territory_crawl(territory_id: str, db: DbSession):
     """Signal the crawl to stop after the current city."""
     task_run = request_task_stop(
         db,
@@ -133,19 +117,8 @@ def stop_territory_crawl(territory_id: str, db=Depends(get_session)):
     if task_run:
         return {"ok": True, "message": "Crawl deteniéndose tras la ciudad actual."}
 
-    try:
-        redis = Redis.from_url(env.REDIS_URL)
-        redis_key = f"crawl:territory:{territory_id}"
-        existing = redis.get(redis_key)
-    except Exception:
-        existing = None
-    if existing:
-        data = _json.loads(existing)
-        if data.get("status") in ("running", "stopping"):
-            data["status"] = "stopping"
-            redis.set(redis_key, _json.dumps(data), ex=3600)
-            return {"ok": True, "message": "Crawl deteniéndose tras la ciudad actual."}
-    redis.delete(redis_key)
+    if mark_territory_crawl_legacy_stop_requested(territory_id):
+        return {"ok": True, "message": "Crawl deteniéndose tras la ciudad actual."}
     return {"ok": True, "message": "No habia crawl corriendo."}
 
 

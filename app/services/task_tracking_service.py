@@ -425,14 +425,18 @@ def request_task_stop(
     task_run = get_scoped_task_run(db, task_name=task_name, scope_key=scope_key, active_only=True)
     if not task_run:
         return None
-    update_task_run(
-        db,
-        task_run.task_id,
-        status="stopping",
-        stop_requested=True,
+    task_run.status = "stopping"
+    task_run.stop_requested_at = task_run.stop_requested_at or utcnow()
+    db.commit()
+    db.refresh(task_run)
+    logger.info(
+        "task_run_stop_requested",
+        task_id=task_run.task_id,
+        task_name=task_run.task_name,
+        scope_key=task_run.scope_key,
         current_step=task_run.current_step,
     )
-    return db.get(TaskRun, task_run.task_id)
+    return task_run
 
 
 def list_task_runs(

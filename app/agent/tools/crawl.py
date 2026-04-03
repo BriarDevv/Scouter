@@ -1,6 +1,5 @@
 """Crawl tools — start territory crawls and check status."""
 
-import json as _json
 import uuid
 
 from sqlalchemy.orm import Session
@@ -8,8 +7,9 @@ from sqlalchemy.orm import Session
 from app.agent.tool_registry import ToolDefinition, ToolParameter, registry
 from app.core.config import settings as env
 from app.services.operational_task_service import (
+    get_territory_crawl_status_snapshot,
     get_territory_crawl_task_run,
-    serialize_territory_crawl_status,
+    load_territory_crawl_legacy_status,
 )
 from app.services.task_tracking_service import queue_task_run
 
@@ -37,25 +37,16 @@ def start_territory_crawl(
         return {
             "status": "already_running",
             "territory_name": territory.name,
-            "progress": serialize_territory_crawl_status(existing),
+            "progress": get_territory_crawl_status_snapshot(db, territory_id),
         }
 
-    from redis import Redis
-
-    try:
-        redis = Redis.from_url(env.REDIS_URL)
-        redis_key = f"crawl:territory:{territory_id}"
-        legacy = redis.get(redis_key)
-    except Exception:
-        legacy = None
-    if legacy:
-        data = _json.loads(legacy)
-        if data.get("status") in {"running", "stopping"}:
-            return {
-                "status": "already_running",
-                "territory_name": territory.name,
-                "progress": data,
-            }
+    legacy = load_territory_crawl_legacy_status(territory_id)
+    if legacy.get("status") in {"running", "stopping"}:
+        return {
+            "status": "already_running",
+            "territory_name": territory.name,
+            "progress": legacy,
+        }
 
     from app.workers.tasks import task_crawl_territory
 
@@ -84,21 +75,7 @@ def start_territory_crawl(
 
 def get_crawl_status(db: Session, *, territory_id: str) -> dict:
     """Check the crawl progress for a territory."""
-    task_run = get_territory_crawl_task_run(db, territory_id)
-    if task_run:
-        return serialize_territory_crawl_status(task_run)
-
-    from redis import Redis
-
-    try:
-        redis = Redis.from_url(env.REDIS_URL)
-        redis_key = f"crawl:territory:{territory_id}"
-        data = redis.get(redis_key)
-    except Exception:
-        data = None
-    if not data:
-        return {"status": "idle"}
-    return _json.loads(data)
+    return get_territory_crawl_status_snapshot(db, territory_id)
 
 
 registry.register(ToolDefinition(
