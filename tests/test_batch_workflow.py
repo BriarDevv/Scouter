@@ -32,7 +32,7 @@ def test_run_batch_pipeline_workflow_completes_without_pending_leads(db, monkeyp
         task_id="batch-workflow-001",
         status_filter="new",
         correlation_id="corr-batch-workflow-001",
-        crawl_territory_task=lambda **kwargs: None,
+        crawl_territory_workflow=lambda **kwargs: None,
     )
 
     assert result == {
@@ -79,3 +79,49 @@ def test_task_batch_pipeline_delegates_to_workflow(db, monkeypatch):
     assert task_run.task_name == "task_batch_pipeline"
     assert task_run.scope_key == BATCH_PIPELINE_SCOPE_KEY
     assert task_run.status == "running"
+
+
+def test_run_batch_pipeline_uses_crawl_workflow_seam_for_auto_crawl(db, monkeypatch):
+    task_run = TaskRun(
+        task_id="batch-workflow-002",
+        task_name="task_batch_pipeline",
+        queue="default",
+        scope_key=BATCH_PIPELINE_SCOPE_KEY,
+        status="running",
+        current_step="batch_dispatch",
+    )
+    db.add(task_run)
+
+    from app.models.territory import Territory
+
+    territory = Territory(name="Centro", cities=["Cordoba"])
+    db.add(territory)
+    db.commit()
+    db.refresh(territory)
+
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        "app.workflows.batch_pipeline.should_stop_operational_task",
+        lambda **kwargs: False,
+    )
+    monkeypatch.setattr(
+        "app.workflows.batch_pipeline.mirror_batch_pipeline_state",
+        lambda payload: None,
+    )
+
+    def fake_crawl_workflow(**kwargs):
+        captured.update(kwargs)
+        return {"status": "done", "task_id": kwargs["task_id"], "created": 0}
+
+    result = run_batch_pipeline_workflow(
+        task_id="batch-workflow-002",
+        status_filter="new",
+        correlation_id="corr-batch-workflow-002",
+        crawl_territory_workflow=fake_crawl_workflow,
+    )
+
+    assert result["status"] == "done"
+    assert captured["territory_id"] == str(territory.id)
+    assert captured["correlation_id"] == "corr-batch-workflow-002"
+    assert captured["task_id"] != "batch-workflow-002"
