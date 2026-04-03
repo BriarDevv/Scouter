@@ -328,6 +328,20 @@ def test_should_stop_operational_task_checks_canonical_and_legacy(db, monkeypatc
         treat_missing_legacy_as_stop=True,
     ) is True
 
+    def raise_redis_error(redis_key, suppress_errors):
+        raise RuntimeError("redis unavailable")
+
+    monkeypatch.setattr(
+        "app.services.operational_task_service._read_legacy_operational_state",
+        raise_redis_error,
+    )
+
+    assert should_stop_operational_task(
+        task_id="missing-task-stop-001",
+        redis_key=BATCH_PIPELINE_REDIS_KEY,
+        treat_missing_legacy_as_stop=True,
+    ) is False
+
 
 def test_start_rescore_all_creates_canonical_task_run(db, monkeypatch):
     captured: dict[str, object] = {}
@@ -425,7 +439,7 @@ def test_rescore_task_run_persists_canonical_progress(db, monkeypatch):
 
     monkeypatch.setattr("app.workers.tasks.score_lead", fake_score_lead)
     monkeypatch.setattr(
-        "app.workers.tasks.mirror_legacy_operational_state",
+        "app.workers.tasks.mirror_rescore_all_state",
         lambda *args, **kwargs: None,
     )
 
