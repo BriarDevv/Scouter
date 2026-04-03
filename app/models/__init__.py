@@ -21,6 +21,8 @@ from app.models.artifact import Artifact, ArtifactType
 from app.models.whatsapp_audit import WhatsAppAuditLog
 from app.models.telegram_audit import TelegramAuditLog
 from app.models.llm_invocation import LLMInvocation
+from app.models.investigation_thread import InvestigationThread
+from app.models.outcome_snapshot import OutcomeSnapshot
 from app.models.review_correction import ReviewCorrection, CorrectionCategory, CorrectionSeverity
 from app.models.commercial_brief import (
     CommercialBrief,
@@ -75,4 +77,6 @@ __all__ = [
     "ReviewCorrection",
     "CorrectionCategory",
     "CorrectionSeverity",
+    "InvestigationThread",
+    "OutcomeSnapshot",
 ]
