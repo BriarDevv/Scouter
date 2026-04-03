@@ -5,23 +5,40 @@ Uses /api/chat with system/user message separation for prompt injection defense.
 
 import json
 import re
+import time
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import httpx
+import structlog
+from pydantic import BaseModel, ValidationError
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.db.session import SessionLocal
+from app.llm.contracts import (
+    CommercialBriefResult,
+    CommercialBriefReviewResult,
+    LeadQualityResult,
+    StructuredInvocationResult,
+    TextInvocationResult,
+)
 from app.llm.invocation_metadata import (
     LLMInvocationMetadata,
     record_invocation,
+)
+from app.llm.prompt_registry import (
+    COMMERCIAL_BRIEF_PROMPT,
+    COMMERCIAL_BRIEF_REVIEW_PROMPT,
+    LEAD_QUALITY_PROMPT,
+    PromptDefinition,
 )
 from app.llm.prompts import (
     CLASSIFY_INBOUND_REPLY_DATA,
     CLASSIFY_INBOUND_REPLY_SYSTEM,
     DOSSIER_DATA,
     DOSSIER_SYSTEM,
-    EVALUATE_LEAD_QUALITY_DATA,
-    EVALUATE_LEAD_QUALITY_SYSTEM,
     GENERATE_OUTREACH_EMAIL_DATA,
     GENERATE_OUTREACH_EMAIL_SYSTEM,
     GENERATE_REPLY_ASSISTANT_DRAFT_DATA,
@@ -42,6 +59,8 @@ from app.llm.prompts import (
 from app.llm.resolver import normalize_role, resolve_model_for_role
 from app.llm.roles import LLMRole
 from app.llm.sanitizer import sanitize_field
+from app.llm.types import LLMInvocationStatus
+from app.models.llm_invocation import LLMInvocation
 
 logger = get_logger(__name__)
 
@@ -52,6 +71,13 @@ class LLMError(Exception):
 
 class LLMParseError(LLMError):
     pass
+
+
+@dataclass(slots=True)
+class _ChatCompletion:
+    text: str
+    model: str
+    latency_ms: int
 
 
 def _extract_json(text: str) -> dict:
@@ -107,47 +133,142 @@ def _timeout_for_role(role: LLMRole | str) -> float:
     return float(settings.OLLAMA_TIMEOUT)
 
 
+def _normalize_tags(tags: dict[str, object] | None) -> dict[str, str]:
+    if not tags:
+        return {}
+    return {str(key): str(value) for key, value in tags.items() if value is not None}
+
+
+def _context_value(context: dict[str, object], key: str) -> str | None:
+    value = context.get(key)
+    if value in (None, ""):
+        return None
+    return str(value)
+
+
+def _persist_invocation(metadata: LLMInvocationMetadata) -> None:
+    context = structlog.contextvars.get_contextvars()
+    try:
+        with SessionLocal() as db:
+            db.add(
+                LLMInvocation(
+                    function_name=metadata.function_name,
+                    prompt_id=metadata.prompt_id,
+                    prompt_version=metadata.prompt_version,
+                    role=metadata.role,
+                    model=metadata.model,
+                    status=metadata.status,
+                    fallback_used=metadata.fallback_used,
+                    degraded=metadata.degraded,
+                    parse_valid=metadata.parse_valid,
+                    latency_ms=metadata.latency_ms,
+                    target_type=metadata.target_type,
+                    target_id=metadata.target_id,
+                    correlation_id=_context_value(context, "correlation_id"),
+                    task_id=_context_value(context, "task_id"),
+                    pipeline_run_id=_context_value(context, "pipeline_run_id"),
+                    lead_id=_context_value(context, "lead_id"),
+                    tags_json=metadata.tags or None,
+                    error=metadata.error,
+                )
+            )
+            db.commit()
+    except Exception as exc:
+        logger.warning(
+            "llm_invocation_persist_failed",
+            function_name=metadata.function_name,
+            prompt_id=metadata.prompt_id,
+            prompt_version=metadata.prompt_version,
+            error=str(exc),
+        )
+
+
 def _record_public_invocation(
     function_name: str,
     role: LLMRole | str,
     *,
     fallback_used: bool,
     degraded: bool,
+    prompt_id: str | None = None,
+    prompt_version: str = "legacy",
+    status: LLMInvocationStatus | None = None,
+    parse_valid: bool | None = None,
+    latency_ms: int | None = None,
+    model: str | None = None,
+    target_type: str | None = None,
+    target_id: str | None = None,
+    tags: dict[str, object] | None = None,
+    persist: bool = False,
     error: str | None = None,
 ) -> None:
     role_value = _role_value(role)
-    try:
-        _, model = _resolve_role_model(role)
-    except Exception:
-        model = None
+    if model is None:
+        try:
+            _, model = _resolve_role_model(role)
+        except Exception:
+            model = None
 
-    record_invocation(
-        LLMInvocationMetadata(
-            function_name=function_name,
-            role=role_value,
-            model=model,
-            fallback_used=fallback_used,
-            degraded=degraded,
-            error=error,
-        )
+    if status is None:
+        if fallback_used:
+            status = LLMInvocationStatus.FALLBACK
+        elif degraded:
+            status = LLMInvocationStatus.DEGRADED
+        else:
+            status = LLMInvocationStatus.SUCCEEDED
+    if parse_valid is None:
+        parse_valid = not fallback_used
+
+    metadata = LLMInvocationMetadata(
+        function_name=function_name,
+        prompt_id=prompt_id or function_name,
+        prompt_version=prompt_version,
+        role=role_value,
+        status=status,
+        model=model,
+        fallback_used=fallback_used,
+        degraded=degraded,
+        parse_valid=parse_valid,
+        latency_ms=latency_ms,
+        error=error,
+        target_type=target_type,
+        target_id=target_id,
+        tags=_normalize_tags(tags),
     )
+
+    record_invocation(metadata)
+    if persist:
+        _persist_invocation(metadata)
 
     if fallback_used or degraded:
         logger.warning(
             "llm_invocation_degraded",
             function_name=function_name,
+            prompt_id=metadata.prompt_id,
+            prompt_version=metadata.prompt_version,
+            status=metadata.status,
             role=role_value,
             model=model,
             fallback_used=fallback_used,
             degraded=degraded,
+            parse_valid=parse_valid,
+            latency_ms=latency_ms,
+            target_type=target_type,
+            target_id=target_id,
             error=error,
         )
     else:
         logger.debug(
             "llm_invocation_completed",
             function_name=function_name,
+            prompt_id=metadata.prompt_id,
+            prompt_version=metadata.prompt_version,
+            status=metadata.status,
             role=role_value,
             model=model,
+            parse_valid=parse_valid,
+            latency_ms=latency_ms,
+            target_type=target_type,
+            target_id=target_id,
         )
 
 
@@ -156,12 +277,13 @@ def _record_public_invocation(
     wait=wait_exponential(multiplier=1, min=2, max=30),
     reraise=True,
 )
-def _call_ollama_chat(
+def _chat_completion(
     system_prompt: str,
     user_prompt: str,
     role: LLMRole | str = LLMRole.EXECUTOR,
-) -> str:
-    """Call Ollama /api/chat with system/user message separation."""
+    *,
+    format_schema: dict | None = None,
+) -> _ChatCompletion:
     normalized_role, model = _resolve_role_model(role)
     timeout_seconds = _timeout_for_role(normalized_role)
     url = f"{settings.OLLAMA_BASE_URL}/api/chat"
@@ -178,6 +300,8 @@ def _call_ollama_chat(
             "num_predict": 2048,
         },
     }
+    if format_schema:
+        payload["format"] = format_schema
 
     logger.debug(
         "ollama_request",
@@ -186,12 +310,15 @@ def _call_ollama_chat(
         system_len=len(system_prompt),
         user_len=len(user_prompt),
         timeout_seconds=timeout_seconds,
+        structured_output=bool(format_schema),
     )
 
+    started_at = time.perf_counter()
     with httpx.Client(timeout=timeout_seconds) as client:
         resp = client.post(url, json=payload)
         resp.raise_for_status()
 
+    latency_ms = int((time.perf_counter() - started_at) * 1000)
     data = resp.json()
     message = data.get("message", {})
     response_text = message.get("content", "")
@@ -204,8 +331,228 @@ def _call_ollama_chat(
         role=normalized_role.value,
         model=model,
         response_len=len(response_text),
+        latency_ms=latency_ms,
+        structured_output=bool(format_schema),
     )
-    return response_text
+    return _ChatCompletion(text=response_text, model=model, latency_ms=latency_ms)
+
+
+def _call_ollama_chat(
+    system_prompt: str,
+    user_prompt: str,
+    role: LLMRole | str = LLMRole.EXECUTOR,
+) -> str:
+    """Call Ollama /api/chat with system/user message separation."""
+    return _chat_completion(system_prompt, user_prompt, role=role).text
+
+
+def invoke_text(
+    *,
+    function_name: str,
+    prompt_id: str,
+    prompt_version: str,
+    system_prompt: str,
+    user_prompt: str,
+    role: LLMRole | str = LLMRole.EXECUTOR,
+    fallback_text: str | Callable[[], str] | None = None,
+    target_type: str | None = None,
+    target_id: str | None = None,
+    tags: dict[str, object] | None = None,
+    persist: bool = True,
+) -> TextInvocationResult:
+    normalized_role, model = _resolve_role_model(role)
+
+    try:
+        completion = _chat_completion(system_prompt, user_prompt, role=role)
+        result = TextInvocationResult(
+            status=LLMInvocationStatus.SUCCEEDED,
+            role=normalized_role.value,
+            model=completion.model,
+            prompt_id=prompt_id,
+            prompt_version=prompt_version,
+            latency_ms=completion.latency_ms,
+            fallback_used=False,
+            degraded=False,
+            parse_valid=True,
+            raw_text=completion.text,
+            text=completion.text,
+            target_type=target_type,
+            target_id=target_id,
+            tags=_normalize_tags(tags),
+        )
+    except Exception as exc:
+        fallback_value = fallback_text() if callable(fallback_text) else fallback_text
+        result = TextInvocationResult(
+            status=LLMInvocationStatus.FALLBACK
+            if fallback_value is not None
+            else LLMInvocationStatus.FAILED,
+            role=normalized_role.value,
+            model=model,
+            prompt_id=prompt_id,
+            prompt_version=prompt_version,
+            fallback_used=fallback_value is not None,
+            degraded=fallback_value is not None,
+            parse_valid=fallback_value is not None,
+            text=fallback_value,
+            error=str(exc),
+            target_type=target_type,
+            target_id=target_id,
+            tags=_normalize_tags(tags),
+        )
+
+    _record_public_invocation(
+        function_name,
+        role,
+        prompt_id=prompt_id,
+        prompt_version=prompt_version,
+        status=result.status,
+        fallback_used=result.fallback_used,
+        degraded=result.degraded,
+        parse_valid=result.parse_valid,
+        latency_ms=result.latency_ms,
+        model=result.model,
+        target_type=result.target_type,
+        target_id=result.target_id,
+        tags=result.tags,
+        persist=persist,
+        error=result.error,
+    )
+    return result
+
+
+def invoke_structured[StructuredT: BaseModel](
+    *,
+    function_name: str,
+    prompt: PromptDefinition[StructuredT],
+    prompt_args: dict[str, object],
+    role: LLMRole | str = LLMRole.EXECUTOR,
+    fallback_factory: Callable[[], StructuredT] | None = None,
+    target_type: str | None = None,
+    target_id: str | None = None,
+    tags: dict[str, object] | None = None,
+    persist: bool = True,
+) -> StructuredInvocationResult[StructuredT]:
+    normalized_role, model = _resolve_role_model(role)
+    prompt_tags = _normalize_tags(tags)
+    user_prompt = prompt.render_user_prompt(**prompt_args)
+
+    try:
+        completion = _chat_completion(
+            prompt.system_prompt,
+            user_prompt,
+            role=role,
+            format_schema=prompt.response_model.model_json_schema(),
+        )
+    except Exception as exc:
+        parsed = fallback_factory() if fallback_factory else None
+        result = StructuredInvocationResult[StructuredT](
+            status=LLMInvocationStatus.FALLBACK
+            if parsed is not None
+            else LLMInvocationStatus.FAILED,
+            role=normalized_role.value,
+            model=model,
+            prompt_id=prompt.prompt_id,
+            prompt_version=prompt.prompt_version,
+            fallback_used=parsed is not None,
+            degraded=parsed is not None,
+            parse_valid=False,
+            parsed=parsed,
+            error=str(exc),
+            target_type=target_type,
+            target_id=target_id,
+            tags=prompt_tags,
+        )
+    else:
+        parse_error: str | None = None
+        try:
+            parsed = prompt.response_model.model_validate_json(completion.text)
+            result = StructuredInvocationResult[StructuredT](
+                status=LLMInvocationStatus.SUCCEEDED,
+                role=normalized_role.value,
+                model=completion.model,
+                prompt_id=prompt.prompt_id,
+                prompt_version=prompt.prompt_version,
+                latency_ms=completion.latency_ms,
+                fallback_used=False,
+                degraded=False,
+                parse_valid=True,
+                raw_text=completion.text,
+                parsed=parsed,
+                target_type=target_type,
+                target_id=target_id,
+                tags=prompt_tags,
+            )
+        except (ValidationError, ValueError, TypeError) as exc:
+            parse_error = str(exc)
+            try:
+                parsed = prompt.response_model.model_validate(
+                    _extract_json(completion.text)
+                )
+                result = StructuredInvocationResult[StructuredT](
+                    status=LLMInvocationStatus.DEGRADED,
+                    role=normalized_role.value,
+                    model=completion.model,
+                    prompt_id=prompt.prompt_id,
+                    prompt_version=prompt.prompt_version,
+                    latency_ms=completion.latency_ms,
+                    fallback_used=False,
+                    degraded=True,
+                    parse_valid=True,
+                    raw_text=completion.text,
+                    parsed=parsed,
+                    error=parse_error,
+                    target_type=target_type,
+                    target_id=target_id,
+                    tags=prompt_tags,
+                )
+            except Exception as recovery_exc:
+                parsed = fallback_factory() if fallback_factory else None
+                status = (
+                    LLMInvocationStatus.FALLBACK
+                    if parsed is not None
+                    else LLMInvocationStatus.PARSE_FAILED
+                )
+                error = (
+                    f"{parse_error}; recovery_error={recovery_exc}"
+                    if parse_error
+                    else str(recovery_exc)
+                )
+                result = StructuredInvocationResult[StructuredT](
+                    status=status,
+                    role=normalized_role.value,
+                    model=completion.model,
+                    prompt_id=prompt.prompt_id,
+                    prompt_version=prompt.prompt_version,
+                    latency_ms=completion.latency_ms,
+                    fallback_used=parsed is not None,
+                    degraded=True,
+                    parse_valid=False,
+                    raw_text=completion.text,
+                    parsed=parsed,
+                    error=error,
+                    target_type=target_type,
+                    target_id=target_id,
+                    tags=prompt_tags,
+                )
+
+    _record_public_invocation(
+        function_name,
+        role,
+        prompt_id=prompt.prompt_id,
+        prompt_version=prompt.prompt_version,
+        status=result.status,
+        fallback_used=result.fallback_used,
+        degraded=result.degraded,
+        parse_valid=result.parse_valid,
+        latency_ms=result.latency_ms,
+        model=result.model,
+        target_type=result.target_type,
+        target_id=result.target_id,
+        tags=result.tags,
+        persist=persist,
+        error=result.error,
+    )
+    return result
 
 
 def _format_signals(signals: list) -> str:
@@ -256,6 +603,49 @@ def summarize_business(
         return f"[LLM unavailable] {business_name} - {industry or 'Unknown industry'} in {city or 'Unknown location'}"
 
 
+def _lead_quality_fallback() -> LeadQualityResult:
+    return LeadQualityResult(
+        quality="unknown",
+        reasoning="LLM analysis unavailable",
+        suggested_angle="General web development services",
+    )
+
+
+def evaluate_lead_quality_structured(
+    *,
+    business_name: str,
+    industry: str | None,
+    city: str | None,
+    website_url: str | None,
+    instagram_url: str | None,
+    signals: list,
+    score: float | None,
+    role: LLMRole | str = LLMRole.EXECUTOR,
+    target_type: str | None = None,
+    target_id: str | None = None,
+    tags: dict[str, object] | None = None,
+) -> StructuredInvocationResult[LeadQualityResult]:
+    prompt_args = {
+        "business_name": sanitize_field(business_name),
+        "industry": sanitize_field(industry) or "Unknown",
+        "city": sanitize_field(city) or "Unknown",
+        "website_url": sanitize_field(website_url) or "None",
+        "instagram_url": sanitize_field(instagram_url) or "None",
+        "signals": _format_signals(signals),
+        "score": score or 0,
+    }
+    return invoke_structured(
+        function_name="evaluate_lead_quality",
+        prompt=LEAD_QUALITY_PROMPT,
+        prompt_args=prompt_args,
+        role=role,
+        fallback_factory=_lead_quality_fallback,
+        target_type=target_type,
+        target_id=target_id,
+        tags=tags,
+    )
+
+
 def evaluate_lead_quality(
     business_name: str,
     industry: str | None,
@@ -267,47 +657,19 @@ def evaluate_lead_quality(
     role: LLMRole | str = LLMRole.EXECUTOR,
 ) -> dict:
     """Evaluate lead quality using the local LLM. Returns dict with quality, reasoning, suggested_angle."""
-    user_prompt = EVALUATE_LEAD_QUALITY_DATA.format(
-        business_name=sanitize_field(business_name),
-        industry=sanitize_field(industry) or "Unknown",
-        city=sanitize_field(city) or "Unknown",
-        website_url=sanitize_field(website_url) or "None",
-        instagram_url=sanitize_field(instagram_url) or "None",
-        signals=_format_signals(signals),
-        score=score or 0,
+    result = evaluate_lead_quality_structured(
+        business_name=business_name,
+        industry=industry,
+        city=city,
+        website_url=website_url,
+        instagram_url=instagram_url,
+        signals=signals,
+        score=score,
+        role=role,
     )
-
-    fallback = {
-        "quality": "unknown",
-        "reasoning": "LLM analysis unavailable",
-        "suggested_angle": "General web development services",
-    }
-
-    try:
-        raw = _call_ollama_chat(EVALUATE_LEAD_QUALITY_SYSTEM, user_prompt, role=role)
-        data = _extract_json(raw)
-        result = {
-            "quality": data.get("quality", "unknown"),
-            "reasoning": data.get("reasoning", "No reasoning provided"),
-            "suggested_angle": data.get("suggested_angle", "General web development services"),
-        }
-        _record_public_invocation(
-            "evaluate_lead_quality",
-            role,
-            fallback_used=False,
-            degraded=False,
-        )
-        return result
-    except Exception as e:
-        logger.error("llm_evaluate_failed", role=_role_value(role), error=str(e))
-        _record_public_invocation(
-            "evaluate_lead_quality",
-            role,
-            fallback_used=True,
-            degraded=True,
-            error=str(e),
-        )
-        return fallback
+    if result.parsed is None:
+        return _lead_quality_fallback().model_dump()
+    return result.parsed.model_dump()
 
 
 def generate_outreach_draft(
@@ -973,6 +1335,66 @@ def generate_dossier(
         return fallback
 
 
+def _commercial_brief_fallback() -> CommercialBriefResult:
+    return CommercialBriefResult(
+        opportunity_score=50,
+        estimated_scope="landing",
+        recommended_contact_method="manual_review",
+        should_call="maybe",
+        call_reason="No se pudo generar el análisis automáticamente",
+        why_this_lead_matters="Pendiente de revisión manual",
+        main_business_signals=[],
+        main_digital_gaps=[],
+        recommended_angle="Requiere revisión manual",
+        demo_recommended=False,
+    )
+
+
+def generate_commercial_brief_structured(
+    *,
+    business_name: str,
+    industry: str | None,
+    city: str | None,
+    website_url: str | None,
+    instagram_url: str | None,
+    score: float | None,
+    llm_summary: str | None,
+    signals: list[str],
+    research_data: dict,
+    pricing_matrix: dict,
+    role: LLMRole = LLMRole.EXECUTOR,
+    target_type: str | None = None,
+    target_id: str | None = None,
+    tags: dict[str, object] | None = None,
+) -> StructuredInvocationResult[CommercialBriefResult]:
+    prompt_args = {
+        "business_name": sanitize_field(business_name),
+        "industry": sanitize_field(industry) or "Desconocida",
+        "city": sanitize_field(city) or "Desconocida",
+        "website_url": sanitize_field(website_url) or "Sin website",
+        "instagram_url": sanitize_field(instagram_url) or "Sin Instagram",
+        "score": score or 0,
+        "llm_summary": sanitize_field(llm_summary) or "Sin resumen",
+        "signals": ", ".join(signals) if signals else "Ninguna",
+        "research_data": (
+            json.dumps(research_data, ensure_ascii=False)
+            if research_data
+            else "Sin datos"
+        ),
+        "pricing_matrix": json.dumps(pricing_matrix, ensure_ascii=False),
+    }
+    return invoke_structured(
+        function_name="generate_commercial_brief",
+        prompt=COMMERCIAL_BRIEF_PROMPT,
+        prompt_args=prompt_args,
+        role=role,
+        fallback_factory=_commercial_brief_fallback,
+        target_type=target_type,
+        target_id=target_id,
+        tags=tags,
+    )
+
+
 def generate_commercial_brief(
     *,
     business_name: str,
@@ -988,67 +1410,120 @@ def generate_commercial_brief(
     role: LLMRole = LLMRole.EXECUTOR,
 ) -> dict:
     """Generate a commercial brief for a lead."""
-    from app.llm.prompts import COMMERCIAL_BRIEF_DATA, COMMERCIAL_BRIEF_SYSTEM
+    result = generate_commercial_brief_structured(
+        business_name=business_name,
+        industry=industry,
+        city=city,
+        website_url=website_url,
+        instagram_url=instagram_url,
+        score=score,
+        llm_summary=llm_summary,
+        signals=signals,
+        research_data=research_data,
+        pricing_matrix=pricing_matrix,
+        role=role,
+    )
+    payload = (
+        result.parsed.model_dump()
+        if result.parsed is not None
+        else _commercial_brief_fallback().model_dump()
+    )
+    payload["model"] = result.model
+    payload["_is_fallback"] = result.fallback_used
+    payload["_llm_status"] = result.status.value
+    payload["_prompt_id"] = result.prompt_id
+    payload["_prompt_version"] = result.prompt_version
+    return payload
 
-    data_prompt = COMMERCIAL_BRIEF_DATA.format(
-        business_name=sanitize_field(business_name),
-        industry=sanitize_field(industry) or "Desconocida",
-        city=sanitize_field(city) or "Desconocida",
-        website_url=sanitize_field(website_url) or "Sin website",
-        instagram_url=sanitize_field(instagram_url) or "Sin Instagram",
-        score=score or 0,
-        llm_summary=sanitize_field(llm_summary) or "Sin resumen",
-        signals=", ".join(signals) if signals else "Ninguna",
-        research_data=(
-            json.dumps(research_data, ensure_ascii=False)
-            if research_data
-            else "Sin datos"
-        ),
-        pricing_matrix=json.dumps(pricing_matrix, ensure_ascii=False),
+
+def _commercial_brief_review_fallback() -> CommercialBriefReviewResult:
+    return CommercialBriefReviewResult(
+        approved=False,
+        feedback="Reviewer analysis unavailable.",
+        suggested_changes="Review this brief manually before proceeding.",
     )
 
-    fallback = {
-        "opportunity_score": 50,
-        "estimated_scope": "landing",
-        "recommended_contact_method": "manual_review",
-        "should_call": "maybe",
-        "call_reason": "No se pudo generar el análisis automáticamente",
-        "why_this_lead_matters": "Pendiente de revisión manual",
-        "main_business_signals": [],
-        "main_digital_gaps": [],
-        "recommended_angle": "Requiere revisión manual",
-        "demo_recommended": False,
+
+def review_commercial_brief_structured(
+    *,
+    opportunity_score: float | int | None,
+    budget_tier: str | None,
+    estimated_scope: str | None,
+    recommended_contact_method: str | None,
+    should_call: str | None,
+    call_reason: str | None,
+    why_this_lead_matters: str | None,
+    main_business_signals: list[str] | None,
+    main_digital_gaps: list[str] | None,
+    recommended_angle: str | None,
+    demo_recommended: bool | None,
+    role: LLMRole | str = LLMRole.REVIEWER,
+    target_type: str | None = None,
+    target_id: str | None = None,
+    tags: dict[str, object] | None = None,
+) -> StructuredInvocationResult[CommercialBriefReviewResult]:
+    prompt_args = {
+        "opportunity_score": opportunity_score if opportunity_score is not None else "N/A",
+        "budget_tier": budget_tier or "N/A",
+        "estimated_scope": estimated_scope or "N/A",
+        "recommended_contact_method": recommended_contact_method or "N/A",
+        "should_call": should_call or "N/A",
+        "call_reason": sanitize_field(call_reason) or "N/A",
+        "why_this_lead_matters": sanitize_field(why_this_lead_matters) or "N/A",
+        "main_business_signals": ", ".join(main_business_signals or []) or "N/A",
+        "main_digital_gaps": ", ".join(main_digital_gaps or []) or "N/A",
+        "recommended_angle": sanitize_field(recommended_angle) or "N/A",
+        "demo_recommended": demo_recommended if demo_recommended is not None else "N/A",
     }
-
-    error_message: str | None = None
-
-    try:
-        raw = _call_ollama_chat(
-            COMMERCIAL_BRIEF_SYSTEM, data_prompt, role=role
-        )
-        result = _extract_json(raw)
-    except Exception as e:
-        logger.error(
-            "llm_commercial_brief_failed",
-            role=_role_value(role),
-            error=str(e),
-        )
-        error_message = str(e)
-        result = fallback
-        result["_is_fallback"] = True
-
-    if result is None:
-        result = fallback
-        result["_is_fallback"] = True
-
-    _, model = _resolve_role_model(role)
-    result["model"] = model
-    result.setdefault("_is_fallback", False)
-    _record_public_invocation(
-        "generate_commercial_brief",
-        role,
-        fallback_used=bool(result.get("_is_fallback", False)),
-        degraded=bool(result.get("_is_fallback", False)),
-        error=error_message,
+    return invoke_structured(
+        function_name="review_commercial_brief",
+        prompt=COMMERCIAL_BRIEF_REVIEW_PROMPT,
+        prompt_args=prompt_args,
+        role=role,
+        fallback_factory=_commercial_brief_review_fallback,
+        target_type=target_type,
+        target_id=target_id,
+        tags=tags,
     )
-    return result
+
+
+def review_commercial_brief(
+    *,
+    opportunity_score: float | int | None,
+    budget_tier: str | None,
+    estimated_scope: str | None,
+    recommended_contact_method: str | None,
+    should_call: str | None,
+    call_reason: str | None,
+    why_this_lead_matters: str | None,
+    main_business_signals: list[str] | None,
+    main_digital_gaps: list[str] | None,
+    recommended_angle: str | None,
+    demo_recommended: bool | None,
+    role: LLMRole | str = LLMRole.REVIEWER,
+) -> dict:
+    result = review_commercial_brief_structured(
+        opportunity_score=opportunity_score,
+        budget_tier=budget_tier,
+        estimated_scope=estimated_scope,
+        recommended_contact_method=recommended_contact_method,
+        should_call=should_call,
+        call_reason=call_reason,
+        why_this_lead_matters=why_this_lead_matters,
+        main_business_signals=main_business_signals,
+        main_digital_gaps=main_digital_gaps,
+        recommended_angle=recommended_angle,
+        demo_recommended=demo_recommended,
+        role=role,
+    )
+    payload = (
+        result.parsed.model_dump()
+        if result.parsed is not None
+        else _commercial_brief_review_fallback().model_dump()
+    )
+    payload["model"] = result.model
+    payload["_is_fallback"] = result.fallback_used
+    payload["_llm_status"] = result.status.value
+    payload["_prompt_id"] = result.prompt_id
+    payload["_prompt_version"] = result.prompt_version
+    return payload

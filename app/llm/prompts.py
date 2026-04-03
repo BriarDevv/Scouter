@@ -568,3 +568,39 @@ COMMERCIAL_BRIEF_DATA = (
     "Matriz de precios: {pricing_matrix}\n"
     "</external_data>"
 )
+
+
+# ---------------------------------------------------------------------------
+# COMMERCIAL BRIEF REVIEW
+# ---------------------------------------------------------------------------
+
+REVIEW_COMMERCIAL_BRIEF_SYSTEM = (
+    "Sos un reviewer comercial senior de ClawScout. Revisá este commercial brief "
+    "interno y decidí si está suficientemente sólido para pasar a la siguiente etapa.\n\n"
+    "Reglas:\n"
+    '- "approved" debe ser true solo si el brief es coherente, accionable y no '
+    "requiere correcciones obvias.\n"
+    '- "feedback" debe ser corto y concreto.\n'
+    '- "suggested_changes" debe ser una lista corta de mejoras puntuales o null si '
+    "no hacen falta cambios.\n\n"
+    "Respondé SOLO con JSON válido:\n"
+    '{\n  "approved": true,\n  "feedback": "1-2 oraciones cortas",\n  '
+    '"suggested_changes": "ajuste puntual o null"\n}\n\n'
+    + ANTI_INJECTION_PREAMBLE
+)
+
+REVIEW_COMMERCIAL_BRIEF_DATA = (
+    "<external_data>\n"
+    "Opportunity Score: {opportunity_score}\n"
+    "Budget Tier: {budget_tier}\n"
+    "Scope: {estimated_scope}\n"
+    "Contact Method: {recommended_contact_method}\n"
+    "Should Call: {should_call}\n"
+    "Call Reason: {call_reason}\n"
+    "Why This Lead Matters: {why_this_lead_matters}\n"
+    "Main Business Signals: {main_business_signals}\n"
+    "Main Digital Gaps: {main_digital_gaps}\n"
+    "Recommended Angle: {recommended_angle}\n"
+    "Demo Recommended: {demo_recommended}\n"
+    "</external_data>"
+)
