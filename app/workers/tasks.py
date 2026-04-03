@@ -15,8 +15,14 @@ from app.models.inbound_mail import InboundMessage
 from app.models.lead import Lead
 from app.models.outreach import OutreachDraft
 from app.services.enrichment_service import enrich_lead
-from app.services.operational_task_service import BATCH_PIPELINE_SCOPE_KEY
 from app.services.operational_settings_service import get_cached_settings
+from app.services.operational_task_service import (
+    BATCH_PIPELINE_SCOPE_KEY,
+    RESCORE_ALL_REDIS_KEY,
+    RESCORE_ALL_SCOPE_KEY,
+    build_rescore_all_progress,
+    mirror_legacy_operational_state,
+)
 from app.services.reply_draft_review_service import (
     mark_reply_assistant_review_failed,
     review_reply_assistant_draft_with_reviewer,
@@ -30,7 +36,7 @@ from app.services.scoring_service import score_lead
 from app.services.task_tracking_service import (
     bind_tracking_context,
     clear_tracking_context,
-    get_task_run,
+    is_task_stop_requested,
     mark_task_failed,
     mark_task_retrying,
     mark_task_running,
@@ -63,34 +69,6 @@ def _pipeline_uuid(pipeline_run_id: str | None) -> uuid.UUID | None:
 def _request_task_id(request) -> str:
     request_id = getattr(request, "id", None)
     return str(request_id or uuid.uuid4())
-
-
-def _task_stop_requested(db, task_id: str) -> bool:
-    task_run = get_task_run(db, task_id)
-    return bool(task_run and task_run.stop_requested_at is not None)
-
-
-def _update_operational_task_progress(
-    db,
-    *,
-    task_id: str,
-    current_step: str | None = None,
-    progress: dict | None = None,
-    status: str | None = None,
-    error: str | None = None,
-    clear_error: bool = False,
-    finished: bool = False,
-) -> None:
-    update_task_run(
-        db,
-        task_id,
-        status=status,
-        current_step=current_step,
-        progress_json=progress,
-        error=error,
-        clear_error=clear_error,
-        finished=finished,
-    )
 
 
 def _track_failure(
@@ -1162,7 +1140,7 @@ def task_batch_pipeline(self, status_filter: str = "new", correlation_id: str | 
         while True:
             # Check canonical stop signal first, then legacy Redis state.
             with SessionLocal() as db:
-                if _task_stop_requested(db, task_id):
+                if is_task_stop_requested(db, task_id):
                     progress["status"] = "stopped"
                     redis.set(redis_key, _json.dumps(progress), ex=3600)
                     persist_progress(
@@ -1251,7 +1229,7 @@ def task_batch_pipeline(self, status_filter: str = "new", correlation_id: str | 
             for idx, lead_id in enumerate(lead_ids):
                 # Check canonical stop signal between leads, then Redis fallback.
                 with SessionLocal() as db:
-                    if _task_stop_requested(db, task_id):
+                    if is_task_stop_requested(db, task_id):
                         progress["status"] = "stopped"
                         redis.set(redis_key, _json.dumps(progress), ex=3600)
                         persist_progress(
@@ -1448,52 +1426,197 @@ def task_batch_pipeline(self, status_filter: str = "new", correlation_id: str | 
 
 # ── Re-score task ─────────────────────────────────────────────────────
 
-@celery_app.task(name="app.workers.tasks.task_rescore_all", bind=True, max_retries=0, soft_time_limit=3600, time_limit=3900)
-def task_rescore_all(self):
+@celery_app.task(
+    name="app.workers.tasks.task_rescore_all",
+    bind=True,
+    max_retries=0,
+    soft_time_limit=3600,
+    time_limit=3900,
+)
+def task_rescore_all(self, correlation_id: str | None = None):
     """Re-score all leads. Useful after scoring weight changes."""
-    from redis import Redis
+    task_id = _request_task_id(self.request)
+    queue = _queue_name(self.request, "default")
+    current_step = "rescore_dispatch"
+    total = 0
+    rescored = 0
+    errors = 0
 
-    from app.core.config import settings as env
+    def mirror_status(payload: dict) -> None:
+        mirror_legacy_operational_state(RESCORE_ALL_REDIS_KEY, payload)
 
-    redis = Redis.from_url(env.REDIS_URL)
-    redis_key = "pipeline:rescore"
-    task_id = str(self.request.id)
+    def persist_state(
+        *,
+        total: int,
+        rescored: int,
+        current_lead_id: str | None = None,
+        status: str | None = None,
+        error: str | None = None,
+        clear_error: bool = False,
+        finished: bool = False,
+        result: dict | None = None,
+        stop_requested: bool | None = None,
+    ) -> None:
+        progress = build_rescore_all_progress(
+            total=total,
+            rescored=rescored,
+            errors=errors,
+            current_lead_id=current_lead_id,
+        )
+        with SessionLocal() as db:
+            update_task_run(
+                db,
+                task_id,
+                status=status,
+                current_step=current_step,
+                progress_json=progress,
+                result=result,
+                error=error,
+                clear_error=clear_error,
+                finished=finished,
+                stop_requested=stop_requested,
+        )
 
     try:
         with SessionLocal() as db:
-            lead_ids = [row for (row,) in db.query(Lead.id).filter(Lead.score.isnot(None)).all()]
-        total = len(lead_ids)
-        rescored = 0
+            bind_tracking_context(
+                task_id=task_id,
+                correlation_id=correlation_id,
+                current_step=current_step,
+            )
+            mark_task_running(
+                db,
+                task_id=task_id,
+                task_name="task_rescore_all",
+                queue=queue,
+                correlation_id=correlation_id,
+                scope_key=RESCORE_ALL_SCOPE_KEY,
+                current_step=current_step,
+            )
+            lead_ids = [
+                row
+                for (row,) in db.query(Lead.id).filter(Lead.score.isnot(None)).all()
+            ]
 
-        redis.set(redis_key, _json.dumps({
-            "status": "running", "task_id": task_id,
-            "total": total, "rescored": 0,
-        }), ex=3600)
+        total = len(lead_ids)
+        persist_state(total=total, rescored=rescored, clear_error=True)
+        mirror_status(
+            {
+                "status": "running",
+                "task_id": task_id,
+                "total": total,
+                "rescored": rescored,
+                "errors": 0,
+                "current_step": current_step,
+            }
+        )
 
         for lead_id in lead_ids:
+            current_step = "rescore_scoring"
+            persist_state(total=total, rescored=rescored, current_lead_id=str(lead_id))
+
+            with SessionLocal() as db:
+                if is_task_stop_requested(db, task_id):
+                    current_step = "rescore_stopped"
+                    persist_state(
+                        total=total,
+                        rescored=rescored,
+                        status="stopped",
+                        finished=True,
+                    )
+                    mirror_status(
+                        {
+                            "status": "stopped",
+                            "task_id": task_id,
+                            "total": total,
+                            "rescored": rescored,
+                            "errors": errors,
+                            "current_step": current_step,
+                        }
+                    )
+                    logger.info("rescore_all_stopped_by_user")
+                    return {"status": "stopped", "task_id": task_id}
+
             try:
                 with SessionLocal() as db:
                     score_lead(db, lead_id)
                 rescored += 1
             except Exception as exc:
+                errors += 1
                 logger.error("rescore_lead_error", lead_id=str(lead_id), error=str(exc))
+            persist_state(
+                total=total,
+                rescored=rescored,
+                current_lead_id=None,
+            )
 
-            if rescored % 20 == 0:
-                redis.set(redis_key, _json.dumps({
-                    "status": "running", "task_id": task_id,
-                    "total": total, "rescored": rescored,
-                }), ex=3600)
+            processed_count = rescored + errors
+            if processed_count % 20 == 0 or processed_count == total:
+                mirror_status(
+                    {
+                        "status": "running",
+                        "task_id": task_id,
+                        "total": total,
+                        "rescored": rescored,
+                        "errors": errors,
+                        "current_step": current_step,
+                    }
+                )
 
-        redis.set(redis_key, _json.dumps({
-            "status": "done", "task_id": task_id,
-            "total": total, "rescored": rescored,
-        }), ex=3600)
-        logger.info("rescore_all_done", total=total, rescored=rescored)
+        current_step = "rescore_completed"
+        result = {
+            "status": "done",
+            "task_id": task_id,
+            "total": total,
+            "rescored": rescored,
+            "errors": errors,
+        }
+        persist_state(
+            total=total,
+            rescored=rescored,
+            current_lead_id=None,
+            status="succeeded",
+            clear_error=True,
+            finished=True,
+            result=result,
+            stop_requested=False,
+        )
+        mirror_status(
+            {
+                "status": "done",
+                "task_id": task_id,
+                "total": total,
+                "rescored": rescored,
+                "errors": errors,
+                "current_step": current_step,
+            }
+        )
+        logger.info("rescore_all_done", total=total, rescored=rescored, errors=errors)
+        return result
     except Exception as exc:
-        redis.set(redis_key, _json.dumps({
-            "status": "error", "task_id": task_id, "error": str(exc),
-        }), ex=3600)
+        persist_state(
+            total=total,
+            rescored=rescored,
+            current_lead_id=None,
+            status="failed",
+            error=str(exc),
+            finished=True,
+        )
+        mirror_status(
+            {
+                "status": "error",
+                "task_id": task_id,
+                "total": total,
+                "rescored": rescored,
+                "errors": errors,
+                "current_step": current_step,
+                "error": str(exc),
+            }
+        )
         logger.error("rescore_all_error", error=str(exc))
+        raise
+    finally:
+        clear_tracking_context()
 
 
 # ── Google Maps crawl task ────────────────────────────────────────────
@@ -1624,7 +1747,7 @@ def task_crawl_territory(
         for idx, city in enumerate(cities):
             # Check canonical stop first, then legacy Redis state.
             with SessionLocal() as db:
-                if _task_stop_requested(db, task_id):
+                if is_task_stop_requested(db, task_id):
                     progress["status"] = "stopped"
                     redis.set(redis_key, _json.dumps(progress), ex=3600)
                     persist_progress(
