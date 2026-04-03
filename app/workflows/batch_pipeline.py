@@ -7,7 +7,7 @@ from collections.abc import Callable
 
 from app.core.logging import get_logger
 from app.db.session import SessionLocal
-from app.llm.client import evaluate_lead_quality, summarize_business
+from app.llm.client import evaluate_lead_quality_structured, summarize_business
 from app.llm.roles import LLMRole
 from app.models.lead import Lead
 from app.models.territory import Territory
@@ -206,7 +206,7 @@ def run_batch_pipeline_workflow(
                         )
                         lead.llm_summary = summary
 
-                        evaluation = evaluate_lead_quality(
+                        evaluation = evaluate_lead_quality_structured(
                             business_name=lead.business_name,
                             industry=lead.industry,
                             city=lead.city,
@@ -215,11 +215,27 @@ def run_batch_pipeline_workflow(
                             signals=list(lead.signals),
                             score=lead.score,
                             role=LLMRole.EXECUTOR,
+                            target_type="lead",
+                            target_id=str(lead.id),
+                            tags={"workflow": "batch_pipeline"},
                         )
-                        lead.llm_quality_assessment = evaluation["reasoning"]
-                        lead.llm_suggested_angle = evaluation["suggested_angle"]
+                        evaluation_payload = evaluation.parsed
+                        lead.llm_quality_assessment = (
+                            evaluation_payload.reasoning
+                            if evaluation_payload
+                            else "LLM analysis unavailable"
+                        )
+                        lead.llm_suggested_angle = (
+                            evaluation_payload.suggested_angle
+                            if evaluation_payload
+                            else "General web development services"
+                        )
 
-                        raw_quality = evaluation.get("quality", "unknown").lower().strip()
+                        raw_quality = (
+                            evaluation_payload.quality.lower().strip()
+                            if evaluation_payload
+                            else "unknown"
+                        )
                         if raw_quality not in ("high", "medium", "low"):
                             logger.warning(
                                 "quality_normalized_to_unknown",

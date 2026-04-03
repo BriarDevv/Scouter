@@ -92,10 +92,10 @@ def generate_brief(
         pricing = get_pricing_matrix(db)
 
         # Call LLM to generate brief
-        from app.llm.client import generate_commercial_brief
+        from app.llm.client import generate_commercial_brief_structured
         from app.llm.roles import LLMRole
 
-        llm_result = generate_commercial_brief(
+        llm_result = generate_commercial_brief_structured(
             business_name=lead.business_name,
             industry=lead.industry,
             city=lead.city,
@@ -135,16 +135,18 @@ def generate_brief(
             ),
             pricing_matrix=pricing,
             role=LLMRole.EXECUTOR,
+            target_type="commercial_brief",
+            target_id=str(brief.id),
+            tags={"lead_id": str(lead_id)},
         )
+        brief_result = llm_result.parsed
 
         # Map LLM result to model fields
         brief.opportunity_score = _safe_float(
-            llm_result.get("opportunity_score"), 0, 100
+            brief_result.opportunity_score if brief_result else None, 0, 100
         )
 
-        scope_raw = (
-            llm_result.get("estimated_scope", "").lower().strip()
-        )
+        scope_raw = brief_result.estimated_scope.lower().strip() if brief_result else ""
         brief.estimated_scope = _safe_enum(EstimatedScope, scope_raw)
 
         # Budget from pricing matrix + scope
@@ -161,31 +163,31 @@ def generate_brief(
         )
         brief.recommended_contact_method = _safe_enum(
             ContactMethod,
-            llm_result.get("recommended_contact_method", "")
-            .lower()
-            .strip(),
+            brief_result.recommended_contact_method.lower().strip() if brief_result else "",
         )
         brief.should_call = _safe_enum(
             CallDecision,
-            llm_result.get("should_call", "").lower().strip(),
+            brief_result.should_call.lower().strip() if brief_result else "",
         )
-        brief.call_reason = llm_result.get("call_reason")
-        brief.why_this_lead_matters = llm_result.get(
-            "why_this_lead_matters"
+        brief.call_reason = brief_result.call_reason if brief_result else None
+        brief.why_this_lead_matters = (
+            brief_result.why_this_lead_matters if brief_result else None
         )
-        brief.main_business_signals = llm_result.get(
-            "main_business_signals"
+        brief.main_business_signals = (
+            brief_result.main_business_signals if brief_result else None
         )
-        brief.main_digital_gaps = llm_result.get("main_digital_gaps")
-        brief.recommended_angle = llm_result.get("recommended_angle")
-        brief.demo_recommended = llm_result.get(
-            "demo_recommended", False
+        brief.main_digital_gaps = (
+            brief_result.main_digital_gaps if brief_result else None
         )
+        brief.recommended_angle = (
+            brief_result.recommended_angle if brief_result else None
+        )
+        brief.demo_recommended = brief_result.demo_recommended if brief_result else False
         brief.contact_priority = _infer_contact_priority(
             brief.opportunity_score
         )
-        brief.generator_model = llm_result.get("model")
-        brief.is_fallback = bool(llm_result.get("_is_fallback", False))
+        brief.generator_model = llm_result.model
+        brief.is_fallback = llm_result.fallback_used
         brief.status = BriefStatus.GENERATED
         brief.updated_at = datetime.now(UTC)
         db.commit()

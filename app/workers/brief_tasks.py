@@ -170,40 +170,43 @@ def task_review_brief(
                 )
                 return result
 
-            # Build review prompt
-            review_data = (
-                f"Opportunity Score: {brief.opportunity_score}\n"
-                f"Budget Tier: {brief.budget_tier.value if brief.budget_tier else 'N/A'}\n"
-                f"Scope: {brief.estimated_scope.value if brief.estimated_scope else 'N/A'}\n"
-                f"Contact: {brief.recommended_contact_method.value if brief.recommended_contact_method else 'N/A'}\n"
-                f"Should Call: {brief.should_call.value if brief.should_call else 'N/A'}\n"
-                f"Call Reason: {brief.call_reason or 'N/A'}\n"
-                f"Why Matters: {brief.why_this_lead_matters or 'N/A'}\n"
-                f"Angle: {brief.recommended_angle or 'N/A'}\n"
-            )
-            system_prompt = (
-                "Sos un reviewer comercial senior. Revisá el brief y respondé "
-                'con JSON: {"approved": true/false, "feedback": "...", '
-                '"suggested_changes": "..."}'
-            )
-
-            from app.llm.client import _call_ollama_chat, _extract_json
+            from app.llm.client import review_commercial_brief_structured
             from app.llm.roles import LLMRole
 
-            raw = _call_ollama_chat(system_prompt, review_data, role=LLMRole.REVIEWER)
-            review_result = _extract_json(raw)
+            review_result = review_commercial_brief_structured(
+                opportunity_score=brief.opportunity_score,
+                budget_tier=brief.budget_tier.value if brief.budget_tier else None,
+                estimated_scope=brief.estimated_scope.value if brief.estimated_scope else None,
+                recommended_contact_method=(
+                    brief.recommended_contact_method.value
+                    if brief.recommended_contact_method
+                    else None
+                ),
+                should_call=brief.should_call.value if brief.should_call else None,
+                call_reason=brief.call_reason,
+                why_this_lead_matters=brief.why_this_lead_matters,
+                main_business_signals=brief.main_business_signals or [],
+                main_digital_gaps=brief.main_digital_gaps or [],
+                recommended_angle=brief.recommended_angle,
+                demo_recommended=brief.demo_recommended,
+                role=LLMRole.REVIEWER,
+                target_type="commercial_brief",
+                target_id=str(brief.id),
+                tags={"lead_id": lead_id},
+            )
+            review_payload = review_result.parsed
 
-            from datetime import datetime, timezone
-            brief.reviewer_model = "reviewer"
-            brief.reviewed_at = datetime.now(timezone.utc)
-            if review_result and review_result.get("approved"):
+            from datetime import UTC, datetime
+            brief.reviewer_model = review_result.model
+            brief.reviewed_at = datetime.now(UTC)
+            if review_payload and review_payload.approved:
                 brief.status = BriefStatus.REVIEWED
             db.commit()
 
             result = {
                 "status": "ok",
                 "lead_id": lead_id,
-                "approved": review_result.get("approved") if review_result else None,
+                "approved": review_payload.approved if review_payload else None,
             }
             mark_task_succeeded(
                 db,
