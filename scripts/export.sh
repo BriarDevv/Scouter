@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 # ============================================================================
 # ClawScout Export — empaqueta todo lo necesario para migrar a otra PC
-# Uso: bash scripts/export.sh [carpeta-destino|zip-destino]
+# Uso: bash scripts/export.sh [--keep-dir] [carpeta-destino|zip-destino]
 # ============================================================================
 set -euo pipefail
+
+KEEP_DIR=false
+if [[ "${1:-}" == "--keep-dir" ]]; then
+  KEEP_DIR=true
+  shift
+fi
 
 INPUT_PATH="${1:-clawscout-export-$(date +%Y%m%d-%H%M)}"
 if [[ "$INPUT_PATH" == *.zip ]]; then
@@ -94,17 +100,30 @@ with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
 PY
 echo "✔ ZIP generado ($(du -h "$ZIP_PATH" | cut -f1))"
 
+if [ "$KEEP_DIR" = false ]; then
+  rm -rf "$EXPORT_DIR"
+  echo "✔ Carpeta temporal eliminada (quedó solo el ZIP)"
+fi
+
 echo ""
 echo "════════════════════════════════════════"
-echo "Export completo en: $EXPORT_DIR/"
+if [ "$KEEP_DIR" = true ]; then
+  echo "Export completo en: $EXPORT_DIR/"
+fi
 echo "ZIP listo en:        $ZIP_PATH"
 echo ""
-ls -lh "$EXPORT_DIR/"
-echo ""
+if [ "$KEEP_DIR" = true ]; then
+  ls -lh "$EXPORT_DIR/"
+  echo ""
+fi
 ls -lh "$ZIP_PATH"
 echo ""
 echo "Próximo paso:"
-echo "  1. Copiá '$ZIP_PATH' o la carpeta '$EXPORT_DIR/' a USB/nube"
+if [ "$KEEP_DIR" = true ]; then
+  echo "  1. Copiá '$ZIP_PATH' o la carpeta '$EXPORT_DIR/' a USB/nube"
+else
+  echo "  1. Copiá '$ZIP_PATH' a USB/nube"
+fi
 echo "  2. En la PC nueva: seguí el README para instalar"
 echo "  3. Después: bash scripts/import.sh $ZIP_PATH"
 echo "════════════════════════════════════════"
