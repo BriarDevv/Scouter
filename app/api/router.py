@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.api.v1.ai_office import router as ai_office_router
 from app.api.v1.briefs import router as briefs_router
 from app.api.v1.chat import router as chat_router
 from app.api.v1.crawl import router as crawl_router
@@ -45,3 +46,4 @@ api_router.include_router(telegram_router)
 api_router.include_router(crawl_router)
 api_router.include_router(chat_router)
 api_router.include_router(briefs_router)
+api_router.include_router(ai_office_router)

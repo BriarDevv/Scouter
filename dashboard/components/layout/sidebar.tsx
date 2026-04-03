@@ -10,6 +10,7 @@ import { getNotificationCounts } from "@/lib/api/client";
 import { useChatPanel } from "@/lib/hooks/use-chat-panel";
 import {
   Bell,
+  Brain,
   Briefcase,
   FileSearch,
   Inbox,
@@ -37,6 +38,7 @@ const NAV_ITEMS = [
   { href: "/performance", label: "Rendimiento", icon: BarChart3 },
   { href: "/map",         label: "Mapa",        icon: MapPin },
   { href: "/suppression", label: "Supresión",   icon: ShieldOff },
+  { href: "/ai-office",   label: "AI Office",   icon: Brain },
 ];
 
 const BOTTOM_NAV_ITEMS = [
