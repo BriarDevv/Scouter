@@ -85,3 +85,6 @@ logs/
 
 # OMC
 .omc/
+
+# Export bundles (contain secrets)
+clawscout-export-*/
