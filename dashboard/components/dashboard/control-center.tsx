@@ -3,18 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Brain,
-  Loader2,
   Mail,
   MessageCircle,
-  Play,
-  Power,
-  RefreshCw,
-  Search,
   ShieldCheck,
   Sparkles,
-  Square,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { sileo } from "sileo";
 import {
   getOperationalSettings,
@@ -24,6 +17,12 @@ import {
   apiFetch,
 } from "@/lib/api/client";
 import type { HealthComponent, OperationalSettings, RuntimeMode, TerritoryWithStats } from "@/types";
+
+import { HealthStatus } from "./health-status";
+import { RuntimeModePanel } from "./runtime-mode-panel";
+import { PipelineControls } from "./pipeline-controls";
+import { CrawlControls } from "./crawl-controls";
+import { FeatureToggleList, type FeatureToggle } from "./feature-toggle-list";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -51,15 +50,6 @@ interface CrawlTerritoryStatus {
   total_cities?: number;
   leads_created?: number;
   error?: string;
-}
-
-interface FeatureToggle {
-  key: keyof OperationalSettings;
-  label: string;
-  hint: string;
-  icon: React.ElementType;
-  category: "ia" | "mail" | "whatsapp";
-  dependsOn?: keyof OperationalSettings;
 }
 
 const FEATURES: FeatureToggle[] = [
@@ -114,6 +104,11 @@ const FEATURES: FeatureToggle[] = [
   },
 ];
 
+const IA_FEATURES = FEATURES.filter((f) => f.category === "ia");
+const CHANNEL_FEATURES = FEATURES.filter((f) => f.category === "mail" || f.category === "whatsapp");
+
+const LS_CRAWL_TERRITORY_KEY = "cs:crawl_territory_id";
+
 // ─── Component ──────────────────────────────────────────────────────────────
 
 interface ControlCenterProps {
@@ -121,22 +116,6 @@ interface ControlCenterProps {
   healthLoading?: boolean;
   onRefreshHealth?: () => void;
 }
-
-const HEALTH_DOT: Record<string, string> = {
-  ok: "bg-emerald-500",
-  degraded: "bg-amber-500",
-  error: "bg-red-500",
-};
-
-const HEALTH_LABEL: Record<string, string> = {
-  database: "BD",
-  redis: "Redis",
-  ollama: "Ollama",
-  celery: "Celery",
-};
-
-const LS_PIPELINE_KEY = "cs:pipeline_task_id";
-const LS_CRAWL_TERRITORY_KEY = "cs:crawl_territory_id";
 
 export function ControlCenter({ health, healthLoading, onRefreshHealth }: ControlCenterProps) {
   const [settings, setSettings] = useState<OperationalSettings | null>(null);
@@ -303,7 +282,7 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
         sileo.error({ title: data.message ?? "Error al iniciar pipeline" });
       }
     } catch {
-      sileo.error({ title: "Error de conexión al iniciar pipeline" });
+      sileo.error({ title: "Error de conexion al iniciar pipeline" });
     }
   }
 
@@ -334,18 +313,16 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
         sileo.error({ title: data.message ?? "Error al iniciar crawl" });
       }
     } catch {
-      sileo.error({ title: "Error de conexión al iniciar crawl" });
+      sileo.error({ title: "Error de conexion al iniciar crawl" });
     }
   }
 
   async function handleStopCrawl() {
     if (!selectedTerritoryId) return;
     try {
-      // Revoke the Celery task if we have its ID
       if (crawlTaskId) {
         await apiFetch(`/tasks/${crawlTaskId}/revoke`, { method: "POST" });
       }
-      // Clear Redis status
       await apiFetch(`/crawl/territory/${selectedTerritoryId}/stop`, { method: "POST" });
       setCrawlStatus("idle");
       setCrawlProgress(null);
@@ -373,310 +350,83 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
     }
   }
 
+  function handleTerritoryChange(id: string) {
+    setSelectedTerritoryId(id);
+    setCrawlStatus("idle");
+    setCrawlProgress(null);
+  }
+
   const ollamaOk = health.find((c) => c.name === "ollama")?.status === "ok";
   const celeryOk = health.find((c) => c.name === "celery")?.status === "ok";
-  const allOk = health.length > 0 && health.every((c) => c.status === "ok");
 
   return (
     <div className="rounded-2xl border border-border bg-card overflow-hidden">
-      {/* Header with integrated health strip */}
-      <div className="flex items-center justify-between border-b border-border px-5 py-3">
-        <div className="flex items-center gap-3">
-          <div className={cn(
-            "flex h-8 w-8 items-center justify-center rounded-lg",
-            allOk ? "bg-emerald-50 dark:bg-emerald-950/40" : "bg-amber-50 dark:bg-amber-950/40"
-          )}>
-            <Power className={cn("h-4 w-4", allOk ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400")} />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-foreground">Centro de Control</h3>
-            <p className="text-[11px] text-muted-foreground">
-              {allOk ? "Todos los servicios operativos" : "Algunos servicios con problemas"}
-            </p>
-          </div>
-        </div>
+      <HealthStatus
+        health={health}
+        healthLoading={healthLoading}
+        onRefresh={() => { onRefreshHealth?.(); loadSettings(); }}
+      />
 
-        <div className="flex items-center gap-3">
-          {/* Health dots inline */}
-          <div className="hidden sm:flex items-center gap-2">
-            {health.map((comp) => (
-              <div
-                key={comp.name}
-                className="flex items-center gap-1.5"
-                title={comp.error || `${HEALTH_LABEL[comp.name] ?? comp.name}: ${comp.latency_ms?.toFixed(0) ?? "?"}ms`}
-              >
-                <span className={cn("h-2 w-2 rounded-full", HEALTH_DOT[comp.status] ?? "bg-slate-400 animate-pulse")} />
-                <span className="text-[11px] text-muted-foreground">{HEALTH_LABEL[comp.name] ?? comp.name}</span>
-              </div>
-            ))}
-          </div>
-
-          <button
-            onClick={() => { onRefreshHealth?.(); loadSettings(); }}
-            className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            title="Actualizar estado"
-          >
-            <RefreshCw className={cn("h-4 w-4", healthLoading && "animate-spin")} />
-          </button>
-        </div>
-      </div>
-
-      {/* Runtime Mode Selector */}
-      <div className="flex items-center justify-between border-b border-border px-5 py-2.5">
-        <div className="flex items-center gap-2">
-          <span className={cn(
-            "h-2.5 w-2.5 rounded-full",
-            runtimeMode === "safe" ? "bg-emerald-500" : runtimeMode === "assisted" ? "bg-amber-500" : "bg-red-500"
-          )} />
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Modo Runtime
-          </span>
-        </div>
-        <div className="flex items-center gap-1">
-          {(["safe", "assisted", "auto"] as const).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => void handleSetRuntimeMode(mode)}
-              disabled={savingMode}
-              className={cn(
-                "rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
-                runtimeMode === mode
-                  ? mode === "safe" ? "bg-emerald-600 text-white"
-                    : mode === "assisted" ? "bg-amber-500 text-white"
-                    : "bg-red-600 text-white"
-                  : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              {mode === "safe" ? "Seguro" : mode === "assisted" ? "Asistido" : "Auto"}
-            </button>
-          ))}
-          {savingMode && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground ml-1" />}
-        </div>
-      </div>
+      <RuntimeModePanel
+        currentMode={runtimeMode}
+        saving={savingMode}
+        onChange={(mode) => void handleSetRuntimeMode(mode)}
+      />
 
       <div className="grid gap-0 lg:grid-cols-3">
-        {/* ── Col 1: Operations ──────────────────────────── */}
+        {/* Col 1: Operations */}
         <div className="border-b lg:border-b-0 lg:border-r border-border p-4 space-y-3">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Operaciones
           </p>
-
-          {/* Pipeline toggle */}
-          <div className="pt-1 space-y-1.5">
-            {pipelineStatus !== "running" && pipelineStatus !== "stopping" ? (
-              <button
-                onClick={handleRunPipeline}
-                disabled={!celeryOk}
-                className={cn(
-                  "flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all",
-                  celeryOk
-                    ? "bg-violet-600 text-white hover:bg-violet-700 active:scale-[0.98]"
-                    : "bg-muted text-muted-foreground cursor-not-allowed"
-                )}
-              >
-                <Play className="h-4 w-4" />
-                Iniciar Pipeline
-              </button>
-            ) : (
-              <button
-                onClick={handleStopPipeline}
-                disabled={pipelineStatus === "stopping"}
-                className={cn(
-                  "flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 active:scale-[0.98] transition-all",
-                  pipelineStatus === "stopping" && "opacity-70"
-                )}
-              >
-                <Square className="h-4 w-4" />
-                {pipelineStatus === "stopping" ? "Deteniendo..." : "Detener Pipeline"}
-              </button>
-            )}
-            {!celeryOk && (
-              <p className="text-[10px] text-amber-500 text-center">
-                Celery debe estar corriendo
-              </p>
-            )}
-            {pipelineProgress && (
-              <p className={cn(
-                "text-[10px] text-center",
-                pipelineStatus === "running" ? "text-violet-500" : pipelineStatus === "done" ? "text-emerald-500" : "text-muted-foreground"
-              )}>
-                {pipelineStatus === "running" && <Loader2 className="inline h-3 w-3 animate-spin mr-1" />}
-                {pipelineProgress}
-              </p>
-            )}
-          </div>
-
-          {/* Crawl toggle */}
-          <div className="pt-1 space-y-1.5">
-            {territories.length > 0 && (
-              <select
-                value={selectedTerritoryId}
-                onChange={(e) => {
-                  setSelectedTerritoryId(e.target.value);
-                  setCrawlStatus("idle");
-                  setCrawlProgress(null);
-                }}
-                disabled={crawlStatus === "running"}
-                className="w-full appearance-none rounded-lg border border-border bg-muted px-2.5 py-1.5 text-xs text-foreground outline-none disabled:opacity-50"
-              >
-                {territories.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} ({t.cities?.length ?? 0} ciudades)
-                  </option>
-                ))}
-              </select>
-            )}
-            {crawlStatus !== "running" ? (
-              <button
-                onClick={handleStartCrawl}
-                disabled={!celeryOk || !selectedTerritoryId}
-                className={cn(
-                  "flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all",
-                  celeryOk && selectedTerritoryId
-                    ? "bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.98]"
-                    : "bg-muted text-muted-foreground cursor-not-allowed"
-                )}
-              >
-                <Search className="h-4 w-4" />
-                Iniciar Crawl
-              </button>
-            ) : (
-              <button
-                onClick={handleStopCrawl}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 active:scale-[0.98] transition-all"
-              >
-                <Square className="h-4 w-4" />
-                Detener Crawl
-              </button>
-            )}
-            {crawlProgress && (
-              <p className={cn(
-                "text-[10px] text-center",
-                crawlStatus === "running" ? "text-violet-500" : crawlStatus === "done" ? "text-emerald-500" : "text-red-500"
-              )}>
-                {crawlStatus === "running" && <Loader2 className="inline h-3 w-3 animate-spin mr-1" />}
-                {crawlProgress}
-              </p>
-            )}
-          </div>
+          <PipelineControls
+            pipelineStatus={pipelineStatus}
+            pipelineProgress={pipelineProgress}
+            celeryOk={celeryOk ?? false}
+            onStart={handleRunPipeline}
+            onStop={handleStopPipeline}
+          />
+          <CrawlControls
+            crawlStatus={crawlStatus}
+            crawlProgress={crawlProgress}
+            territories={territories}
+            selectedTerritoryId={selectedTerritoryId}
+            celeryOk={celeryOk ?? false}
+            onTerritoryChange={handleTerritoryChange}
+            onStart={handleStartCrawl}
+            onStop={handleStopCrawl}
+          />
         </div>
 
-        {/* ── Col 2: IA Features ──────────────────────────── */}
+        {/* Col 2: IA Features */}
         <div className="border-b lg:border-b-0 lg:border-r border-border p-4 space-y-3">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Inteligencia Artificial
           </p>
-
-          {loadingSettings || !settings ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Cargando...
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {FEATURES.filter((f) => f.category === "ia").map((feat) => {
-                const enabled = Boolean(settings[feat.key]);
-                const saving = savingKey === feat.key;
-                const depDisabled = feat.dependsOn && !settings[feat.dependsOn];
-
-                return (
-                  <button
-                    key={feat.key}
-                    onClick={() => toggleFeature(feat.key, !enabled)}
-                    disabled={saving || Boolean(depDisabled)}
-                    className={cn(
-                      "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-all",
-                      enabled
-                        ? "bg-violet-50 dark:bg-violet-950/30"
-                        : "bg-muted/30 hover:bg-muted/50",
-                      depDisabled && "opacity-40 cursor-not-allowed"
-                    )}
-                  >
-                    <feat.icon className={cn(
-                      "h-4 w-4 flex-shrink-0",
-                      enabled ? "text-violet-600 dark:text-violet-400" : "text-muted-foreground"
-                    )} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-foreground">{feat.label}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">{feat.hint}</p>
-                    </div>
-                    <div className={cn(
-                      "flex h-5 w-9 flex-shrink-0 items-center rounded-full px-0.5 transition-colors",
-                      enabled ? "bg-violet-600" : "bg-muted-foreground/30"
-                    )}>
-                      <div className={cn(
-                        "h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
-                        enabled ? "translate-x-4" : "translate-x-0"
-                      )} />
-                    </div>
-                    {saving && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
-                  </button>
-                );
-              })}
-
-              {!ollamaOk && (
-                <p className="text-[10px] text-amber-500 px-3 pt-1">
-                  Ollama no esta corriendo — los features de IA no van a funcionar
-                </p>
-              )}
-            </div>
-          )}
+          <FeatureToggleList
+            features={IA_FEATURES}
+            settings={settings}
+            loading={loadingSettings}
+            savingKey={savingKey}
+            accentColor="violet"
+            onToggle={toggleFeature}
+            warningMessage={!ollamaOk ? "Ollama no esta corriendo — los features de IA no van a funcionar" : undefined}
+          />
         </div>
 
-        {/* ── Col 3: Channels ─────────────────────────────── */}
+        {/* Col 3: Channels */}
         <div className="p-4 space-y-3">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Canales
           </p>
-
-          {loadingSettings || !settings ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Cargando...
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {FEATURES.filter((f) => f.category === "mail" || f.category === "whatsapp").map((feat) => {
-                const enabled = Boolean(settings[feat.key]);
-                const saving = savingKey === feat.key;
-                const depDisabled = feat.dependsOn && !settings[feat.dependsOn];
-
-                return (
-                  <button
-                    key={feat.key}
-                    onClick={() => toggleFeature(feat.key, !enabled)}
-                    disabled={saving || Boolean(depDisabled)}
-                    className={cn(
-                      "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-all",
-                      enabled
-                        ? "bg-emerald-50 dark:bg-emerald-950/30"
-                        : "bg-muted/30 hover:bg-muted/50",
-                      depDisabled && "opacity-40 cursor-not-allowed"
-                    )}
-                  >
-                    <feat.icon className={cn(
-                      "h-4 w-4 flex-shrink-0",
-                      enabled ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
-                    )} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-foreground">{feat.label}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">{feat.hint}</p>
-                    </div>
-                    <div className={cn(
-                      "flex h-5 w-9 flex-shrink-0 items-center rounded-full px-0.5 transition-colors",
-                      enabled ? "bg-emerald-600" : "bg-muted-foreground/30"
-                    )}>
-                      <div className={cn(
-                        "h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
-                        enabled ? "translate-x-4" : "translate-x-0"
-                      )} />
-                    </div>
-                    {saving && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          <FeatureToggleList
+            features={CHANNEL_FEATURES}
+            settings={settings}
+            loading={loadingSettings}
+            savingKey={savingKey}
+            accentColor="emerald"
+            onToggle={toggleFeature}
+          />
         </div>
       </div>
     </div>
