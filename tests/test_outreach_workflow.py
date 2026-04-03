@@ -24,7 +24,7 @@ def test_run_outreach_draft_generation_workflow_persists_degraded_ai_metadata(
     def broken_call(system_prompt, user_prompt, role):
         raise RuntimeError("ollama unavailable")
 
-    monkeypatch.setattr("app.llm.client._call_ollama_chat", broken_call)
+    monkeypatch.setattr("app.llm.client._chat_completion", broken_call)
 
     result = run_outreach_draft_generation_workflow(db, lead.id)
 

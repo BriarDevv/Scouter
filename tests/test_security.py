@@ -1,17 +1,15 @@
 """Security-focused tests for prompt injection defense and concurrency guards."""
 
-import pytest
 
 from app.llm.client import (
     _call_ollama_chat,
-    _extract_json,
+    _ChatCompletion,
     classify_inbound_reply,
-    summarize_business,
     generate_reply_assistant_draft,
     review_inbound_reply,
+    summarize_business,
 )
 from app.llm.roles import LLMRole
-
 
 # ---------------------------------------------------------------------------
 # Prompt injection boundary tests
@@ -61,11 +59,15 @@ class TestPromptInjectionBoundaries:
         """All system prompts must contain the anti-injection security preamble."""
         calls = []
 
-        def fake_call(system_prompt, user_prompt, role=LLMRole.EXECUTOR):
+        def fake_chat(system_prompt, user_prompt, role=LLMRole.EXECUTOR, format_schema=None):
             calls.append({"system": system_prompt, "user": user_prompt})
-            return '{"summary": "test", "quality": "low", "reasoning": "test", "suggested_angle": "test", "subject": "test", "body": "test", "suggested_tone": "professional", "should_escalate_reviewer": false}'
+            return _ChatCompletion(
+                text='{"summary": "test"}',
+                model="qwen3.5:9b",
+                latency_ms=9,
+            )
 
-        monkeypatch.setattr("app.llm.client._call_ollama_chat", fake_call)
+        monkeypatch.setattr("app.llm.client._chat_completion", fake_chat)
 
         # Call summarize_business
         summarize_business(
