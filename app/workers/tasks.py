@@ -2,7 +2,6 @@
 
 import json as _json
 import uuid
-from datetime import datetime, timezone
 
 from celery.exceptions import SoftTimeLimitExceeded
 from fastapi.encoders import jsonable_encoder
@@ -17,7 +16,6 @@ from app.models.lead import Lead
 from app.models.outreach import OutreachDraft
 from app.services.enrichment_service import enrich_lead
 from app.services.operational_settings_service import get_cached_settings
-from app.services.outreach_service import generate_outreach_draft
 from app.services.reply_draft_review_service import (
     mark_reply_assistant_review_failed,
     review_reply_assistant_draft_with_reviewer,
@@ -37,8 +35,17 @@ from app.services.task_tracking_service import (
     mark_task_succeeded,
 )
 from app.workers.celery_app import celery_app
+from app.workflows.outreach_draft_generation import (
+    run_outreach_draft_automation,
+    run_outreach_draft_generation_workflow,
+    should_generate_outreach_email_draft,
+)
 
 logger = get_logger(__name__)
+
+
+def _should_generate_draft(lead: Lead) -> bool:
+    return should_generate_outreach_email_draft(lead)
 
 
 def _queue_name(request, fallback: str) -> str:
@@ -469,11 +476,6 @@ def task_analyze_lead(
         clear_tracking_context()
 
 
-def _should_generate_draft(lead: Lead) -> bool:
-    """Only generate outreach drafts for high-quality leads with email."""
-    return getattr(lead, "llm_quality", None) == "high" and bool(lead.email)
-
-
 @celery_app.task(bind=True, max_retries=2, default_retry_delay=60, soft_time_limit=300, time_limit=360)
 def task_generate_draft(
     self,
@@ -518,216 +520,38 @@ def task_generate_draft(
                 )
                 return {"status": "not_found", "lead_id": lead_id}
 
-            # Idempotency guard: skip if a draft already exists for this lead
-            existing_draft = db.execute(
-                select(OutreachDraft).where(
-                    OutreachDraft.lead_id == uuid.UUID(lead_id),
-                    OutreachDraft.status.in_(["pending_review", "approved"]),
-                )
-            ).scalar_one_or_none()
-            if existing_draft:
-                result = {
-                    "status": "skipped",
-                    "lead_id": lead_id,
-                    "reason": "draft_already_exists",
-                    "draft_id": str(existing_draft.id),
-                }
-                mark_task_succeeded(
-                    db,
-                    task_id=task_id,
-                    result=result,
-                    current_step="draft_generation",
-                    pipeline_run_id=pipeline_uuid,
-                    pipeline_status="succeeded" if pipeline_uuid else None,
-                )
-                if pipeline_uuid:
-                    with SessionLocal() as pipeline_db:
-                        from app.services.task_tracking_service import update_pipeline_run
+            workflow_result = run_outreach_draft_generation_workflow(
+                db,
+                uuid.UUID(lead_id),
+            )
+            result = workflow_result.to_payload()
 
-                        update_pipeline_run(
-                            pipeline_db,
-                            pipeline_uuid,
-                            current_step="completed",
-                            status="succeeded",
-                            result=result,
-                            finished=True,
-                        )
-                logger.info("task_skipped_idempotent", task_name="task_generate_draft", lead_id=lead_id)
-                return result
-
-            # Check brief contact recommendation
-            from app.models.commercial_brief import CommercialBrief
-            brief = db.query(CommercialBrief).filter_by(
-                lead_id=uuid.UUID(lead_id),
-            ).first()
-
-            if brief and brief.recommended_contact_method:
-                method = brief.recommended_contact_method.value
-
-                if method in ("call", "manual_review"):
-                    # Don't auto-draft — requires human action
-                    result = {
-                        "status": "skipped",
-                        "lead_id": lead_id,
-                        "reason": (
-                            f"contact_method={method},"
-                            " skipping auto-draft"
-                        ),
-                    }
-                    mark_task_succeeded(
-                        db,
-                        task_id=task_id,
-                        result=result,
-                        current_step="draft_generation",
-                        pipeline_run_id=pipeline_uuid,
-                        pipeline_status=(
-                            "succeeded" if pipeline_uuid else None
-                        ),
-                    )
-                    if pipeline_uuid:
-                        with SessionLocal() as pdb:
-                            from app.services.task_tracking_service import (
-                                update_pipeline_run,
-                            )
-                            update_pipeline_run(
-                                pdb,
-                                pipeline_uuid,
-                                current_step="completed",
-                                status="succeeded",
-                                result=result,
-                                finished=True,
-                            )
-                    logger.info(
-                        "draft_skipped_contact_method",
-                        lead_id=lead_id,
-                        method=method,
-                    )
-                    return result
-
-                if method == "whatsapp":
-                    # Prefer WhatsApp draft if lead has phone
-                    lead_obj = db.get(Lead, uuid.UUID(lead_id))
-                    if lead_obj and lead_obj.phone:
-                        wa_settings = get_cached_settings(db)
-                        if wa_settings and getattr(
-                            wa_settings,
-                            "whatsapp_outreach_enabled",
-                            False,
-                        ):
-                            try:
-                                from app.services.outreach_service import (
-                                    generate_whatsapp_draft,
-                                )
-                                generate_whatsapp_draft(
-                                    db, uuid.UUID(lead_id),
-                                )
-                                logger.info(
-                                    "wa_draft_preferred_by_contact"
-                                    "_method",
-                                    lead_id=lead_id,
-                                )
-                            except Exception as wa_exc:
-                                logger.warning(
-                                    "wa_draft_preferred_failed",
-                                    lead_id=lead_id,
-                                    error=str(wa_exc),
-                                )
-
-            if not _should_generate_draft(lead):
-                result = {
-                    "status": "skipped",
-                    "lead_id": lead_id,
-                    "reason": f"quality={lead.llm_quality!r}, draft only for high",
-                }
-                mark_task_succeeded(
-                    db,
-                    task_id=task_id,
-                    result=result,
-                    current_step="draft_generation",
-                    pipeline_run_id=pipeline_uuid,
-                    pipeline_status="succeeded" if pipeline_uuid else None,
-                )
-                if pipeline_uuid:
-                    with SessionLocal() as pipeline_db:
-                        from app.services.task_tracking_service import update_pipeline_run
-
-                        update_pipeline_run(
-                            pipeline_db,
-                            pipeline_uuid,
-                            current_step="completed",
-                            status="succeeded",
-                            result=result,
-                            finished=True,
-                        )
-                logger.info("draft_skipped_quality_gate", lead_id=lead_id, quality=lead.llm_quality)
-                return result
-
-            draft = generate_outreach_draft(db, uuid.UUID(lead_id))
-            if not draft:
-                error = "Draft generation failed"
+            if workflow_result.status == "not_found":
                 mark_task_failed(
                     db,
                     task_id=task_id,
-                    error=error,
+                    error="Lead not found",
                     current_step="draft_generation",
                     pipeline_run_id=pipeline_uuid,
                 )
-                return {"status": "failed", "lead_id": lead_id}
+                return result
 
-            # Generate WhatsApp draft if lead has phone and WA outreach is enabled
-            try:
-                wa_settings = get_cached_settings(db)
-                if wa_settings and getattr(wa_settings, "whatsapp_outreach_enabled", False):
-                    lead_obj = db.get(Lead, uuid.UUID(lead_id))
-                    if lead_obj and lead_obj.phone:
-                        from app.services.outreach_service import generate_whatsapp_draft
-                        generate_whatsapp_draft(db, uuid.UUID(lead_id))
-                        logger.info("wa_draft_generated_by_pipeline", lead_id=lead_id)
-            except Exception as wa_exc:
-                logger.warning("wa_draft_pipeline_failed", lead_id=lead_id, error=str(wa_exc))
+            if workflow_result.status == "failed":
+                mark_task_failed(
+                    db,
+                    task_id=task_id,
+                    error=str(workflow_result.reason or "Draft generation failed"),
+                    current_step="draft_generation",
+                    pipeline_run_id=pipeline_uuid,
+                )
+                return result
 
-            # Auto-approve and send in auto mode
-            try:
-                ops = get_cached_settings(db)
-                if (
-                    not ops.require_approved_drafts
-                    and draft.status.value == "pending_review"
-                ):
-                    from app.models.outreach import DraftStatus
-                    draft.status = DraftStatus.APPROVED
-                    draft.reviewed_at = datetime.now(timezone.utc)
-                    db.commit()
-                    logger.info(
-                        "draft_auto_approved",
-                        lead_id=lead_id,
-                        draft_id=str(draft.id),
-                    )
-                    # Auto-send if mail is enabled
-                    if ops.mail_enabled:
-                        try:
-                            from app.services.mail_service import (
-                                send_draft as mail_send,
-                            )
-                            mail_send(db, draft.id)
-                            logger.info(
-                                "draft_auto_sent",
-                                lead_id=lead_id,
-                                draft_id=str(draft.id),
-                            )
-                        except Exception as send_exc:
-                            logger.warning(
-                                "draft_auto_send_failed",
-                                lead_id=lead_id,
-                                error=str(send_exc),
-                            )
-            except Exception as auto_exc:
-                logger.warning(
-                    "auto_approve_failed",
-                    lead_id=lead_id,
-                    error=str(auto_exc),
+            if workflow_result.status == "ok" and workflow_result.draft_id:
+                run_outreach_draft_automation(
+                    db,
+                    uuid.UUID(workflow_result.draft_id),
                 )
 
-            result = {"status": "ok", "lead_id": lead_id, "draft_id": str(draft.id)}
             mark_task_succeeded(
                 db,
                 task_id=task_id,
@@ -749,7 +573,11 @@ def task_generate_draft(
                         error=None,
                         finished=True,
                     )
-            logger.info("task_step_completed", task_name="task_generate_draft", result=result)
+            logger.info(
+                "task_step_completed",
+                task_name="task_generate_draft",
+                result=result,
+            )
             return result
     except SoftTimeLimitExceeded:
         logger.error("task_soft_time_limit", task_name="task_generate_draft", task_id=task_id)
@@ -1221,11 +1049,12 @@ def task_batch_pipeline(self, status_filter: str = "new"):
 
     Progress is tracked in Redis so the frontend can poll and the user can stop.
     """
-    from app.services.enrichment_service import enrich_lead
-    from app.services.scoring_service import score_lead
-    from app.services.outreach_service import generate_outreach_draft as _generate_draft
     from redis import Redis
+
     from app.core.config import settings as env
+    from app.services.enrichment_service import enrich_lead
+    from app.services.outreach_service import generate_outreach_draft as _generate_draft
+    from app.services.scoring_service import score_lead
 
     redis = Redis.from_url(env.REDIS_URL)
     redis_key = "pipeline:batch"
@@ -1355,7 +1184,7 @@ def task_batch_pipeline(self, status_filter: str = "new"):
                         redis.set(redis_key, _json.dumps(progress), ex=3600)
 
                         db.refresh(lead)
-                        from app.llm.client import summarize_business, evaluate_lead_quality
+                        from app.llm.client import evaluate_lead_quality, summarize_business
                         from app.llm.roles import LLMRole as _LLMRole
 
                         summary = summarize_business(
@@ -1460,6 +1289,7 @@ def task_batch_pipeline(self, status_filter: str = "new"):
 def task_rescore_all(self):
     """Re-score all leads. Useful after scoring weight changes."""
     from redis import Redis
+
     from app.core.config import settings as env
 
     redis = Redis.from_url(env.REDIS_URL)
@@ -1515,13 +1345,14 @@ def task_crawl_territory(
     target_leads: int = 50,
 ):
     """Crawl Google Maps for all cities in a territory."""
+    from redis import Redis
+
+    from app.core.config import settings as env
     from app.crawlers.google_maps_crawler import GoogleMapsCrawler
-    from app.models.territory import Territory
     from app.models.lead_source import LeadSource, SourceType
+    from app.models.territory import Territory
     from app.schemas.lead import LeadCreate
     from app.services.lead_service import _compute_dedup_hash, create_lead
-    from redis import Redis
-    from app.core.config import settings as env
 
     redis = Redis.from_url(env.REDIS_URL)
     redis_key = f"crawl:territory:{territory_id}"
