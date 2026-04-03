@@ -44,6 +44,7 @@ class TaskRun(Base):
         Index("ix_task_runs_lead_id", "lead_id"),
         Index("ix_task_runs_pipeline_run_id", "pipeline_run_id"),
         Index("ix_task_runs_status", "status"),
+        Index("ix_task_runs_task_name_scope_key", "task_name", "scope_key"),
     )
 
     task_id: Mapped[str] = mapped_column(String(255), primary_key=True)
@@ -56,8 +57,10 @@ class TaskRun(Base):
         Uuid, ForeignKey("pipeline_runs.id", ondelete="SET NULL"), nullable=True
     )
     correlation_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    scope_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="queued")
     current_step: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    progress_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     result: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -66,6 +69,10 @@ class TaskRun(Base):
     )
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    stop_requested_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
     lead: Mapped["Lead | None"] = relationship("Lead")  # noqa: F821
     pipeline_run: Mapped[PipelineRun | None] = relationship("PipelineRun", back_populates="tasks")

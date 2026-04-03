@@ -11,7 +11,8 @@ from app.models.task_tracking import PipelineRun, TaskRun
 
 logger = get_logger(__name__)
 
-TASK_PROGRESS_STATUSES = {"running", "retrying", "succeeded", "failed"}
+TASK_PROGRESS_STATUSES = {"running", "retrying", "stopping", "stopped", "succeeded", "failed"}
+ACTIVE_TASK_RUN_STATUSES = ("queued", "running", "retrying", "stopping")
 
 
 def utcnow() -> datetime:
@@ -84,6 +85,7 @@ def queue_task_run(
     lead_id: uuid.UUID | None = None,
     pipeline_run_id: uuid.UUID | None = None,
     correlation_id: str | None = None,
+    scope_key: str | None = None,
     current_step: str | None = None,
 ) -> TaskRun:
     def _apply_metadata(task_run: TaskRun, *, preserve_progress: bool) -> None:
@@ -92,6 +94,7 @@ def queue_task_run(
         task_run.lead_id = lead_id
         task_run.pipeline_run_id = pipeline_run_id
         task_run.correlation_id = correlation_id
+        task_run.scope_key = scope_key
 
         if preserve_progress and task_run.status in TASK_PROGRESS_STATUSES:
             task_run.current_step = task_run.current_step or current_step
@@ -129,6 +132,7 @@ def queue_task_run(
         queue=queue,
         lead_id=str(lead_id) if lead_id else None,
         pipeline_run_id=str(pipeline_run_id) if pipeline_run_id else None,
+        scope_key=scope_key,
         current_step=current_step,
     )
     return task_run
@@ -143,6 +147,7 @@ def mark_task_running(
     lead_id: uuid.UUID | None = None,
     pipeline_run_id: uuid.UUID | None = None,
     correlation_id: str | None = None,
+    scope_key: str | None = None,
     current_step: str | None = None,
 ) -> TaskRun:
     task_run = queue_task_run(
@@ -153,6 +158,7 @@ def mark_task_running(
         lead_id=lead_id,
         pipeline_run_id=pipeline_run_id,
         correlation_id=correlation_id,
+        scope_key=scope_key,
         current_step=current_step,
     )
     task_run.status = "running"
@@ -285,6 +291,57 @@ def mark_task_failed(
     return task_run
 
 
+def update_task_run(
+    db: Session,
+    task_id: str,
+    *,
+    status: str | None = None,
+    current_step: str | None = None,
+    progress_json: dict | None = None,
+    result: dict | None = None,
+    error: str | None = None,
+    clear_error: bool = False,
+    started: bool = False,
+    finished: bool = False,
+    stop_requested: bool | None = None,
+    commit: bool = True,
+) -> TaskRun | None:
+    task_run = db.get(TaskRun, task_id)
+    if not task_run:
+        return None
+    if status is not None:
+        task_run.status = status
+    if current_step is not None:
+        task_run.current_step = current_step
+    if progress_json is not None:
+        task_run.progress_json = progress_json
+    if result is not None:
+        task_run.result = result
+    if error is not None:
+        task_run.error = error
+    elif clear_error:
+        task_run.error = None
+    if started and task_run.started_at is None:
+        task_run.started_at = utcnow()
+    if finished:
+        task_run.finished_at = utcnow()
+    if stop_requested is True:
+        task_run.stop_requested_at = task_run.stop_requested_at or utcnow()
+    elif stop_requested is False:
+        task_run.stop_requested_at = None
+    if commit:
+        db.commit()
+        db.refresh(task_run)
+    logger.info(
+        "task_run_updated",
+        task_id=task_id,
+        status=task_run.status,
+        current_step=task_run.current_step,
+        scope_key=task_run.scope_key,
+    )
+    return task_run
+
+
 def update_pipeline_run(
     db: Session,
     pipeline_run_id: uuid.UUID,
@@ -332,12 +389,50 @@ def get_task_run(db: Session, task_id: str) -> TaskRun | None:
     return db.get(TaskRun, task_id)
 
 
+def get_scoped_task_run(
+    db: Session,
+    *,
+    task_name: str,
+    scope_key: str,
+    active_only: bool = False,
+) -> TaskRun | None:
+    stmt = (
+        select(TaskRun)
+        .where(TaskRun.task_name == task_name, TaskRun.scope_key == scope_key)
+        .order_by(TaskRun.created_at.desc())
+        .limit(1)
+    )
+    if active_only:
+        stmt = stmt.where(TaskRun.status.in_(ACTIVE_TASK_RUN_STATUSES))
+    return db.execute(stmt).scalars().first()
+
+
+def request_task_stop(
+    db: Session,
+    *,
+    task_name: str,
+    scope_key: str,
+) -> TaskRun | None:
+    task_run = get_scoped_task_run(db, task_name=task_name, scope_key=scope_key, active_only=True)
+    if not task_run:
+        return None
+    update_task_run(
+        db,
+        task_run.task_id,
+        status="stopping",
+        stop_requested=True,
+        current_step=task_run.current_step,
+    )
+    return db.get(TaskRun, task_run.task_id)
+
+
 def list_task_runs(
     db: Session,
     *,
     status: str | None = None,
     lead_id: uuid.UUID | None = None,
     pipeline_run_id: uuid.UUID | None = None,
+    scope_key: str | None = None,
     limit: int = 20,
 ) -> list[TaskRun]:
     stmt = select(TaskRun)
@@ -347,6 +442,8 @@ def list_task_runs(
         stmt = stmt.where(TaskRun.lead_id == lead_id)
     if pipeline_run_id:
         stmt = stmt.where(TaskRun.pipeline_run_id == pipeline_run_id)
+    if scope_key:
+        stmt = stmt.where(TaskRun.scope_key == scope_key)
     stmt = stmt.order_by(TaskRun.updated_at.desc()).limit(limit)
     return list(db.execute(stmt).scalars().all())
 

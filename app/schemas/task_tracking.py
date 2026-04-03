@@ -15,12 +15,15 @@ class TaskEnqueueResponse(BaseModel):
 
 class TaskStatusResponse(TaskEnqueueResponse):
     correlation_id: str | None = None
+    scope_key: str | None = None
+    progress_json: dict | None = None
     result: dict | None = None
     error: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
+    stop_requested_at: datetime | None = None
 
 
 class PipelineRunSummaryResponse(BaseModel):
