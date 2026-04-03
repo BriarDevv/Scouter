@@ -205,6 +205,30 @@ def build_rescore_all_progress(
     }
 
 
+def build_rescore_all_status_payload(
+    *,
+    status: str,
+    task_id: str,
+    total: int,
+    rescored: int,
+    errors: int,
+    current_step: str | None = None,
+    error: str | None = None,
+) -> dict:
+    payload = {
+        "status": status,
+        "task_id": task_id,
+        "total": total,
+        "rescored": rescored,
+        "errors": errors,
+    }
+    if current_step is not None:
+        payload["current_step"] = current_step
+    if error is not None:
+        payload["error"] = error
+    return payload
+
+
 def serialize_rescore_all_status(task_run: TaskRun | None) -> dict:
     if not task_run:
         return {"status": "idle"}
@@ -295,7 +319,10 @@ def should_stop_operational_task(
         if is_task_stop_requested(db, task_id):
             return True
 
-    payload = _read_legacy_operational_state(redis_key, suppress_errors=False)
+    try:
+        payload = _read_legacy_operational_state(redis_key, suppress_errors=False)
+    except Exception:
+        return False
     if payload is None:
         return treat_missing_legacy_as_stop
     return payload.get("status") == "stopping"
@@ -345,6 +372,44 @@ def get_batch_pipeline_status_snapshot(db) -> dict:
 
 def mark_batch_pipeline_legacy_stop_requested() -> bool:
     return mark_legacy_operational_stop_requested(BATCH_PIPELINE_REDIS_KEY)
+
+
+def mirror_rescore_all_state(payload: dict) -> None:
+    mirror_legacy_operational_state(RESCORE_ALL_REDIS_KEY, payload)
+
+
+def persist_rescore_all_state(
+    task_id: str,
+    *,
+    current_step: str | None,
+    total: int,
+    rescored: int,
+    errors: int,
+    current_lead_id: str | None = None,
+    status: str | None = None,
+    error: str | None = None,
+    clear_error: bool = False,
+    finished: bool = False,
+    result: dict | None = None,
+    stop_requested: bool | None = None,
+) -> None:
+    progress = build_rescore_all_progress(
+        total=total,
+        rescored=rescored,
+        errors=errors,
+        current_lead_id=current_lead_id,
+    )
+    persist_operational_task_state(
+        task_id,
+        current_step=current_step,
+        progress_json=progress,
+        status=status,
+        error=error,
+        clear_error=clear_error,
+        finished=finished,
+        result=result,
+        stop_requested=stop_requested,
+    )
 
 
 def mirror_territory_crawl_state(territory_id: str, payload: dict) -> None:

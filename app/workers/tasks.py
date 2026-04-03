@@ -1,6 +1,5 @@
 """Celery tasks for async processing of leads."""
 
-import json as _json
 import uuid
 
 from celery.exceptions import SoftTimeLimitExceeded
@@ -17,17 +16,15 @@ from app.models.outreach import OutreachDraft
 from app.services.enrichment_service import enrich_lead
 from app.services.operational_settings_service import get_cached_settings
 from app.services.operational_task_service import (
-    BATCH_PIPELINE_REDIS_KEY,
     BATCH_PIPELINE_SCOPE_KEY,
     RESCORE_ALL_REDIS_KEY,
     RESCORE_ALL_SCOPE_KEY,
-    build_batch_pipeline_progress,
-    build_rescore_all_progress,
+    build_rescore_all_status_payload,
     build_territory_crawl_progress,
-    mirror_batch_pipeline_state,
-    mirror_legacy_operational_state,
+    mirror_rescore_all_state,
     mirror_territory_crawl_state,
     persist_operational_task_state,
+    persist_rescore_all_state,
     should_stop_operational_task,
     territory_crawl_redis_key,
 )
@@ -44,14 +41,13 @@ from app.services.scoring_service import score_lead
 from app.services.task_tracking_service import (
     bind_tracking_context,
     clear_tracking_context,
-    is_task_stop_requested,
     mark_task_failed,
     mark_task_retrying,
     mark_task_running,
     mark_task_succeeded,
-    update_task_run,
 )
 from app.workers.celery_app import celery_app
+from app.workflows.batch_pipeline import run_batch_pipeline_workflow
 from app.workflows.outreach_draft_generation import (
     run_outreach_draft_automation,
     run_outreach_draft_generation_workflow,
@@ -1067,24 +1063,9 @@ def task_full_pipeline(
 
 @celery_app.task(name="app.workers.tasks.task_batch_pipeline", bind=True, max_retries=0, soft_time_limit=7200, time_limit=7500)
 def task_batch_pipeline(self, status_filter: str = "new", correlation_id: str | None = None):
-    """Process ALL leads with the given status through the full pipeline, one by one.
-
-    Canonical progress is tracked in TaskRun and mirrored to Redis for compatibility.
-    """
-    from app.services.enrichment_service import enrich_lead
-    from app.services.outreach_service import generate_outreach_draft as _generate_draft
-    from app.services.scoring_service import score_lead
-
+    """Thin Celery wrapper around the batch pipeline workflow."""
     task_id = _request_task_id(self.request)
     queue = _queue_name(self.request, "default")
-
-    from app.models.territory import Territory
-
-    total_processed = 0
-    total_errors = 0
-    crawl_rounds = 0
-
-    progress = build_batch_pipeline_progress(task_id=task_id)
 
     try:
         with SessionLocal() as db:
@@ -1102,315 +1083,12 @@ def task_batch_pipeline(self, status_filter: str = "new", correlation_id: str | 
                 scope_key=BATCH_PIPELINE_SCOPE_KEY,
                 current_step="batch_dispatch",
             )
-        persist_operational_task_state(
-            task_id,
-            current_step="batch_dispatch",
-            progress_json=progress,
-            clear_error=True,
+        return run_batch_pipeline_workflow(
+            task_id=task_id,
+            status_filter=status_filter,
+            correlation_id=correlation_id,
+            crawl_territory_task=task_crawl_territory,
         )
-
-        while True:
-            if should_stop_operational_task(
-                task_id=task_id,
-                redis_key=BATCH_PIPELINE_REDIS_KEY,
-            ):
-                progress["status"] = "stopped"
-                mirror_batch_pipeline_state(progress)
-                persist_operational_task_state(
-                    task_id,
-                    current_step=progress.get("current_step"),
-                    progress_json=progress,
-                    status="stopped",
-                    finished=True,
-                )
-                logger.info("batch_pipeline_stopped_by_user")
-                return {"status": "stopped", "task_id": task_id}
-
-            territory_info = None
-            with SessionLocal() as db:
-                # Load pending leads
-                leads = db.query(Lead).filter(Lead.status == status_filter).order_by(Lead.created_at).all()
-                lead_ids = [lead.id for lead in leads]
-
-                if not leads:
-                    # No leads — try crawling
-                    territories = db.query(Territory).all()
-                    territory_info = (str(territories[0].id), territories[0].name) if territories else None
-
-            if not lead_ids:
-                if not territory_info or crawl_rounds >= 3:
-                    # No territories or max crawl rounds reached — done
-                    break
-
-                territory_id_str, territory_name = territory_info
-                crawl_rounds += 1
-                progress["current_step"] = "crawling"
-                progress["current_lead"] = f"Crawling {territory_name} (ronda {crawl_rounds})"
-                progress["crawl_rounds"] = crawl_rounds
-                mirror_batch_pipeline_state(progress)
-                persist_operational_task_state(
-                    task_id,
-                    current_step="crawling",
-                    progress_json=progress,
-                )
-                logger.info("batch_auto_crawl", territory=territory_name, round=crawl_rounds)
-
-                try:
-                    task_crawl_territory(
-                        territory_id=territory_id_str,
-                        categories=None,
-                        only_without_website=False,
-                        max_results_per_category=20,
-                        correlation_id=correlation_id,
-                    )
-                except Exception as crawl_exc:
-                    logger.error("batch_auto_crawl_failed", territory=territory_name, round=crawl_rounds, error=str(crawl_exc))
-                    total_errors += 1
-                    progress["errors"] = total_errors
-                    mirror_batch_pipeline_state(progress)
-                    persist_operational_task_state(
-                        task_id,
-                        current_step="crawling",
-                        progress_json=progress,
-                    )
-                    continue
-
-                with SessionLocal() as db:
-                    new_leads = db.query(Lead).filter(Lead.status == status_filter).order_by(Lead.created_at).all()
-                    lead_ids = [lead.id for lead in new_leads]
-
-                progress["leads_from_crawl"] = progress.get("leads_from_crawl", 0) + len(lead_ids)
-                progress["crawl_rounds"] = crawl_rounds
-                mirror_batch_pipeline_state(progress)
-                persist_operational_task_state(
-                    task_id,
-                    current_step="crawling",
-                    progress_json=progress,
-                )
-                logger.info("batch_post_crawl", new_leads=len(lead_ids), round=crawl_rounds)
-
-                if not lead_ids:
-                    break  # Crawl brought nothing new
-
-            # Reset crawl counter — we have leads to process, so next crawl is fresh
-            crawl_rounds = 0
-
-            # Process this batch of leads
-            batch_total = len(lead_ids)
-            progress["total"] = total_processed + batch_total
-            mirror_batch_pipeline_state(progress)
-            persist_operational_task_state(
-                task_id,
-                current_step=progress.get("current_step"),
-                progress_json=progress,
-            )
-
-            for idx, lead_id in enumerate(lead_ids):
-                if should_stop_operational_task(
-                    task_id=task_id,
-                    redis_key=BATCH_PIPELINE_REDIS_KEY,
-                    treat_missing_legacy_as_stop=True,
-                ):
-                    progress["status"] = "stopped"
-                    mirror_batch_pipeline_state(progress)
-                    persist_operational_task_state(
-                        task_id,
-                        current_step=progress.get("current_step"),
-                        progress_json=progress,
-                        status="stopped",
-                        finished=True,
-                    )
-                    logger.info("batch_pipeline_stopped_by_user")
-                    return {"status": "stopped", "task_id": task_id}
-
-                progress["processed"] = total_processed + idx
-                progress["current_step"] = "enrichment"
-                mirror_batch_pipeline_state(progress)
-                persist_operational_task_state(
-                    task_id,
-                    current_step="enrichment",
-                    progress_json=progress,
-                )
-
-                try:
-                    with SessionLocal() as db:
-                        lead = db.get(Lead, lead_id)
-                        if not lead:
-                            continue
-                        progress["current_lead"] = lead.business_name
-                        mirror_batch_pipeline_state(progress)
-                        persist_operational_task_state(
-                            task_id,
-                            current_step="enrichment",
-                            progress_json=progress,
-                        )
-
-                        # Step 1: Enrich
-                        enrich_lead(db, lead.id)
-
-                        # Step 2: Score
-                        progress["current_step"] = "scoring"
-                        mirror_batch_pipeline_state(progress)
-                        persist_operational_task_state(
-                            task_id,
-                            current_step="scoring",
-                            progress_json=progress,
-                        )
-                        score_lead(db, lead.id)
-
-                        # Step 3: LLM Analysis
-                        progress["current_step"] = "analysis"
-                        mirror_batch_pipeline_state(progress)
-                        persist_operational_task_state(
-                            task_id,
-                            current_step="analysis",
-                            progress_json=progress,
-                        )
-
-                        db.refresh(lead)
-                        from app.llm.client import evaluate_lead_quality, summarize_business
-                        from app.llm.roles import LLMRole as _LLMRole
-
-                        summary = summarize_business(
-                            business_name=lead.business_name,
-                            industry=lead.industry,
-                            city=lead.city,
-                            website_url=lead.website_url,
-                            instagram_url=lead.instagram_url,
-                            signals=list(lead.signals),
-                            role=_LLMRole.EXECUTOR,
-                        )
-                        lead.llm_summary = summary
-
-                        evaluation = evaluate_lead_quality(
-                            business_name=lead.business_name,
-                            industry=lead.industry,
-                            city=lead.city,
-                            website_url=lead.website_url,
-                            instagram_url=lead.instagram_url,
-                            signals=list(lead.signals),
-                            score=lead.score,
-                            role=_LLMRole.EXECUTOR,
-                        )
-                        lead.llm_quality_assessment = evaluation["reasoning"]
-                        lead.llm_suggested_angle = evaluation["suggested_angle"]
-                        raw_quality = evaluation.get("quality", "unknown").lower().strip()
-                        if raw_quality not in ("high", "medium", "low"):
-                            logger.warning("quality_normalized_to_unknown", lead=lead.business_name, raw_quality=raw_quality)
-                        lead.llm_quality = raw_quality if raw_quality in ("high", "medium", "low") else "unknown"
-                        db.commit()
-
-                        # Step 4: HIGH lane — research + brief
-                        if lead.llm_quality == "high":
-                            progress["current_step"] = "research"
-                            mirror_batch_pipeline_state(progress)
-                            persist_operational_task_state(
-                                task_id,
-                                current_step="research",
-                                progress_json=progress,
-                            )
-                            try:
-                                from app.services.research_service import run_research
-                                run_research(db, lead.id)
-                            except Exception as res_exc:
-                                logger.warning(
-                                    "batch_research_failed",
-                                    lead=lead.business_name,
-                                    error=str(res_exc),
-                                )
-
-                            progress["current_step"] = "brief"
-                            mirror_batch_pipeline_state(progress)
-                            persist_operational_task_state(
-                                task_id,
-                                current_step="brief",
-                                progress_json=progress,
-                            )
-                            try:
-                                from app.services.brief_service import generate_brief
-                                generate_brief(db, lead.id)
-                            except Exception as brief_exc:
-                                logger.warning(
-                                    "batch_brief_failed",
-                                    lead=lead.business_name,
-                                    error=str(brief_exc),
-                                )
-
-                        # Step 5: Generate draft (only for high quality with email)
-                        progress["current_step"] = "draft"
-                        mirror_batch_pipeline_state(progress)
-                        persist_operational_task_state(
-                            task_id,
-                            current_step="draft",
-                            progress_json=progress,
-                        )
-                        if lead.llm_quality == "high" and lead.email:
-                            _generate_draft(db, lead.id)
-                        else:
-                            reason = (
-                                "no_email" if not lead.email
-                                else ("quality=%s" % lead.llm_quality)
-                            )
-                            logger.info(
-                                "batch_draft_skipped",
-                                lead=lead.business_name,
-                                reason=reason,
-                            )
-
-                        logger.info("batch_pipeline_lead_done", lead=lead.business_name, idx=total_processed + idx + 1)
-
-                except Exception as exc:
-                    total_errors += 1
-                    progress["errors"] = total_errors
-                    mirror_batch_pipeline_state(progress)
-                    persist_operational_task_state(
-                        task_id,
-                        current_step=progress.get("current_step"),
-                        progress_json=progress,
-                    )
-                    logger.error("batch_pipeline_lead_error", lead_id=str(lead_id), error=str(exc))
-
-            total_processed += batch_total
-
-        # Done
-        progress["status"] = "done"
-        progress["processed"] = total_processed
-        progress["total"] = total_processed
-        progress["current_lead"] = None
-        progress["current_step"] = ""
-        mirror_batch_pipeline_state(progress)
-        persist_operational_task_state(
-            task_id,
-            current_step="completed",
-            progress_json=progress,
-            status="succeeded",
-            clear_error=True,
-            finished=True,
-            result={
-                "status": "done",
-                "task_id": task_id,
-                "total": total_processed,
-                "errors": total_errors,
-            },
-            stop_requested=False,
-        )
-        logger.info("batch_pipeline_done", total=total_processed, errors=total_errors, crawl_rounds=crawl_rounds)
-        return {"status": "done", "task_id": task_id, "total": total_processed, "errors": total_errors}
-
-    except Exception as exc:
-        mirror_batch_pipeline_state(
-            {"status": "error", "task_id": task_id, "error": str(exc)}
-        )
-        persist_operational_task_state(
-            task_id,
-            current_step=progress.get("current_step"),
-            progress_json=progress,
-            status="failed",
-            error=str(exc),
-            finished=True,
-        )
-        logger.error("batch_pipeline_error", error=str(exc))
-        raise
     finally:
         clear_tracking_context()
 
@@ -1432,41 +1110,6 @@ def task_rescore_all(self, correlation_id: str | None = None):
     total = 0
     rescored = 0
     errors = 0
-
-    def mirror_status(payload: dict) -> None:
-        mirror_legacy_operational_state(RESCORE_ALL_REDIS_KEY, payload)
-
-    def persist_state(
-        *,
-        total: int,
-        rescored: int,
-        current_lead_id: str | None = None,
-        status: str | None = None,
-        error: str | None = None,
-        clear_error: bool = False,
-        finished: bool = False,
-        result: dict | None = None,
-        stop_requested: bool | None = None,
-    ) -> None:
-        progress = build_rescore_all_progress(
-            total=total,
-            rescored=rescored,
-            errors=errors,
-            current_lead_id=current_lead_id,
-        )
-        with SessionLocal() as db:
-            update_task_run(
-                db,
-                task_id,
-                status=status,
-                current_step=current_step,
-                progress_json=progress,
-                result=result,
-                error=error,
-                clear_error=clear_error,
-                finished=finished,
-                stop_requested=stop_requested,
-        )
 
     try:
         with SessionLocal() as db:
@@ -1490,43 +1133,62 @@ def task_rescore_all(self, correlation_id: str | None = None):
             ]
 
         total = len(lead_ids)
-        persist_state(total=total, rescored=rescored, clear_error=True)
-        mirror_status(
-            {
-                "status": "running",
-                "task_id": task_id,
-                "total": total,
-                "rescored": rescored,
-                "errors": 0,
-                "current_step": current_step,
-            }
+        persist_rescore_all_state(
+            task_id,
+            current_step=current_step,
+            total=total,
+            rescored=rescored,
+            errors=errors,
+            clear_error=True,
+        )
+        mirror_rescore_all_state(
+            build_rescore_all_status_payload(
+                status="running",
+                task_id=task_id,
+                total=total,
+                rescored=rescored,
+                errors=errors,
+                current_step=current_step,
+            )
         )
 
         for lead_id in lead_ids:
             current_step = "rescore_scoring"
-            persist_state(total=total, rescored=rescored, current_lead_id=str(lead_id))
+            persist_rescore_all_state(
+                task_id,
+                current_step=current_step,
+                total=total,
+                rescored=rescored,
+                errors=errors,
+                current_lead_id=str(lead_id),
+            )
 
-            with SessionLocal() as db:
-                if is_task_stop_requested(db, task_id):
-                    current_step = "rescore_stopped"
-                    persist_state(
+            if should_stop_operational_task(
+                task_id=task_id,
+                redis_key=RESCORE_ALL_REDIS_KEY,
+            ):
+                current_step = "rescore_stopped"
+                persist_rescore_all_state(
+                    task_id,
+                    current_step=current_step,
+                    total=total,
+                    rescored=rescored,
+                    errors=errors,
+                    status="stopped",
+                    finished=True,
+                )
+                mirror_rescore_all_state(
+                    build_rescore_all_status_payload(
+                        status="stopped",
+                        task_id=task_id,
                         total=total,
                         rescored=rescored,
-                        status="stopped",
-                        finished=True,
+                        errors=errors,
+                        current_step=current_step,
                     )
-                    mirror_status(
-                        {
-                            "status": "stopped",
-                            "task_id": task_id,
-                            "total": total,
-                            "rescored": rescored,
-                            "errors": errors,
-                            "current_step": current_step,
-                        }
-                    )
-                    logger.info("rescore_all_stopped_by_user")
-                    return {"status": "stopped", "task_id": task_id}
+                )
+                logger.info("rescore_all_stopped_by_user")
+                return {"status": "stopped", "task_id": task_id}
 
             try:
                 with SessionLocal() as db:
@@ -1535,23 +1197,25 @@ def task_rescore_all(self, correlation_id: str | None = None):
             except Exception as exc:
                 errors += 1
                 logger.error("rescore_lead_error", lead_id=str(lead_id), error=str(exc))
-            persist_state(
+            persist_rescore_all_state(
+                task_id,
+                current_step=current_step,
                 total=total,
                 rescored=rescored,
-                current_lead_id=None,
+                errors=errors,
             )
 
             processed_count = rescored + errors
             if processed_count % 20 == 0 or processed_count == total:
-                mirror_status(
-                    {
-                        "status": "running",
-                        "task_id": task_id,
-                        "total": total,
-                        "rescored": rescored,
-                        "errors": errors,
-                        "current_step": current_step,
-                    }
+                mirror_rescore_all_state(
+                    build_rescore_all_status_payload(
+                        status="running",
+                        task_id=task_id,
+                        total=total,
+                        rescored=rescored,
+                        errors=errors,
+                        current_step=current_step,
+                    )
                 )
 
         current_step = "rescore_completed"
@@ -1562,47 +1226,51 @@ def task_rescore_all(self, correlation_id: str | None = None):
             "rescored": rescored,
             "errors": errors,
         }
-        persist_state(
+        persist_rescore_all_state(
+            task_id,
+            current_step=current_step,
             total=total,
             rescored=rescored,
-            current_lead_id=None,
+            errors=errors,
             status="succeeded",
             clear_error=True,
             finished=True,
             result=result,
             stop_requested=False,
         )
-        mirror_status(
-            {
-                "status": "done",
-                "task_id": task_id,
-                "total": total,
-                "rescored": rescored,
-                "errors": errors,
-                "current_step": current_step,
-            }
+        mirror_rescore_all_state(
+            build_rescore_all_status_payload(
+                status="done",
+                task_id=task_id,
+                total=total,
+                rescored=rescored,
+                errors=errors,
+                current_step=current_step,
+            )
         )
         logger.info("rescore_all_done", total=total, rescored=rescored, errors=errors)
         return result
     except Exception as exc:
-        persist_state(
+        persist_rescore_all_state(
+            task_id,
+            current_step=current_step,
             total=total,
             rescored=rescored,
-            current_lead_id=None,
+            errors=errors,
             status="failed",
             error=str(exc),
             finished=True,
         )
-        mirror_status(
-            {
-                "status": "error",
-                "task_id": task_id,
-                "total": total,
-                "rescored": rescored,
-                "errors": errors,
-                "current_step": current_step,
-                "error": str(exc),
-            }
+        mirror_rescore_all_state(
+            build_rescore_all_status_payload(
+                status="error",
+                task_id=task_id,
+                total=total,
+                rescored=rescored,
+                errors=errors,
+                current_step=current_step,
+                error=str(exc),
+            )
         )
         logger.error("rescore_all_error", error=str(exc))
         raise
