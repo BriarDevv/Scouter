@@ -6,6 +6,7 @@ import pytest
 from app.llm.client import (
     LLMParseError,
     _call_ollama_chat,
+    _ChatCompletion,
     _extract_json,
     evaluate_lead_quality,
     generate_outreach_draft,
@@ -107,17 +108,21 @@ def test_summarize_business_forwards_explicit_role(monkeypatch):
 
 def test_public_helpers_default_to_executor_role(monkeypatch):
     captured = []
-    responses = iter(
-        [
-            '{"quality": "medium", "reasoning": "Solid fit", "suggested_angle": "SEO"}',
-            '{"subject": "Hola", "body": "Mensaje"}',
-        ]
-    )
+
+    def fake_structured(system_prompt, user_prompt, role=LLMRole.EXECUTOR, format_schema=None):
+        assert format_schema is not None
+        captured.append(role)
+        return _ChatCompletion(
+            text='{"quality": "medium", "reasoning": "Solid fit", "suggested_angle": "SEO"}',
+            model="qwen3.5:9b",
+            latency_ms=42,
+        )
 
     def fake_call(system_prompt, user_prompt, role=LLMRole.EXECUTOR):
         captured.append(role)
-        return next(responses)
+        return '{"subject": "Hola", "body": "Mensaje"}'
 
+    monkeypatch.setattr("app.llm.client._chat_completion", fake_structured)
     monkeypatch.setattr("app.llm.client._call_ollama_chat", fake_call)
 
     evaluation = evaluate_lead_quality(
