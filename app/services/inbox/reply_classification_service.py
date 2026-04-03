@@ -59,7 +59,10 @@ def list_pending_inbound_messages(db: Session, *, limit: int = 25) -> list[Inbou
             joinedload(InboundMessage.draft),
             joinedload(InboundMessage.delivery),
         )
-        .where(InboundMessage.classification_status == InboundMailClassificationStatus.PENDING.value)
+        .where(
+            InboundMessage.classification_status
+            == InboundMailClassificationStatus.PENDING.value
+        )
         .order_by(InboundMessage.received_at.desc(), InboundMessage.created_at.desc())
         .limit(limit)
     )
@@ -83,7 +86,10 @@ def classify_inbound_message(db: Session, message_id: uuid.UUID) -> InboundMessa
     rows_updated = db.execute(
         update(InboundMessage)
         .where(InboundMessage.id == message_id)
-        .where(InboundMessage.classification_status == InboundMailClassificationStatus.PENDING.value)
+        .where(
+            InboundMessage.classification_status
+            == InboundMailClassificationStatus.PENDING.value
+        )
         .values(classification_status=InboundMailClassificationStatus.CLASSIFYING.value)
     )
     db.commit()
@@ -145,8 +151,12 @@ def classify_inbound_message(db: Session, message_id: uuid.UUID) -> InboundMessa
                 confidence=message.confidence,
                 should_escalate=message.should_escalate_reviewer,
             )
-        except Exception:
-            pass  # notification failure must not break classification
+        except Exception as exc:
+            logger.debug(
+                "inbound_message_classification_notification_failed",
+                inbound_message_id=str(message.id),
+                error=str(exc),
+            )
 
         logger.info(
             "inbound_message_classified",
@@ -217,6 +227,4 @@ def _should_escalate_reviewer(
         return True
     if label in settings.mail_use_reviewer_for_labels:
         return True
-    if confidence is not None and confidence < confidence_threshold:
-        return True
-    return False
+    return confidence is not None and confidence < confidence_threshold

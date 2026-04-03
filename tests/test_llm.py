@@ -4,6 +4,7 @@ import httpx
 import pytest
 
 from app.llm.client import (
+    LLMError,
     LLMParseError,
     _call_ollama_chat,
     _ChatCompletion,
@@ -302,7 +303,7 @@ def test_classify_inbound_reply_raises_with_prompt_metadata(monkeypatch):
 
     monkeypatch.setattr("app.llm.client._chat_completion", broken_chat)
 
-    with pytest.raises(Exception):
+    with pytest.raises(LLMError):
         classify_inbound_reply(
             business_name="Test Corp",
             industry="Tech",

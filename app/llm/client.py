@@ -691,7 +691,10 @@ def evaluate_lead_quality(
     score: float | None,
     role: LLMRole | str = LLMRole.EXECUTOR,
 ) -> dict:
-    """Evaluate lead quality using the local LLM. Returns dict with quality, reasoning, suggested_angle."""
+    """Evaluate lead quality using the local LLM.
+
+    Returns a dict with quality, reasoning, and suggested_angle.
+    """
     result = evaluate_lead_quality_structured(
         business_name=business_name,
         industry=industry,
@@ -820,7 +823,10 @@ def review_lead(
     score: float | None,
     role: LLMRole | str = LLMRole.REVIEWER,
 ) -> dict:
-    """Run a reviewer pass on a lead. Returns verdict, confidence, reasoning, recommended_action, watchouts."""
+    """Run a reviewer pass on a lead.
+
+    Returns verdict, confidence, reasoning, recommended_action, and watchouts.
+    """
     result = review_lead_structured(
         business_name=business_name,
         industry=industry,
