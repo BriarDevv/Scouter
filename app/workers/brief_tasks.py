@@ -65,6 +65,18 @@ def task_generate_brief(
                     lead_id=lead_id,
                     opportunity_score=brief.opportunity_score,
                 )
+                # Write brief context for downstream steps
+                if pipeline_uuid:
+                    from app.services.pipeline.context_service import append_step_context
+                    append_step_context(db, pipeline_uuid, "brief", {
+                        "opportunity_score": brief.opportunity_score,
+                        "budget_tier": brief.budget_tier.value if brief.budget_tier else None,
+                        "estimated_scope": brief.estimated_scope.value if brief.estimated_scope else None,
+                        "recommended_contact_method": brief.recommended_contact_method.value if brief.recommended_contact_method else None,
+                        "recommended_angle": brief.recommended_angle,
+                        "why_this_lead_matters": brief.why_this_lead_matters,
+                    })
+
                 # Chain: review brief with REVIEWER
                 try:
                     task_review_brief.delay(lead_id, pipeline_run_id)
@@ -168,6 +180,14 @@ def task_review_brief(
             if review_payload and review_payload.approved:
                 brief.status = BriefStatus.REVIEWED
             db.commit()
+
+            # Write review context for downstream steps
+            if pipeline_uuid:
+                from app.services.pipeline.context_service import append_step_context
+                append_step_context(db, pipeline_uuid, "brief_review", {
+                    "approved": review_payload.approved if review_payload else None,
+                    "verdict_reasoning": review_payload.feedback if review_payload else None,
+                })
 
             result = {
                 "status": "ok",

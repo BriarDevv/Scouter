@@ -178,6 +178,17 @@ def task_research_lead(
                 except Exception:
                     pass
 
+                # Write research context for downstream steps
+                if pipeline_uuid:
+                    from app.services.pipeline.context_service import append_step_context
+                    append_step_context(db, pipeline_uuid, "research", {
+                        "status": report.status.value,
+                        "website_exists": report.website_exists,
+                        "whatsapp_detected": report.whatsapp_detected,
+                        "signals": report.detected_signals_json,
+                        "business_description": report.business_description,
+                    })
+
                 # Chain: generate brief for HIGH leads
                 if pipeline_run_id:
                     try:

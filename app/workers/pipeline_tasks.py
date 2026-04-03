@@ -152,6 +152,16 @@ def task_enrich_lead(
             tracker.succeed(result)
             logger.info("task_step_completed", task_name="task_enrich_lead", result=result)
 
+            # Write enrichment context for downstream steps
+            if pipeline_uuid:
+                from app.services.pipeline.context_service import append_step_context
+                append_step_context(db, pipeline_uuid, "enrichment", {
+                    "signals": [s.signal_type for s in lead.signals],
+                    "email_found": lead.email is not None,
+                    "website_exists": lead.website_url is not None,
+                    "instagram_exists": lead.instagram_url is not None,
+                })
+
             # Chain to scoring
             if pipeline_run_id:
                 task_score_lead.delay(
@@ -236,6 +246,14 @@ def task_score_lead(
             result = {"status": "ok", "lead_id": lead_id, "score": lead.score}
             tracker.succeed(result)
             logger.info("task_step_completed", task_name="task_score_lead", result=result)
+
+            # Write scoring context for downstream steps
+            if pipeline_uuid:
+                from app.services.pipeline.context_service import append_step_context
+                append_step_context(db, pipeline_uuid, "scoring", {
+                    "score": lead.score,
+                    "signal_count": len(lead.signals),
+                })
 
             # Chain to analysis
             if pipeline_run_id:
@@ -331,6 +349,16 @@ def task_analyze_lead(
             logger.info(
                 "task_step_completed", task_name="task_analyze_lead", result=result
             )
+
+            # Write analysis context for downstream steps
+            if pipeline_uuid:
+                from app.services.pipeline.context_service import append_step_context
+                append_step_context(db, pipeline_uuid, "analysis", {
+                    "quality": analysis.quality,
+                    "reasoning": analysis.reasoning,
+                    "suggested_angle": analysis.suggested_angle,
+                    "summary": getattr(lead, "llm_summary", None),
+                })
 
             # Chain next step based on quality
             if lead.llm_quality == "high":
