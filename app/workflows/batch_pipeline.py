@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import Callable
 
 from app.core.logging import get_logger
@@ -20,6 +21,7 @@ from app.services.operational_task_service import (
 )
 from app.services.outreach_service import generate_outreach_draft
 from app.services.scoring_service import score_lead
+from app.workflows.territory_crawl import run_territory_crawl_workflow
 
 logger = get_logger(__name__)
 
@@ -29,7 +31,7 @@ def run_batch_pipeline_workflow(
     task_id: str,
     status_filter: str = "new",
     correlation_id: str | None = None,
-    crawl_territory_task: Callable[..., object],
+    crawl_territory_workflow: Callable[..., object] = run_territory_crawl_workflow,
 ) -> dict[str, object]:
     """Orchestrate the batch pipeline while delegating state projection to helpers."""
     total_processed = 0
@@ -117,7 +119,8 @@ def run_batch_pipeline_workflow(
                 )
 
                 try:
-                    crawl_territory_task(
+                    crawl_territory_workflow(
+                        task_id=str(uuid.uuid4()),
                         territory_id=territory_id_str,
                         categories=None,
                         only_without_website=False,

@@ -4,7 +4,6 @@ import uuid
 
 from celery.exceptions import SoftTimeLimitExceeded
 from fastapi.encoders import jsonable_encoder
-from sqlalchemy import select
 
 from app.core.logging import get_logger
 from app.db.session import SessionLocal
@@ -20,13 +19,9 @@ from app.services.operational_task_service import (
     RESCORE_ALL_REDIS_KEY,
     RESCORE_ALL_SCOPE_KEY,
     build_rescore_all_status_payload,
-    build_territory_crawl_progress,
     mirror_rescore_all_state,
-    mirror_territory_crawl_state,
-    persist_operational_task_state,
     persist_rescore_all_state,
     should_stop_operational_task,
-    territory_crawl_redis_key,
 )
 from app.services.reply_draft_review_service import (
     mark_reply_assistant_review_failed,
@@ -53,6 +48,7 @@ from app.workflows.outreach_draft_generation import (
     run_outreach_draft_generation_workflow,
     should_generate_outreach_email_draft,
 )
+from app.workflows.territory_crawl import run_territory_crawl_workflow
 
 logger = get_logger(__name__)
 
@@ -1087,7 +1083,6 @@ def task_batch_pipeline(self, status_filter: str = "new", correlation_id: str | 
             task_id=task_id,
             status_filter=status_filter,
             correlation_id=correlation_id,
-            crawl_territory_task=task_crawl_territory,
         )
     finally:
         clear_tracking_context()
@@ -1290,225 +1285,19 @@ def task_crawl_territory(
     target_leads: int = 50,
     correlation_id: str | None = None,
 ):
-    """Crawl Google Maps for all cities in a territory."""
-    from app.crawlers.google_maps_crawler import GoogleMapsCrawler
-    from app.models.lead_source import LeadSource, SourceType
-    from app.models.territory import Territory
-    from app.schemas.lead import LeadCreate
-    from app.services.lead_service import _compute_dedup_hash, create_lead
-
-    redis_key = territory_crawl_redis_key(territory_id)
+    """Thin Celery wrapper around the territory crawl workflow."""
     task_id = _request_task_id(self.request)
     queue = _queue_name(self.request, "default")
-
-    progress = build_territory_crawl_progress(task_id=task_id)
-
-    try:
-        with SessionLocal() as db:
-            bind_tracking_context(
-                task_id=task_id,
-                correlation_id=correlation_id,
-                current_step="crawl_init",
-            )
-            mark_task_running(
-                db,
-                task_id=task_id,
-                task_name="task_crawl_territory",
-                queue=queue,
-                correlation_id=correlation_id,
-                scope_key=territory_id,
-                current_step="crawl_init",
-            )
-
-        # Load territory metadata and ensure source exists in a short-lived session
-        with SessionLocal() as db:
-            territory = db.get(Territory, uuid.UUID(territory_id))
-            if not territory:
-                mirror_territory_crawl_state(
-                    territory_id,
-                    {"status": "error", "error": "Territorio no encontrado"},
-                )
-                persist_operational_task_state(
-                    task_id,
-                    current_step="crawl_init",
-                    progress_json=progress,
-                    status="failed",
-                    error="Territorio no encontrado",
-                    finished=True,
-                )
-                return
-
-            cities = list(territory.cities or [])
-            territory_name = territory.name
-            if not cities:
-                mirror_territory_crawl_state(
-                    territory_id,
-                    {"status": "error", "error": "El territorio no tiene ciudades"},
-                )
-                persist_operational_task_state(
-                    task_id,
-                    current_step="crawl_init",
-                    progress_json=progress,
-                    status="failed",
-                    error="El territorio no tiene ciudades",
-                    finished=True,
-                )
-                return
-
-            source = db.query(LeadSource).filter(LeadSource.name == "google_maps").first()
-            if not source:
-                source = LeadSource(name="google_maps", source_type=SourceType.CRAWLER, description="Google Maps Places API")
-                db.add(source)
-                db.commit()
-                db.refresh(source)
-            source_id = source.id
-
-        progress["territory"] = territory_name
-        progress["total_cities"] = len(cities)
-        persist_operational_task_state(
-            task_id,
-            current_step="crawl_init",
-            progress_json=progress,
-            clear_error=True,
-        )
-
-        crawler = GoogleMapsCrawler()
-        total_found = 0
-        total_created = 0
-        total_dup = 0
-        mirror_territory_crawl_state(territory_id, progress)
-
-        for idx, city in enumerate(cities):
-            if should_stop_operational_task(
-                task_id=task_id,
-                redis_key=redis_key,
-                treat_missing_legacy_as_stop=True,
-            ):
-                progress["status"] = "stopped"
-                mirror_territory_crawl_state(territory_id, progress)
-                persist_operational_task_state(
-                    task_id,
-                    current_step=progress.get("current_step"),
-                    progress_json=progress,
-                    status="stopped",
-                    finished=True,
-                )
-                logger.info("territory_crawl_stopped_by_user", territory=territory_name)
-                return
-
-            progress["current_city_idx"] = idx + 1
-            progress["current_city"] = city
-            progress["current_step"] = "crawling"
-            mirror_territory_crawl_state(territory_id, progress)
-            persist_operational_task_state(
-                task_id,
-                current_step="crawling",
-                progress_json=progress,
-            )
-
-            try:
-                raw_leads = crawler.crawl(
-                    city=city,
-                    categories=categories,
-                    max_results_per_category=max_results_per_category,
-                    only_without_website=only_without_website,
-                    target_leads=target_leads,
-                )
-            except Exception as exc:
-                logger.error("crawl_city_error", city=city, error=str(exc))
-                continue
-
-            total_found += len(raw_leads)
-
-            with SessionLocal() as db:
-                for raw in raw_leads:
-                    try:
-                        dedup = _compute_dedup_hash(raw.business_name, raw.city, raw.website_url)
-                        existing = db.execute(
-                            select(Lead).where(Lead.dedup_hash == dedup)
-                        ).scalar_one_or_none()
-                        if existing:
-                            total_dup += 1
-                            continue
-
-                        lead_data = LeadCreate(
-                            business_name=raw.business_name,
-                            industry=raw.industry,
-                            city=raw.city,
-                            zone=raw.zone,
-                            website_url=raw.website_url,
-                            instagram_url=raw.instagram_url,
-                            phone=raw.phone,
-                            source_id=source_id,
-                            address=raw.address,
-                            google_maps_url=raw.google_maps_url,
-                            rating=raw.rating,
-                            review_count=raw.review_count,
-                            business_status=raw.business_status,
-                            opening_hours=raw.opening_hours,
-                            latitude=raw.latitude,
-                            longitude=raw.longitude,
-                        )
-                        create_lead(db, lead_data)
-                        total_created += 1
-                    except Exception:
-                        total_dup += 1
-
-            progress["leads_found"] = total_found
-            progress["leads_created"] = total_created
-            progress["leads_skipped"] = total_dup
-            mirror_territory_crawl_state(territory_id, progress)
-            persist_operational_task_state(
-                task_id,
-                current_step="crawling",
-                progress_json=progress,
-            )
-
-        progress["status"] = "done"
-        mirror_territory_crawl_state(territory_id, progress)
-        persist_operational_task_state(
-            task_id,
-            current_step="completed",
-            progress_json=progress,
-            status="succeeded",
-            clear_error=True,
-            finished=True,
-            result={
-                "status": "done",
-                "task_id": task_id,
-                "territory": territory_name,
-                "found": total_found,
-                "created": total_created,
-                "skipped": total_dup,
-            },
-            stop_requested=False,
-        )
-
-        logger.info(
-            "territory_crawl_done",
-            territory=territory_name,
-            cities=len(cities),
-            found=total_found,
-            created=total_created,
-            skipped=total_dup,
-        )
-    except Exception as exc:
-        mirror_territory_crawl_state(
-            territory_id,
-            {"status": "error", "error": str(exc)},
-        )
-        persist_operational_task_state(
-            task_id,
-            current_step=progress.get("current_step"),
-            progress_json=progress,
-            status="failed",
-            error=str(exc),
-            finished=True,
-        )
-        logger.error("territory_crawl_error", territory_id=territory_id, error=str(exc))
-        raise
-    finally:
-        clear_tracking_context()
+    return run_territory_crawl_workflow(
+        task_id=task_id,
+        territory_id=territory_id,
+        categories=categories,
+        only_without_website=only_without_website,
+        max_results_per_category=max_results_per_category,
+        target_leads=target_leads,
+        correlation_id=correlation_id,
+        queue=queue,
+    )
 
 
 @celery_app.task(
