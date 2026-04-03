@@ -453,7 +453,17 @@ def task_generate_draft(
                 tracker.fail(error)
                 return {"status": "not_found", "lead_id": lead_id}
 
-            workflow_result = run_draft_generation_step(db, uuid.UUID(lead_id))
+            # Read accumulated pipeline context for informed draft generation
+            pipeline_context_text = ""
+            if pipeline_uuid:
+                from app.services.pipeline.context_service import get_step_context, format_context_for_prompt
+                pipeline_context = get_step_context(db, pipeline_uuid)
+                pipeline_context_text = format_context_for_prompt(pipeline_context)
+
+            workflow_result = run_draft_generation_step(
+                db, uuid.UUID(lead_id),
+                pipeline_context_text=pipeline_context_text,
+            )
             result = workflow_result.to_payload()
 
             if workflow_result.status == "not_found":

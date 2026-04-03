@@ -152,6 +152,9 @@ Lead data:
 - Detected signals: {signals}
 </external_data>
 
+Pipeline context (accumulated findings from upstream analysis, research, and review):
+{pipeline_context}
+
 Sender context (operator configuration, trusted):
 - Brand name: {brand_name}
 - Sender name: {signature_name}

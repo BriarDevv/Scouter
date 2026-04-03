@@ -34,6 +34,7 @@ def generate_outreach_draft_structured(
     signals: list,
     role: LLMRole | str = LLMRole.EXECUTOR,
     brand_context: dict | None = None,
+    pipeline_context: str = "",
     target_type: str | None = None,
     target_id: str | None = None,
     tags: dict[str, object] | None = None,
@@ -66,6 +67,7 @@ def generate_outreach_draft_structured(
         "signature_include_portfolio": bc.get("signature_include_portfolio", True)
         and bool(bc.get("portfolio_url")),
         "sender_is_solo": bc.get("signature_is_solo", False),
+        "pipeline_context": pipeline_context or "No pipeline context available.",
     }
     return client_module.invoke_structured(
         function_name="generate_outreach_draft",
@@ -90,6 +92,7 @@ def generate_outreach_draft(
     signals: list,
     role: LLMRole | str = LLMRole.EXECUTOR,
     brand_context: dict | None = None,
+    pipeline_context: str = "",
 ) -> dict:
     result = generate_outreach_draft_structured(
         business_name=business_name,
@@ -102,6 +105,7 @@ def generate_outreach_draft(
         signals=signals,
         role=role,
         brand_context=brand_context,
+        pipeline_context=pipeline_context,
     )
     if result.parsed is None:
         return _outreach_draft_fallback(business_name).model_dump()

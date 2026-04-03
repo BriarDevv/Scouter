@@ -55,6 +55,7 @@ def should_generate_outreach_email_draft(lead: Lead) -> bool:
 def run_outreach_draft_generation_workflow(
     db: Session,
     lead_id: uuid.UUID,
+    pipeline_context_text: str = "",
 ) -> OutreachDraftWorkflowResult:
     lead = db.get(Lead, lead_id)
     lead_id_str = str(lead_id)
@@ -117,7 +118,7 @@ def run_outreach_draft_generation_workflow(
             whatsapp_draft_id=whatsapp_draft_id,
         )
 
-    draft = generate_outreach_draft(db, lead_id, commit=False)
+    draft = generate_outreach_draft(db, lead_id, commit=False, pipeline_context_text=pipeline_context_text)
     if not draft:
         db.rollback()
         return OutreachDraftWorkflowResult(

@@ -153,9 +153,12 @@ def run_draft_generation_step(
     lead_id: uuid.UUID,
     *,
     apply_automation: bool = True,
+    pipeline_context_text: str = "",
 ) -> OutreachDraftWorkflowResult:
     """Run the canonical draft generation workflow and optional automation."""
-    workflow_result = run_outreach_draft_generation_workflow(db, lead_id)
+    workflow_result = run_outreach_draft_generation_workflow(
+        db, lead_id, pipeline_context_text=pipeline_context_text,
+    )
     if (
         apply_automation
         and workflow_result.status == "ok"

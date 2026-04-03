@@ -28,6 +28,7 @@ def generate_outreach_draft(
     lead_id: uuid.UUID,
     *,
     commit: bool = True,
+    pipeline_context_text: str = "",
 ) -> OutreachDraft | None:
     """Generate an outreach email draft for a lead using LLM."""
     lead = db.get(Lead, lead_id)
@@ -44,7 +45,7 @@ def generate_outreach_draft(
         return None
 
     clear_last_invocation()
-    subject, body = generate_draft_content(lead, db=db)
+    subject, body = generate_draft_content(lead, db=db, pipeline_context_text=pipeline_context_text)
     generation_metadata = _serialize_generation_metadata()
 
     draft = OutreachDraft(

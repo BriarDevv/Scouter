@@ -89,8 +89,18 @@ def _get_brief_angle(lead: Lead, db: Session | None) -> str | None:
     return None
 
 
-def generate_draft_content(lead: Lead, db: Session | None = None) -> tuple[str, str]:
-    """Generate subject and body for an outreach email. Returns (subject, body)."""
+def generate_draft_content(
+    lead: Lead,
+    db: Session | None = None,
+    pipeline_context_text: str = "",
+) -> tuple[str, str]:
+    """Generate subject and body for an outreach email. Returns (subject, body).
+
+    Args:
+        pipeline_context_text: Pre-formatted text from upstream pipeline steps
+            (analysis reasoning, research findings, brief assessment, reviewer corrections).
+            Injected into the LLM prompt so drafts are informed by the full pipeline.
+    """
     brand_ctx = get_brand_context(db) if db is not None else None
 
     # Enrich suggested angle with CommercialBrief context if available
@@ -110,6 +120,7 @@ def generate_draft_content(lead: Lead, db: Session | None = None) -> tuple[str, 
         signals=list(lead.signals),
         role=LLMRole.EXECUTOR,
         brand_context=brand_ctx,
+        pipeline_context=pipeline_context_text,
     )
 
     subject, body, warnings = _validate_draft(
