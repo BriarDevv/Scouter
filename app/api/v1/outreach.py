@@ -1,9 +1,10 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_session
+from app.api.request_context import get_correlation_id
 from app.mail.provider import MailProviderError
 from app.models.outreach import DraftStatus
 from app.schemas.mail import OutreachDeliveryResponse
@@ -14,14 +15,6 @@ from app.schemas.outreach import (
     OutreachLogResponse,
 )
 from app.schemas.task_tracking import TaskEnqueueResponse
-from app.services.outreach_service import (
-    generate_outreach_draft,
-    get_draft,
-    list_drafts,
-    list_logs,
-    review_draft,
-    update_draft,
-)
 from app.services.mail_service import (
     DraftAlreadySentError,
     DraftNotApprovedError,
@@ -30,6 +23,14 @@ from app.services.mail_service import (
     MailDisabledError,
     list_deliveries,
     send_draft,
+)
+from app.services.outreach_service import (
+    generate_outreach_draft,
+    get_draft,
+    list_drafts,
+    list_logs,
+    review_draft,
+    update_draft,
 )
 from app.services.task_tracking_service import queue_task_run
 from app.workers.tasks import task_generate_draft
@@ -47,15 +48,21 @@ def generate_draft(lead_id: uuid.UUID, db: Session = Depends(get_session)):
 
 
 @router.post("/{lead_id}/draft/async", response_model=TaskEnqueueResponse)
-def generate_draft_async(lead_id: uuid.UUID, db: Session = Depends(get_session)):
+def generate_draft_async(
+    lead_id: uuid.UUID,
+    request: Request,
+    db: Session = Depends(get_session),
+):
     """Queue outreach draft generation as an async task."""
-    task = task_generate_draft.delay(str(lead_id))
+    correlation_id = get_correlation_id(request)
+    task = task_generate_draft.delay(str(lead_id), correlation_id=correlation_id)
     queue_task_run(
         db,
         task_id=task.id,
         task_name="task_generate_draft",
         queue="llm",
         lead_id=lead_id,
+        correlation_id=correlation_id,
         current_step="draft_generation",
     )
     return {

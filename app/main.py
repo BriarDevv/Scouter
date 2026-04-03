@@ -9,6 +9,11 @@ from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_session
+from app.api.request_context import (
+    CORRELATION_ID_HEADER,
+    REQUEST_ID_HEADER,
+    RequestContextMiddleware,
+)
 from app.api.router import api_router
 from app.core.config import settings
 from app.core.logging import get_logger, setup_logging
@@ -63,11 +68,20 @@ app.add_middleware(
     allow_origins=list(settings.api_cors_origins),
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Webhook-Secret"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "X-API-Key",
+        "X-Webhook-Secret",
+        REQUEST_ID_HEADER,
+        CORRELATION_ID_HEADER,
+    ],
+    expose_headers=[REQUEST_ID_HEADER, CORRELATION_ID_HEADER],
 )
 
 from app.api.auth import APIKeyMiddleware
 app.add_middleware(APIKeyMiddleware)
+app.add_middleware(RequestContextMiddleware)
 
 app.include_router(api_router)
 

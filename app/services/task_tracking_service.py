@@ -1,10 +1,10 @@
-from datetime import UTC, datetime
 import uuid
+from datetime import UTC, datetime
 
+import structlog
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-import structlog
 
 from app.core.logging import get_logger
 from app.models.task_tracking import PipelineRun, TaskRun
@@ -39,10 +39,16 @@ def clear_tracking_context() -> None:
     structlog.contextvars.clear_contextvars()
 
 
-def create_pipeline_run(db: Session, lead_id: uuid.UUID, *, current_step: str = "pipeline_dispatch") -> PipelineRun:
+def create_pipeline_run(
+    db: Session,
+    lead_id: uuid.UUID,
+    *,
+    current_step: str = "pipeline_dispatch",
+    correlation_id: str | None = None,
+) -> PipelineRun:
     pipeline_run = PipelineRun(
         lead_id=lead_id,
-        correlation_id=str(uuid.uuid4()),
+        correlation_id=correlation_id or str(uuid.uuid4()),
         status="queued",
         current_step=current_step,
     )

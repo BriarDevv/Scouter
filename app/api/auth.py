@@ -7,9 +7,9 @@ When API_KEY is None (development), auth is disabled.
 
 import hmac
 
-from fastapi import Request
 from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.datastructures import Headers
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.core.config import settings
 
@@ -28,32 +28,47 @@ _WEBHOOK_PATHS = (
 )
 
 
-class APIKeyMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
+class APIKeyMiddleware:
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
         # Skip auth if API_KEY not configured (development mode)
         if not settings.API_KEY:
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
-        path = request.url.path
+        path = scope["path"]
+        method = scope["method"]
 
         # Skip public endpoints
         if any(path.startswith(p) for p in _PUBLIC_PREFIXES):
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
         # Skip webhook endpoints (they have their own auth)
         if any(path.startswith(p) for p in _WEBHOOK_PATHS):
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
         # Skip CORS preflight
-        if request.method == "OPTIONS":
-            return await call_next(request)
+        if method == "OPTIONS":
+            await self.app(scope, receive, send)
+            return
 
         # Check API key
-        provided = request.headers.get("X-API-Key", "")
+        headers = Headers(scope=scope)
+        provided = headers.get("X-API-Key", "")
         if not provided or not hmac.compare_digest(provided, settings.API_KEY):
-            return JSONResponse(
+            response = JSONResponse(
                 status_code=401,
                 content={"detail": "API key inválida o faltante."},
             )
+            await response(scope, receive, send)
+            return
 
-        return await call_next(request)
+        await self.app(scope, receive, send)

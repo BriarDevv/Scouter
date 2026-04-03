@@ -1,9 +1,10 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_session
+from app.api.request_context import get_correlation_id
 from app.schemas.lead import LeadResponse
 from app.schemas.task_tracking import TaskEnqueueResponse
 from app.services.enrichment_service import enrich_lead
@@ -23,15 +24,21 @@ def enrich(lead_id: uuid.UUID, db: Session = Depends(get_session)):
 
 
 @router.post("/{lead_id}/async", response_model=TaskEnqueueResponse)
-def enrich_async(lead_id: uuid.UUID, db: Session = Depends(get_session)):
+def enrich_async(
+    lead_id: uuid.UUID,
+    request: Request,
+    db: Session = Depends(get_session),
+):
     """Queue enrichment as an async Celery task."""
-    task = task_enrich_lead.delay(str(lead_id))
+    correlation_id = get_correlation_id(request)
+    task = task_enrich_lead.delay(str(lead_id), correlation_id=correlation_id)
     queue_task_run(
         db,
         task_id=task.id,
         task_name="task_enrich_lead",
         queue="enrichment",
         lead_id=lead_id,
+        correlation_id=correlation_id,
         current_step="enrichment",
     )
     return {
