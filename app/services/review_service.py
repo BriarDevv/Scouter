@@ -11,7 +11,7 @@ from app.llm.roles import LLMRole
 from app.models.inbound_mail import InboundMessage
 from app.models.lead import Lead
 from app.models.outreach import OutreachDraft
-from app.services.operational_settings_service import get_cached_settings
+from app.services.settings.operational_settings_service import get_cached_settings
 
 logger = get_logger(__name__)
 

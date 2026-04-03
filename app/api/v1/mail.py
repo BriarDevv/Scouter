@@ -12,7 +12,7 @@ from app.schemas.inbound_mail import (
     InboundMailSyncRunResponse,
     InboundMessageResponse,
 )
-from app.services.inbound_mail_service import (
+from app.services.inbox.inbound_mail_service import (
     InboundMailDisabledError,
     get_email_thread,
     get_inbound_message,
@@ -21,7 +21,7 @@ from app.services.inbound_mail_service import (
     list_inbound_messages,
     sync_inbound_messages,
 )
-from app.services.reply_classification_service import (
+from app.services.inbox.reply_classification_service import (
     classify_inbound_message,
     classify_pending_inbound_messages,
 )

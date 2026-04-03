@@ -14,7 +14,7 @@ def generate_reply_draft(db: Session, *, message_id: str) -> dict:
     except ValueError:
         return {"error": "ID de mensaje inválido (debe ser UUID)"}
 
-    from app.services.reply_response_service import generate_reply_assistant_draft
+    from app.services.inbox.reply_response_service import generate_reply_assistant_draft
     draft = generate_reply_assistant_draft(db, mid)
     if not draft:
         return {"error": "Mensaje no encontrado o sin contexto suficiente para generar respuesta"}
@@ -34,7 +34,7 @@ def send_reply_draft(db: Session, *, message_id: str) -> dict:
         return {"error": "ID de mensaje inválido (debe ser UUID)"}
 
     try:
-        from app.services.reply_send_service import send_reply_assistant_draft
+        from app.services.inbox.reply_send_service import send_reply_assistant_draft
         send_record = send_reply_assistant_draft(db, mid)
     except Exception as exc:
         return {"error": str(exc)}

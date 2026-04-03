@@ -66,8 +66,8 @@ def test_outreach_draft_subject_nullable():
 
 
 def test_kapso_raises_without_api_key(monkeypatch):
-    monkeypatch.setattr("app.services.kapso_service.settings.KAPSO_API_KEY", None)
-    from app.services.kapso_service import KapsoError, send_whatsapp_message
+    monkeypatch.setattr("app.services.comms.kapso_service.settings.KAPSO_API_KEY", None)
+    from app.services.comms.kapso_service import KapsoError, send_whatsapp_message
 
     with pytest.raises(KapsoError, match="KAPSO_API_KEY"):
         send_whatsapp_message("+5491155551234", "test")
@@ -80,9 +80,9 @@ def test_kapso_raises_without_api_key(monkeypatch):
 
 def test_kapso_builds_correct_payload(monkeypatch):
     """Verify Kapso payload format matches Platform API spec."""
-    monkeypatch.setattr("app.services.kapso_service.settings.KAPSO_API_KEY", "test-key")
+    monkeypatch.setattr("app.services.comms.kapso_service.settings.KAPSO_API_KEY", "test-key")
     monkeypatch.setattr(
-        "app.services.kapso_service.settings.KAPSO_BASE_URL",
+        "app.services.comms.kapso_service.settings.KAPSO_BASE_URL",
         "https://app.kapso.ai/api/v1",
     )
 
@@ -111,10 +111,10 @@ def test_kapso_builds_correct_payload(monkeypatch):
             return MockResponse()
 
     monkeypatch.setattr(
-        "app.services.kapso_service.httpx.Client", lambda **kw: MockClient()
+        "app.services.comms.kapso_service.httpx.Client", lambda **kw: MockClient()
     )
 
-    from app.services.kapso_service import send_whatsapp_message
+    from app.services.comms.kapso_service import send_whatsapp_message
 
     result = send_whatsapp_message("+5491155551234", "Hola test")
 

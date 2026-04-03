@@ -5,7 +5,7 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.agent.tool_registry import ToolDefinition, ToolParameter, registry
-from app.services.notification_service import (
+from app.services.notifications.notification_service import (
     get_notification_counts as _get_counts,
     list_notifications as _list,
     update_notification_status,

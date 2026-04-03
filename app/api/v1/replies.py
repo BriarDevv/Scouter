@@ -14,21 +14,21 @@ from app.schemas.reply_send import (
     ReplyAssistantSendStatusResponse,
 )
 from app.schemas.task_tracking import TaskEnqueueResponse
-from app.services.reply_draft_review_service import (
+from app.services.inbox.reply_draft_review_service import (
     ensure_reply_assistant_review_pending,
     get_reply_assistant_review_for_message,
 )
-from app.services.mail_service import (
+from app.services.outreach.mail_service import (
     DraftRecipientMissingError,
     MailConfigurationError,
     MailDisabledError,
 )
-from app.services.reply_response_service import (
+from app.services.inbox.reply_response_service import (
     generate_reply_assistant_draft,
     get_inbound_message_with_reply_context,
     get_reply_assistant_draft_for_message,
 )
-from app.services.reply_send_service import (
+from app.services.inbox.reply_send_service import (
     ReplyDraftAlreadySendingError,
     ReplyDraftAlreadySentError,
     ReplyDraftNotFoundError,
@@ -37,7 +37,7 @@ from app.services.reply_send_service import (
     send_reply_assistant_draft,
     update_reply_assistant_draft,
 )
-from app.services.task_tracking_service import queue_task_run
+from app.services.pipeline.task_tracking_service import queue_task_run
 from app.workers.tasks import task_review_reply_assistant_draft
 
 router = APIRouter(prefix="/replies", tags=["reply-assistant"])

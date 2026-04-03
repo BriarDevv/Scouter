@@ -3,7 +3,7 @@
 from sqlalchemy.orm import Session
 
 from app.agent.tool_registry import ToolDefinition, ToolParameter, registry
-from app.services.operational_settings_service import get_cached_settings
+from app.services.settings.operational_settings_service import get_cached_settings
 
 
 # Whitelist of settings the agent can modify

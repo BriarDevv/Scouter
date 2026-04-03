@@ -67,7 +67,7 @@ def test_research_report_completed(db):
 
 def test_research_service_no_website(db):
     """Test research service for a lead without a website."""
-    from app.services.research_service import run_research
+    from app.services.research.research_service import run_research
 
     lead = Lead(
         business_name="No Web Biz",
@@ -91,7 +91,7 @@ def test_research_service_no_website(db):
 
 def test_research_service_with_website_mock(db):
     """Test research service with a mocked httpx response for a website."""
-    from app.services.research_service import run_research
+    from app.services.research.research_service import run_research
 
     lead = Lead(
         business_name="Web Biz",
@@ -135,7 +135,7 @@ def test_research_service_with_website_mock(db):
 
 def test_research_service_lead_not_found(db):
     """Test research service returns None for nonexistent lead."""
-    from app.services.research_service import run_research
+    from app.services.research.research_service import run_research
 
     fake_id = uuid.uuid4()
     result = run_research(db, fake_id)
@@ -144,7 +144,7 @@ def test_research_service_lead_not_found(db):
 
 def test_export_csv(db):
     """Test CSV export produces valid output."""
-    from app.services.export_service import export_leads_csv
+    from app.services.research.export_service import export_leads_csv
 
     lead = Lead(
         business_name="CSV Biz",
@@ -169,7 +169,7 @@ def test_export_csv(db):
 
 def test_export_json(db):
     """Test JSON export produces valid output."""
-    from app.services.export_service import export_leads_json
+    from app.services.research.export_service import export_leads_json
 
     lead = Lead(
         business_name="JSON Biz",
@@ -216,7 +216,7 @@ def test_lead_signal_confidence_source(db):
 
 def test_create_or_get_report_idempotent(db):
     """Test create_or_get_report returns existing report on second call."""
-    from app.services.research_service import create_or_get_report
+    from app.services.research.research_service import create_or_get_report
 
     lead = Lead(business_name="Idempotent Biz", status=LeadStatus.NEW)
     db.add(lead)

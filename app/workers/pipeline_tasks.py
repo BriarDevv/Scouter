@@ -9,9 +9,9 @@ from app.db.session import SessionLocal
 from app.llm.client import evaluate_lead_quality_structured, summarize_business
 from app.llm.roles import LLMRole
 from app.models.lead import Lead
-from app.services.enrichment_service import enrich_lead
-from app.services.scoring_service import score_lead
-from app.services.task_tracking_service import (
+from app.services.leads.enrichment_service import enrich_lead
+from app.services.leads.scoring_service import score_lead
+from app.services.pipeline.task_tracking_service import (
     bind_tracking_context,
     clear_tracking_context,
     mark_task_failed,
@@ -621,7 +621,7 @@ def task_generate_draft(
             )
             if pipeline_uuid:
                 with SessionLocal() as pipeline_db:
-                    from app.services.task_tracking_service import update_pipeline_run
+                    from app.services.pipeline.task_tracking_service import update_pipeline_run
 
                     update_pipeline_run(
                         pipeline_db,

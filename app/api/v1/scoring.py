@@ -8,15 +8,15 @@ from app.api.deps import get_session
 from app.api.request_context import get_correlation_id
 from app.schemas.lead import LeadResponse
 from app.schemas.task_tracking import TaskEnqueueResponse
-from app.services.operational_task_service import (
+from app.services.pipeline.operational_task_service import (
     RESCORE_ALL_REDIS_KEY,
     RESCORE_ALL_SCOPE_KEY,
     get_rescore_all_task_run,
     load_legacy_operational_state,
     serialize_rescore_all_status,
 )
-from app.services.scoring_service import score_lead
-from app.services.task_tracking_service import (
+from app.services.leads.scoring_service import score_lead
+from app.services.pipeline.task_tracking_service import (
     attach_pipeline_root_task,
     create_pipeline_run,
     queue_task_run,

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.agent.tool_registry import ToolDefinition, ToolParameter, registry
 from app.models.outreach import DraftStatus
-from app.services.outreach_service import (
+from app.services.outreach.outreach_service import (
     get_draft,
     list_drafts as _list_drafts,
     list_logs as _list_logs,
@@ -39,7 +39,7 @@ def list_drafts(
 
 def generate_draft(db: Session, *, lead_id: str) -> dict:
     """Generate an outreach draft for a lead."""
-    from app.services.outreach_service import generate_outreach_draft
+    from app.services.outreach.outreach_service import generate_outreach_draft
 
     try:
         lid = uuid.UUID(lead_id)
@@ -142,7 +142,7 @@ def send_draft(db: Session, *, draft_id: str) -> dict:
         return {"error": "ID de borrador inválido"}
 
     try:
-        from app.services.mail_service import send_draft as _mail_send
+        from app.services.outreach.mail_service import send_draft as _mail_send
         delivery = _mail_send(db, did)
         return {
             "id": str(delivery.draft_id),
@@ -292,7 +292,7 @@ registry.register(ToolDefinition(
 
 def generate_whatsapp_draft(db: Session, *, lead_id: str) -> dict:
     """Generate a WhatsApp outreach draft for a lead."""
-    from app.services.outreach_service import generate_whatsapp_draft as _gen_wa
+    from app.services.outreach.outreach_service import generate_whatsapp_draft as _gen_wa
 
     try:
         lid = uuid.UUID(lead_id)
@@ -311,7 +311,7 @@ def generate_whatsapp_draft(db: Session, *, lead_id: str) -> dict:
 
 def send_whatsapp_draft(db: Session, *, draft_id: str) -> dict:
     """Send an approved WhatsApp draft via Kapso."""
-    from app.services.outreach_service import send_whatsapp_draft as _send_wa
+    from app.services.outreach.outreach_service import send_whatsapp_draft as _send_wa
 
     try:
         did = uuid.UUID(draft_id)

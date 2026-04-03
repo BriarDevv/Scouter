@@ -13,9 +13,9 @@ from sqlalchemy.orm import Session
 from app.agent.channel_router import handle_channel_message
 from app.api.deps import get_session
 from app.core.logging import get_logger
-from app.services.operational_settings_service import get_or_create as get_settings
-from app.services.whatsapp_audit import log_inbound, log_outbound
-from app.services.whatsapp_service import send_alert
+from app.services.settings.operational_settings_service import get_or_create as get_settings
+from app.services.comms.whatsapp_audit import log_inbound, log_outbound
+from app.services.comms.whatsapp_service import send_alert
 
 logger = get_logger(__name__)
 

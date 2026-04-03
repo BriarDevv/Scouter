@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import settings
 from app.core.logging import get_logger
-from app.services.operational_settings_service import get_cached_settings
+from app.services.settings.operational_settings_service import get_cached_settings
 from app.llm.client import LLMError, classify_inbound_reply as llm_classify_inbound_reply
 from app.llm.resolver import resolve_model_for_role
 from app.llm.roles import LLMRole
@@ -131,7 +131,7 @@ def classify_inbound_message(db: Session, message_id: uuid.UUID) -> InboundMessa
         db.refresh(message)
        # Emit notification for actionable classification results
         try:
-            from app.services.notification_emitter import on_reply_classified
+            from app.services.notifications.notification_emitter import on_reply_classified
             on_reply_classified(
                 db,
                 message_id=message.id,

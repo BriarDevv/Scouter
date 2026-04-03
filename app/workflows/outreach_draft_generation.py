@@ -13,8 +13,8 @@ from app.core.logging import get_logger
 from app.models.commercial_brief import CommercialBrief
 from app.models.lead import Lead
 from app.models.outreach import DraftStatus, OutreachDraft
-from app.services.operational_settings_service import get_cached_settings
-from app.services.outreach_service import generate_outreach_draft, generate_whatsapp_draft
+from app.services.settings.operational_settings_service import get_cached_settings
+from app.services.outreach.outreach_service import generate_outreach_draft, generate_whatsapp_draft
 
 logger = get_logger(__name__)
 
@@ -180,7 +180,7 @@ def run_outreach_draft_automation(db: Session, draft_id: uuid.UUID) -> None:
         return
 
     try:
-        from app.services.mail_service import send_draft
+        from app.services.outreach.mail_service import send_draft
 
         send_draft(db, draft.id)
         logger.info("draft_auto_sent", draft_id=str(draft.id), lead_id=str(draft.lead_id))

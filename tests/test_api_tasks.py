@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.models.lead import Lead
 from app.models.task_tracking import TaskRun
-from app.services.task_tracking_service import queue_task_run
+from app.services.pipeline.task_tracking_service import queue_task_run
 from app.workers.tasks import _should_generate_draft
 from tests.conftest import TestSessionLocal
 

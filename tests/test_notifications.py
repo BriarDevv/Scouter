@@ -5,14 +5,14 @@ import uuid
 import pytest
 
 from app.models.notification import Notification, NotificationCategory, NotificationSeverity, NotificationStatus
-from app.services.notification_service import (
+from app.services.notifications.notification_service import (
     create_notification,
     get_notification_counts,
     list_notifications,
     update_notification_status,
     bulk_update_notifications,
 )
-from app.services.notification_emitter import (
+from app.services.notifications.notification_emitter import (
     on_reply_classified,
     on_high_score_lead,
     on_send_failed,
@@ -209,14 +209,14 @@ class TestNotificationEmitter:
 class TestWhatsAppProvider:
 
     def test_callmebot_format(self):
-        from app.services.whatsapp_service import CallMeBotProvider
+        from app.services.comms.whatsapp_service import CallMeBotProvider
         provider = CallMeBotProvider()
         # Just verify the class instantiates and has the right methods
         assert hasattr(provider, "send_message")
         assert hasattr(provider, "test_connection")
 
     def test_provider_registry(self):
-        from app.services.whatsapp_service import _get_provider
+        from app.services.comms.whatsapp_service import _get_provider
         provider = _get_provider("callmebot")
         assert provider is not None
         with pytest.raises(ValueError):

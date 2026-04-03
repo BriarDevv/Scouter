@@ -8,8 +8,8 @@ from app.core.logging import get_logger
 from app.db.session import SessionLocal
 from app.models.inbound_mail import InboundMessage
 from app.models.outreach import OutreachDraft
-from app.services.operational_settings_service import get_cached_settings
-from app.services.reply_draft_review_service import (
+from app.services.settings.operational_settings_service import get_cached_settings
+from app.services.inbox.reply_draft_review_service import (
     mark_reply_assistant_review_failed,
     review_reply_assistant_draft_with_reviewer,
 )
@@ -18,7 +18,7 @@ from app.services.review_service import (
     review_inbound_message_with_reviewer,
     review_lead_with_reviewer,
 )
-from app.services.task_tracking_service import (
+from app.services.pipeline.task_tracking_service import (
     bind_tracking_context,
     clear_tracking_context,
     mark_task_failed,

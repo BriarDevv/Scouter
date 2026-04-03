@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
-from app.services.mail_credentials_service import get_effective_imap, get_effective_smtp, get_or_create as get_creds
-from app.services.operational_settings_service import get_or_create as get_ops
+from app.services.outreach.mail_credentials_service import get_effective_imap, get_effective_smtp, get_or_create as get_creds
+from app.services.settings.operational_settings_service import get_or_create as get_ops
 
 
 def get_setup_status(db: Session) -> dict:

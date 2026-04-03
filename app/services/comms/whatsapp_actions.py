@@ -65,7 +65,7 @@ def execute_resolve_notification(db: Session, notification_id: str) -> str:
         if uid is None:
             return "ID de notificacion invalido."
 
-        from app.services.notification_service import update_notification_status
+        from app.services.notifications.notification_service import update_notification_status
         notif = update_notification_status(db, uid, "resolved")
         if notif is None:
             return "No se encontro la notificacion con ese ID."
@@ -80,7 +80,7 @@ def execute_resolve_notification(db: Session, notification_id: str) -> str:
 def execute_mark_read_all(db: Session) -> str:
     """Mark all unread notifications as read."""
     try:
-        from app.services.notification_service import bulk_update_notifications
+        from app.services.notifications.notification_service import bulk_update_notifications
         count = bulk_update_notifications(db, action="mark_read")
         logger.info("wa_action_mark_read_all", count=count)
         return "Se marcaron " + str(count) + " notificaciones como leidas."
@@ -155,7 +155,7 @@ def execute_generate_draft(db: Session, lead_name: str) -> str:
 
         # Try to use the outreach service to generate the draft
         try:
-            from app.services.outreach_service import generate_outreach_draft
+            from app.services.outreach.outreach_service import generate_outreach_draft
             draft = generate_outreach_draft(db, lead.id)
             if draft:
                 logger.info("wa_action_generate_draft", lead_name=lead_name, draft_id=str(draft.id))

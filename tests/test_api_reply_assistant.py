@@ -141,7 +141,7 @@ def test_generate_reply_assistant_draft_persists_result(client, db, monkeypatch)
         }
 
     monkeypatch.setattr(
-        "app.services.reply_response_service.llm_generate_reply_assistant_draft",
+        "app.services.inbox.reply_response_service.llm_generate_reply_assistant_draft",
         fake_generate,
     )
 
@@ -171,7 +171,7 @@ def test_get_reply_assistant_draft_returns_existing_record(client, db, monkeypat
     _, _, _, _, message = _seed_inbound_reply(db)
 
     monkeypatch.setattr(
-        "app.services.reply_response_service.llm_generate_reply_assistant_draft",
+        "app.services.inbox.reply_response_service.llm_generate_reply_assistant_draft",
         lambda **kwargs: {
             "subject": "Re: Seguimiento sitio web",
             "body": "Hola, gracias por responder.",
@@ -213,7 +213,7 @@ def test_generate_reply_assistant_draft_regenerates_same_record(client, db, monk
     )
 
     monkeypatch.setattr(
-        "app.services.reply_response_service.llm_generate_reply_assistant_draft",
+        "app.services.inbox.reply_response_service.llm_generate_reply_assistant_draft",
         lambda **kwargs: next(responses),
     )
 
@@ -248,7 +248,7 @@ def test_generate_reply_assistant_draft_handles_concurrent_insert(client, db, mo
     lead, outbound_draft, delivery, thread, message = _seed_inbound_reply(db)
 
     monkeypatch.setattr(
-        "app.services.reply_response_service.llm_generate_reply_assistant_draft",
+        "app.services.inbox.reply_response_service.llm_generate_reply_assistant_draft",
         lambda **kwargs: {
             "subject": "Re: Seguimiento sitio web",
             "body": "Versión final después del race.",
@@ -289,7 +289,7 @@ def test_generate_reply_assistant_draft_handles_concurrent_insert(client, db, mo
             raise IntegrityError("insert", {}, Exception("duplicate"))
         return original_commit()
 
-    monkeypatch.setattr("app.services.reply_response_service.get_brand_context", lambda db: {})
+    monkeypatch.setattr("app.services.inbox.reply_response_service.get_brand_context", lambda db: {})
     monkeypatch.setattr(db, "commit", flaky_commit)
 
     resp = client.post(f"/api/v1/replies/{message.id}/draft-response")
@@ -303,7 +303,7 @@ def test_generate_reply_assistant_draft_handles_concurrent_insert(client, db, mo
 def test_patch_reply_assistant_draft_persists_edit_metadata(client, db, monkeypatch):
     _, _, _, _, message = _seed_inbound_reply(db)
     monkeypatch.setattr(
-        "app.services.reply_response_service.llm_generate_reply_assistant_draft",
+        "app.services.inbox.reply_response_service.llm_generate_reply_assistant_draft",
         lambda **kwargs: {
             "subject": "Re: Seguimiento sitio web",
             "body": "Versión inicial.",
@@ -335,7 +335,7 @@ def test_send_reply_assistant_draft_persists_send_and_threading_headers(client, 
     _configure_reply_send_mail(db)
 
     monkeypatch.setattr(
-        "app.services.reply_response_service.llm_generate_reply_assistant_draft",
+        "app.services.inbox.reply_response_service.llm_generate_reply_assistant_draft",
         lambda **kwargs: {
             "subject": "Seguimiento sitio web",
             "body": "Claro, te comparto una propuesta breve.",
@@ -357,7 +357,7 @@ def test_send_reply_assistant_draft_persists_send_and_threading_headers(client, 
                 sent_at=datetime(2026, 3, 14, 14, 0, tzinfo=UTC),
             )
 
-    monkeypatch.setattr("app.services.mail_service.get_mail_provider", lambda: FakeProvider())
+    monkeypatch.setattr("app.services.outreach.mail_service.get_mail_provider", lambda: FakeProvider())
 
     create_resp = client.post(f"/api/v1/replies/{message.id}/draft-response")
     assert create_resp.status_code == 200
@@ -392,7 +392,7 @@ def test_send_reply_assistant_draft_blocks_when_review_requires_edits(client, db
     _configure_reply_send_mail(db)
 
     monkeypatch.setattr(
-        "app.services.reply_response_service.llm_generate_reply_assistant_draft",
+        "app.services.inbox.reply_response_service.llm_generate_reply_assistant_draft",
         lambda **kwargs: {
             "subject": "Re: Seguimiento sitio web",
             "body": "Borrador sin editar.",
@@ -404,7 +404,7 @@ def test_send_reply_assistant_draft_blocks_when_review_requires_edits(client, db
     client.post(f"/api/v1/replies/{message.id}/draft-response")
 
     monkeypatch.setattr(
-        "app.services.reply_draft_review_service.llm_review_reply_assistant_draft",
+        "app.services.inbox.reply_draft_review_service.llm_review_reply_assistant_draft",
         lambda **kwargs: {
             "summary": "Necesita una edición.",
             "feedback": "Conviene editar antes de enviar.",
@@ -416,10 +416,10 @@ def test_send_reply_assistant_draft_blocks_when_review_requires_edits(client, db
         },
     )
     monkeypatch.setattr(
-        "app.services.reply_draft_review_service.resolve_model_for_role",
+        "app.services.inbox.reply_draft_review_service.resolve_model_for_role",
         lambda role: "qwen3.5:27b",
     )
-    from app.services.reply_draft_review_service import review_reply_assistant_draft_with_reviewer
+    from app.services.inbox.reply_draft_review_service import review_reply_assistant_draft_with_reviewer
 
     review_reply_assistant_draft_with_reviewer(db, message.id)
 
@@ -433,7 +433,7 @@ def test_send_reply_assistant_draft_is_idempotent_under_duplicate_clicks(client,
     _configure_reply_send_mail(db)
 
     monkeypatch.setattr(
-        "app.services.reply_response_service.llm_generate_reply_assistant_draft",
+        "app.services.inbox.reply_response_service.llm_generate_reply_assistant_draft",
         lambda **kwargs: {
             "subject": "Re: Seguimiento sitio web",
             "body": "Respuesta lista.",
@@ -452,7 +452,7 @@ def test_send_reply_assistant_draft_is_idempotent_under_duplicate_clicks(client,
                 sent_at=datetime(2026, 3, 14, 14, 0, tzinfo=UTC),
             )
 
-    monkeypatch.setattr("app.services.mail_service.get_mail_provider", lambda: FakeProvider())
+    monkeypatch.setattr("app.services.outreach.mail_service.get_mail_provider", lambda: FakeProvider())
     client.post(f"/api/v1/replies/{message.id}/draft-response")
 
     first = client.post(f"/api/v1/replies/{message.id}/draft-response/send")

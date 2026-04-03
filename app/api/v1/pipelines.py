@@ -11,14 +11,14 @@ from app.schemas.task_tracking import (
     PipelineRunSummaryResponse,
     TaskStatusResponse,
 )
-from app.services.operational_task_service import (
+from app.services.pipeline.operational_task_service import (
     BATCH_PIPELINE_SCOPE_KEY,
     get_batch_pipeline_status_snapshot,
     get_batch_pipeline_task_run,
     load_batch_pipeline_legacy_status,
     mark_batch_pipeline_legacy_stop_requested,
 )
-from app.services.task_tracking_service import (
+from app.services.pipeline.task_tracking_service import (
     get_pipeline_run,
     list_pipeline_runs,
     list_task_runs,

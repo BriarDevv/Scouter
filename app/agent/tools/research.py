@@ -43,7 +43,7 @@ def get_lead_dossier(db: Session, *, lead_id: str) -> dict:
 
 def run_lead_research(db: Session, *, lead_id: str) -> dict:
     """Run research/investigation on a lead."""
-    from app.services.research_service import run_research
+    from app.services.research.research_service import run_research
 
     report = run_research(db, uuid.UUID(lead_id))
     if not report:
@@ -93,7 +93,7 @@ def get_commercial_brief(db: Session, *, lead_id: str) -> dict:
 
 def generate_lead_brief(db: Session, *, lead_id: str) -> dict:
     """Generate a commercial brief for a lead."""
-    from app.services.brief_service import generate_brief
+    from app.services.research.brief_service import generate_brief
 
     brief = generate_brief(db, uuid.UUID(lead_id))
     if not brief:

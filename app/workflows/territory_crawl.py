@@ -14,15 +14,15 @@ from app.models.lead import Lead
 from app.models.lead_source import LeadSource, SourceType
 from app.models.territory import Territory
 from app.schemas.lead import LeadCreate
-from app.services.lead_service import _compute_dedup_hash, create_lead
-from app.services.operational_task_service import (
+from app.services.leads.lead_service import _compute_dedup_hash, create_lead
+from app.services.pipeline.operational_task_service import (
     build_territory_crawl_progress,
     mirror_territory_crawl_state,
     persist_operational_task_state,
     should_stop_operational_task,
     territory_crawl_redis_key,
 )
-from app.services.task_tracking_service import mark_task_running
+from app.services.pipeline.task_tracking_service import mark_task_running
 
 logger = get_logger(__name__)
 

@@ -1,6 +1,6 @@
 from app.llm.roles import LLMRole
 from app.models.reply_assistant import ReplyAssistantDraft, ReplyAssistantReview, ReplyAssistantReviewStatus
-from app.services.reply_draft_review_service import (
+from app.services.inbox.reply_draft_review_service import (
     get_reply_assistant_review_for_message,
     review_reply_assistant_draft_with_reviewer,
 )
@@ -9,7 +9,7 @@ from tests.test_api_reply_assistant import _seed_inbound_reply
 
 def _generate_reply_assistant_draft(client, message_id, monkeypatch):
     monkeypatch.setattr(
-        "app.services.reply_response_service.llm_generate_reply_assistant_draft",
+        "app.services.inbox.reply_response_service.llm_generate_reply_assistant_draft",
         lambda **kwargs: {
             "subject": "Re: Seguimiento sitio web",
             "body": "Hola, gracias por escribir. Te comparto una propuesta breve.",
@@ -62,7 +62,7 @@ def test_review_reply_assistant_draft_with_reviewer_persists_result(client, db, 
     draft_payload = _generate_reply_assistant_draft(client, message.id, monkeypatch)
 
     monkeypatch.setattr(
-        "app.services.reply_draft_review_service.llm_review_reply_assistant_draft",
+        "app.services.inbox.reply_draft_review_service.llm_review_reply_assistant_draft",
         lambda **kwargs: {
             "summary": "El draft está bastante bien y solo necesita un cierre más concreto.",
             "feedback": "Conviene hacer más explícita la propuesta y cerrar con CTA puntual.",
@@ -77,7 +77,7 @@ def test_review_reply_assistant_draft_with_reviewer_persists_result(client, db, 
         },
     )
     monkeypatch.setattr(
-        "app.services.reply_draft_review_service.resolve_model_for_role",
+        "app.services.inbox.reply_draft_review_service.resolve_model_for_role",
         lambda role: "qwen3.5:27b",
     )
 
@@ -120,7 +120,7 @@ def test_regenerating_reply_assistant_draft_discards_previous_review(client, db,
         ]
     )
     monkeypatch.setattr(
-        "app.services.reply_response_service.llm_generate_reply_assistant_draft",
+        "app.services.inbox.reply_response_service.llm_generate_reply_assistant_draft",
         lambda **kwargs: next(generator_responses),
     )
 

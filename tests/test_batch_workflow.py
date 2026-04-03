@@ -1,6 +1,6 @@
 from app.models.task_tracking import TaskRun
-from app.services.operational_task_service import BATCH_PIPELINE_SCOPE_KEY
-from app.services.task_tracking_service import get_task_run
+from app.services.pipeline.operational_task_service import BATCH_PIPELINE_SCOPE_KEY
+from app.services.pipeline.task_tracking_service import get_task_run
 from app.workers.tasks import task_batch_pipeline
 from app.workflows.batch_pipeline import run_batch_pipeline_workflow
 
@@ -63,7 +63,7 @@ def test_task_batch_pipeline_delegates_to_workflow(db, monkeypatch):
             "errors": 0,
         }
 
-    monkeypatch.setattr("app.workers.tasks.run_batch_pipeline_workflow", fake_workflow)
+    monkeypatch.setattr("app.workers.batch_tasks.run_batch_pipeline_workflow", fake_workflow)
 
     result = task_batch_pipeline.run(
         status_filter="new",

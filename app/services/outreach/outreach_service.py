@@ -9,7 +9,7 @@ from app.llm.invocation_metadata import clear_last_invocation, pop_last_invocati
 from app.models.lead import Lead, LeadStatus
 from app.models.outreach import DraftStatus, LogAction, OutreachDraft, OutreachLog
 from app.outreach.generator import generate_draft_content
-from app.services.lead_service import is_suppressed
+from app.services.leads.lead_service import is_suppressed
 
 logger = get_logger(__name__)
 
@@ -259,7 +259,7 @@ def send_whatsapp_draft(db: Session, draft_id: uuid.UUID) -> "OutreachDelivery":
     """Send an approved WhatsApp draft via Kapso."""
     from datetime import datetime, timezone
     from app.models.outreach_delivery import OutreachDelivery
-    from app.services.kapso_service import KapsoError, send_whatsapp_message
+    from app.services.comms.kapso_service import KapsoError, send_whatsapp_message
 
     draft = db.get(OutreachDraft, draft_id)
     if not draft:

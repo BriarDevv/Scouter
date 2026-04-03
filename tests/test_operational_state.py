@@ -16,7 +16,7 @@ from app.api.v1.scoring import get_rescore_all_status, rescore_all_leads, stop_r
 from app.models.lead import Lead
 from app.models.task_tracking import TaskRun
 from app.models.territory import Territory
-from app.services.operational_task_service import (
+from app.services.pipeline.operational_task_service import (
     BATCH_PIPELINE_REDIS_KEY,
     BATCH_PIPELINE_SCOPE_KEY,
     RESCORE_ALL_SCOPE_KEY,
@@ -29,7 +29,7 @@ from app.services.operational_task_service import (
     serialize_territory_crawl_status,
     should_stop_operational_task,
 )
-from app.services.task_tracking_service import get_task_run, request_task_stop
+from app.services.pipeline.task_tracking_service import get_task_run, request_task_stop
 from app.workers.tasks import task_rescore_all
 
 
@@ -226,7 +226,7 @@ def test_batch_pipeline_status_snapshot_falls_back_to_legacy_mirror(db, monkeypa
     }
 
     monkeypatch.setattr(
-        "app.services.operational_task_service.load_legacy_operational_state",
+        "app.services.pipeline.operational_task_service.load_legacy_operational_state",
         lambda redis_key: legacy if redis_key == BATCH_PIPELINE_REDIS_KEY else None,
     )
 
@@ -247,15 +247,15 @@ def test_mark_legacy_stop_requested_updates_batch_and_crawl_payloads(monkeypatch
     }
 
     monkeypatch.setattr(
-        "app.services.operational_task_service.load_legacy_operational_state",
+        "app.services.pipeline.operational_task_service.load_legacy_operational_state",
         lambda redis_key: store.get(redis_key),
     )
     monkeypatch.setattr(
-        "app.services.operational_task_service.mirror_legacy_operational_state",
+        "app.services.pipeline.operational_task_service.mirror_legacy_operational_state",
         lambda redis_key, payload, ttl_seconds=3600: store.__setitem__(redis_key, payload),
     )
     monkeypatch.setattr(
-        "app.services.operational_task_service.delete_legacy_operational_state",
+        "app.services.pipeline.operational_task_service.delete_legacy_operational_state",
         lambda redis_key: store.pop(redis_key, None),
     )
 
@@ -274,7 +274,7 @@ def test_territory_crawl_status_snapshot_falls_back_to_legacy_mirror(db, monkeyp
     }
 
     monkeypatch.setattr(
-        "app.services.operational_task_service.load_legacy_operational_state",
+        "app.services.pipeline.operational_task_service.load_legacy_operational_state",
         lambda redis_key: legacy if redis_key == "crawl:territory:territory-legacy-002" else None,
     )
 
@@ -303,7 +303,7 @@ def test_should_stop_operational_task_checks_canonical_and_legacy(db, monkeypatc
     )
 
     monkeypatch.setattr(
-        "app.services.operational_task_service._read_legacy_operational_state",
+        "app.services.pipeline.operational_task_service._read_legacy_operational_state",
         lambda redis_key, suppress_errors: {"status": "running"},
     )
 
@@ -318,7 +318,7 @@ def test_should_stop_operational_task_checks_canonical_and_legacy(db, monkeypatc
     ) is False
 
     monkeypatch.setattr(
-        "app.services.operational_task_service._read_legacy_operational_state",
+        "app.services.pipeline.operational_task_service._read_legacy_operational_state",
         lambda redis_key, suppress_errors: None,
     )
 
@@ -332,7 +332,7 @@ def test_should_stop_operational_task_checks_canonical_and_legacy(db, monkeypatc
         raise RuntimeError("redis unavailable")
 
     monkeypatch.setattr(
-        "app.services.operational_task_service._read_legacy_operational_state",
+        "app.services.pipeline.operational_task_service._read_legacy_operational_state",
         raise_redis_error,
     )
 
@@ -437,9 +437,9 @@ def test_rescore_task_run_persists_canonical_progress(db, monkeypatch):
         session.commit()
         return lead
 
-    monkeypatch.setattr("app.workers.tasks.score_lead", fake_score_lead)
+    monkeypatch.setattr("app.workers.batch_tasks.score_lead", fake_score_lead)
     monkeypatch.setattr(
-        "app.workers.tasks.mirror_rescore_all_state",
+        "app.workers.batch_tasks.mirror_rescore_all_state",
         lambda *args, **kwargs: None,
     )
 

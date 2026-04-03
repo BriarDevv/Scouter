@@ -7,7 +7,7 @@ from app.schemas.dashboard import (
     IndustryBreakdownResponse,
     SourcePerformanceResponse,
 )
-from app.services.dashboard_service import (
+from app.services.dashboard_svc.dashboard_service import (
     get_city_breakdown,
     get_industry_breakdown,
     get_source_performance,

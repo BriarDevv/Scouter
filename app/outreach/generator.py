@@ -8,7 +8,7 @@ from app.core.logging import get_logger
 from app.llm.client import generate_outreach_draft as llm_generate
 from app.llm.roles import LLMRole
 from app.models.lead import Lead
-from app.services.operational_settings_service import get_brand_context
+from app.services.settings.operational_settings_service import get_brand_context
 
 logger = get_logger(__name__)
 

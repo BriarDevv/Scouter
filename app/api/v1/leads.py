@@ -16,7 +16,7 @@ from app.schemas.lead import (
     LeadStatusUpdate,
 )
 from app.schemas.research import ResearchReportResponse
-from app.services.lead_service import create_lead, get_lead, list_leads, update_lead_status
+from app.services.leads.lead_service import create_lead, get_lead, list_leads, update_lead_status
 
 router = APIRouter(prefix="/leads", tags=["leads"])
 
@@ -52,7 +52,7 @@ def export_leads(
     db: Session = Depends(get_session),
 ):
     """Export leads as CSV, JSON, or XLSX."""
-    from app.services.export_service import (
+    from app.services.research.export_service import (
         export_leads_csv,
         export_leads_json,
         export_leads_xlsx,
@@ -123,7 +123,7 @@ def get_research_report(lead_id: uuid.UUID, db: Session = Depends(get_session)):
 @router.post("/{lead_id}/research", response_model=ResearchReportResponse, status_code=201)
 def trigger_research(lead_id: uuid.UUID, db: Session = Depends(get_session)):
     """Trigger research for a lead. Runs synchronously."""
-    from app.services.research_service import run_research
+    from app.services.research.research_service import run_research
 
     lead = db.get(Lead, lead_id)
     if not lead:

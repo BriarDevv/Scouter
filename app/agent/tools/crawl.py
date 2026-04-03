@@ -6,12 +6,12 @@ from sqlalchemy.orm import Session
 
 from app.agent.tool_registry import ToolDefinition, ToolParameter, registry
 from app.core.config import settings as env
-from app.services.operational_task_service import (
+from app.services.pipeline.operational_task_service import (
     get_territory_crawl_status_snapshot,
     get_territory_crawl_task_run,
     load_territory_crawl_legacy_status,
 )
-from app.services.task_tracking_service import queue_task_run
+from app.services.pipeline.task_tracking_service import queue_task_run
 
 
 def start_territory_crawl(

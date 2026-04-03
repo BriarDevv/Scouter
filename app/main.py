@@ -17,7 +17,7 @@ from app.api.request_context import (
 from app.api.router import api_router
 from app.core.config import settings
 from app.core.logging import get_logger, setup_logging
-from app.services.health_service import get_system_health
+from app.services.dashboard_svc.health_service import get_system_health
 
 setup_logging()
 logger = get_logger(__name__)

@@ -7,8 +7,8 @@ from app.api.deps import get_session
 from app.api.request_context import get_correlation_id
 from app.schemas.lead import LeadResponse
 from app.schemas.task_tracking import TaskEnqueueResponse
-from app.services.enrichment_service import enrich_lead
-from app.services.task_tracking_service import queue_task_run
+from app.services.leads.enrichment_service import enrich_lead
+from app.services.pipeline.task_tracking_service import queue_task_run
 from app.workers.tasks import task_enrich_lead
 
 router = APIRouter(prefix="/enrichment", tags=["enrichment"])

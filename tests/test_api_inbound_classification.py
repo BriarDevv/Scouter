@@ -4,8 +4,8 @@ from app.models.inbound_mail import InboundMailClassificationStatus
 from app.models.lead import Lead, LeadStatus
 from app.models.outreach import DraftStatus, OutreachDraft
 from app.models.outreach_delivery import OutreachDelivery, OutreachDeliveryStatus
-from app.services.inbound_mail_service import sync_inbound_messages
-from app.services.reply_classification_service import VALID_REPLY_LABELS
+from app.services.inbox.inbound_mail_service import sync_inbound_messages
+from app.services.inbox.reply_classification_service import VALID_REPLY_LABELS
 
 
 def _create_sent_delivery(
@@ -100,7 +100,7 @@ def _seed_inbound_message(
         def list_messages(self, *, limit: int):
             return [payload]
 
-    monkeypatch.setattr("app.services.inbound_mail_service.get_inbound_provider", lambda: FakeProvider())
+    monkeypatch.setattr("app.services.inbox.inbound_mail_service.get_inbound_provider", lambda: FakeProvider())
     message = sync_inbound_messages(db, limit=1)
     assert message.new_count == 1
     return payload
@@ -120,7 +120,7 @@ def test_classify_inbound_message_success(client, db, monkeypatch):
         }
 
     monkeypatch.setattr(
-        "app.services.reply_classification_service.llm_classify_inbound_reply",
+        "app.services.inbox.reply_classification_service.llm_classify_inbound_reply",
         fake_classifier,
     )
 
@@ -148,7 +148,7 @@ def test_classify_inbound_message_failure_persists_error(client, db, monkeypatch
         raise RuntimeError("ollama timeout")
 
     monkeypatch.setattr(
-        "app.services.reply_classification_service.llm_classify_inbound_reply",
+        "app.services.inbox.reply_classification_service.llm_classify_inbound_reply",
         broken_classifier,
     )
 
@@ -188,7 +188,7 @@ def test_classify_pending_endpoint_and_filter(client, db, monkeypatch):
     )
 
     monkeypatch.setattr(
-        "app.services.reply_classification_service.llm_classify_inbound_reply",
+        "app.services.inbox.reply_classification_service.llm_classify_inbound_reply",
         lambda **kwargs: next(responses),
     )
 

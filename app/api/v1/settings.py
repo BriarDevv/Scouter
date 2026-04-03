@@ -18,21 +18,21 @@ from app.schemas.operational_settings import (
     OperationalSettingsUpdate,
 )
 from app.schemas.settings import LLMSettingsResponse, MailSettingsResponse
-from app.services.mail_credentials_service import (
+from app.services.outreach.mail_credentials_service import (
     get_or_create as get_creds,
     test_imap,
     test_smtp,
     to_response_dict as creds_to_dict,
     update_credentials,
 )
-from app.services.operational_settings_service import (
+from app.services.settings.operational_settings_service import (
     apply_runtime_mode,
     get_or_create,
     to_response_dict,
     update_operational_settings,
 )
-from app.services.settings_service import get_llm_settings, get_mail_settings
-from app.services.setup_status_service import get_setup_status
+from app.services.settings.settings_service import get_llm_settings, get_mail_settings
+from app.services.settings.setup_status_service import get_setup_status
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -210,7 +210,7 @@ def credentials_status():
 # ── WhatsApp credentials and test ─────────────────────────────────────
 
 from app.schemas.whatsapp import WhatsAppCredentialsResponse, WhatsAppCredentialsUpdate, WhatsAppTestResult
-from app.services.whatsapp_service import (
+from app.services.comms.whatsapp_service import (
     get_credentials as get_wa_creds,
     update_credentials as update_wa_creds,
     to_response_dict as wa_to_dict,
@@ -241,7 +241,7 @@ def test_whatsapp_connection(db=Depends(get_session)):
 # ── Telegram credentials and test ────────────────────────────────────
 
 from app.schemas.telegram import TelegramCredentialsResponse, TelegramCredentialsUpdate, TelegramTestResult
-from app.services.telegram_service import (
+from app.services.comms.telegram_service import (
     get_credentials as get_tg_creds,
     update_credentials as update_tg_creds,
     to_response_dict as tg_to_dict,
@@ -280,7 +280,7 @@ class TelegramRegisterWebhookBody(_BaseModel):
 def register_telegram_webhook(body: TelegramRegisterWebhookBody, db=Depends(get_session)):
     """Register the webhook URL with Telegram Bot API and auto-generate a secret."""
     import secrets as _secrets
-    from app.services.telegram_service import _call_telegram
+    from app.services.comms.telegram_service import _call_telegram
 
     creds = get_tg_creds(db)
     if not creds.bot_token:

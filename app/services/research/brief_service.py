@@ -34,7 +34,7 @@ DEFAULT_PRICING_MATRIX = {
 
 def get_pricing_matrix(db: Session) -> dict:
     """Get pricing matrix from settings or default."""
-    from app.services.operational_settings_service import get_or_create
+    from app.services.settings.operational_settings_service import get_or_create
 
     settings = get_or_create(db)
     if settings.pricing_matrix:
@@ -195,7 +195,7 @@ def generate_brief(
 
         # Emit notification
         try:
-            from app.services.notification_emitter import on_brief_generated
+            from app.services.notifications.notification_emitter import on_brief_generated
             on_brief_generated(
                 db,
                 lead_id=lead_id,

@@ -14,7 +14,7 @@ from app.schemas.leader import (
     LeaderReplySummaryResponse,
     LeaderTaskHealthResponse,
 )
-from app.services.leader_service import (
+from app.services.dashboard_svc.leader_service import (
     get_reply_summary,
     get_system_overview,
     get_task_health,

@@ -14,7 +14,7 @@ from app.services.review_service import (
     review_inbound_message_with_reviewer,
     review_lead_with_reviewer,
 )
-from app.services.task_tracking_service import queue_task_run
+from app.services.pipeline.task_tracking_service import queue_task_run
 from app.workers.tasks import task_review_draft, task_review_inbound_message, task_review_lead
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])

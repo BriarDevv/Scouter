@@ -9,7 +9,7 @@ from redis import Redis
 from app.core.config import settings as env
 from app.db.session import SessionLocal
 from app.models.task_tracking import TaskRun
-from app.services.task_tracking_service import (
+from app.services.pipeline.task_tracking_service import (
     get_scoped_task_run,
     is_task_stop_requested,
     update_task_run,

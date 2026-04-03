@@ -14,9 +14,9 @@ from app.mail.provider import MailProviderError, MailSendRequest, MailSendResult
 from app.mail.smtp_provider import SMTPMailProvider
 from app.models.outreach import DraftStatus, OutreachDraft
 from app.models.outreach_delivery import OutreachDelivery, OutreachDeliveryStatus
-from app.services.mail_credentials_service import get_effective_smtp
-from app.services.operational_settings_service import get_effective_mail_outbound, get_or_create
-from app.services.outreach_service import update_draft
+from app.services.outreach.mail_credentials_service import get_effective_smtp
+from app.services.settings.operational_settings_service import get_effective_mail_outbound, get_or_create
+from app.services.outreach.outreach_service import update_draft
 
 logger = get_logger(__name__)
 
@@ -247,7 +247,7 @@ def send_draft(db: Session, draft_id: uuid.UUID) -> OutreachDelivery | None:
         db.commit()
         db.refresh(delivery)
         try:
-            from app.services.notification_emitter import on_send_failed
+            from app.services.notifications.notification_emitter import on_send_failed
             on_send_failed(db, delivery_id=delivery.id, recipient=delivery.recipient_email, error=delivery.error, send_type="outreach")
         except Exception:
             pass

@@ -54,7 +54,7 @@ def test_list_briefs_empty(client, db):
 
 
 def test_brief_service_pricing_matrix(db):
-    from app.services.brief_service import (
+    from app.services.research.brief_service import (
         DEFAULT_PRICING_MATRIX,
         get_pricing_matrix,
     )
@@ -64,7 +64,7 @@ def test_brief_service_pricing_matrix(db):
 
 
 def test_infer_budget_tier():
-    from app.services.brief_service import _infer_budget_tier
+    from app.services.research.brief_service import _infer_budget_tier
 
     assert _infer_budget_tier(500) == BudgetTier.LOW
     assert _infer_budget_tier(1000) == BudgetTier.MEDIUM

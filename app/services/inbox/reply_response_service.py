@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core.logging import get_logger
 from app.llm.client import generate_reply_assistant_draft as llm_generate_reply_assistant_draft
-from app.services.operational_settings_service import get_brand_context
-from app.services.reply_send_service import attach_reply_send_metadata
+from app.services.settings.operational_settings_service import get_brand_context
+from app.services.inbox.reply_send_service import attach_reply_send_metadata
 from app.llm.resolver import resolve_model_for_role
 from app.llm.roles import LLMRole
 from app.models.inbound_mail import InboundMessage

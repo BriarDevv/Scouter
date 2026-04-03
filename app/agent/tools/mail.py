@@ -5,12 +5,12 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.agent.tool_registry import ToolDefinition, ToolParameter, registry
-from app.services.inbound_mail_service import (
+from app.services.inbox.inbound_mail_service import (
     InboundMailServiceError,
     list_inbound_messages as _list_inbound_messages,
     sync_inbound_messages as _sync_inbound_messages,
 )
-from app.services.reply_classification_service import (
+from app.services.inbox.reply_classification_service import (
     classify_inbound_message as _classify_inbound_message,
 )
 

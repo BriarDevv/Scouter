@@ -11,16 +11,16 @@ from app.llm.client import evaluate_lead_quality_structured, summarize_business
 from app.llm.roles import LLMRole
 from app.models.lead import Lead
 from app.models.territory import Territory
-from app.services.enrichment_service import enrich_lead
-from app.services.operational_task_service import (
+from app.services.leads.enrichment_service import enrich_lead
+from app.services.pipeline.operational_task_service import (
     BATCH_PIPELINE_REDIS_KEY,
     build_batch_pipeline_progress,
     mirror_batch_pipeline_state,
     persist_operational_task_state,
     should_stop_operational_task,
 )
-from app.services.outreach_service import generate_outreach_draft
-from app.services.scoring_service import score_lead
+from app.services.outreach.outreach_service import generate_outreach_draft
+from app.services.leads.scoring_service import score_lead
 from app.workflows.territory_crawl import run_territory_crawl_workflow
 
 logger = get_logger(__name__)
@@ -253,7 +253,7 @@ def run_batch_pipeline_workflow(
                             progress["current_step"] = "research"
                             sync_progress(current_step="research")
                             try:
-                                from app.services.research_service import run_research
+                                from app.services.research.research_service import run_research
 
                                 run_research(db, lead.id)
                             except Exception as res_exc:
@@ -266,7 +266,7 @@ def run_batch_pipeline_workflow(
                             progress["current_step"] = "brief"
                             sync_progress(current_step="brief")
                             try:
-                                from app.services.brief_service import generate_brief
+                                from app.services.research.brief_service import generate_brief
 
                                 generate_brief(db, lead.id)
                             except Exception as brief_exc:

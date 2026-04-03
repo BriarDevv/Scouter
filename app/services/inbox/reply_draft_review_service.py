@@ -17,7 +17,7 @@ from app.models.reply_assistant import (
     ReplyAssistantReview,
     ReplyAssistantReviewStatus,
 )
-from app.services.reply_send_service import attach_reply_send_metadata
+from app.services.inbox.reply_send_service import attach_reply_send_metadata
 
 logger = get_logger(__name__)
 
@@ -98,7 +98,7 @@ def ensure_reply_assistant_review_pending(
 def review_reply_assistant_draft_with_reviewer(
     db: Session, message_id: uuid.UUID
 ) -> dict | None:
-    from app.services.operational_settings_service import get_cached_settings
+    from app.services.settings.operational_settings_service import get_cached_settings
 
     ops = get_cached_settings(db)
     if not ops.allow_reply_assistant_generation:

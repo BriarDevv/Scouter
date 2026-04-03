@@ -19,11 +19,11 @@ logger = get_logger(__name__)
 def _emit(db: Session, **kwargs) -> None:
     """Safe wrapper around notification creation. Respects notifications_enabled setting."""
     try:
-        from app.services.operational_settings_service import get_cached_settings
+        from app.services.settings.operational_settings_service import get_cached_settings
         ops = get_cached_settings(db)
         if not ops.notifications_enabled:
             return
-        from app.services.notification_service import create_notification
+        from app.services.notifications.notification_service import create_notification
         create_notification(db, **kwargs)
     except Exception as exc:
         logger.error("notification_emit_failed", error=str(exc), type=kwargs.get("type"))

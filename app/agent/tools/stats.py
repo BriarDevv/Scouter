@@ -3,7 +3,7 @@
 from sqlalchemy.orm import Session
 
 from app.agent.tool_registry import ToolDefinition, ToolParameter, registry
-from app.services.dashboard_service import (
+from app.services.dashboard_svc.dashboard_service import (
     get_city_breakdown as _get_cities,
     get_dashboard_stats as _get_stats,
     get_industry_breakdown as _get_industry,

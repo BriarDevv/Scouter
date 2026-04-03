@@ -5,7 +5,7 @@ import uuid
 from app.core.logging import get_logger
 from app.db.session import SessionLocal
 from app.models.lead import Lead
-from app.services.operational_task_service import (
+from app.services.pipeline.operational_task_service import (
     BATCH_PIPELINE_SCOPE_KEY,
     RESCORE_ALL_REDIS_KEY,
     RESCORE_ALL_SCOPE_KEY,
@@ -14,8 +14,8 @@ from app.services.operational_task_service import (
     persist_rescore_all_state,
     should_stop_operational_task,
 )
-from app.services.scoring_service import score_lead
-from app.services.task_tracking_service import (
+from app.services.leads.scoring_service import score_lead
+from app.services.pipeline.task_tracking_service import (
     bind_tracking_context,
     clear_tracking_context,
     mark_task_running,

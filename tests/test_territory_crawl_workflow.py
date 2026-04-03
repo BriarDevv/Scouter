@@ -1,4 +1,4 @@
-from app.services.task_tracking_service import get_task_run
+from app.services.pipeline.task_tracking_service import get_task_run
 from app.workers.tasks import task_crawl_territory
 from app.workflows.territory_crawl import run_territory_crawl_workflow
 
@@ -74,7 +74,7 @@ def test_task_crawl_territory_delegates_to_workflow(monkeypatch):
             "skipped": 0,
         }
 
-    monkeypatch.setattr("app.workers.tasks.run_territory_crawl_workflow", fake_workflow)
+    monkeypatch.setattr("app.workers.crawl_tasks.run_territory_crawl_workflow", fake_workflow)
 
     result = task_crawl_territory.run(
         territory_id="territory-001",

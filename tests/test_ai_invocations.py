@@ -8,7 +8,7 @@ from app.llm.invocation_metadata import clear_last_invocation, pop_last_invocati
 from app.llm.types import LLMInvocationStatus
 from app.models.lead import Lead
 from app.models.llm_invocation import LLMInvocation
-from app.services.brief_service import generate_brief
+from app.services.research.brief_service import generate_brief
 
 
 def test_lead_quality_structured_persists_prompt_metadata(db, monkeypatch):

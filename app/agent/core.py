@@ -55,7 +55,7 @@ def _cached_tools_schema() -> str:
 def _build_system_context(db: Session) -> str:
     """Gather a quick stats summary for the agent's system prompt."""
     try:
-        from app.services.dashboard_service import get_dashboard_stats
+        from app.services.dashboard_svc.dashboard_service import get_dashboard_stats
         stats = get_dashboard_stats(db)
         return (
             f"Total leads: {stats['total_leads']} | "

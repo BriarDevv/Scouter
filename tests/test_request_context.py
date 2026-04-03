@@ -7,8 +7,8 @@ from app.api.request_context import RequestContextMiddleware
 from app.api.v1.outreach import generate_draft_async
 from app.api.v1.scoring import run_full_pipeline
 from app.schemas.lead import LeadCreate
-from app.services.lead_service import create_lead
-from app.services.task_tracking_service import get_pipeline_run, get_task_run
+from app.services.leads.lead_service import create_lead
+from app.services.pipeline.task_tracking_service import get_pipeline_run, get_task_run
 
 
 def test_request_context_middleware_sets_headers_and_state():

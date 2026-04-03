@@ -5,7 +5,7 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.agent.tool_registry import ToolDefinition, ToolParameter, registry
-from app.services.task_tracking_service import (
+from app.services.pipeline.task_tracking_service import (
     get_pipeline_run,
     list_pipeline_runs,
 )
@@ -13,7 +13,7 @@ from app.services.task_tracking_service import (
 
 def run_full_pipeline(db: Session, *, lead_id: str) -> dict:
     """Run the full enrichment pipeline for a lead."""
-    from app.services.task_tracking_service import create_pipeline_run, queue_task_run
+    from app.services.pipeline.task_tracking_service import create_pipeline_run, queue_task_run
     from app.workers.tasks import task_enrich_lead
 
     try:
@@ -53,7 +53,7 @@ def run_batch_pipeline(db: Session) -> dict:
     if not new_leads:
         return {"message": "No hay leads nuevos para procesar", "count": 0}
 
-    from app.services.task_tracking_service import create_pipeline_run, queue_task_run
+    from app.services.pipeline.task_tracking_service import create_pipeline_run, queue_task_run
     from app.workers.tasks import task_enrich_lead
 
     started = 0

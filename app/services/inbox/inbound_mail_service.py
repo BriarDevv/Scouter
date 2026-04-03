@@ -190,10 +190,10 @@ def sync_inbound_messages(db: Session, *, limit: int | None = None) -> InboundMa
             else:
                 sync_run.unmatched_count += 1
 
-            from app.services.operational_settings_service import get_cached_settings
+            from app.services.settings.operational_settings_service import get_cached_settings
             ops = get_cached_settings(db)
             if persisted_message and ops.auto_classify_inbound:
-                from app.services.reply_classification_service import classify_inbound_message
+                from app.services.inbox.reply_classification_service import classify_inbound_message
 
                 classify_inbound_message(db, persisted_message.id)
 
@@ -219,7 +219,7 @@ def sync_inbound_messages(db: Session, *, limit: int | None = None) -> InboundMa
         db.commit()
         db.refresh(sync_run)
         try:
-            from app.services.notification_emitter import on_sync_failed
+            from app.services.notifications.notification_emitter import on_sync_failed
             on_sync_failed(db, sync_run_id=sync_run.id, error=sync_run.error)
         except Exception:
             pass

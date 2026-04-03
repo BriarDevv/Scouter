@@ -7,7 +7,7 @@ from celery.exceptions import SoftTimeLimitExceeded
 from app.core.logging import get_logger
 from app.db.session import SessionLocal
 from app.models.lead import Lead
-from app.services.task_tracking_service import (
+from app.services.pipeline.task_tracking_service import (
     bind_tracking_context,
     clear_tracking_context,
     mark_task_failed,
@@ -118,7 +118,7 @@ def task_research_lead(
                 current_step="research",
             )
 
-            from app.services.research_service import run_research
+            from app.services.research.research_service import run_research
 
             report = run_research(db, uuid.UUID(lead_id))
             if not report:
@@ -179,7 +179,7 @@ def task_research_lead(
 
                 # Emit notification
                 try:
-                    from app.services.notification_emitter import (
+                    from app.services.notifications.notification_emitter import (
                         on_research_completed,
                     )
                     lead = db.get(Lead, uuid.UUID(lead_id))

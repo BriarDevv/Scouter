@@ -11,13 +11,13 @@ from app.api.request_context import get_correlation_id
 from app.core.config import settings as env
 from app.crawlers.google_maps_crawler import DEFAULT_CATEGORIES
 from app.services.deploy_config_service import get_google_maps_api_key_status
-from app.services.operational_task_service import (
+from app.services.pipeline.operational_task_service import (
     get_territory_crawl_status_snapshot,
     get_territory_crawl_task_run,
     load_territory_crawl_legacy_status,
     mark_territory_crawl_legacy_stop_requested,
 )
-from app.services.task_tracking_service import queue_task_run, request_task_stop
+from app.services.pipeline.task_tracking_service import queue_task_run, request_task_stop
 
 router = APIRouter(prefix="/crawl", tags=["crawl"])
 DbSession = Annotated[Session, Depends(get_session)]

@@ -12,7 +12,7 @@ from app.schemas.notification import (
     NotificationResponse,
     NotificationStatusUpdate,
 )
-from app.services.notification_service import (
+from app.services.notifications.notification_service import (
     bulk_update_notifications,
     get_notification,
     get_notification_counts,

@@ -36,7 +36,7 @@ def generate_brief_for_lead(
     lead_id: uuid.UUID, db: Session = Depends(get_session)
 ):
     """Generate a commercial brief for a lead."""
-    from app.services.brief_service import generate_brief
+    from app.services.research.brief_service import generate_brief
 
     brief = generate_brief(db, lead_id)
     if not brief:

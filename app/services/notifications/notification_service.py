@@ -239,7 +239,7 @@ def bulk_update_notifications(
 
 def _get_ops_settings(db: Session):
     """Return the singleton OperationalSettings row, creating if needed."""
-    from app.services.operational_settings_service import get_or_create
+    from app.services.settings.operational_settings_service import get_or_create
     return get_or_create(db)
 
 
@@ -262,7 +262,7 @@ def _maybe_dispatch_whatsapp(db: Session, notif: Notification) -> None:
         return
 
     try:
-        from app.services.whatsapp_service import send_alert
+        from app.services.comms.whatsapp_service import send_alert
         result = send_alert(db, title=notif.title, message=notif.message, severity=notif.severity.value)
         notif.channel_state = {
             **(notif.channel_state or {}),
@@ -297,7 +297,7 @@ def _maybe_dispatch_telegram(db: Session, notif: Notification) -> None:
         return
 
     try:
-        from app.services.telegram_service import send_alert
+        from app.services.comms.telegram_service import send_alert
         result = send_alert(db, title=notif.title, message=notif.message, severity=notif.severity.value)
         notif.channel_state = {
             **(notif.channel_state or {}),

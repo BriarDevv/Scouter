@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.agent.tool_registry import ToolDefinition, ToolParameter, registry
 from app.models.lead import Lead, LeadStatus
 from app.schemas.lead import LeadCreate
-from app.services.lead_service import (
+from app.services.leads.lead_service import (
     create_lead as _create_lead,
     get_lead,
     list_leads,

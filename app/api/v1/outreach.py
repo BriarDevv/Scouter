@@ -15,7 +15,7 @@ from app.schemas.outreach import (
     OutreachLogResponse,
 )
 from app.schemas.task_tracking import TaskEnqueueResponse
-from app.services.mail_service import (
+from app.services.outreach.mail_service import (
     DraftAlreadySentError,
     DraftNotApprovedError,
     DraftRecipientMissingError,
@@ -24,7 +24,7 @@ from app.services.mail_service import (
     list_deliveries,
     send_draft,
 )
-from app.services.outreach_service import (
+from app.services.outreach.outreach_service import (
     generate_outreach_draft,
     get_draft,
     list_drafts,
@@ -32,7 +32,7 @@ from app.services.outreach_service import (
     review_draft,
     update_draft,
 )
-from app.services.task_tracking_service import queue_task_run
+from app.services.pipeline.task_tracking_service import queue_task_run
 from app.workers.tasks import task_generate_draft
 
 router = APIRouter(prefix="/outreach", tags=["outreach"])

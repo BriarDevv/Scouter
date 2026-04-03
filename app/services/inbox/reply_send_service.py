@@ -14,8 +14,8 @@ from app.models.outreach import LogAction, OutreachLog
 from app.models.reply_assistant import ReplyAssistantDraft, ReplyAssistantReviewStatus
 from app.models.reply_assistant_send import ReplyAssistantSend, ReplyAssistantSendStatus
 from app.schemas.reply_send import ReplyAssistantSendStatusResponse
-from app.services.inbound_mail_service import _normalize_message_id as normalize_inbound_message_id
-from app.services.mail_service import (
+from app.services.inbox.inbound_mail_service import _normalize_message_id as normalize_inbound_message_id
+from app.services.outreach.mail_service import (
     DraftRecipientMissingError,
     build_mail_send_request,
     ensure_outbound_mail_ready,
@@ -196,7 +196,7 @@ def send_reply_assistant_draft(db: Session, message_id: uuid.UUID) -> ReplyAssis
         db.commit()
         db.refresh(send_record)
         try:
-            from app.services.notification_emitter import on_send_failed
+            from app.services.notifications.notification_emitter import on_send_failed
             on_send_failed(db, send_id=send_record.id, recipient=send_record.recipient_email, error=send_record.error, send_type="reply_assistant")
         except Exception:
             pass

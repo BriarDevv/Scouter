@@ -7,7 +7,7 @@ from app.models.inbound_mail import EmailThread, InboundMailClassificationStatus
 from app.models.lead import Lead, LeadStatus
 from app.models.outreach import DraftStatus, OutreachDraft, OutreachLog
 from app.models.task_tracking import PipelineRun, TaskRun
-from app.services.dashboard_service import (
+from app.services.dashboard_svc.dashboard_service import (
     _load_leads as _dashboard_load_leads,
     get_city_breakdown,
     get_dashboard_stats,

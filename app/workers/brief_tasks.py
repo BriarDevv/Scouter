@@ -4,7 +4,7 @@ import uuid
 
 from app.core.logging import get_logger
 from app.db.session import SessionLocal
-from app.services.task_tracking_service import (
+from app.services.pipeline.task_tracking_service import (
     bind_tracking_context,
     clear_tracking_context,
     mark_task_failed,
@@ -59,7 +59,7 @@ def task_generate_brief(
                 current_step="brief_generation",
             )
 
-            from app.services.brief_service import generate_brief
+            from app.services.research.brief_service import generate_brief
 
             brief = generate_brief(db, uuid.UUID(lead_id))
             if brief and brief.status.value == "generated":

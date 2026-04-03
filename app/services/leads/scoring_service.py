@@ -30,7 +30,7 @@ def score_lead(db: Session, lead_id: uuid.UUID) -> Lead | None:
         from app.models.settings import OperationalSettings
         settings = db.query(OperationalSettings).first()
         threshold = settings.notification_score_threshold if settings else 70
-        from app.services.notification_emitter import on_high_score_lead
+        from app.services.notifications.notification_emitter import on_high_score_lead
         on_high_score_lead(
             db, lead_id=lead_id,
             business_name=lead.business_name or "Unknown",

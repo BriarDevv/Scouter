@@ -1,12 +1,12 @@
 from app.core.config import settings
 from app.llm.catalog import DEFAULT_ROLE_MODEL_MAP
 from app.llm.roles import LLMRole
-from app.services.inbound_mail_service import get_inbound_sync_status
-from app.services.mail_credentials_service import (
+from app.services.inbox.inbound_mail_service import get_inbound_sync_status
+from app.services.outreach.mail_credentials_service import (
     get_effective_imap,
     get_effective_smtp,
 )
-from app.services.operational_settings_service import (
+from app.services.settings.operational_settings_service import (
     get_effective_mail_inbound,
     get_effective_mail_outbound,
     get_or_create as get_operational_settings,
