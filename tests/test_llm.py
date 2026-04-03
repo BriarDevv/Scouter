@@ -12,8 +12,12 @@ from app.llm.client import (
     evaluate_lead_quality,
     generate_dossier,
     generate_outreach_draft,
+    generate_reply_assistant_draft,
+    generate_whatsapp_draft,
     review_inbound_reply,
     review_lead,
+    review_outreach_draft,
+    review_reply_assistant_draft,
     summarize_business,
 )
 from app.llm.invocation_metadata import clear_last_invocation, pop_last_invocation
@@ -316,6 +320,136 @@ def test_classify_inbound_reply_raises_with_prompt_metadata(monkeypatch):
     assert metadata is not None
     assert metadata.prompt_id == "inbound_reply.classify"
     assert metadata.status.value in {"failed", "parse_failed"}
+
+
+def test_review_outreach_draft_uses_structured_path(monkeypatch):
+    def fake_chat(system_prompt, user_prompt, role=LLMRole.REVIEWER, format_schema=None):
+        return _ChatCompletion(
+            text=(
+                '{"verdict":"approve","confidence":"high","reasoning":"Bien.",'
+                '"strengths":["claro"],"concerns":[],"suggested_changes":[],'
+                '"revised_subject":null,"revised_body":null}'
+            ),
+            model="qwen3.5:27b",
+            latency_ms=18,
+        )
+
+    monkeypatch.setattr("app.llm.client._chat_completion", fake_chat)
+
+    payload = review_outreach_draft(
+        business_name="Cafe Test",
+        industry="Cafe",
+        city="CABA",
+        website_url="https://example.com",
+        instagram_url=None,
+        llm_summary="Resumen",
+        llm_suggested_angle="SEO",
+        signals=[],
+        subject="Hola",
+        body="Mensaje",
+    )
+
+    assert payload["verdict"] == "approve"
+    assert payload["confidence"] == "high"
+
+
+def test_generate_reply_assistant_draft_uses_structured_fallback(monkeypatch):
+    clear_last_invocation()
+
+    def broken_chat(system_prompt, user_prompt, role=LLMRole.EXECUTOR, format_schema=None):
+        raise RuntimeError("reply assistant unavailable")
+
+    monkeypatch.setattr("app.llm.client._chat_completion", broken_chat)
+
+    payload = generate_reply_assistant_draft(
+        business_name="Test",
+        industry=None,
+        city=None,
+        lead_email=None,
+        classification_label="interested",
+        classification_summary="test",
+        next_action_suggestion="reply",
+        should_escalate_reviewer=False,
+        outbound_subject="Original",
+        outbound_body="Original body",
+        thread_context="Context",
+        from_email="test@example.com",
+        to_email="ops@example.com",
+        subject="Re: Test",
+        body_text="Hola",
+    )
+
+    metadata = pop_last_invocation()
+    assert payload["should_escalate_reviewer"] is True
+    assert metadata is not None
+    assert metadata.prompt_id == "reply_assistant_draft.generate"
+    assert metadata.fallback_used is True
+
+
+def test_review_reply_assistant_draft_uses_structured_path(monkeypatch):
+    def fake_chat(system_prompt, user_prompt, role=LLMRole.REVIEWER, format_schema=None):
+        return _ChatCompletion(
+            text=(
+                '{"summary":"ok","feedback":"bien","suggested_edits":["uno"],'
+                '"recommended_action":"use_as_is","should_use_as_is":true,'
+                '"should_edit":false,"should_escalate":false}'
+            ),
+            model="qwen3.5:27b",
+            latency_ms=22,
+        )
+
+    monkeypatch.setattr("app.llm.client._chat_completion", fake_chat)
+
+    payload = review_reply_assistant_draft(
+        business_name="Test",
+        industry=None,
+        city=None,
+        lead_email=None,
+        classification_label="interested",
+        classification_summary="test",
+        next_action_suggestion="reply",
+        reply_should_escalate_reviewer=False,
+        outbound_subject="Original",
+        outbound_body="Original body",
+        thread_context="Context",
+        from_email="test@example.com",
+        to_email="ops@example.com",
+        subject="Re: Test",
+        body_text="Hola",
+        draft_subject="Asunto",
+        draft_body="Cuerpo",
+        draft_summary="Resumen",
+        suggested_tone="professional",
+    )
+
+    assert payload["recommended_action"] == "use_as_is"
+    assert payload["should_use_as_is"] is True
+
+
+def test_generate_whatsapp_draft_uses_structured_fallback(monkeypatch):
+    clear_last_invocation()
+
+    def broken_chat(system_prompt, user_prompt, role=LLMRole.EXECUTOR, format_schema=None):
+        raise RuntimeError("whatsapp unavailable")
+
+    monkeypatch.setattr("app.llm.client._chat_completion", broken_chat)
+
+    payload = generate_whatsapp_draft(
+        business_name="Cafe Test",
+        industry="Cafe",
+        city="CABA",
+        website_url="https://example.com",
+        instagram_url=None,
+        llm_summary="Resumen",
+        llm_suggested_angle="SEO",
+        signals=[],
+    )
+
+    metadata = pop_last_invocation()
+    assert "Cafe Test" in payload["body"]
+    assert metadata is not None
+    assert metadata.prompt_id == "whatsapp_draft.generate"
+    assert metadata.fallback_used is True
 
 
 def test_review_inbound_reply_structured_fallback(monkeypatch):

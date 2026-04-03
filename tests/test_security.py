@@ -192,12 +192,20 @@ class TestPromptInjectionBoundaries:
         """Reply draft generation must isolate inbound email body from instructions."""
         captured = {}
 
-        def fake_call(system_prompt, user_prompt, role=LLMRole.EXECUTOR):
+        def fake_chat(system_prompt, user_prompt, role=LLMRole.EXECUTOR, format_schema=None):
             captured["system"] = system_prompt
             captured["user"] = user_prompt
-            return '{"subject": "Re: Test", "body": "Thanks", "summary": "reply", "suggested_tone": "professional", "should_escalate_reviewer": false}'
+            return _ChatCompletion(
+                text=(
+                    '{"subject": "Re: Test", "body": "Thanks", '
+                    '"summary": "reply", "suggested_tone": "professional", '
+                    '"should_escalate_reviewer": false}'
+                ),
+                model="qwen3.5:9b",
+                latency_ms=17,
+            )
 
-        monkeypatch.setattr("app.llm.client._call_ollama_chat", fake_call)
+        monkeypatch.setattr("app.llm.client._chat_completion", fake_chat)
 
         generate_reply_assistant_draft(
             business_name="Test",
