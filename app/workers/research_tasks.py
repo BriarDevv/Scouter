@@ -112,11 +112,83 @@ def task_research_lead(
 
             from app.services.research.research_service import run_research
 
+            # Try Scout agent first (deep investigation with tools)
+            scout_result = None
+            try:
+                from app.agent.research_agent import run_scout_investigation
+                from app.services.pipeline.context_service import get_step_context
+
+                # Get analysis context from upstream pipeline
+                analysis_ctx = ""
+                if pipeline_uuid:
+                    ctx = get_step_context(db, pipeline_uuid)
+                    analysis = ctx.get("analysis", {})
+                    analysis_ctx = f"Quality: {analysis.get('quality', '?')}. {analysis.get('reasoning', '')}"
+
+                lead = db.get(Lead, uuid.UUID(lead_id))
+                if lead:
+                    scout_result = run_scout_investigation(
+                        business_name=lead.business_name,
+                        industry=lead.industry,
+                        city=lead.city,
+                        website_url=lead.website_url,
+                        instagram_url=lead.instagram_url,
+                        score=lead.score,
+                        signals=", ".join(s.signal_type for s in lead.signals) if lead.signals else "",
+                        analysis_context=analysis_ctx,
+                    )
+                    logger.info(
+                        "scout_investigation_done",
+                        lead_id=lead_id,
+                        loops=scout_result.loops_used,
+                        duration_ms=scout_result.duration_ms,
+                        has_findings=bool(scout_result.findings),
+                        error=scout_result.error,
+                    )
+
+                    # Store investigation thread for dashboard
+                    from app.models.investigation_thread import InvestigationThread
+                    from app.llm.resolver import resolve_model_for_role
+                    from app.llm.roles import LLMRole
+
+                    thread = InvestigationThread(
+                        lead_id=uuid.UUID(lead_id),
+                        pipeline_run_id=pipeline_uuid,
+                        agent_model=resolve_model_for_role(LLMRole.EXECUTOR) or "unknown",
+                        tool_calls_json=scout_result.tool_calls,
+                        pages_visited_json=scout_result.pages_visited,
+                        findings_json=scout_result.findings,
+                        loops_used=scout_result.loops_used,
+                        duration_ms=scout_result.duration_ms,
+                        error=scout_result.error,
+                    )
+                    db.add(thread)
+                    db.commit()
+            except Exception as scout_exc:
+                logger.warning(
+                    "scout_fallback_to_http",
+                    lead_id=lead_id,
+                    error=str(scout_exc),
+                )
+                scout_result = None
+
+            # Run HTTP research (always — provides base signals and report record)
             report = run_research(db, uuid.UUID(lead_id))
             if not report:
                 error = "Lead not found"
                 tracker.fail(error)
                 return {"status": "not_found", "lead_id": lead_id}
+
+            # Enrich report with Scout findings if available
+            if scout_result and scout_result.findings and not scout_result.error:
+                findings = scout_result.findings
+                if findings.get("opportunity"):
+                    report.business_description = (
+                        (report.business_description or "") + " | Scout: " + findings["opportunity"]
+                    )
+                if findings.get("whatsapp_detected"):
+                    report.whatsapp_detected = True
+                db.commit()
 
             # Generate dossier from research data
             if report.status.value == "completed":

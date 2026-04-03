@@ -147,4 +147,13 @@ def update_lead_status(db: Session, lead_id: uuid.UUID, status: LeadStatus) -> L
         previous_status=previous_status.value,
         status=status.value,
     )
+
+    # Capture outcome snapshot when lead reaches terminal state (WON/LOST)
+    if status in (LeadStatus.WON, LeadStatus.LOST):
+        try:
+            from app.services.pipeline.outcome_tracking_service import capture_outcome_snapshot
+            capture_outcome_snapshot(db, lead.id, status.value)
+        except Exception as exc:
+            logger.warning("outcome_snapshot_failed", lead_id=str(lead.id), error=str(exc))
+
     return lead
