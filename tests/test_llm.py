@@ -11,6 +11,7 @@ from app.llm.client import (
     generate_outreach_draft,
     summarize_business,
 )
+from app.llm.invocation_metadata import clear_last_invocation, pop_last_invocation
 from app.llm.roles import LLMRole
 
 
@@ -142,6 +143,34 @@ def test_public_helpers_default_to_executor_role(monkeypatch):
     assert captured == [LLMRole.EXECUTOR, LLMRole.EXECUTOR]
     assert evaluation["quality"] == "medium"
     assert draft["subject"] == "Hola"
+
+
+def test_generate_outreach_draft_records_fallback_metadata(monkeypatch):
+    clear_last_invocation()
+
+    def broken_call(system_prompt, user_prompt, role=LLMRole.EXECUTOR):
+        raise RuntimeError("ollama unavailable")
+
+    monkeypatch.setattr("app.llm.client._call_ollama_chat", broken_call)
+
+    draft = generate_outreach_draft(
+        business_name="Cafe Test",
+        industry="Cafe",
+        city="CABA",
+        website_url="https://example.com",
+        instagram_url=None,
+        llm_summary="Summary",
+        llm_suggested_angle="SEO",
+        signals=[],
+    )
+    metadata = pop_last_invocation()
+
+    assert draft["subject"].startswith("Propuesta de desarrollo web")
+    assert metadata is not None
+    assert metadata.function_name == "generate_outreach_draft"
+    assert metadata.fallback_used is True
+    assert metadata.degraded is True
+    assert metadata.error == "ollama unavailable"
 
 
 def test_prompt_injection_boundaries(monkeypatch):

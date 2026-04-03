@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text, Uuid, func
+from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Index, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -31,6 +31,7 @@ class OutreachDraft(Base):
     status: Mapped[DraftStatus] = mapped_column(
         Enum(DraftStatus), nullable=False, default=DraftStatus.PENDING_REVIEW
     )
+    generation_metadata_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     generated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

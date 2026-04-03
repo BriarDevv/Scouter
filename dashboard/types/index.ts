@@ -121,6 +121,7 @@ export interface OutreachDraft {
   body: string;
   channel?: string; // "email" | "whatsapp"
   status: DraftStatus;
+  generation_metadata_json?: Record<string, unknown> | null;
   generated_at: string;
   reviewed_at: string | null;
   sent_at: string | null;

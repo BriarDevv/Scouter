@@ -11,6 +11,10 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.llm.invocation_metadata import (
+    LLMInvocationMetadata,
+    record_invocation,
+)
 from app.llm.prompts import (
     CLASSIFY_INBOUND_REPLY_DATA,
     CLASSIFY_INBOUND_REPLY_SYSTEM,
@@ -36,8 +40,8 @@ from app.llm.prompts import (
     SUMMARIZE_BUSINESS_SYSTEM,
 )
 from app.llm.resolver import normalize_role, resolve_model_for_role
-from app.llm.sanitizer import sanitize_field
 from app.llm.roles import LLMRole
+from app.llm.sanitizer import sanitize_field
 
 logger = get_logger(__name__)
 
@@ -101,6 +105,50 @@ def _timeout_for_role(role: LLMRole | str) -> float:
     if normalized_role == LLMRole.AGENT:
         return float(settings.OLLAMA_AGENT_TIMEOUT)
     return float(settings.OLLAMA_TIMEOUT)
+
+
+def _record_public_invocation(
+    function_name: str,
+    role: LLMRole | str,
+    *,
+    fallback_used: bool,
+    degraded: bool,
+    error: str | None = None,
+) -> None:
+    role_value = _role_value(role)
+    try:
+        _, model = _resolve_role_model(role)
+    except Exception:
+        model = None
+
+    record_invocation(
+        LLMInvocationMetadata(
+            function_name=function_name,
+            role=role_value,
+            model=model,
+            fallback_used=fallback_used,
+            degraded=degraded,
+            error=error,
+        )
+    )
+
+    if fallback_used or degraded:
+        logger.warning(
+            "llm_invocation_degraded",
+            function_name=function_name,
+            role=role_value,
+            model=model,
+            fallback_used=fallback_used,
+            degraded=degraded,
+            error=error,
+        )
+    else:
+        logger.debug(
+            "llm_invocation_completed",
+            function_name=function_name,
+            role=role_value,
+            model=model,
+        )
 
 
 @retry(
@@ -189,9 +237,22 @@ def summarize_business(
     try:
         raw = _call_ollama_chat(SUMMARIZE_BUSINESS_SYSTEM, user_prompt, role=role)
         data = _extract_json(raw)
+        _record_public_invocation(
+            "summarize_business",
+            role,
+            fallback_used=False,
+            degraded=False,
+        )
         return data.get("summary", raw)
     except Exception as e:
         logger.error("llm_summarize_failed", role=_role_value(role), error=str(e))
+        _record_public_invocation(
+            "summarize_business",
+            role,
+            fallback_used=True,
+            degraded=True,
+            error=str(e),
+        )
         return f"[LLM unavailable] {business_name} - {industry or 'Unknown industry'} in {city or 'Unknown location'}"
 
 
@@ -225,13 +286,27 @@ def evaluate_lead_quality(
     try:
         raw = _call_ollama_chat(EVALUATE_LEAD_QUALITY_SYSTEM, user_prompt, role=role)
         data = _extract_json(raw)
-        return {
+        result = {
             "quality": data.get("quality", "unknown"),
             "reasoning": data.get("reasoning", "No reasoning provided"),
             "suggested_angle": data.get("suggested_angle", "General web development services"),
         }
+        _record_public_invocation(
+            "evaluate_lead_quality",
+            role,
+            fallback_used=False,
+            degraded=False,
+        )
+        return result
     except Exception as e:
         logger.error("llm_evaluate_failed", role=_role_value(role), error=str(e))
+        _record_public_invocation(
+            "evaluate_lead_quality",
+            role,
+            fallback_used=True,
+            degraded=True,
+            error=str(e),
+        )
         return fallback
 
 
@@ -293,9 +368,22 @@ def generate_outreach_draft(
         body = data.get("body")
         if not subject or not body:
             raise LLMParseError("Missing subject or body in LLM response")
+        _record_public_invocation(
+            "generate_outreach_draft",
+            role,
+            fallback_used=False,
+            degraded=False,
+        )
         return {"subject": subject, "body": body}
     except Exception as e:
         logger.error("llm_outreach_failed", role=_role_value(role), error=str(e))
+        _record_public_invocation(
+            "generate_outreach_draft",
+            role,
+            fallback_used=True,
+            degraded=True,
+            error=str(e),
+        )
         return fallback
 
 
@@ -336,15 +424,29 @@ def review_lead(
     try:
         raw = _call_ollama_chat(REVIEW_LEAD_SYSTEM, user_prompt, role=role)
         data = _extract_json(raw)
-        return {
+        result = {
             "verdict": data.get("verdict", "worth_follow_up"),
             "confidence": data.get("confidence", "medium"),
             "reasoning": data.get("reasoning", "No reasoning provided"),
             "recommended_action": data.get("recommended_action", "Review manually"),
             "watchouts": data.get("watchouts", []) or [],
         }
+        _record_public_invocation(
+            "review_lead",
+            role,
+            fallback_used=False,
+            degraded=False,
+        )
+        return result
     except Exception as e:
         logger.error("llm_review_lead_failed", role=_role_value(role), error=str(e))
+        _record_public_invocation(
+            "review_lead",
+            role,
+            fallback_used=True,
+            degraded=True,
+            error=str(e),
+        )
         return fallback
 
 
@@ -390,7 +492,7 @@ def review_outreach_draft(
     try:
         raw = _call_ollama_chat(REVIEW_OUTREACH_DRAFT_SYSTEM, user_prompt, role=role)
         data = _extract_json(raw)
-        return {
+        result = {
             "verdict": data.get("verdict", "revise"),
             "confidence": data.get("confidence", "medium"),
             "reasoning": data.get("reasoning", "No reasoning provided"),
@@ -400,8 +502,22 @@ def review_outreach_draft(
             "revised_subject": data.get("revised_subject"),
             "revised_body": data.get("revised_body"),
         }
+        _record_public_invocation(
+            "review_outreach_draft",
+            role,
+            fallback_used=False,
+            degraded=False,
+        )
+        return result
     except Exception as e:
         logger.error("llm_review_draft_failed", role=_role_value(role), error=str(e))
+        _record_public_invocation(
+            "review_outreach_draft",
+            role,
+            fallback_used=True,
+            degraded=True,
+            error=str(e),
+        )
         return fallback
 
 
@@ -435,9 +551,23 @@ def classify_inbound_reply(
 
     try:
         raw = _call_ollama_chat(CLASSIFY_INBOUND_REPLY_SYSTEM, user_prompt, role=role)
-        return _extract_json(raw)
+        result = _extract_json(raw)
+        _record_public_invocation(
+            "classify_inbound_reply",
+            role,
+            fallback_used=False,
+            degraded=False,
+        )
+        return result
     except Exception as e:
         logger.error("llm_classify_inbound_failed", role=_role_value(role), error=str(e))
+        _record_public_invocation(
+            "classify_inbound_reply",
+            role,
+            fallback_used=False,
+            degraded=True,
+            error=str(e),
+        )
         raise
 
 
@@ -493,7 +623,7 @@ def review_inbound_reply(
     try:
         raw = _call_ollama_chat(REVIEW_INBOUND_REPLY_SYSTEM, user_prompt, role=role)
         data = _extract_json(raw)
-        return {
+        result = {
             "verdict": data.get("verdict", "consider_reply"),
             "confidence": data.get("confidence", "medium"),
             "reasoning": data.get("reasoning", "No reasoning provided"),
@@ -501,8 +631,22 @@ def review_inbound_reply(
             "suggested_response_angle": data.get("suggested_response_angle"),
             "watchouts": data.get("watchouts", []) or [],
         }
+        _record_public_invocation(
+            "review_inbound_reply",
+            role,
+            fallback_used=False,
+            degraded=False,
+        )
+        return result
     except Exception as e:
         logger.error("llm_review_inbound_failed", role=_role_value(role), error=str(e))
+        _record_public_invocation(
+            "review_inbound_reply",
+            role,
+            fallback_used=True,
+            degraded=True,
+            error=str(e),
+        )
         return fallback
 
 
@@ -580,15 +724,29 @@ def generate_reply_assistant_draft(
         body_value = data.get("body")
         if not subject_value or not body_value:
             raise LLMParseError("Missing subject or body in reply assistant response")
-        return {
+        result = {
             "subject": str(subject_value).strip(),
             "body": str(body_value).strip(),
             "summary": str(data.get("summary", "")).strip() or None,
             "suggested_tone": str(data.get("suggested_tone", "")).strip() or None,
             "should_escalate_reviewer": bool(data.get("should_escalate_reviewer")),
         }
+        _record_public_invocation(
+            "generate_reply_assistant_draft",
+            role,
+            fallback_used=False,
+            degraded=False,
+        )
+        return result
     except Exception as e:
         logger.error("llm_reply_assistant_failed", role=_role_value(role), error=str(e))
+        _record_public_invocation(
+            "generate_reply_assistant_draft",
+            role,
+            fallback_used=True,
+            degraded=True,
+            error=str(e),
+        )
         return fallback
 
 
@@ -658,7 +816,7 @@ def review_reply_assistant_draft(
     try:
         raw = _call_ollama_chat(REVIEW_REPLY_ASSISTANT_DRAFT_SYSTEM, user_prompt, role=role)
         data = _extract_json(raw)
-        return {
+        result = {
             "summary": str(data.get("summary", "")).strip() or fallback["summary"],
             "feedback": str(data.get("feedback", "")).strip() or fallback["feedback"],
             "suggested_edits": [str(item).strip() for item in (data.get("suggested_edits", []) or []) if str(item).strip()],
@@ -667,8 +825,22 @@ def review_reply_assistant_draft(
             "should_edit": bool(data.get("should_edit")),
             "should_escalate": bool(data.get("should_escalate")),
         }
+        _record_public_invocation(
+            "review_reply_assistant_draft",
+            role,
+            fallback_used=False,
+            degraded=False,
+        )
+        return result
     except Exception as e:
         logger.error("llm_review_reply_assistant_failed", role=_role_value(role), error=str(e))
+        _record_public_invocation(
+            "review_reply_assistant_draft",
+            role,
+            fallback_used=True,
+            degraded=True,
+            error=str(e),
+        )
         return fallback
 
 
@@ -709,9 +881,22 @@ def generate_whatsapp_draft(
         body = data.get("body")
         if not body:
             raise LLMParseError("Missing body in WhatsApp draft response")
+        _record_public_invocation(
+            "generate_whatsapp_draft",
+            role,
+            fallback_used=False,
+            degraded=False,
+        )
         return {"body": body}
     except Exception as e:
         logger.error("llm_whatsapp_draft_failed", role=_role_value(role), error=str(e))
+        _record_public_invocation(
+            "generate_whatsapp_draft",
+            role,
+            fallback_used=True,
+            degraded=True,
+            error=str(e),
+        )
         return fallback
 
 
@@ -756,7 +941,7 @@ def generate_dossier(
     try:
         raw = _call_ollama_chat(DOSSIER_SYSTEM, user_prompt, role=role)
         data = _extract_json(raw)
-        return {
+        result = {
             "business_description": data.get(
                 "business_description", fallback["business_description"]
             ),
@@ -769,8 +954,22 @@ def generate_dossier(
                 "overall_assessment", fallback["overall_assessment"]
             ),
         }
+        _record_public_invocation(
+            "generate_dossier",
+            role,
+            fallback_used=False,
+            degraded=False,
+        )
+        return result
     except Exception as e:
         logger.error("llm_dossier_failed", role=_role_value(role), error=str(e))
+        _record_public_invocation(
+            "generate_dossier",
+            role,
+            fallback_used=True,
+            degraded=True,
+            error=str(e),
+        )
         return fallback
 
 
@@ -821,6 +1020,8 @@ def generate_commercial_brief(
         "demo_recommended": False,
     }
 
+    error_message: str | None = None
+
     try:
         raw = _call_ollama_chat(
             COMMERCIAL_BRIEF_SYSTEM, data_prompt, role=role
@@ -832,6 +1033,7 @@ def generate_commercial_brief(
             role=_role_value(role),
             error=str(e),
         )
+        error_message = str(e)
         result = fallback
         result["_is_fallback"] = True
 
@@ -842,4 +1044,11 @@ def generate_commercial_brief(
     _, model = _resolve_role_model(role)
     result["model"] = model
     result.setdefault("_is_fallback", False)
+    _record_public_invocation(
+        "generate_commercial_brief",
+        role,
+        fallback_used=bool(result.get("_is_fallback", False)),
+        degraded=bool(result.get("_is_fallback", False)),
+        error=error_message,
+    )
     return result

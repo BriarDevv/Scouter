@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
+from app.llm.invocation_metadata import clear_last_invocation, pop_last_invocation
 from app.models.lead import Lead, LeadStatus
 from app.models.outreach import DraftStatus, LogAction, OutreachDraft, OutreachLog
 from app.outreach.generator import generate_draft_content
@@ -13,11 +14,21 @@ from app.services.lead_service import is_suppressed
 logger = get_logger(__name__)
 
 
+def _serialize_generation_metadata() -> dict | None:
+    metadata = pop_last_invocation()
+    return metadata.to_dict() if metadata else None
+
+
 def get_draft(db: Session, draft_id: uuid.UUID) -> OutreachDraft | None:
     return db.get(OutreachDraft, draft_id)
 
 
-def generate_outreach_draft(db: Session, lead_id: uuid.UUID) -> OutreachDraft | None:
+def generate_outreach_draft(
+    db: Session,
+    lead_id: uuid.UUID,
+    *,
+    commit: bool = True,
+) -> OutreachDraft | None:
     """Generate an outreach email draft for a lead using LLM."""
     lead = db.get(Lead, lead_id)
     if not lead:
@@ -32,13 +43,16 @@ def generate_outreach_draft(db: Session, lead_id: uuid.UUID) -> OutreachDraft | 
         logger.warning("outreach_blocked_suppressed", lead_id=str(lead_id))
         return None
 
+    clear_last_invocation()
     subject, body = generate_draft_content(lead, db=db)
+    generation_metadata = _serialize_generation_metadata()
 
     draft = OutreachDraft(
         lead_id=lead.id,
         subject=subject,
         body=body,
         status=DraftStatus.PENDING_REVIEW,
+        generation_metadata_json=generation_metadata,
     )
     db.add(draft)
     db.flush()
@@ -49,13 +63,28 @@ def generate_outreach_draft(db: Session, lead_id: uuid.UUID) -> OutreachDraft | 
         draft_id=draft.id,
         action=LogAction.GENERATED,
         actor="system",
+        detail=(
+            "ai_degraded=true; ai_fallback_used=true"
+            if generation_metadata and generation_metadata.get("degraded")
+            else None
+        ),
     ))
 
     lead.status = LeadStatus.DRAFT_READY
-    db.commit()
-    db.refresh(draft)
 
-    logger.info("outreach_draft_generated", lead_id=str(lead_id), draft_id=str(draft.id))
+    if commit:
+        db.commit()
+        db.refresh(draft)
+
+    logger.info(
+        "outreach_draft_generated",
+        lead_id=str(lead_id),
+        draft_id=str(draft.id),
+        ai_fallback_used=(
+            bool(generation_metadata and generation_metadata.get("fallback_used"))
+        ),
+        ai_degraded=bool(generation_metadata and generation_metadata.get("degraded")),
+    )
     return draft
 
 
@@ -164,7 +193,12 @@ def update_draft(
     return draft
 
 
-def generate_whatsapp_draft(db: Session, lead_id: uuid.UUID) -> OutreachDraft | None:
+def generate_whatsapp_draft(
+    db: Session,
+    lead_id: uuid.UUID,
+    *,
+    commit: bool = True,
+) -> OutreachDraft | None:
     """Generate a WhatsApp outreach draft for a lead."""
     lead = db.get(Lead, lead_id)
     if not lead:
@@ -178,7 +212,9 @@ def generate_whatsapp_draft(db: Session, lead_id: uuid.UUID) -> OutreachDraft | 
 
     from app.outreach.generator import generate_whatsapp_draft_content
 
+    clear_last_invocation()
     body = generate_whatsapp_draft_content(lead, db=db)
+    generation_metadata = _serialize_generation_metadata()
 
     draft = OutreachDraft(
         lead_id=lead.id,
@@ -186,6 +222,7 @@ def generate_whatsapp_draft(db: Session, lead_id: uuid.UUID) -> OutreachDraft | 
         subject=None,
         body=body,
         status=DraftStatus.PENDING_REVIEW,
+        generation_metadata_json=generation_metadata,
     )
     db.add(draft)
     db.flush()
@@ -195,11 +232,26 @@ def generate_whatsapp_draft(db: Session, lead_id: uuid.UUID) -> OutreachDraft | 
         draft_id=draft.id,
         action=LogAction.GENERATED,
         actor="system",
+        detail=(
+            "ai_degraded=true; ai_fallback_used=true"
+            if generation_metadata and generation_metadata.get("degraded")
+            else None
+        ),
     ))
 
-    db.commit()
-    db.refresh(draft)
-    logger.info("wa_draft_generated", lead_id=str(lead_id), draft_id=str(draft.id))
+    if commit:
+        db.commit()
+        db.refresh(draft)
+
+    logger.info(
+        "wa_draft_generated",
+        lead_id=str(lead_id),
+        draft_id=str(draft.id),
+        ai_fallback_used=(
+            bool(generation_metadata and generation_metadata.get("fallback_used"))
+        ),
+        ai_degraded=bool(generation_metadata and generation_metadata.get("degraded")),
+    )
     return draft
 
 

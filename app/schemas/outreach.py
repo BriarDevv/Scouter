@@ -15,6 +15,7 @@ class OutreachDraftResponse(BaseModel):
     body: str
     channel: str = "email"
     status: DraftStatus
+    generation_metadata_json: dict | None = None
     generated_at: datetime
     reviewed_at: datetime | None
     sent_at: datetime | None
