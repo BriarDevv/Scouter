@@ -32,6 +32,7 @@ def set_sqlite_pragma(dbapi_conn, connection_record):
 
 @pytest.fixture(scope="session", autouse=True)
 def create_tables():
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
