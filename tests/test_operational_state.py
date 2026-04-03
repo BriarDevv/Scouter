@@ -12,14 +12,19 @@ from app.api.v1.pipelines import (
     start_batch_pipeline,
     stop_batch_pipeline,
 )
+from app.api.v1.scoring import get_rescore_all_status, rescore_all_leads, stop_rescore_all
+from app.models.lead import Lead
 from app.models.task_tracking import TaskRun
 from app.models.territory import Territory
 from app.services.operational_task_service import (
     BATCH_PIPELINE_SCOPE_KEY,
+    RESCORE_ALL_SCOPE_KEY,
     serialize_batch_pipeline_status,
+    serialize_rescore_all_status,
     serialize_territory_crawl_status,
 )
 from app.services.task_tracking_service import get_task_run, request_task_stop
+from app.workers.tasks import task_rescore_all
 
 
 def test_start_batch_pipeline_creates_canonical_task_run(db, monkeypatch):
@@ -204,3 +209,123 @@ def test_request_task_stop_marks_scoped_task_run(db):
     assert stopped is not None
     assert stopped.status == "stopping"
     assert stopped.stop_requested_at is not None
+
+
+def test_start_rescore_all_creates_canonical_task_run(db, monkeypatch):
+    captured: dict[str, object] = {}
+
+    def fake_delay(*args, **kwargs):
+        captured["args"] = args
+        captured["kwargs"] = kwargs
+        return SimpleNamespace(id="rescore-task-001")
+
+    monkeypatch.setattr("app.workers.tasks.task_rescore_all.delay", fake_delay)
+
+    payload = rescore_all_leads(
+        request=SimpleNamespace(state=SimpleNamespace(correlation_id="corr-rescore-001")),
+        db=db,
+    )
+
+    assert payload["task_id"] == "rescore-task-001"
+    assert payload["status"] == "queued"
+    assert payload["correlation_id"] == "corr-rescore-001"
+    assert captured["kwargs"] == {"correlation_id": "corr-rescore-001"}
+
+    task_run = get_task_run(db, "rescore-task-001")
+    assert task_run is not None
+    assert task_run.task_name == "task_rescore_all"
+    assert task_run.scope_key == RESCORE_ALL_SCOPE_KEY
+    assert task_run.current_step == "rescore_dispatch"
+
+
+def test_rescore_all_status_and_stop_use_canonical_task_run(db):
+    task_run = TaskRun(
+        task_id="rescore-task-002",
+        task_name="task_rescore_all",
+        queue="default",
+        scope_key=RESCORE_ALL_SCOPE_KEY,
+        correlation_id="corr-rescore-002",
+        status="running",
+        current_step="rescore_scoring",
+        progress_json={
+            "total": 12,
+            "rescored": 7,
+            "errors": 2,
+            "current_lead_id": "lead-123",
+        },
+    )
+    db.add(task_run)
+    db.commit()
+
+    status_payload = get_rescore_all_status(db=db)
+    assert status_payload["status"] == "running"
+    assert status_payload["task_id"] == "rescore-task-002"
+    assert status_payload["rescored"] == 7
+    assert status_payload["errors"] == 2
+    assert status_payload["current_lead_id"] == "lead-123"
+
+    stop_payload = stop_rescore_all(db=db)
+    assert stop_payload["ok"] is True
+
+    refreshed = get_task_run(db, "rescore-task-002")
+    assert refreshed is not None
+    assert refreshed.status == "stopping"
+    assert refreshed.stop_requested_at is not None
+
+
+def test_serialize_rescore_all_status_maps_terminal_state():
+    task_run = TaskRun(
+        task_id="rescore-task-003",
+        task_name="task_rescore_all",
+        scope_key=RESCORE_ALL_SCOPE_KEY,
+        status="succeeded",
+        progress_json={
+            "total": 5,
+            "rescored": 4,
+            "errors": 1,
+        },
+    )
+
+    payload = serialize_rescore_all_status(task_run)
+
+    assert payload["status"] == "done"
+    assert payload["rescored"] == 4
+    assert payload["errors"] == 1
+
+
+def test_rescore_task_run_persists_canonical_progress(db, monkeypatch):
+    lead_a = Lead(business_name="Lead A", city="Cordoba", score=10)
+    lead_b = Lead(business_name="Lead B", city="Rosario", score=20)
+    db.add_all([lead_a, lead_b])
+    db.commit()
+
+    def fake_score_lead(session, lead_id):
+        lead = session.get(Lead, lead_id)
+        lead.score = (lead.score or 0) + 1
+        session.commit()
+        return lead
+
+    monkeypatch.setattr("app.workers.tasks.score_lead", fake_score_lead)
+    monkeypatch.setattr(
+        "app.workers.tasks.mirror_legacy_operational_state",
+        lambda *args, **kwargs: None,
+    )
+
+    result = task_rescore_all.run(correlation_id="corr-rescore-003")
+
+    assert result["status"] == "done"
+    assert result["rescored"] == 2
+
+    task_run = (
+        db.query(TaskRun)
+        .filter(TaskRun.task_name == "task_rescore_all")
+        .order_by(TaskRun.created_at.desc())
+        .first()
+    )
+    assert task_run is not None
+    assert task_run.scope_key == RESCORE_ALL_SCOPE_KEY
+    assert task_run.status == "succeeded"
+    assert task_run.correlation_id == "corr-rescore-003"
+    assert task_run.progress_json["total"] == 2
+    assert task_run.progress_json["rescored"] == 2
+    assert task_run.progress_json["errors"] == 0
