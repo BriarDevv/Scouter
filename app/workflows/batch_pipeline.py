@@ -7,11 +7,10 @@ from collections.abc import Callable
 
 from app.core.logging import get_logger
 from app.db.session import SessionLocal
-from app.llm.client import evaluate_lead_quality_structured, summarize_business
-from app.llm.roles import LLMRole
 from app.models.lead import Lead
 from app.models.territory import Territory
 from app.services.leads.enrichment_service import enrich_lead
+from app.services.leads.scoring_service import score_lead
 from app.services.pipeline.operational_task_service import (
     BATCH_PIPELINE_REDIS_KEY,
     build_batch_pipeline_progress,
@@ -19,8 +18,11 @@ from app.services.pipeline.operational_task_service import (
     persist_operational_task_state,
     should_stop_operational_task,
 )
-from app.services.outreach.outreach_service import generate_outreach_draft
-from app.services.leads.scoring_service import score_lead
+from app.workflows.lead_pipeline import (
+    run_draft_generation_step,
+    run_high_value_lane_inline,
+    run_lead_analysis_step,
+)
 from app.workflows.territory_crawl import run_territory_crawl_workflow
 
 logger = get_logger(__name__)
@@ -195,101 +197,30 @@ def run_batch_pipeline_workflow(
 
                         db.refresh(lead)
 
-                        summary = summarize_business(
-                            business_name=lead.business_name,
-                            industry=lead.industry,
-                            city=lead.city,
-                            website_url=lead.website_url,
-                            instagram_url=lead.instagram_url,
-                            signals=list(lead.signals),
-                            role=LLMRole.EXECUTOR,
-                        )
-                        lead.llm_summary = summary
-
-                        evaluation = evaluate_lead_quality_structured(
-                            business_name=lead.business_name,
-                            industry=lead.industry,
-                            city=lead.city,
-                            website_url=lead.website_url,
-                            instagram_url=lead.instagram_url,
-                            signals=list(lead.signals),
-                            score=lead.score,
-                            role=LLMRole.EXECUTOR,
-                            target_type="lead",
-                            target_id=str(lead.id),
-                            tags={"workflow": "batch_pipeline"},
-                        )
-                        evaluation_payload = evaluation.parsed
-                        lead.llm_quality_assessment = (
-                            evaluation_payload.reasoning
-                            if evaluation_payload
-                            else "LLM analysis unavailable"
-                        )
-                        lead.llm_suggested_angle = (
-                            evaluation_payload.suggested_angle
-                            if evaluation_payload
-                            else "General web development services"
-                        )
-
-                        raw_quality = (
-                            evaluation_payload.quality.lower().strip()
-                            if evaluation_payload
-                            else "unknown"
-                        )
-                        if raw_quality not in ("high", "medium", "low"):
-                            logger.warning(
-                                "quality_normalized_to_unknown",
-                                lead=lead.business_name,
-                                raw_quality=raw_quality,
-                            )
-                        lead.llm_quality = (
-                            raw_quality
-                            if raw_quality in ("high", "medium", "low")
-                            else "unknown"
+                        analysis = run_lead_analysis_step(
+                            db,
+                            lead,
+                            source_tag="batch_pipeline",
                         )
                         db.commit()
 
-                        if lead.llm_quality == "high":
+                        if analysis.quality == "high":
                             progress["current_step"] = "research"
                             sync_progress(current_step="research")
-                            try:
-                                from app.services.research.research_service import run_research
-
-                                run_research(db, lead.id)
-                            except Exception as res_exc:
-                                logger.warning(
-                                    "batch_research_failed",
-                                    lead=lead.business_name,
-                                    error=str(res_exc),
-                                )
+                            run_high_value_lane_inline(db, lead.id)
 
                             progress["current_step"] = "brief"
                             sync_progress(current_step="brief")
-                            try:
-                                from app.services.research.brief_service import generate_brief
-
-                                generate_brief(db, lead.id)
-                            except Exception as brief_exc:
-                                logger.warning(
-                                    "batch_brief_failed",
-                                    lead=lead.business_name,
-                                    error=str(brief_exc),
-                                )
 
                         progress["current_step"] = "draft"
                         sync_progress(current_step="draft")
-                        if lead.llm_quality == "high" and lead.email:
-                            generate_outreach_draft(db, lead.id)
-                        else:
-                            reason = (
-                                "no_email"
-                                if not lead.email
-                                else f"quality={lead.llm_quality}"
-                            )
+                        draft_result = run_draft_generation_step(db, lead.id)
+                        if draft_result.status != "ok":
                             logger.info(
-                                "batch_draft_skipped",
+                                "batch_draft_step_non_ok",
                                 lead=lead.business_name,
-                                reason=reason,
+                                status=draft_result.status,
+                                reason=draft_result.reason,
                             )
 
                         logger.info(

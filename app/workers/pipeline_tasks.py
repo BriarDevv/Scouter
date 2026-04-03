@@ -6,7 +6,6 @@ from celery.exceptions import SoftTimeLimitExceeded
 
 from app.core.logging import get_logger
 from app.db.session import SessionLocal
-from app.llm.client import evaluate_lead_quality_structured, summarize_business
 from app.llm.roles import LLMRole
 from app.models.lead import Lead
 from app.services.leads.enrichment_service import enrich_lead
@@ -20,11 +19,11 @@ from app.services.pipeline.task_tracking_service import (
     mark_task_succeeded,
 )
 from app.workers.celery_app import celery_app
-from app.workflows.outreach_draft_generation import (
-    run_outreach_draft_automation,
-    run_outreach_draft_generation_workflow,
-    should_generate_outreach_email_draft,
+from app.workflows.lead_pipeline import (
+    run_draft_generation_step,
+    run_lead_analysis_step,
 )
+from app.workflows.outreach_draft_generation import should_generate_outreach_email_draft
 
 logger = get_logger(__name__)
 
@@ -403,61 +402,18 @@ def task_analyze_lead(
                 )
                 return result
 
-            summary = summarize_business(
-                business_name=lead.business_name,
-                industry=lead.industry,
-                city=lead.city,
-                website_url=lead.website_url,
-                instagram_url=lead.instagram_url,
-                signals=list(lead.signals),
+            analysis = run_lead_analysis_step(
+                db,
+                lead,
+                source_tag="task_analyze_lead",
                 role=LLMRole.EXECUTOR,
-            )
-            lead.llm_summary = summary
-
-            evaluation = evaluate_lead_quality_structured(
-                business_name=lead.business_name,
-                industry=lead.industry,
-                city=lead.city,
-                website_url=lead.website_url,
-                instagram_url=lead.instagram_url,
-                signals=list(lead.signals),
-                score=lead.score,
-                role=LLMRole.EXECUTOR,
-                target_type="lead",
-                target_id=lead_id,
-                tags={"task_name": "task_analyze_lead"},
-            )
-            evaluation_payload = evaluation.parsed
-            lead.llm_quality_assessment = (
-                evaluation_payload.reasoning
-                if evaluation_payload
-                else "LLM analysis unavailable"
-            )
-            lead.llm_suggested_angle = (
-                evaluation_payload.suggested_angle
-                if evaluation_payload
-                else "General web development services"
-            )
-            raw_quality = (
-                evaluation_payload.quality.lower().strip()
-                if evaluation_payload
-                else "unknown"
-            )
-            if raw_quality not in ("high", "medium", "low"):
-                logger.warning(
-                    "quality_normalized_to_unknown",
-                    lead=lead.business_name,
-                    raw_quality=raw_quality,
-                )
-            lead.llm_quality = (
-                raw_quality if raw_quality in ("high", "medium", "low") else "unknown"
             )
 
             db.commit()
             result = {
                 "status": "ok",
                 "lead_id": lead_id,
-                "quality": lead.llm_quality,
+                "quality": analysis.quality,
             }
             mark_task_succeeded(
                 db,
@@ -579,10 +535,7 @@ def task_generate_draft(
                 )
                 return {"status": "not_found", "lead_id": lead_id}
 
-            workflow_result = run_outreach_draft_generation_workflow(
-                db,
-                uuid.UUID(lead_id),
-            )
+            workflow_result = run_draft_generation_step(db, uuid.UUID(lead_id))
             result = workflow_result.to_payload()
 
             if workflow_result.status == "not_found":
@@ -604,12 +557,6 @@ def task_generate_draft(
                     pipeline_run_id=pipeline_uuid,
                 )
                 return result
-
-            if workflow_result.status == "ok" and workflow_result.draft_id:
-                run_outreach_draft_automation(
-                    db,
-                    uuid.UUID(workflow_result.draft_id),
-                )
 
             mark_task_succeeded(
                 db,
