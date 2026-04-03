@@ -1,4 +1,6 @@
 import uuid
+from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 import structlog
@@ -38,6 +40,100 @@ def bind_tracking_context(
 
 def clear_tracking_context() -> None:
     structlog.contextvars.clear_contextvars()
+
+
+@dataclass(slots=True)
+class TrackedTaskStepHandle:
+    db: Session
+    task_id: str
+    current_step: str
+    pipeline_run_id: uuid.UUID | None = None
+
+    def succeed(
+        self,
+        result: dict | None = None,
+        *,
+        current_step: str | None = None,
+        pipeline_status: str | None = None,
+    ) -> TaskRun | None:
+        return mark_task_succeeded(
+            self.db,
+            task_id=self.task_id,
+            result=result,
+            current_step=current_step or self.current_step,
+            pipeline_run_id=self.pipeline_run_id,
+            pipeline_status=pipeline_status,
+        )
+
+    def fail(
+        self,
+        error: str,
+        *,
+        current_step: str | None = None,
+    ) -> TaskRun | None:
+        return mark_task_failed(
+            self.db,
+            task_id=self.task_id,
+            error=error,
+            current_step=current_step or self.current_step,
+            pipeline_run_id=self.pipeline_run_id,
+        )
+
+    def retry(
+        self,
+        error: str,
+        *,
+        current_step: str | None = None,
+    ) -> TaskRun | None:
+        return mark_task_retrying(
+            self.db,
+            task_id=self.task_id,
+            error=error,
+            current_step=current_step or self.current_step,
+            pipeline_run_id=self.pipeline_run_id,
+        )
+
+
+@contextmanager
+def tracked_task_step(
+    db: Session,
+    *,
+    task_id: str,
+    task_name: str,
+    queue: str | None,
+    current_step: str,
+    lead_id: uuid.UUID | None = None,
+    pipeline_run_id: uuid.UUID | None = None,
+    correlation_id: str | None = None,
+    scope_key: str | None = None,
+):
+    bind_tracking_context(
+        lead_id=str(lead_id) if lead_id else None,
+        task_id=task_id,
+        pipeline_run_id=str(pipeline_run_id) if pipeline_run_id else None,
+        correlation_id=correlation_id,
+        current_step=current_step,
+    )
+    mark_task_running(
+        db,
+        task_id=task_id,
+        task_name=task_name,
+        queue=queue,
+        lead_id=lead_id,
+        pipeline_run_id=pipeline_run_id,
+        correlation_id=correlation_id,
+        scope_key=scope_key,
+        current_step=current_step,
+    )
+    try:
+        yield TrackedTaskStepHandle(
+            db=db,
+            task_id=task_id,
+            current_step=current_step,
+            pipeline_run_id=pipeline_run_id,
+        )
+    finally:
+        clear_tracking_context()
 
 
 def create_pipeline_run(

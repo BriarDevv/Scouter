@@ -5,11 +5,8 @@ import uuid
 from app.core.logging import get_logger
 from app.db.session import SessionLocal
 from app.services.pipeline.task_tracking_service import (
-    bind_tracking_context,
-    clear_tracking_context,
     mark_task_failed,
-    mark_task_running,
-    mark_task_succeeded,
+    tracked_task_step,
 )
 from app.workers.celery_app import celery_app
 
@@ -42,22 +39,16 @@ def task_generate_brief(
     pipeline_uuid = _pipeline_uuid(pipeline_run_id)
 
     try:
-        with SessionLocal() as db:
-            bind_tracking_context(
-                lead_id=lead_id,
-                task_id=task_id,
-                pipeline_run_id=pipeline_run_id,
-                current_step="brief_generation",
-            )
-            mark_task_running(
-                db,
-                task_id=task_id,
-                task_name="task_generate_brief",
-                queue=queue,
-                lead_id=uuid.UUID(lead_id),
-                pipeline_run_id=pipeline_uuid,
-                current_step="brief_generation",
-            )
+        with SessionLocal() as db, tracked_task_step(
+            db,
+            task_id=task_id,
+            task_name="task_generate_brief",
+            queue=queue,
+            lead_id=uuid.UUID(lead_id),
+            pipeline_run_id=pipeline_uuid,
+            correlation_id=correlation_id,
+            current_step="brief_generation",
+        ) as tracker:
 
             from app.services.research.brief_service import generate_brief
 
@@ -68,13 +59,7 @@ def task_generate_brief(
                     "lead_id": lead_id,
                     "opportunity_score": brief.opportunity_score,
                 }
-                mark_task_succeeded(
-                    db,
-                    task_id=task_id,
-                    result=result,
-                    current_step="brief_generation",
-                    pipeline_run_id=pipeline_uuid,
-                )
+                tracker.succeed(result)
                 logger.info(
                     "task_generate_brief_done",
                     lead_id=lead_id,
@@ -91,16 +76,10 @@ def task_generate_brief(
                         error=str(chain_exc),
                     )
                 return result
-            else:
-                error_msg = brief.error if brief else "Lead not found"
-                mark_task_failed(
-                    db,
-                    task_id=task_id,
-                    error=error_msg or "unknown",
-                    current_step="brief_generation",
-                    pipeline_run_id=pipeline_uuid,
-                )
-                return {"status": "failed", "lead_id": lead_id, "error": error_msg}
+
+            error_msg = brief.error if brief else "Lead not found"
+            tracker.fail(error_msg or "unknown")
+            return {"status": "failed", "lead_id": lead_id, "error": error_msg}
     except Exception as exc:
         with SessionLocal() as db:
             mark_task_failed(
@@ -112,8 +91,6 @@ def task_generate_brief(
             )
         logger.error("task_generate_brief_error", lead_id=lead_id, error=str(exc))
         raise self.retry(exc=exc, countdown=30) from exc
-    finally:
-        clear_tracking_context()
 
 
 @celery_app.task(
@@ -133,22 +110,16 @@ def task_review_brief(
     pipeline_uuid = _pipeline_uuid(pipeline_run_id)
 
     try:
-        with SessionLocal() as db:
-            bind_tracking_context(
-                lead_id=lead_id,
-                task_id=task_id,
-                pipeline_run_id=pipeline_run_id,
-                current_step="brief_review",
-            )
-            mark_task_running(
-                db,
-                task_id=task_id,
-                task_name="task_review_brief",
-                queue=queue,
-                lead_id=uuid.UUID(lead_id),
-                pipeline_run_id=pipeline_uuid,
-                current_step="brief_review",
-            )
+        with SessionLocal() as db, tracked_task_step(
+            db,
+            task_id=task_id,
+            task_name="task_review_brief",
+            queue=queue,
+            lead_id=uuid.UUID(lead_id),
+            pipeline_run_id=pipeline_uuid,
+            correlation_id=correlation_id,
+            current_step="brief_review",
+        ) as tracker:
 
             from app.models.commercial_brief import BriefStatus, CommercialBrief
 
@@ -161,13 +132,7 @@ def task_review_brief(
                     "lead_id": lead_id,
                     "reason": "no_generated_brief",
                 }
-                mark_task_succeeded(
-                    db,
-                    task_id=task_id,
-                    result=result,
-                    current_step="brief_review",
-                    pipeline_run_id=pipeline_uuid,
-                )
+                tracker.succeed(result)
                 return result
 
             from app.llm.client import review_commercial_brief_structured
@@ -197,6 +162,7 @@ def task_review_brief(
             review_payload = review_result.parsed
 
             from datetime import UTC, datetime
+
             brief.reviewer_model = review_result.model
             brief.reviewed_at = datetime.now(UTC)
             if review_payload and review_payload.approved:
@@ -208,17 +174,12 @@ def task_review_brief(
                 "lead_id": lead_id,
                 "approved": review_payload.approved if review_payload else None,
             }
-            mark_task_succeeded(
-                db,
-                task_id=task_id,
-                result=result,
-                current_step="brief_review",
-                pipeline_run_id=pipeline_uuid,
-            )
+            tracker.succeed(result)
 
             # Chain to draft generation (pipeline finalized there)
             if pipeline_uuid:
                 from app.workers.tasks import task_generate_draft
+
                 task_generate_draft.delay(lead_id, pipeline_run_id)
                 logger.info(
                     "draft_chained_from_brief_review",
@@ -239,5 +200,3 @@ def task_review_brief(
             )
         logger.error("task_review_brief_error", lead_id=lead_id, error=str(exc))
         raise self.retry(exc=exc, countdown=60) from exc
-    finally:
-        clear_tracking_context()
