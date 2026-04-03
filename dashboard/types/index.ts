@@ -862,3 +862,70 @@ export interface CommercialBrief {
 
 // ─── Runtime mode ──────────────────────────────────────────────────
 export type RuntimeMode = "safe" | "assisted" | "auto";
+
+// ─── Agent OS: Pipeline Context ─────────────────────────────────────
+
+export interface StepContext {
+  enrichment?: { signals: string[]; email_found: boolean; website_exists: boolean; instagram_exists: boolean };
+  scoring?: { score: number; signal_count: number };
+  analysis?: { quality: string; reasoning: string; suggested_angle: string; summary: string | null };
+  scout?: { pages_visited: PageVisit[]; findings: Record<string, unknown>; loops_used: number; duration_ms: number };
+  research?: { status: string; website_exists: boolean; whatsapp_detected: boolean; signals: unknown[] | null; business_description: string | null };
+  brief?: { opportunity_score: number | null; budget_tier: string | null; estimated_scope: string | null; recommended_contact_method: string | null; recommended_angle: string | null; why_this_lead_matters: string | null };
+  brief_review?: { approved: boolean | null; verdict_reasoning: string | null };
+}
+
+export interface PageVisit {
+  url: string;
+  title: string | null;
+  status_code: number | null;
+}
+
+// ─── Agent OS: Investigation Threads ────────────────────────────────
+
+export interface ToolCallRecord {
+  name: string;
+  arguments: Record<string, unknown>;
+  result: Record<string, unknown>;
+  duration_ms: number;
+  timestamp: number;
+}
+
+export interface InvestigationThread {
+  id: string;
+  lead_id: string;
+  agent_model: string;
+  tool_calls: ToolCallRecord[];
+  pages_visited: PageVisit[];
+  findings: Record<string, unknown>;
+  loops_used: number;
+  duration_ms: number;
+  error: string | null;
+  created_at: string | null;
+}
+
+// ─── Agent OS: Review Corrections ───────────────────────────────────
+
+export interface ReviewCorrectionSummary {
+  category: string;
+  count: number;
+  recent_examples: string[];
+}
+
+// ─── Agent OS: Outcome Analytics ────────────────────────────────────
+
+export interface OutcomeAnalytics {
+  total_won: number;
+  total_lost: number;
+  by_industry: { industry: string; won: number; lost: number }[];
+  by_quality: { quality: string; won: number; lost: number }[];
+  top_signals_won: { signal: string; count: number }[];
+}
+
+export interface SignalCorrelation {
+  signal: string;
+  won: number;
+  lost: number;
+  total: number;
+  win_rate: number;
+}

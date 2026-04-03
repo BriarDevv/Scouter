@@ -45,6 +45,11 @@ import type {
   ChatConversationDetail,
   LeadResearchReport,
   CommercialBrief,
+  StepContext,
+  InvestigationThread,
+  ReviewCorrectionSummary,
+  OutcomeAnalytics,
+  SignalCorrelation,
 } from "@/types";
 import { API_BASE_URL } from "@/lib/constants";
 
@@ -696,4 +701,36 @@ export function getExportUrl(format: "csv" | "json" | "xlsx", params?: { status?
 
 export async function setRuntimeMode(mode: string): Promise<OperationalSettings> {
   return apiFetch<OperationalSettings>(`/settings/runtime-mode?mode=${mode}`, { method: "POST" });
+}
+
+// ─── Agent OS: Pipeline Context ─────────────────────────────────────
+
+export async function getPipelineContext(pipelineRunId: string): Promise<StepContext> {
+  return apiFetch<StepContext>(`/pipelines/runs/${pipelineRunId}/context`);
+}
+
+// ─── Agent OS: Investigations ───────────────────────────────────────
+
+export async function getInvestigation(leadId: string): Promise<InvestigationThread | null> {
+  try {
+    return await apiFetch<InvestigationThread>(`/performance/investigations/${leadId}`);
+  } catch {
+    return null;
+  }
+}
+
+// ─── Agent OS: Review Corrections ───────────────────────────────────
+
+export async function getCorrectionsSummary(days: number = 30): Promise<ReviewCorrectionSummary[]> {
+  return apiFetch<ReviewCorrectionSummary[]>(`/reviews/corrections/summary?days=${days}`);
+}
+
+// ─── Agent OS: Outcome Analytics ────────────────────────────────────
+
+export async function getOutcomeAnalytics(): Promise<OutcomeAnalytics> {
+  return apiFetch<OutcomeAnalytics>("/performance/outcomes");
+}
+
+export async function getSignalCorrelations(): Promise<SignalCorrelation[]> {
+  return apiFetch<SignalCorrelation[]>("/performance/outcomes/signals");
 }
