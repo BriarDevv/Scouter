@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     OLLAMA_AGENT_TIMEOUT: int = 180
     OLLAMA_MAX_RETRIES: int = 3
 
+    # Resource mode — for machines without dedicated GPU (e.g., laptop with 16GB RAM)
+    # When true: single Celery queue, concurrency=1, sequential model loading
+    LOW_RESOURCE_MODE: bool = False
+
     # Crawling
     CRAWLER_RATE_LIMIT_PER_SECOND: float = 1.0
     CRAWLER_TIMEOUT: int = 15

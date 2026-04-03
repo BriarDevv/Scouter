@@ -8,6 +8,25 @@ celery_app = Celery(
     backend=settings.CELERY_RESULT_BACKEND,
 )
 
+# Queue routing: separate queues for different workloads (full resource mode)
+_TASK_ROUTES_FULL = {
+    "app.workers.tasks.task_enrich_lead": {"queue": "enrichment"},
+    "app.workers.tasks.task_score_lead": {"queue": "scoring"},
+    "app.workers.tasks.task_generate_draft": {"queue": "llm"},
+    "app.workers.tasks.task_analyze_lead": {"queue": "llm"},
+    "app.workers.tasks.task_review_lead": {"queue": "reviewer"},
+    "app.workers.tasks.task_review_draft": {"queue": "reviewer"},
+    "app.workers.tasks.task_review_inbound_message": {"queue": "reviewer"},
+    "app.workers.tasks.task_review_reply_assistant_draft": {"queue": "reviewer"},
+    "app.workers.tasks.task_crawl_territory": {"queue": "default"},
+    "app.workers.tasks.task_research_lead": {"queue": "research"},
+    "app.workers.brief_tasks.task_generate_brief": {"queue": "llm"},
+    "app.workers.brief_tasks.task_review_brief": {"queue": "reviewer"},
+}
+
+# Low resource mode: all tasks on single queue, one at a time, one model loaded
+_low_resource = settings.LOW_RESOURCE_MODE
+
 celery_app.conf.update(
     task_serializer="json",
     accept_content=["json"],
@@ -22,26 +41,15 @@ celery_app.conf.update(
     # Timeouts — prevent tasks from hanging indefinitely
     task_soft_time_limit=300,   # 5 min soft limit (raises SoftTimeLimitExceeded)
     task_time_limit=360,        # 6 min hard kill
-    # Routing: separate queues for different workloads
-    task_routes={
-        "app.workers.tasks.task_enrich_lead": {"queue": "enrichment"},
-        "app.workers.tasks.task_score_lead": {"queue": "scoring"},
-        "app.workers.tasks.task_generate_draft": {"queue": "llm"},
-        "app.workers.tasks.task_analyze_lead": {"queue": "llm"},
-        "app.workers.tasks.task_review_lead": {"queue": "reviewer"},
-        "app.workers.tasks.task_review_draft": {"queue": "reviewer"},
-        "app.workers.tasks.task_review_inbound_message": {"queue": "reviewer"},
-        "app.workers.tasks.task_review_reply_assistant_draft": {"queue": "reviewer"},
-        "app.workers.tasks.task_crawl_territory": {"queue": "default"},
-        "app.workers.tasks.task_research_lead": {"queue": "research"},
-        "app.workers.brief_tasks.task_generate_brief": {"queue": "llm"},
-        "app.workers.brief_tasks.task_review_brief": {"queue": "reviewer"},
-    },
+    # Routing: merge all queues in low resource mode
+    task_routes={} if _low_resource else _TASK_ROUTES_FULL,
     # Default queue for unmatched tasks
     task_default_queue="default",
+    # Concurrency: 1 worker in low resource mode to avoid loading multiple models
+    worker_concurrency=1 if _low_resource else None,
     # Worker stability — prevent memory leaks from long-running processes
     worker_max_tasks_per_child=200,
-    worker_prefetch_multiplier=2,
+    worker_prefetch_multiplier=1 if _low_resource else 2,
     # Beat schedule — periodic maintenance
     beat_schedule={
         "sweep-stale-tasks": {
