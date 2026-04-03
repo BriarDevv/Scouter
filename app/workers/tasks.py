@@ -17,11 +17,19 @@ from app.models.outreach import OutreachDraft
 from app.services.enrichment_service import enrich_lead
 from app.services.operational_settings_service import get_cached_settings
 from app.services.operational_task_service import (
+    BATCH_PIPELINE_REDIS_KEY,
     BATCH_PIPELINE_SCOPE_KEY,
     RESCORE_ALL_REDIS_KEY,
     RESCORE_ALL_SCOPE_KEY,
+    build_batch_pipeline_progress,
     build_rescore_all_progress,
+    build_territory_crawl_progress,
+    mirror_batch_pipeline_state,
     mirror_legacy_operational_state,
+    mirror_territory_crawl_state,
+    persist_operational_task_state,
+    should_stop_operational_task,
+    territory_crawl_redis_key,
 )
 from app.services.reply_draft_review_service import (
     mark_reply_assistant_review_failed,
@@ -1063,16 +1071,11 @@ def task_batch_pipeline(self, status_filter: str = "new", correlation_id: str | 
 
     Canonical progress is tracked in TaskRun and mirrored to Redis for compatibility.
     """
-    from redis import Redis
-
-    from app.core.config import settings as env
     from app.services.enrichment_service import enrich_lead
     from app.services.outreach_service import generate_outreach_draft as _generate_draft
     from app.services.scoring_service import score_lead
 
-    redis = Redis.from_url(env.REDIS_URL)
-    redis_key = "pipeline:batch"
-    task_id = str(self.request.id)
+    task_id = _request_task_id(self.request)
     queue = _queue_name(self.request, "default")
 
     from app.models.territory import Territory
@@ -1081,43 +1084,7 @@ def task_batch_pipeline(self, status_filter: str = "new", correlation_id: str | 
     total_errors = 0
     crawl_rounds = 0
 
-    progress = {
-        "status": "running",
-        "task_id": task_id,
-        "total": 0,
-        "processed": 0,
-        "current_lead": None,
-        "current_step": "",
-        "errors": 0,
-        "crawl_rounds": 0,
-        "leads_from_crawl": 0,
-    }
-
-    def persist_progress(
-        *,
-        status: str | None = None,
-        current_step: str | None = None,
-        error: str | None = None,
-        clear_error: bool = False,
-        finished: bool = False,
-        result: dict | None = None,
-        stop_requested: bool | None = None,
-    ) -> None:
-        if current_step is not None:
-            progress["current_step"] = current_step
-        with SessionLocal() as state_db:
-            update_task_run(
-                state_db,
-                task_id,
-                status=status,
-                current_step=progress.get("current_step"),
-                progress_json=progress,
-                result=result,
-                error=error,
-                clear_error=clear_error,
-                finished=finished,
-                stop_requested=stop_requested,
-            )
+    progress = build_batch_pipeline_progress(task_id=task_id)
 
     try:
         with SessionLocal() as db:
@@ -1135,35 +1102,29 @@ def task_batch_pipeline(self, status_filter: str = "new", correlation_id: str | 
                 scope_key=BATCH_PIPELINE_SCOPE_KEY,
                 current_step="batch_dispatch",
             )
-        persist_progress(current_step="batch_dispatch", clear_error=True)
+        persist_operational_task_state(
+            task_id,
+            current_step="batch_dispatch",
+            progress_json=progress,
+            clear_error=True,
+        )
 
         while True:
-            # Check canonical stop signal first, then legacy Redis state.
-            with SessionLocal() as db:
-                if is_task_stop_requested(db, task_id):
-                    progress["status"] = "stopped"
-                    redis.set(redis_key, _json.dumps(progress), ex=3600)
-                    persist_progress(
-                        status="stopped",
-                        current_step=progress.get("current_step"),
-                        finished=True,
-                    )
-                    logger.info("batch_pipeline_stopped_by_user")
-                    return {"status": "stopped", "task_id": task_id}
-
-            current = redis.get(redis_key)
-            if current:
-                cur_data = _json.loads(current)
-                if cur_data.get("status") == "stopping":
-                    progress["status"] = "stopped"
-                    redis.set(redis_key, _json.dumps(progress), ex=3600)
-                    persist_progress(
-                        status="stopped",
-                        current_step=progress.get("current_step"),
-                        finished=True,
-                    )
-                    logger.info("batch_pipeline_stopped_by_user")
-                    return
+            if should_stop_operational_task(
+                task_id=task_id,
+                redis_key=BATCH_PIPELINE_REDIS_KEY,
+            ):
+                progress["status"] = "stopped"
+                mirror_batch_pipeline_state(progress)
+                persist_operational_task_state(
+                    task_id,
+                    current_step=progress.get("current_step"),
+                    progress_json=progress,
+                    status="stopped",
+                    finished=True,
+                )
+                logger.info("batch_pipeline_stopped_by_user")
+                return {"status": "stopped", "task_id": task_id}
 
             territory_info = None
             with SessionLocal() as db:
@@ -1185,8 +1146,13 @@ def task_batch_pipeline(self, status_filter: str = "new", correlation_id: str | 
                 crawl_rounds += 1
                 progress["current_step"] = "crawling"
                 progress["current_lead"] = f"Crawling {territory_name} (ronda {crawl_rounds})"
-                redis.set(redis_key, _json.dumps(progress), ex=3600)
-                persist_progress(current_step="crawling")
+                progress["crawl_rounds"] = crawl_rounds
+                mirror_batch_pipeline_state(progress)
+                persist_operational_task_state(
+                    task_id,
+                    current_step="crawling",
+                    progress_json=progress,
+                )
                 logger.info("batch_auto_crawl", territory=territory_name, round=crawl_rounds)
 
                 try:
@@ -1201,8 +1167,12 @@ def task_batch_pipeline(self, status_filter: str = "new", correlation_id: str | 
                     logger.error("batch_auto_crawl_failed", territory=territory_name, round=crawl_rounds, error=str(crawl_exc))
                     total_errors += 1
                     progress["errors"] = total_errors
-                    redis.set(redis_key, _json.dumps(progress), ex=3600)
-                    persist_progress(current_step="crawling")
+                    mirror_batch_pipeline_state(progress)
+                    persist_operational_task_state(
+                        task_id,
+                        current_step="crawling",
+                        progress_json=progress,
+                    )
                     continue
 
                 with SessionLocal() as db:
@@ -1211,7 +1181,12 @@ def task_batch_pipeline(self, status_filter: str = "new", correlation_id: str | 
 
                 progress["leads_from_crawl"] = progress.get("leads_from_crawl", 0) + len(lead_ids)
                 progress["crawl_rounds"] = crawl_rounds
-                persist_progress(current_step="crawling")
+                mirror_batch_pipeline_state(progress)
+                persist_operational_task_state(
+                    task_id,
+                    current_step="crawling",
+                    progress_json=progress,
+                )
                 logger.info("batch_post_crawl", new_leads=len(lead_ids), round=crawl_rounds)
 
                 if not lead_ids:
@@ -1223,49 +1198,39 @@ def task_batch_pipeline(self, status_filter: str = "new", correlation_id: str | 
             # Process this batch of leads
             batch_total = len(lead_ids)
             progress["total"] = total_processed + batch_total
-            redis.set(redis_key, _json.dumps(progress), ex=3600)
-            persist_progress(current_step=progress.get("current_step"))
+            mirror_batch_pipeline_state(progress)
+            persist_operational_task_state(
+                task_id,
+                current_step=progress.get("current_step"),
+                progress_json=progress,
+            )
 
             for idx, lead_id in enumerate(lead_ids):
-                # Check canonical stop signal between leads, then Redis fallback.
-                with SessionLocal() as db:
-                    if is_task_stop_requested(db, task_id):
-                        progress["status"] = "stopped"
-                        redis.set(redis_key, _json.dumps(progress), ex=3600)
-                        persist_progress(
-                            status="stopped",
-                            current_step=progress.get("current_step"),
-                            finished=True,
-                        )
-                        logger.info("batch_pipeline_stopped_by_user")
-                        return {"status": "stopped", "task_id": task_id}
-
-                current = redis.get(redis_key)
-                if not current:
+                if should_stop_operational_task(
+                    task_id=task_id,
+                    redis_key=BATCH_PIPELINE_REDIS_KEY,
+                    treat_missing_legacy_as_stop=True,
+                ):
                     progress["status"] = "stopped"
-                    persist_progress(
-                        status="stopped",
+                    mirror_batch_pipeline_state(progress)
+                    persist_operational_task_state(
+                        task_id,
                         current_step=progress.get("current_step"),
+                        progress_json=progress,
+                        status="stopped",
                         finished=True,
                     )
                     logger.info("batch_pipeline_stopped_by_user")
-                    return
-                cur_data = _json.loads(current)
-                if cur_data.get("status") == "stopping":
-                    progress["status"] = "stopped"
-                    redis.set(redis_key, _json.dumps(progress), ex=3600)
-                    persist_progress(
-                        status="stopped",
-                        current_step=progress.get("current_step"),
-                        finished=True,
-                    )
-                    logger.info("batch_pipeline_stopped_by_user")
-                    return
+                    return {"status": "stopped", "task_id": task_id}
 
                 progress["processed"] = total_processed + idx
                 progress["current_step"] = "enrichment"
-                redis.set(redis_key, _json.dumps(progress), ex=3600)
-                persist_progress(current_step="enrichment")
+                mirror_batch_pipeline_state(progress)
+                persist_operational_task_state(
+                    task_id,
+                    current_step="enrichment",
+                    progress_json=progress,
+                )
 
                 try:
                     with SessionLocal() as db:
@@ -1273,22 +1238,34 @@ def task_batch_pipeline(self, status_filter: str = "new", correlation_id: str | 
                         if not lead:
                             continue
                         progress["current_lead"] = lead.business_name
-                        redis.set(redis_key, _json.dumps(progress), ex=3600)
-                        persist_progress(current_step="enrichment")
+                        mirror_batch_pipeline_state(progress)
+                        persist_operational_task_state(
+                            task_id,
+                            current_step="enrichment",
+                            progress_json=progress,
+                        )
 
                         # Step 1: Enrich
                         enrich_lead(db, lead.id)
 
                         # Step 2: Score
                         progress["current_step"] = "scoring"
-                        redis.set(redis_key, _json.dumps(progress), ex=3600)
-                        persist_progress(current_step="scoring")
+                        mirror_batch_pipeline_state(progress)
+                        persist_operational_task_state(
+                            task_id,
+                            current_step="scoring",
+                            progress_json=progress,
+                        )
                         score_lead(db, lead.id)
 
                         # Step 3: LLM Analysis
                         progress["current_step"] = "analysis"
-                        redis.set(redis_key, _json.dumps(progress), ex=3600)
-                        persist_progress(current_step="analysis")
+                        mirror_batch_pipeline_state(progress)
+                        persist_operational_task_state(
+                            task_id,
+                            current_step="analysis",
+                            progress_json=progress,
+                        )
 
                         db.refresh(lead)
                         from app.llm.client import evaluate_lead_quality, summarize_business
@@ -1326,8 +1303,12 @@ def task_batch_pipeline(self, status_filter: str = "new", correlation_id: str | 
                         # Step 4: HIGH lane — research + brief
                         if lead.llm_quality == "high":
                             progress["current_step"] = "research"
-                            redis.set(redis_key, _json.dumps(progress), ex=3600)
-                            persist_progress(current_step="research")
+                            mirror_batch_pipeline_state(progress)
+                            persist_operational_task_state(
+                                task_id,
+                                current_step="research",
+                                progress_json=progress,
+                            )
                             try:
                                 from app.services.research_service import run_research
                                 run_research(db, lead.id)
@@ -1339,8 +1320,12 @@ def task_batch_pipeline(self, status_filter: str = "new", correlation_id: str | 
                                 )
 
                             progress["current_step"] = "brief"
-                            redis.set(redis_key, _json.dumps(progress), ex=3600)
-                            persist_progress(current_step="brief")
+                            mirror_batch_pipeline_state(progress)
+                            persist_operational_task_state(
+                                task_id,
+                                current_step="brief",
+                                progress_json=progress,
+                            )
                             try:
                                 from app.services.brief_service import generate_brief
                                 generate_brief(db, lead.id)
@@ -1353,8 +1338,12 @@ def task_batch_pipeline(self, status_filter: str = "new", correlation_id: str | 
 
                         # Step 5: Generate draft (only for high quality with email)
                         progress["current_step"] = "draft"
-                        redis.set(redis_key, _json.dumps(progress), ex=3600)
-                        persist_progress(current_step="draft")
+                        mirror_batch_pipeline_state(progress)
+                        persist_operational_task_state(
+                            task_id,
+                            current_step="draft",
+                            progress_json=progress,
+                        )
                         if lead.llm_quality == "high" and lead.email:
                             _generate_draft(db, lead.id)
                         else:
@@ -1373,9 +1362,11 @@ def task_batch_pipeline(self, status_filter: str = "new", correlation_id: str | 
                 except Exception as exc:
                     total_errors += 1
                     progress["errors"] = total_errors
-                    persist_progress(
+                    mirror_batch_pipeline_state(progress)
+                    persist_operational_task_state(
+                        task_id,
                         current_step=progress.get("current_step"),
-                        error=None,
+                        progress_json=progress,
                     )
                     logger.error("batch_pipeline_lead_error", lead_id=str(lead_id), error=str(exc))
 
@@ -1387,10 +1378,12 @@ def task_batch_pipeline(self, status_filter: str = "new", correlation_id: str | 
         progress["total"] = total_processed
         progress["current_lead"] = None
         progress["current_step"] = ""
-        redis.set(redis_key, _json.dumps(progress), ex=3600)
-        persist_progress(
-            status="succeeded",
+        mirror_batch_pipeline_state(progress)
+        persist_operational_task_state(
+            task_id,
             current_step="completed",
+            progress_json=progress,
+            status="succeeded",
             clear_error=True,
             finished=True,
             result={
@@ -1405,19 +1398,17 @@ def task_batch_pipeline(self, status_filter: str = "new", correlation_id: str | 
         return {"status": "done", "task_id": task_id, "total": total_processed, "errors": total_errors}
 
     except Exception as exc:
-        redis.set(redis_key, _json.dumps({
-            "status": "error", "task_id": task_id, "error": str(exc),
-        }), ex=3600)
-        with SessionLocal() as db:
-            update_task_run(
-                db,
-                task_id,
-                status="failed",
-                current_step=progress.get("current_step"),
-                progress_json=progress,
-                error=str(exc),
-                finished=True,
-            )
+        mirror_batch_pipeline_state(
+            {"status": "error", "task_id": task_id, "error": str(exc)}
+        )
+        persist_operational_task_state(
+            task_id,
+            current_step=progress.get("current_step"),
+            progress_json=progress,
+            status="failed",
+            error=str(exc),
+            finished=True,
+        )
         logger.error("batch_pipeline_error", error=str(exc))
         raise
     finally:
@@ -1632,57 +1623,17 @@ def task_crawl_territory(
     correlation_id: str | None = None,
 ):
     """Crawl Google Maps for all cities in a territory."""
-    from redis import Redis
-
-    from app.core.config import settings as env
     from app.crawlers.google_maps_crawler import GoogleMapsCrawler
     from app.models.lead_source import LeadSource, SourceType
     from app.models.territory import Territory
     from app.schemas.lead import LeadCreate
     from app.services.lead_service import _compute_dedup_hash, create_lead
 
-    redis = Redis.from_url(env.REDIS_URL)
-    redis_key = f"crawl:territory:{territory_id}"
-    task_id = str(self.request.id)
+    redis_key = territory_crawl_redis_key(territory_id)
+    task_id = _request_task_id(self.request)
     queue = _queue_name(self.request, "default")
 
-    progress: dict = {
-        "status": "running",
-        "task_id": task_id,
-        "territory": None,
-        "total_cities": 0,
-        "current_city_idx": 0,
-        "current_city": "",
-        "leads_found": 0,
-        "leads_created": 0,
-        "leads_skipped": 0,
-    }
-
-    def persist_progress(
-        *,
-        status: str | None = None,
-        current_step: str | None = None,
-        error: str | None = None,
-        clear_error: bool = False,
-        finished: bool = False,
-        result: dict | None = None,
-        stop_requested: bool | None = None,
-    ) -> None:
-        if current_step is not None:
-            progress["current_step"] = current_step
-        with SessionLocal() as db:
-            update_task_run(
-                db,
-                task_id,
-                status=status,
-                current_step=progress.get("current_step"),
-                progress_json=progress,
-                result=result,
-                error=error,
-                clear_error=clear_error,
-                finished=finished,
-                stop_requested=stop_requested,
-            )
+    progress = build_territory_crawl_progress(task_id=task_id)
 
     try:
         with SessionLocal() as db:
@@ -1705,10 +1656,15 @@ def task_crawl_territory(
         with SessionLocal() as db:
             territory = db.get(Territory, uuid.UUID(territory_id))
             if not territory:
-                redis.set(redis_key, _json.dumps({"status": "error", "error": "Territorio no encontrado"}), ex=3600)
-                persist_progress(
-                    status="failed",
+                mirror_territory_crawl_state(
+                    territory_id,
+                    {"status": "error", "error": "Territorio no encontrado"},
+                )
+                persist_operational_task_state(
+                    task_id,
                     current_step="crawl_init",
+                    progress_json=progress,
+                    status="failed",
                     error="Territorio no encontrado",
                     finished=True,
                 )
@@ -1717,10 +1673,15 @@ def task_crawl_territory(
             cities = list(territory.cities or [])
             territory_name = territory.name
             if not cities:
-                redis.set(redis_key, _json.dumps({"status": "error", "error": "El territorio no tiene ciudades"}), ex=3600)
-                persist_progress(
-                    status="failed",
+                mirror_territory_crawl_state(
+                    territory_id,
+                    {"status": "error", "error": "El territorio no tiene ciudades"},
+                )
+                persist_operational_task_state(
+                    task_id,
                     current_step="crawl_init",
+                    progress_json=progress,
+                    status="failed",
                     error="El territorio no tiene ciudades",
                     finished=True,
                 )
@@ -1736,45 +1697,32 @@ def task_crawl_territory(
 
         progress["territory"] = territory_name
         progress["total_cities"] = len(cities)
-        persist_progress(current_step="crawl_init", clear_error=True)
+        persist_operational_task_state(
+            task_id,
+            current_step="crawl_init",
+            progress_json=progress,
+            clear_error=True,
+        )
 
         crawler = GoogleMapsCrawler()
         total_found = 0
         total_created = 0
         total_dup = 0
-        redis.set(redis_key, _json.dumps(progress), ex=3600)
+        mirror_territory_crawl_state(territory_id, progress)
 
         for idx, city in enumerate(cities):
-            # Check canonical stop first, then legacy Redis state.
-            with SessionLocal() as db:
-                if is_task_stop_requested(db, task_id):
-                    progress["status"] = "stopped"
-                    redis.set(redis_key, _json.dumps(progress), ex=3600)
-                    persist_progress(
-                        status="stopped",
-                        current_step=progress.get("current_step"),
-                        finished=True,
-                    )
-                    logger.info("territory_crawl_stopped_by_user", territory=territory_name)
-                    return
-
-            current = redis.get(redis_key)
-            if not current:
+            if should_stop_operational_task(
+                task_id=task_id,
+                redis_key=redis_key,
+                treat_missing_legacy_as_stop=True,
+            ):
                 progress["status"] = "stopped"
-                persist_progress(
-                    status="stopped",
+                mirror_territory_crawl_state(territory_id, progress)
+                persist_operational_task_state(
+                    task_id,
                     current_step=progress.get("current_step"),
-                    finished=True,
-                )
-                logger.info("territory_crawl_stopped_by_user", territory=territory_name)
-                return
-            cur_data = _json.loads(current)
-            if cur_data.get("status") == "stopping":
-                progress["status"] = "stopped"
-                redis.set(redis_key, _json.dumps(progress), ex=3600)
-                persist_progress(
+                    progress_json=progress,
                     status="stopped",
-                    current_step=progress.get("current_step"),
                     finished=True,
                 )
                 logger.info("territory_crawl_stopped_by_user", territory=territory_name)
@@ -1782,8 +1730,13 @@ def task_crawl_territory(
 
             progress["current_city_idx"] = idx + 1
             progress["current_city"] = city
-            redis.set(redis_key, _json.dumps(progress), ex=3600)
-            persist_progress(current_step="crawling")
+            progress["current_step"] = "crawling"
+            mirror_territory_crawl_state(territory_id, progress)
+            persist_operational_task_state(
+                task_id,
+                current_step="crawling",
+                progress_json=progress,
+            )
 
             try:
                 raw_leads = crawler.crawl(
@@ -1836,14 +1789,20 @@ def task_crawl_territory(
             progress["leads_found"] = total_found
             progress["leads_created"] = total_created
             progress["leads_skipped"] = total_dup
-            redis.set(redis_key, _json.dumps(progress), ex=3600)
-            persist_progress(current_step="crawling")
+            mirror_territory_crawl_state(territory_id, progress)
+            persist_operational_task_state(
+                task_id,
+                current_step="crawling",
+                progress_json=progress,
+            )
 
         progress["status"] = "done"
-        redis.set(redis_key, _json.dumps(progress), ex=3600)
-        persist_progress(
-            status="succeeded",
+        mirror_territory_crawl_state(territory_id, progress)
+        persist_operational_task_state(
+            task_id,
             current_step="completed",
+            progress_json=progress,
+            status="succeeded",
             clear_error=True,
             finished=True,
             result={
@@ -1866,17 +1825,18 @@ def task_crawl_territory(
             skipped=total_dup,
         )
     except Exception as exc:
-        redis.set(redis_key, _json.dumps({"status": "error", "error": str(exc)}), ex=3600)
-        with SessionLocal() as db:
-            update_task_run(
-                db,
-                task_id,
-                status="failed",
-                current_step=progress.get("current_step"),
-                progress_json=progress,
-                error=str(exc),
-                finished=True,
-            )
+        mirror_territory_crawl_state(
+            territory_id,
+            {"status": "error", "error": str(exc)},
+        )
+        persist_operational_task_state(
+            task_id,
+            current_step=progress.get("current_step"),
+            progress_json=progress,
+            status="failed",
+            error=str(exc),
+            finished=True,
+        )
         logger.error("territory_crawl_error", territory_id=territory_id, error=str(exc))
         raise
     finally:
