@@ -15,6 +15,7 @@ from app.models.inbound_mail import InboundMessage
 from app.models.lead import Lead
 from app.models.outreach import OutreachDraft
 from app.services.enrichment_service import enrich_lead
+from app.services.operational_task_service import BATCH_PIPELINE_SCOPE_KEY
 from app.services.operational_settings_service import get_cached_settings
 from app.services.reply_draft_review_service import (
     mark_reply_assistant_review_failed,
@@ -29,10 +30,12 @@ from app.services.scoring_service import score_lead
 from app.services.task_tracking_service import (
     bind_tracking_context,
     clear_tracking_context,
+    get_task_run,
     mark_task_failed,
     mark_task_retrying,
     mark_task_running,
     mark_task_succeeded,
+    update_task_run,
 )
 from app.workers.celery_app import celery_app
 from app.workflows.outreach_draft_generation import (
@@ -55,6 +58,39 @@ def _queue_name(request, fallback: str) -> str:
 
 def _pipeline_uuid(pipeline_run_id: str | None) -> uuid.UUID | None:
     return uuid.UUID(pipeline_run_id) if pipeline_run_id else None
+
+
+def _request_task_id(request) -> str:
+    request_id = getattr(request, "id", None)
+    return str(request_id or uuid.uuid4())
+
+
+def _task_stop_requested(db, task_id: str) -> bool:
+    task_run = get_task_run(db, task_id)
+    return bool(task_run and task_run.stop_requested_at is not None)
+
+
+def _update_operational_task_progress(
+    db,
+    *,
+    task_id: str,
+    current_step: str | None = None,
+    progress: dict | None = None,
+    status: str | None = None,
+    error: str | None = None,
+    clear_error: bool = False,
+    finished: bool = False,
+) -> None:
+    update_task_run(
+        db,
+        task_id,
+        status=status,
+        current_step=current_step,
+        progress_json=progress,
+        error=error,
+        clear_error=clear_error,
+        finished=finished,
+    )
 
 
 def _track_failure(
@@ -115,7 +151,7 @@ def task_enrich_lead(
     correlation_id: str | None = None,
 ) -> dict:
     """Async task: enrich a lead with website analysis and signals."""
-    task_id = str(self.request.id)
+    task_id = _request_task_id(self.request)
     queue = _queue_name(self.request, "enrichment")
     pipeline_uuid = _pipeline_uuid(pipeline_run_id)
 
@@ -220,7 +256,7 @@ def task_score_lead(
     correlation_id: str | None = None,
 ) -> dict:
     """Async task: score a lead based on signals."""
-    task_id = str(self.request.id)
+    task_id = _request_task_id(self.request)
     queue = _queue_name(self.request, "scoring")
     pipeline_uuid = _pipeline_uuid(pipeline_run_id)
 
@@ -1044,10 +1080,10 @@ def task_full_pipeline(
 # ── Batch pipeline task ──────────────────────────────────────────────
 
 @celery_app.task(name="app.workers.tasks.task_batch_pipeline", bind=True, max_retries=0, soft_time_limit=7200, time_limit=7500)
-def task_batch_pipeline(self, status_filter: str = "new"):
+def task_batch_pipeline(self, status_filter: str = "new", correlation_id: str | None = None):
     """Process ALL leads with the given status through the full pipeline, one by one.
 
-    Progress is tracked in Redis so the frontend can poll and the user can stop.
+    Canonical progress is tracked in TaskRun and mirrored to Redis for compatibility.
     """
     from redis import Redis
 
@@ -1059,6 +1095,7 @@ def task_batch_pipeline(self, status_filter: str = "new"):
     redis = Redis.from_url(env.REDIS_URL)
     redis_key = "pipeline:batch"
     task_id = str(self.request.id)
+    queue = _queue_name(self.request, "default")
 
     from app.models.territory import Territory
 
@@ -1078,15 +1115,75 @@ def task_batch_pipeline(self, status_filter: str = "new"):
         "leads_from_crawl": 0,
     }
 
+    def persist_progress(
+        *,
+        status: str | None = None,
+        current_step: str | None = None,
+        error: str | None = None,
+        clear_error: bool = False,
+        finished: bool = False,
+        result: dict | None = None,
+        stop_requested: bool | None = None,
+    ) -> None:
+        if current_step is not None:
+            progress["current_step"] = current_step
+        with SessionLocal() as state_db:
+            update_task_run(
+                state_db,
+                task_id,
+                status=status,
+                current_step=progress.get("current_step"),
+                progress_json=progress,
+                result=result,
+                error=error,
+                clear_error=clear_error,
+                finished=finished,
+                stop_requested=stop_requested,
+            )
+
     try:
+        with SessionLocal() as db:
+            bind_tracking_context(
+                task_id=task_id,
+                correlation_id=correlation_id,
+                current_step="batch_dispatch",
+            )
+            mark_task_running(
+                db,
+                task_id=task_id,
+                task_name="task_batch_pipeline",
+                queue=queue,
+                correlation_id=correlation_id,
+                scope_key=BATCH_PIPELINE_SCOPE_KEY,
+                current_step="batch_dispatch",
+            )
+        persist_progress(current_step="batch_dispatch", clear_error=True)
+
         while True:
-            # Check stop signal
+            # Check canonical stop signal first, then legacy Redis state.
+            with SessionLocal() as db:
+                if _task_stop_requested(db, task_id):
+                    progress["status"] = "stopped"
+                    redis.set(redis_key, _json.dumps(progress), ex=3600)
+                    persist_progress(
+                        status="stopped",
+                        current_step=progress.get("current_step"),
+                        finished=True,
+                    )
+                    logger.info("batch_pipeline_stopped_by_user")
+                    return {"status": "stopped", "task_id": task_id}
+
             current = redis.get(redis_key)
             if current:
                 cur_data = _json.loads(current)
                 if cur_data.get("status") == "stopping":
                     progress["status"] = "stopped"
                     redis.set(redis_key, _json.dumps(progress), ex=3600)
+                    persist_progress(
+                        status="stopped",
+                        current_step=progress.get("current_step"),
+                        finished=True,
+                    )
                     logger.info("batch_pipeline_stopped_by_user")
                     return
 
@@ -1111,6 +1208,7 @@ def task_batch_pipeline(self, status_filter: str = "new"):
                 progress["current_step"] = "crawling"
                 progress["current_lead"] = f"Crawling {territory_name} (ronda {crawl_rounds})"
                 redis.set(redis_key, _json.dumps(progress), ex=3600)
+                persist_progress(current_step="crawling")
                 logger.info("batch_auto_crawl", territory=territory_name, round=crawl_rounds)
 
                 try:
@@ -1119,12 +1217,14 @@ def task_batch_pipeline(self, status_filter: str = "new"):
                         categories=None,
                         only_without_website=False,
                         max_results_per_category=20,
+                        correlation_id=correlation_id,
                     )
                 except Exception as crawl_exc:
                     logger.error("batch_auto_crawl_failed", territory=territory_name, round=crawl_rounds, error=str(crawl_exc))
                     total_errors += 1
                     progress["errors"] = total_errors
                     redis.set(redis_key, _json.dumps(progress), ex=3600)
+                    persist_progress(current_step="crawling")
                     continue
 
                 with SessionLocal() as db:
@@ -1133,6 +1233,7 @@ def task_batch_pipeline(self, status_filter: str = "new"):
 
                 progress["leads_from_crawl"] = progress.get("leads_from_crawl", 0) + len(lead_ids)
                 progress["crawl_rounds"] = crawl_rounds
+                persist_progress(current_step="crawling")
                 logger.info("batch_post_crawl", new_leads=len(lead_ids), round=crawl_rounds)
 
                 if not lead_ids:
@@ -1145,23 +1246,48 @@ def task_batch_pipeline(self, status_filter: str = "new"):
             batch_total = len(lead_ids)
             progress["total"] = total_processed + batch_total
             redis.set(redis_key, _json.dumps(progress), ex=3600)
+            persist_progress(current_step=progress.get("current_step"))
 
             for idx, lead_id in enumerate(lead_ids):
-                # Check stop signal between leads
+                # Check canonical stop signal between leads, then Redis fallback.
+                with SessionLocal() as db:
+                    if _task_stop_requested(db, task_id):
+                        progress["status"] = "stopped"
+                        redis.set(redis_key, _json.dumps(progress), ex=3600)
+                        persist_progress(
+                            status="stopped",
+                            current_step=progress.get("current_step"),
+                            finished=True,
+                        )
+                        logger.info("batch_pipeline_stopped_by_user")
+                        return {"status": "stopped", "task_id": task_id}
+
                 current = redis.get(redis_key)
                 if not current:
+                    progress["status"] = "stopped"
+                    persist_progress(
+                        status="stopped",
+                        current_step=progress.get("current_step"),
+                        finished=True,
+                    )
                     logger.info("batch_pipeline_stopped_by_user")
                     return
                 cur_data = _json.loads(current)
                 if cur_data.get("status") == "stopping":
                     progress["status"] = "stopped"
                     redis.set(redis_key, _json.dumps(progress), ex=3600)
+                    persist_progress(
+                        status="stopped",
+                        current_step=progress.get("current_step"),
+                        finished=True,
+                    )
                     logger.info("batch_pipeline_stopped_by_user")
                     return
 
                 progress["processed"] = total_processed + idx
                 progress["current_step"] = "enrichment"
                 redis.set(redis_key, _json.dumps(progress), ex=3600)
+                persist_progress(current_step="enrichment")
 
                 try:
                     with SessionLocal() as db:
@@ -1170,6 +1296,7 @@ def task_batch_pipeline(self, status_filter: str = "new"):
                             continue
                         progress["current_lead"] = lead.business_name
                         redis.set(redis_key, _json.dumps(progress), ex=3600)
+                        persist_progress(current_step="enrichment")
 
                         # Step 1: Enrich
                         enrich_lead(db, lead.id)
@@ -1177,11 +1304,13 @@ def task_batch_pipeline(self, status_filter: str = "new"):
                         # Step 2: Score
                         progress["current_step"] = "scoring"
                         redis.set(redis_key, _json.dumps(progress), ex=3600)
+                        persist_progress(current_step="scoring")
                         score_lead(db, lead.id)
 
                         # Step 3: LLM Analysis
                         progress["current_step"] = "analysis"
                         redis.set(redis_key, _json.dumps(progress), ex=3600)
+                        persist_progress(current_step="analysis")
 
                         db.refresh(lead)
                         from app.llm.client import evaluate_lead_quality, summarize_business
@@ -1220,6 +1349,7 @@ def task_batch_pipeline(self, status_filter: str = "new"):
                         if lead.llm_quality == "high":
                             progress["current_step"] = "research"
                             redis.set(redis_key, _json.dumps(progress), ex=3600)
+                            persist_progress(current_step="research")
                             try:
                                 from app.services.research_service import run_research
                                 run_research(db, lead.id)
@@ -1232,6 +1362,7 @@ def task_batch_pipeline(self, status_filter: str = "new"):
 
                             progress["current_step"] = "brief"
                             redis.set(redis_key, _json.dumps(progress), ex=3600)
+                            persist_progress(current_step="brief")
                             try:
                                 from app.services.brief_service import generate_brief
                                 generate_brief(db, lead.id)
@@ -1245,6 +1376,7 @@ def task_batch_pipeline(self, status_filter: str = "new"):
                         # Step 5: Generate draft (only for high quality with email)
                         progress["current_step"] = "draft"
                         redis.set(redis_key, _json.dumps(progress), ex=3600)
+                        persist_progress(current_step="draft")
                         if lead.llm_quality == "high" and lead.email:
                             _generate_draft(db, lead.id)
                         else:
@@ -1263,6 +1395,10 @@ def task_batch_pipeline(self, status_filter: str = "new"):
                 except Exception as exc:
                     total_errors += 1
                     progress["errors"] = total_errors
+                    persist_progress(
+                        current_step=progress.get("current_step"),
+                        error=None,
+                    )
                     logger.error("batch_pipeline_lead_error", lead_id=str(lead_id), error=str(exc))
 
             total_processed += batch_total
@@ -1274,13 +1410,40 @@ def task_batch_pipeline(self, status_filter: str = "new"):
         progress["current_lead"] = None
         progress["current_step"] = ""
         redis.set(redis_key, _json.dumps(progress), ex=3600)
+        persist_progress(
+            status="succeeded",
+            current_step="completed",
+            clear_error=True,
+            finished=True,
+            result={
+                "status": "done",
+                "task_id": task_id,
+                "total": total_processed,
+                "errors": total_errors,
+            },
+            stop_requested=False,
+        )
         logger.info("batch_pipeline_done", total=total_processed, errors=total_errors, crawl_rounds=crawl_rounds)
+        return {"status": "done", "task_id": task_id, "total": total_processed, "errors": total_errors}
 
     except Exception as exc:
         redis.set(redis_key, _json.dumps({
             "status": "error", "task_id": task_id, "error": str(exc),
         }), ex=3600)
+        with SessionLocal() as db:
+            update_task_run(
+                db,
+                task_id,
+                status="failed",
+                current_step=progress.get("current_step"),
+                progress_json=progress,
+                error=str(exc),
+                finished=True,
+            )
         logger.error("batch_pipeline_error", error=str(exc))
+        raise
+    finally:
+        clear_tracking_context()
 
 
 # ── Re-score task ─────────────────────────────────────────────────────
@@ -1343,6 +1506,7 @@ def task_crawl_territory(
     only_without_website: bool = False,
     max_results_per_category: int = 20,
     target_leads: int = 50,
+    correlation_id: str | None = None,
 ):
     """Crawl Google Maps for all cities in a territory."""
     from redis import Redis
@@ -1356,19 +1520,87 @@ def task_crawl_territory(
 
     redis = Redis.from_url(env.REDIS_URL)
     redis_key = f"crawl:territory:{territory_id}"
+    task_id = str(self.request.id)
+    queue = _queue_name(self.request, "default")
+
+    progress: dict = {
+        "status": "running",
+        "task_id": task_id,
+        "territory": None,
+        "total_cities": 0,
+        "current_city_idx": 0,
+        "current_city": "",
+        "leads_found": 0,
+        "leads_created": 0,
+        "leads_skipped": 0,
+    }
+
+    def persist_progress(
+        *,
+        status: str | None = None,
+        current_step: str | None = None,
+        error: str | None = None,
+        clear_error: bool = False,
+        finished: bool = False,
+        result: dict | None = None,
+        stop_requested: bool | None = None,
+    ) -> None:
+        if current_step is not None:
+            progress["current_step"] = current_step
+        with SessionLocal() as db:
+            update_task_run(
+                db,
+                task_id,
+                status=status,
+                current_step=progress.get("current_step"),
+                progress_json=progress,
+                result=result,
+                error=error,
+                clear_error=clear_error,
+                finished=finished,
+                stop_requested=stop_requested,
+            )
 
     try:
+        with SessionLocal() as db:
+            bind_tracking_context(
+                task_id=task_id,
+                correlation_id=correlation_id,
+                current_step="crawl_init",
+            )
+            mark_task_running(
+                db,
+                task_id=task_id,
+                task_name="task_crawl_territory",
+                queue=queue,
+                correlation_id=correlation_id,
+                scope_key=territory_id,
+                current_step="crawl_init",
+            )
+
         # Load territory metadata and ensure source exists in a short-lived session
         with SessionLocal() as db:
             territory = db.get(Territory, uuid.UUID(territory_id))
             if not territory:
                 redis.set(redis_key, _json.dumps({"status": "error", "error": "Territorio no encontrado"}), ex=3600)
+                persist_progress(
+                    status="failed",
+                    current_step="crawl_init",
+                    error="Territorio no encontrado",
+                    finished=True,
+                )
                 return
 
             cities = list(territory.cities or [])
             territory_name = territory.name
             if not cities:
                 redis.set(redis_key, _json.dumps({"status": "error", "error": "El territorio no tiene ciudades"}), ex=3600)
+                persist_progress(
+                    status="failed",
+                    current_step="crawl_init",
+                    error="El territorio no tiene ciudades",
+                    finished=True,
+                )
                 return
 
             source = db.query(LeadSource).filter(LeadSource.name == "google_maps").first()
@@ -1379,41 +1611,56 @@ def task_crawl_territory(
                 db.refresh(source)
             source_id = source.id
 
+        progress["territory"] = territory_name
+        progress["total_cities"] = len(cities)
+        persist_progress(current_step="crawl_init", clear_error=True)
+
         crawler = GoogleMapsCrawler()
         total_found = 0
         total_created = 0
         total_dup = 0
-        task_id = str(self.request.id)
-
-        progress = {
-            "status": "running",
-            "task_id": task_id,
-            "territory": territory_name,
-            "total_cities": len(cities),
-            "current_city_idx": 0,
-            "current_city": "",
-            "leads_found": 0,
-            "leads_created": 0,
-            "leads_skipped": 0,
-        }
         redis.set(redis_key, _json.dumps(progress), ex=3600)
 
         for idx, city in enumerate(cities):
-            # Check if stop was requested
+            # Check canonical stop first, then legacy Redis state.
+            with SessionLocal() as db:
+                if _task_stop_requested(db, task_id):
+                    progress["status"] = "stopped"
+                    redis.set(redis_key, _json.dumps(progress), ex=3600)
+                    persist_progress(
+                        status="stopped",
+                        current_step=progress.get("current_step"),
+                        finished=True,
+                    )
+                    logger.info("territory_crawl_stopped_by_user", territory=territory_name)
+                    return
+
             current = redis.get(redis_key)
             if not current:
+                progress["status"] = "stopped"
+                persist_progress(
+                    status="stopped",
+                    current_step=progress.get("current_step"),
+                    finished=True,
+                )
                 logger.info("territory_crawl_stopped_by_user", territory=territory_name)
                 return
             cur_data = _json.loads(current)
             if cur_data.get("status") == "stopping":
                 progress["status"] = "stopped"
                 redis.set(redis_key, _json.dumps(progress), ex=3600)
+                persist_progress(
+                    status="stopped",
+                    current_step=progress.get("current_step"),
+                    finished=True,
+                )
                 logger.info("territory_crawl_stopped_by_user", territory=territory_name)
                 return
 
             progress["current_city_idx"] = idx + 1
             progress["current_city"] = city
             redis.set(redis_key, _json.dumps(progress), ex=3600)
+            persist_progress(current_step="crawling")
 
             try:
                 raw_leads = crawler.crawl(
@@ -1467,9 +1714,25 @@ def task_crawl_territory(
             progress["leads_created"] = total_created
             progress["leads_skipped"] = total_dup
             redis.set(redis_key, _json.dumps(progress), ex=3600)
+            persist_progress(current_step="crawling")
 
         progress["status"] = "done"
         redis.set(redis_key, _json.dumps(progress), ex=3600)
+        persist_progress(
+            status="succeeded",
+            current_step="completed",
+            clear_error=True,
+            finished=True,
+            result={
+                "status": "done",
+                "task_id": task_id,
+                "territory": territory_name,
+                "found": total_found,
+                "created": total_created,
+                "skipped": total_dup,
+            },
+            stop_requested=False,
+        )
 
         logger.info(
             "territory_crawl_done",
@@ -1481,7 +1744,20 @@ def task_crawl_territory(
         )
     except Exception as exc:
         redis.set(redis_key, _json.dumps({"status": "error", "error": str(exc)}), ex=3600)
+        with SessionLocal() as db:
+            update_task_run(
+                db,
+                task_id,
+                status="failed",
+                current_step=progress.get("current_step"),
+                progress_json=progress,
+                error=str(exc),
+                finished=True,
+            )
         logger.error("territory_crawl_error", territory_id=territory_id, error=str(exc))
+        raise
+    finally:
+        clear_tracking_context()
 
 
 @celery_app.task(

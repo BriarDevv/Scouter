@@ -7,6 +7,11 @@ from sqlalchemy.orm import Session
 
 from app.agent.tool_registry import ToolDefinition, ToolParameter, registry
 from app.core.config import settings as env
+from app.services.operational_task_service import (
+    get_territory_crawl_task_run,
+    serialize_territory_crawl_status,
+)
+from app.services.task_tracking_service import queue_task_run
 
 
 def start_territory_crawl(
@@ -27,48 +32,70 @@ def start_territory_crawl(
     if not territory:
         return {"error": "Territorio no encontrado"}
 
+    existing = get_territory_crawl_task_run(db, territory_id)
+    if existing and existing.status in {"queued", "running", "retrying", "stopping"}:
+        return {
+            "status": "already_running",
+            "territory_name": territory.name,
+            "progress": serialize_territory_crawl_status(existing),
+        }
+
     from redis import Redis
 
-    redis = Redis.from_url(env.REDIS_URL)
-    redis_key = f"crawl:territory:{territory_id}"
-    existing = redis.get(redis_key)
-    if existing:
-        data = _json.loads(existing)
-        if data.get("status") == "running":
+    try:
+        redis = Redis.from_url(env.REDIS_URL)
+        redis_key = f"crawl:territory:{territory_id}"
+        legacy = redis.get(redis_key)
+    except Exception:
+        legacy = None
+    if legacy:
+        data = _json.loads(legacy)
+        if data.get("status") in {"running", "stopping"}:
             return {
                 "status": "already_running",
                 "territory_name": territory.name,
+                "progress": data,
             }
 
     from app.workers.tasks import task_crawl_territory
 
-    task_crawl_territory.delay(
+    correlation_id = str(uuid.uuid4())
+    task = task_crawl_territory.delay(
         territory_id=territory_id,
         max_results_per_category=max_results,
+        correlation_id=correlation_id,
     )
-
-    redis.set(
-        redis_key,
-        _json.dumps({
-            "status": "running",
-            "territory": territory.name,
-        }),
-        ex=3600,
+    queue_task_run(
+        db,
+        task_id=str(task.id),
+        task_name="task_crawl_territory",
+        queue="default",
+        correlation_id=correlation_id,
+        scope_key=territory_id,
+        current_step="crawl_dispatch",
     )
 
     return {
         "status": "started",
         "territory_name": territory.name,
+        "task_id": str(task.id),
     }
 
 
 def get_crawl_status(db: Session, *, territory_id: str) -> dict:
     """Check the crawl progress for a territory."""
+    task_run = get_territory_crawl_task_run(db, territory_id)
+    if task_run:
+        return serialize_territory_crawl_status(task_run)
+
     from redis import Redis
 
-    redis = Redis.from_url(env.REDIS_URL)
-    redis_key = f"crawl:territory:{territory_id}"
-    data = redis.get(redis_key)
+    try:
+        redis = Redis.from_url(env.REDIS_URL)
+        redis_key = f"crawl:territory:{territory_id}"
+        data = redis.get(redis_key)
+    except Exception:
+        data = None
     if not data:
         return {"status": "idle"}
     return _json.loads(data)

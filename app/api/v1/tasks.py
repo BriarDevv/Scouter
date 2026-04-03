@@ -1,5 +1,5 @@
-from datetime import UTC, datetime, timedelta
 import uuid
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -12,7 +12,7 @@ from app.workers.celery_app import celery_app
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 STALE_THRESHOLD = timedelta(minutes=10)
-ACTIVE_STATUSES = {"running", "queued", "started", "pending", "retrying"}
+ACTIVE_STATUSES = {"running", "queued", "started", "pending", "retrying", "stopping"}
 
 
 def _merge_task_view(db: Session, task_run) -> TaskStatusResponse:
@@ -52,12 +52,15 @@ def _merge_task_view(db: Session, task_run) -> TaskStatusResponse:
         pipeline_run_id=task_run.pipeline_run_id,
         current_step=current_step,
         correlation_id=task_run.correlation_id,
+        scope_key=task_run.scope_key,
+        progress_json=task_run.progress_json,
         result=result,
         error=error,
         created_at=task_run.created_at,
         updated_at=updated_at,
         started_at=started_at,
         finished_at=finished_at,
+        stop_requested_at=task_run.stop_requested_at,
     )
 
 

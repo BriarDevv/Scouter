@@ -13,7 +13,7 @@ logger = get_logger(__name__)
 
 STALE_THRESHOLD = timedelta(minutes=10)
 PIPELINE_STALE_THRESHOLD = timedelta(minutes=15)
-ACTIVE_STATUSES = ("running", "queued", "retrying")
+ACTIVE_STATUSES = ("running", "queued", "retrying", "stopping")
 
 
 def sweep_stale_tasks(session_factory=None) -> dict:

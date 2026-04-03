@@ -263,12 +263,15 @@ export interface TaskResponse {
 
 export interface TaskStatusRecord extends TaskResponse {
   correlation_id?: string | null;
+  scope_key?: string | null;
+  progress_json?: Record<string, unknown> | null;
   result?: Record<string, unknown> | null;
   error?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
   started_at?: string | null;
   finished_at?: string | null;
+  stop_requested_at?: string | null;
 }
 
 export interface PipelineRunSummary {
