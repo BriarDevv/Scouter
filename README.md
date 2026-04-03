@@ -1,6 +1,6 @@
 # ClawScout
 
-ClawScout is a modular-monolith lead prospecting platform for web development services.
+ClawScout is a modular-monolith lead prospecting platform.
 It crawls businesses, enriches and scores leads, runs AI-assisted research and outreach flows,
 and exposes an operational dashboard for human-in-the-loop execution.
 
@@ -10,15 +10,63 @@ and exposes an operational dashboard for human-in-the-loop execution.
 - AI coding agents: start with [AGENTS.md](AGENTS.md).
 - Frontend-only work: see [dashboard/README.md](dashboard/README.md) after this file.
 
+## Repo Snapshot
+
+| Metric | Current value |
+| --- | --- |
+| Backend Python | 203 files / 24,357 LOC |
+| Frontend TS/TSX | 100 files / 16,803 LOC |
+| Tests | 37 Python files / 237 passing |
+| Alembic migrations | 38 |
+| Agent tools (Mote) | 55 |
+| Dashboard pages | 15 |
+| Services | 37 services in 9 subdomains |
+| Total LOC | ~54,000 (backend + frontend + tests + docs) |
+
 ## Stack
 
 | Layer | Technology |
 | --- | --- |
-| Backend | Python, FastAPI, SQLAlchemy 2.x, Celery, structlog |
+| Backend | Python 3.12+, FastAPI, SQLAlchemy 2.x, Celery 5.4+, structlog |
 | Database | PostgreSQL 16, Redis 7 |
-| AI | Ollama with local Qwen models |
-| Frontend | Next.js 16 App Router, TypeScript, Tailwind CSS v4 |
-| Infra | Docker Compose, Alembic |
+| AI | Ollama — qwen3.5:4b, qwen3.5:9b, qwen3.5:27b, hermes3:8b |
+| Frontend | Next.js 16 App Router, TypeScript strict, Tailwind CSS v4, shadcn/ui (base-ui) |
+| Infra | Docker Compose, Alembic, Prometheus metrics |
+
+## LLM Roles
+
+| Role | Model | Purpose |
+| --- | --- | --- |
+| LEADER | qwen3.5:4b | Internal orchestration and summaries |
+| EXECUTOR | qwen3.5:9b | Classification, drafts, scoring, dossiers, briefs |
+| REVIEWER | qwen3.5:27b | Quality review and async brief validation |
+| AGENT | hermes3:8b | Mote interactive chat agent |
+
+## Pipeline (HIGH leads)
+
+```text
+Lead ingestion (Google Maps crawler by territory)
+  -> Dedup (SHA-256)
+  -> Enrichment (website analysis, email extraction, signals)
+  -> Scoring (rules-based, 0-100)
+  -> LLM Analysis (summary + quality evaluation)
+  -> IF quality == HIGH:
+       -> Research (website deep analysis, metadata, signals)
+       -> Dossier generation (LLM structured report)
+       -> Commercial Brief (budget, opportunity, contact recommendation)
+       -> Brief Review (REVIEWER validation)
+  -> Draft Generation (email + WhatsApp, conditioned on brief)
+  -> Human Approval -> Send
+  -> Inbound Reply Loop (IMAP sync, classification, reply assistant)
+```
+
+## Runtime Modes
+
+| Mode | Behavior |
+| --- | --- |
+| `safe` | Everything requires manual approval |
+| `assisted` | Pipeline runs automatically, send still requires approval |
+| `auto` | Full automation including auto-approve and auto-send |
 
 ## Quickstart
 
@@ -65,6 +113,7 @@ make up
 make status
 curl http://localhost:8000/health
 curl http://localhost:8000/docs
+curl http://localhost:8000/metrics
 ```
 
 ## Common Commands
@@ -79,16 +128,95 @@ curl http://localhost:8000/docs
 | `pytest -q` | Run backend tests |
 | `cd dashboard && npx tsc --noEmit` | Type-check the frontend |
 
+## Scripts
+
+| Script / command | When to use it | What it does |
+| --- | --- | --- |
+| `scripts/init.sh` | First setup | Bootstraps the local environment from scratch |
+| `scripts/export.sh` | Migration / backup | Packages `.env`, DB, storage, and configs |
+| `scripts/import.sh` | New machine restore | Restores a full exported environment |
+| `make up` | Everyday | Starts the full local stack |
+| `make down` | Everyday | Stops the stack |
+| `make status` | Everyday | Shows service status |
+
+## Dashboard (15 pages)
+
+| Page | Route | Description |
+| --- | --- | --- |
+| Mote Chat | `/` | Full-page chat with the AI agent |
+| Panel | `/panel` | Operational dashboard with stats, controls, and health |
+| Leads | `/leads` | Lead list with filters and exports |
+| Lead Detail | `/leads/[id]` | Dossier, brief, drafts, replies, and timeline |
+| Dossiers | `/dossiers` | Completed investigations for HIGH leads |
+| Briefs | `/briefs` | Commercial briefs with budget/opportunity |
+| Outreach | `/outreach` | Draft approval and sending |
+| Responses | `/responses` | Inbound mail, classification, and reply assistant |
+| Performance | `/performance` | Conversion and operational analytics |
+| Map | `/map` | Leaflet map with leads, territories, and heatmap |
+| Suppression | `/suppression` | Suppression list management |
+| Notifications | `/notifications` | Notification center |
+| Security | `/security` | Security alerts |
+| Activity | `/activity` | Real-time task and pipeline monitor |
+| Settings | `/settings` | Multi-tab operational configuration |
+
 ## Repo Map
 
 | Path | Purpose |
 | --- | --- |
-| `app/` | FastAPI backend, workers, services, models, LLM layer |
+| `app/agent/tools/` | 55 Mote tool surfaces for chat-driven operations |
+| `app/api/v1/` | REST endpoints and webhooks |
+| `app/api/v1/settings/` | Settings split by concern |
+| `app/core/` | Config, crypto, logging |
+| `app/crawlers/` | Google Maps crawling |
+| `app/db/` | SQLAlchemy session and engine |
+| `app/llm/` | LLM client, contracts, prompt registry, routing |
+| `app/llm/invocations/` | Domain-split AI invocation functions |
+| `app/mail/` | SMTP and IMAP providers |
+| `app/models/` | SQLAlchemy ORM models |
+| `app/outreach/` | Draft generators |
+| `app/schemas/` | Pydantic DTOs |
+| `app/scoring/` | Lead scoring rules |
+| `app/services/` | 9 service subdomains plus a small transversal layer |
+| `app/workers/` | Domain-split Celery task modules |
+| `app/workflows/` | Explicit orchestration workflows |
 | `dashboard/` | Next.js operational frontend |
 | `docs/` | Canonical architecture, plans, operations, product, archive |
 | `scripts/` | CLI and local operations helpers |
 | `tests/` | Backend test suite |
 | `alembic/` | Database migrations |
+
+## Backend Structure
+
+```text
+app/
+  agent/tools/          # Mote tools
+  api/v1/               # REST endpoints
+  api/v1/settings/      # settings split by concern
+  core/                 # config, crypto, logging
+  crawlers/             # Google Maps crawler
+  db/                   # SQLAlchemy session
+  llm/                  # LLM client + structured outputs
+  llm/invocations/      # lead / outreach / reply / research invocations
+  mail/                 # SMTP / IMAP providers
+  models/               # SQLAlchemy models
+  outreach/             # draft generators
+  schemas/              # Pydantic DTOs
+  scoring/              # scoring rules
+  services/             # leads / outreach / inbox / pipeline / research / notifications / settings / comms / dashboard_svc
+  workers/              # pipeline / review / research / crawl / batch / brief tasks
+  workflows/            # batch / territory_crawl / outreach_draft / lead_pipeline
+```
+
+## Docker Services
+
+| Service | Port | Description |
+| --- | --- | --- |
+| API | `:8000` | FastAPI backend (`/docs`, `/metrics`) |
+| Dashboard | `:3000` | Next.js frontend |
+| PostgreSQL | `:5432` | Primary database (bound to `127.0.0.1`) |
+| Redis | `:6379` | Celery broker + cache |
+| Worker | — | Celery worker (`default`, `enrichment`, `scoring`, `llm`, `reviewer`, `research`) |
+| Beat | — | Celery beat scheduler (janitor every 5 minutes) |
 
 ## Read Next
 

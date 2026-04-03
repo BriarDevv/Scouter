@@ -44,6 +44,7 @@ export const SIGNAL_CONFIG: Record<SignalType, { label: string; emoji: string; s
   slow_load:         { label: "Carga lenta",       emoji: "🐌", severity: "positive" },
   has_website:       { label: "Tiene website",     emoji: "🌐", severity: "negative" },
   has_custom_domain: { label: "Dominio propio",    emoji: "✅", severity: "negative" },
+  website_error:     { label: "Error de website",  emoji: "⚠️", severity: "neutral" },
 };
 
 export const DRAFT_STATUS_CONFIG: Record<DraftStatus, { label: string; color: string; bg: string }> = {
@@ -58,6 +59,7 @@ export const INBOUND_CLASSIFICATION_STATUS_CONFIG: Record<
   { label: string; color: string; bg: string }
 > = {
   pending: { label: "Pendiente", color: "text-amber-700 dark:text-amber-300", bg: "bg-amber-50 dark:bg-amber-950/40" },
+  classifying: { label: "Clasificando", color: "text-blue-700 dark:text-blue-300", bg: "bg-blue-50 dark:bg-blue-950/40" },
   classified: { label: "Clasificado", color: "text-emerald-700 dark:text-emerald-300", bg: "bg-emerald-50 dark:bg-emerald-950/40" },
   failed: { label: "Falló", color: "text-rose-700 dark:text-rose-300", bg: "bg-rose-50 dark:bg-rose-950/40" },
 };
