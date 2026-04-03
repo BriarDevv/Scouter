@@ -66,7 +66,11 @@ def create_pipeline_run(
     return pipeline_run
 
 
-def attach_pipeline_root_task(db: Session, pipeline_run_id: uuid.UUID, root_task_id: str) -> PipelineRun | None:
+def attach_pipeline_root_task(
+    db: Session,
+    pipeline_run_id: uuid.UUID,
+    root_task_id: str,
+) -> PipelineRun | None:
     pipeline_run = db.get(PipelineRun, pipeline_run_id)
     if not pipeline_run:
         return None
@@ -387,6 +391,11 @@ def update_pipeline_run(
 
 def get_task_run(db: Session, task_id: str) -> TaskRun | None:
     return db.get(TaskRun, task_id)
+
+
+def is_task_stop_requested(db: Session, task_id: str) -> bool:
+    task_run = db.get(TaskRun, task_id)
+    return bool(task_run and task_run.stop_requested_at is not None)
 
 
 def get_scoped_task_run(
