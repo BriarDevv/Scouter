@@ -65,7 +65,7 @@ class PromptDefinition[SchemaT: BaseModel]:
 
 LEAD_QUALITY_PROMPT = PromptDefinition(
     prompt_id="lead_quality.evaluate",
-    prompt_version="v1",
+    prompt_version="v2",
     owner="app.llm.client",
     system_prompt=EVALUATE_LEAD_QUALITY_SYSTEM,
     user_prompt_template=EVALUATE_LEAD_QUALITY_DATA,
@@ -76,7 +76,7 @@ LEAD_QUALITY_PROMPT = PromptDefinition(
 
 BUSINESS_SUMMARY_PROMPT = PromptDefinition(
     prompt_id="business_summary.generate",
-    prompt_version="v1",
+    prompt_version="v2",
     owner="app.llm.client",
     system_prompt=SUMMARIZE_BUSINESS_SYSTEM,
     user_prompt_template=SUMMARIZE_BUSINESS_DATA,
@@ -87,7 +87,7 @@ BUSINESS_SUMMARY_PROMPT = PromptDefinition(
 
 OUTREACH_DRAFT_PROMPT = PromptDefinition(
     prompt_id="outreach_draft.generate",
-    prompt_version="v1",
+    prompt_version="v2",
     owner="app.llm.client",
     system_prompt=GENERATE_OUTREACH_EMAIL_SYSTEM,
     user_prompt_template=GENERATE_OUTREACH_EMAIL_DATA,
@@ -98,7 +98,7 @@ OUTREACH_DRAFT_PROMPT = PromptDefinition(
 
 OUTREACH_DRAFT_REVIEW_PROMPT = PromptDefinition(
     prompt_id="outreach_draft.review",
-    prompt_version="v1",
+    prompt_version="v2",
     owner="app.llm.client",
     system_prompt=REVIEW_OUTREACH_DRAFT_SYSTEM,
     user_prompt_template=REVIEW_OUTREACH_DRAFT_DATA,
@@ -109,7 +109,7 @@ OUTREACH_DRAFT_REVIEW_PROMPT = PromptDefinition(
 
 LEAD_REVIEW_PROMPT = PromptDefinition(
     prompt_id="lead_review.generate",
-    prompt_version="v1",
+    prompt_version="v2",
     owner="app.llm.client",
     system_prompt=REVIEW_LEAD_SYSTEM,
     user_prompt_template=REVIEW_LEAD_DATA,
@@ -120,7 +120,7 @@ LEAD_REVIEW_PROMPT = PromptDefinition(
 
 REPLY_ASSISTANT_DRAFT_PROMPT = PromptDefinition(
     prompt_id="reply_assistant_draft.generate",
-    prompt_version="v1",
+    prompt_version="v2",
     owner="app.llm.client",
     system_prompt=GENERATE_REPLY_ASSISTANT_DRAFT_SYSTEM,
     user_prompt_template=GENERATE_REPLY_ASSISTANT_DRAFT_DATA,
@@ -131,7 +131,7 @@ REPLY_ASSISTANT_DRAFT_PROMPT = PromptDefinition(
 
 REPLY_ASSISTANT_DRAFT_REVIEW_PROMPT = PromptDefinition(
     prompt_id="reply_assistant_draft.review",
-    prompt_version="v1",
+    prompt_version="v2",
     owner="app.llm.client",
     system_prompt=REVIEW_REPLY_ASSISTANT_DRAFT_SYSTEM,
     user_prompt_template=REVIEW_REPLY_ASSISTANT_DRAFT_DATA,
@@ -142,7 +142,7 @@ REPLY_ASSISTANT_DRAFT_REVIEW_PROMPT = PromptDefinition(
 
 WHATSAPP_DRAFT_PROMPT = PromptDefinition(
     prompt_id="whatsapp_draft.generate",
-    prompt_version="v1",
+    prompt_version="v2",
     owner="app.llm.client",
     system_prompt=GENERATE_WHATSAPP_DRAFT_SYSTEM,
     user_prompt_template=GENERATE_WHATSAPP_DRAFT_DATA,
@@ -153,7 +153,7 @@ WHATSAPP_DRAFT_PROMPT = PromptDefinition(
 
 DOSSIER_PROMPT = PromptDefinition(
     prompt_id="dossier.generate",
-    prompt_version="v1",
+    prompt_version="v2",
     owner="app.llm.client",
     system_prompt=DOSSIER_SYSTEM,
     user_prompt_template=DOSSIER_DATA,
@@ -164,7 +164,7 @@ DOSSIER_PROMPT = PromptDefinition(
 
 INBOUND_REPLY_CLASSIFICATION_PROMPT = PromptDefinition(
     prompt_id="inbound_reply.classify",
-    prompt_version="v1",
+    prompt_version="v2",
     owner="app.llm.client",
     system_prompt=CLASSIFY_INBOUND_REPLY_SYSTEM,
     user_prompt_template=CLASSIFY_INBOUND_REPLY_DATA,
@@ -175,7 +175,7 @@ INBOUND_REPLY_CLASSIFICATION_PROMPT = PromptDefinition(
 
 INBOUND_REPLY_REVIEW_PROMPT = PromptDefinition(
     prompt_id="inbound_reply.review",
-    prompt_version="v1",
+    prompt_version="v2",
     owner="app.llm.client",
     system_prompt=REVIEW_INBOUND_REPLY_SYSTEM,
     user_prompt_template=REVIEW_INBOUND_REPLY_DATA,
@@ -186,7 +186,7 @@ INBOUND_REPLY_REVIEW_PROMPT = PromptDefinition(
 
 COMMERCIAL_BRIEF_PROMPT = PromptDefinition(
     prompt_id="commercial_brief.generate",
-    prompt_version="v1",
+    prompt_version="v2",
     owner="app.llm.client",
     system_prompt=COMMERCIAL_BRIEF_SYSTEM,
     user_prompt_template=COMMERCIAL_BRIEF_DATA,
@@ -197,7 +197,7 @@ COMMERCIAL_BRIEF_PROMPT = PromptDefinition(
 
 COMMERCIAL_BRIEF_REVIEW_PROMPT = PromptDefinition(
     prompt_id="commercial_brief.review",
-    prompt_version="v1",
+    prompt_version="v2",
     owner="app.llm.client",
     system_prompt=REVIEW_COMMERCIAL_BRIEF_SYSTEM,
     user_prompt_template=REVIEW_COMMERCIAL_BRIEF_DATA,
