@@ -11,9 +11,60 @@ from app.llm.roles import LLMRole
 from app.models.inbound_mail import InboundMessage
 from app.models.lead import Lead
 from app.models.outreach import OutreachDraft
+from app.models.review_correction import CorrectionCategory, CorrectionSeverity, ReviewCorrection
 from app.services.settings.operational_settings_service import get_cached_settings
 
 logger = get_logger(__name__)
+
+
+def _persist_corrections(
+    db: Session,
+    *,
+    lead_id: uuid.UUID,
+    pipeline_run_id: uuid.UUID | None,
+    review_type: str,
+    corrections: list[dict],
+    model: str | None,
+) -> int:
+    """Extract structured corrections from reviewer output and persist them.
+
+    Returns the number of corrections stored.
+    """
+    count = 0
+    for c in corrections:
+        raw_category = c.get("category", "relevance")
+        raw_severity = c.get("severity", "suggestion")
+        try:
+            category = CorrectionCategory(raw_category)
+        except ValueError:
+            category = CorrectionCategory.RELEVANCE
+        try:
+            severity = CorrectionSeverity(raw_severity)
+        except ValueError:
+            severity = CorrectionSeverity.SUGGESTION
+
+        rc = ReviewCorrection(
+            lead_id=lead_id,
+            pipeline_run_id=pipeline_run_id,
+            review_type=review_type,
+            category=category,
+            severity=severity,
+            issue=c.get("issue", ""),
+            suggestion=c.get("suggestion"),
+            model=model,
+        )
+        db.add(rc)
+        count += 1
+
+    if count:
+        db.commit()
+        logger.info(
+            "review_corrections_persisted",
+            review_type=review_type,
+            lead_id=str(lead_id),
+            count=count,
+        )
+    return count
 
 
 def review_lead_with_reviewer(db: Session, lead_id: uuid.UUID) -> dict | None:
@@ -47,12 +98,26 @@ def review_lead_with_reviewer(db: Session, lead_id: uuid.UUID) -> dict | None:
         "model": model,
         **result,
     }
+
+    # Persist structured corrections if present
+    corrections = result.get("corrections", [])
+    if corrections:
+        _persist_corrections(
+            db,
+            lead_id=lead.id,
+            pipeline_run_id=None,
+            review_type="lead_review",
+            corrections=corrections,
+            model=model,
+        )
+
     logger.info(
         "review_lead_completed",
         lead_id=str(lead.id),
         role=role.value,
         model=model,
         verdict=payload["verdict"],
+        corrections_count=len(corrections),
     )
     return payload
 
@@ -94,6 +159,19 @@ def review_draft_with_reviewer(db: Session, draft_id: uuid.UUID) -> dict | None:
         "model": model,
         **result,
     }
+
+    # Persist structured corrections if present
+    corrections = result.get("corrections", [])
+    if corrections:
+        _persist_corrections(
+            db,
+            lead_id=lead.id,
+            pipeline_run_id=None,
+            review_type="draft_review",
+            corrections=corrections,
+            model=model,
+        )
+
     logger.info(
         "review_draft_completed",
         draft_id=str(draft.id),
@@ -101,6 +179,7 @@ def review_draft_with_reviewer(db: Session, draft_id: uuid.UUID) -> dict | None:
         role=role.value,
         model=model,
         verdict=payload["verdict"],
+        corrections_count=len(corrections),
     )
     return payload
 

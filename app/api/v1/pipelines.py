@@ -41,6 +41,21 @@ def list_runs(
     return list_pipeline_runs(db, lead_id=lead_id, status=status, limit=limit)
 
 
+@router.get("/runs/{pipeline_run_id}/context")
+def get_run_context(pipeline_run_id: uuid.UUID, db: DbSession):
+    """Return accumulated step_context_json for a pipeline run.
+
+    Shows what each pipeline step found: enrichment signals, scoring,
+    analysis reasoning, research findings, brief assessment, reviewer notes.
+    """
+    from app.services.pipeline.context_service import get_step_context
+
+    context = get_step_context(db, pipeline_run_id)
+    if not context:
+        raise HTTPException(status_code=404, detail="Pipeline run not found or has no context")
+    return context
+
+
 @router.get("/runs/{pipeline_run_id}", response_model=PipelineRunDetailResponse)
 def get_run(pipeline_run_id: uuid.UUID, db: DbSession):
     """Return a pipeline run plus the tracked tasks that belong to it."""
