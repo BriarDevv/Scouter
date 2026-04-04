@@ -23,6 +23,7 @@ export function formatRelativeTime(dateStr: string): string {
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
 
+  if (diffMs < 0) return "Ahora";
   if (diffMins < 1) return "Ahora";
   if (diffMins < 60) return `Hace ${diffMins}m`;
   if (diffHours < 24) return `Hace ${diffHours}h`;

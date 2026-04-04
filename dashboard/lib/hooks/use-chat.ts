@@ -88,10 +88,15 @@ export function useChat(conversationId: string | null): UseChatReturn {
           if (line.startsWith("event: ")) {
             eventType = line.slice(7).trim();
           } else if (line.startsWith("data: ")) {
-            const data = JSON.parse(line.slice(6));
+            let data: Record<string, unknown>;
+            try {
+              data = JSON.parse(line.slice(6)) as Record<string, unknown>;
+            } catch {
+              continue;
+            }
             switch (eventType) {
               case "text_delta":
-                streamBuf.current += data.content;
+                streamBuf.current += data.content as string;
                 if (!flushTimer.current) {
                   flushTimer.current = setTimeout(() => {
                     const buf = streamBuf.current;
@@ -116,9 +121,9 @@ export function useChat(conversationId: string | null): UseChatReturn {
                           tool_calls: [
                             ...m.tool_calls,
                             {
-                              id: data.tool_call_id,
-                              tool_name: data.tool_name,
-                              arguments: data.arguments,
+                              id: data.tool_call_id as string,
+                              tool_name: data.tool_name as string,
+                              arguments: data.arguments as Record<string, unknown> | null,
                               result: null,
                               error: null,
                               status: "running",
@@ -137,11 +142,11 @@ export function useChat(conversationId: string | null): UseChatReturn {
                       ? {
                           ...m,
                           tool_calls: m.tool_calls.map(tc =>
-                            tc.id === data.tool_call_id
+                            tc.id === (data.tool_call_id as string)
                               ? {
                                   ...tc,
-                                  result: data.result,
-                                  error: data.error,
+                                  result: data.result as Record<string, unknown> | null,
+                                  error: data.error as string | null,
                                   status: data.error ? "failed" : "completed",
                                 }
                               : tc
@@ -162,14 +167,14 @@ export function useChat(conversationId: string | null): UseChatReturn {
                 setMessages(prev =>
                   prev.map(m =>
                     m.id === assistantId
-                      ? { ...m, content: (m.content || "") + remaining, id: data.message_id }
+                      ? { ...m, content: (m.content || "") + remaining, id: data.message_id as string }
                       : m
                   )
                 );
                 break;
               }
               case "error":
-                setError(data.error);
+                setError(data.error as string | null);
                 break;
             }
             eventType = "";
