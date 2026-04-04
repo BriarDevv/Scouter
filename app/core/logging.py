@@ -7,7 +7,7 @@ import structlog
 from app.core.config import settings
 
 _SENSITIVE_KEY_RE = re.compile(
-    r"(password|secret|token|authorization|smtp_password|imap_password)",
+    r"(password|secret|token|authorization|smtp_password|imap_password|api.?key)",
     re.IGNORECASE,
 )
 

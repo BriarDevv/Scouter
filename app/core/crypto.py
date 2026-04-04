@@ -9,6 +9,9 @@ import hashlib
 from cryptography.fernet import Fernet, InvalidToken
 
 from app.core.config import settings
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 def _derive_key() -> bytes:
@@ -52,4 +55,5 @@ def decrypt_safe(value: str | None) -> str | None:
     try:
         return decrypt(value)
     except InvalidToken:
+        logger.warning("Failed to decrypt value — possible key rotation mismatch")
         return value  # Corrupted or wrong key — return as-is
