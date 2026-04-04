@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_session
 from app.models.investigation_thread import InvestigationThread
-from app.models.outcome_snapshot import OutcomeSnapshot
 from app.schemas.dashboard import (
     CityBreakdownResponse,
     IndustryBreakdownResponse,
@@ -39,64 +38,58 @@ def source(db: Session = Depends(get_session)):
     return get_source_performance(db)
 
 
-@router.get("/outcomes")
-def get_outcome_analytics(db: Session = Depends(get_session)):
-    """Outcome analytics: WON/LOST breakdown by quality, industry, signals.
+@router.get("/ai-health")
+def get_ai_health(db: Session = Depends(get_session)):
+    """AI health metrics: approval rate, fallback rate, avg latency, invocation count (24h)."""
+    from datetime import UTC, datetime, timedelta
+    from app.models.llm_invocation import LLMInvocation
 
-    Enables Phase 4 learning — correlates pipeline decisions with results.
-    """
-    snapshots = db.query(OutcomeSnapshot).all()
-    if not snapshots:
-        return {"total_won": 0, "total_lost": 0, "by_industry": [], "by_quality": [], "top_signals_won": []}
+    since = datetime.now(UTC) - timedelta(hours=24)
 
-    won = [s for s in snapshots if s.outcome == "won"]
-    lost = [s for s in snapshots if s.outcome == "lost"]
-
-    # By industry
-    industry_stats: dict[str, dict] = {}
-    for s in snapshots:
-        ind = s.industry or "unknown"
-        if ind not in industry_stats:
-            industry_stats[ind] = {"industry": ind, "won": 0, "lost": 0}
-        industry_stats[ind][s.outcome] += 1
-
-    # By quality
-    quality_stats: dict[str, dict] = {}
-    for s in snapshots:
-        q = s.lead_quality or "unknown"
-        if q not in quality_stats:
-            quality_stats[q] = {"quality": q, "won": 0, "lost": 0}
-        quality_stats[q][s.outcome] += 1
-
-    # Top signals for won leads
-    signal_counts: dict[str, int] = {}
-    for s in won:
-        for sig in (s.signals_json or []):
-            signal_counts[sig] = signal_counts.get(sig, 0) + 1
-    top_signals = sorted(signal_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+    total = db.query(func.count(LLMInvocation.id)).filter(LLMInvocation.created_at >= since).scalar() or 0
+    succeeded = db.query(func.count(LLMInvocation.id)).filter(
+        LLMInvocation.created_at >= since, LLMInvocation.status == "succeeded"
+    ).scalar() or 0
+    fallbacks = db.query(func.count(LLMInvocation.id)).filter(
+        LLMInvocation.created_at >= since, LLMInvocation.fallback_used.is_(True)
+    ).scalar() or 0
+    avg_latency = db.query(func.avg(LLMInvocation.latency_ms)).filter(
+        LLMInvocation.created_at >= since, LLMInvocation.latency_ms.isnot(None)
+    ).scalar()
 
     return {
-        "total_won": len(won),
-        "total_lost": len(lost),
-        "by_industry": sorted(industry_stats.values(), key=lambda x: x["won"], reverse=True),
-        "by_quality": sorted(quality_stats.values(), key=lambda x: x["won"], reverse=True),
-        "top_signals_won": [{"signal": s, "count": c} for s, c in top_signals],
+        "approval_rate": round(succeeded / max(total, 1), 2),
+        "fallback_rate": round(fallbacks / max(total, 1), 2),
+        "avg_latency_ms": round(avg_latency) if avg_latency else None,
+        "invocations_24h": total,
+    }
+
+
+@router.get("/outcomes")
+def get_outcome_analytics(db: Session = Depends(get_session)):
+    """Outcome analytics: WON/LOST breakdown by quality, industry, signals. Delegates to analysis service."""
+    from app.services.pipeline.outcome_analysis_service import (
+        analyze_industry_performance,
+        analyze_quality_accuracy,
+        analyze_signal_correlations,
+        get_outcome_summary,
+    )
+    summary = get_outcome_summary(db)
+    signals = analyze_signal_correlations(db)
+    return {
+        "total_won": summary["won"],
+        "total_lost": summary["lost"],
+        "by_industry": analyze_industry_performance(db),
+        "by_quality": analyze_quality_accuracy(db),
+        "top_signals_won": [{"signal": s["signal"], "count": s["won"]} for s in signals[:10]],
     }
 
 
 @router.get("/outcomes/signals")
 def get_signal_correlation(db: Session = Depends(get_session)):
-    """Which signals correlate with WON vs LOST outcomes."""
-    snapshots = db.query(OutcomeSnapshot).all()
-    if not snapshots:
-        return []
-
-    signal_stats: dict[str, dict] = {}
-    for s in snapshots:
-        for sig in (s.signals_json or []):
-            if sig not in signal_stats:
-                signal_stats[sig] = {"signal": sig, "won": 0, "lost": 0, "total": 0}
-            signal_stats[sig][s.outcome] += 1
+    """Which signals correlate with WON vs LOST outcomes. Delegates to analysis service."""
+    from app.services.pipeline.outcome_analysis_service import analyze_signal_correlations
+    return analyze_signal_correlations(db)
             signal_stats[sig]["total"] += 1
 
     result = []
