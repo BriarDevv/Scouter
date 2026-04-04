@@ -13,11 +13,6 @@ from app.services.inbox.reply_draft_review_service import (
     review_reply_assistant_draft_with_reviewer,
 )
 from app.services.pipeline.task_tracking_service import (
-    bind_tracking_context,
-    clear_tracking_context,
-    mark_task_failed,
-    mark_task_retrying,
-    mark_task_running,
     tracked_task_step,
 )
 from app.services.review_service import (
@@ -26,64 +21,10 @@ from app.services.review_service import (
     review_lead_with_reviewer,
 )
 from app.services.settings.operational_settings_service import get_cached_settings
+from app.workers._helpers import _queue_name, _track_failure
 from app.workers.celery_app import celery_app
 
 logger = get_logger(__name__)
-
-
-def _queue_name(request, fallback: str) -> str:
-    delivery_info = getattr(request, "delivery_info", None) or {}
-    return delivery_info.get("routing_key") or delivery_info.get("queue") or fallback
-
-
-def _track_failure(
-    *,
-    task,
-    task_name: str,
-    task_id: str,
-    lead_id: str | None,
-    pipeline_run_id: uuid.UUID | None,
-    correlation_id: str | None,
-    current_step: str,
-    queue: str,
-    error: str,
-) -> None:
-    with SessionLocal() as db:
-        bind_tracking_context(
-            lead_id=lead_id,
-            task_id=task_id,
-            pipeline_run_id=str(pipeline_run_id) if pipeline_run_id else None,
-            correlation_id=correlation_id,
-            current_step=current_step,
-        )
-        mark_task_running(
-            db,
-            task_id=task_id,
-            task_name=task_name,
-            queue=queue,
-            lead_id=uuid.UUID(lead_id) if lead_id else None,
-            pipeline_run_id=pipeline_run_id,
-            correlation_id=correlation_id,
-            current_step=current_step,
-        )
-        if task.request.retries >= task.max_retries:
-            mark_task_failed(
-                db,
-                task_id=task_id,
-                error=error,
-                current_step=current_step,
-                pipeline_run_id=pipeline_run_id,
-            )
-        else:
-            mark_task_retrying(
-                db,
-                task_id=task_id,
-                error=error,
-                current_step=current_step,
-                pipeline_run_id=pipeline_run_id,
-            )
-        logger.error("task_step_failed", task_name=task_name, error=error)
-        clear_tracking_context()
 
 
 @celery_app.task(
@@ -235,6 +176,8 @@ def task_review_inbound_message(self, message_id: str) -> dict:
     try:
         with SessionLocal() as db:
             message = db.get(InboundMessage, uuid.UUID(message_id))
+            if not message:
+                return {"status": "not_found", "inbound_message_id": message_id}
             lead_id = str(message.lead_id) if message.lead_id else None
             with tracked_task_step(
                 db,
@@ -245,11 +188,6 @@ def task_review_inbound_message(self, message_id: str) -> dict:
                 correlation_id=None,
                 current_step="inbound_reply_review",
             ) as tracker:
-                if not message:
-                    error = "Inbound message not found"
-                    tracker.fail(error)
-                    return {"status": "not_found", "inbound_message_id": message_id}
-
                 ops = get_cached_settings(db)
                 if not ops.reviewer_enabled:
                     result = {
