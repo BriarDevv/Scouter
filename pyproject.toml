@@ -62,7 +62,7 @@ known-first-party = ["app"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
+pythonpath = [".", "tests"]
 
 [tool.mypy]
 python_version = "3.12"
