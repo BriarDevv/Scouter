@@ -43,7 +43,7 @@ def test_lead_quality_structured_persists_prompt_metadata(db, monkeypatch):
     assert result.status == LLMInvocationStatus.SUCCEEDED
     assert result.parse_valid is True
     assert result.prompt_id == "lead_quality.evaluate"
-    assert result.prompt_version == "v1"
+    assert result.prompt_version == "v2"
     assert result.parsed is not None
     assert result.parsed.quality == "high"
 
