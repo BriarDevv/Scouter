@@ -37,6 +37,6 @@ def score_lead(db: Session, lead_id: uuid.UUID) -> Lead | None:
             score=score, threshold=threshold,
         )
     except Exception:
-        pass  # never break scoring for a notification
+        logger.debug("scoring_notification_failed", exc_info=True)
 
     return lead

@@ -250,7 +250,7 @@ def send_draft(db: Session, draft_id: uuid.UUID) -> OutreachDelivery | None:
             from app.services.notifications.notification_emitter import on_send_failed
             on_send_failed(db, delivery_id=delivery.id, recipient=delivery.recipient_email, error=delivery.error, send_type="outreach")
         except Exception:
-            pass
+            logger.debug("mail_send_failed_notification_failed", exc_info=True)
         logger.warning(
             "mail_delivery_failed",
             delivery_id=str(delivery.id),

@@ -153,7 +153,7 @@ def _send_whatsapp(db: Session, draft: OutreachDraft, lead: Lead) -> OutboundCon
                 channel="whatsapp",
             )
         except Exception:
-            pass
+            logger.debug("outreach_sent_notification_failed", exc_info=True)
 
         return conversation
 

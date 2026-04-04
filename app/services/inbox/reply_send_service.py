@@ -199,7 +199,7 @@ def send_reply_assistant_draft(db: Session, message_id: uuid.UUID) -> ReplyAssis
             from app.services.notifications.notification_emitter import on_send_failed
             on_send_failed(db, send_id=send_record.id, recipient=send_record.recipient_email, error=send_record.error, send_type="reply_assistant")
         except Exception:
-            pass
+            logger.debug("reply_send_failed_notification_failed", exc_info=True)
         logger.warning(
             "reply_assistant_send_failed",
             send_id=str(send_record.id),

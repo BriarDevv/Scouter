@@ -71,7 +71,7 @@ def capture_outcome_snapshot(
         if latest_draft:
             draft_channel = latest_draft.channel if hasattr(latest_draft, "channel") else "email"
     except Exception:
-        pass
+        logger.debug("outcome_draft_lookup_failed", exc_info=True)
 
     snapshot = OutcomeSnapshot(
         lead_id=lead_id,

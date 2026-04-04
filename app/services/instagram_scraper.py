@@ -56,7 +56,7 @@ def _scrape_via_playwright(username: str) -> dict | None:
                 if "external_url" in text or "biography" in text:
                     profile_data["raw"] = data
             except Exception:
-                pass
+                logger.debug("instagram_response_parse_failed", exc_info=True)
 
     try:
         with sync_playwright() as p:

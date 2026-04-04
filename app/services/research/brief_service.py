@@ -206,7 +206,7 @@ def generate_brief(
                 ),
             )
         except Exception:
-            pass
+            logger.debug("brief_notification_failed", exc_info=True)
 
         logger.info(
             "brief_generated",

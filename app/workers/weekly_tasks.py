@@ -70,7 +70,7 @@ def task_weekly_report():
                     source="weekly_report",
                 )
             except Exception:
-                pass  # Notification emitter may not have emit_notification
+                logger.debug("weekly_report_notification_failed", exc_info=True)
 
             return {"status": "ok", "report_id": str(report.id)}
 
