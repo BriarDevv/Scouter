@@ -1,9 +1,11 @@
 # Scouter Agent OS — Implementation Reference
 
-**Status:** Implemented and deployed
+**Status:** Implemented, formalized, and hardened
 **Date:** 2026-04-04
-**Commits:** 21 on main
+**Commits:** 40+ on main
+**Tests:** 299 passing
 **Audited:** Security (3 HIGH fixed), Architecture (PASS), Quality (8.5/10)
+**Docs:** hierarchy, protocols, governance, identities, skills-registry
 
 ---
 
@@ -171,14 +173,34 @@ Run: `.venv/bin/python3 -m alembic upgrade head`
 
 ---
 
-## Next Steps
+## Current State (2026-04-04)
+
+**Tests:** 299 passing (291 backend + 8 AI Office endpoints)
+**Docs:** 5 canonical Agent OS docs (hierarchy, protocols, governance, identities, skills-registry)
+
+### Closed since initial implementation
+
+- [x] Tests for Agent OS services (56 new tests: context, closer, outcomes, auto_send, weekly, ai-office)
+- [x] Move closer prompt to prompt_registry
+- [x] Kapso Cloud API rewrite (WhatsApp Business Cloud API via proxy)
+- [x] Template-first WhatsApp flow (template opens conversation, draft on reply)
+- [x] Template selection by lead signals
+- [x] Expanded onboarding (WhatsApp + Telegram + brand + outreach channel required)
+- [x] Security: phone from query param to POST body
+- [x] Silent except-pass replaced with structured logging
+- [x] Proxy path allowlist + traversal guard
+- [x] ReadinessGate wired into layout
+
+### Next Steps
 
 See [whatsapp-outreach-strategy.md](whatsapp-outreach-strategy.md) for the template-based outreach plan.
+See [hierarchy.md](hierarchy.md), [protocols.md](protocols.md), [governance.md](governance.md) for Agent OS docs.
 
-### Backlog
+### Remaining Backlog
 
-- [ ] Tests for new services (~2,500 lines untested)
 - [ ] Tailwind dynamic class fix (use lookup maps)
-- [ ] Move closer prompt to prompt_registry
 - [ ] Replace Google HTML scraping with search API
 - [ ] Populate OutcomeSnapshot.reviewer_verdict
+- [ ] Create WhatsApp templates in Kapso panel + get Meta approval
+- [ ] Implement Kapso webhook receiver for inbound client replies
+- [ ] Test full template→reply→closer flow end-to-end with real WhatsApp
