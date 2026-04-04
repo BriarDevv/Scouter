@@ -55,6 +55,7 @@ import { LeadAnalysisSection } from "@/components/leads/lead-analysis-section";
 import { LeadDossierSection } from "@/components/leads/lead-dossier-section";
 import { LeadBriefSection } from "@/components/leads/lead-brief-section";
 import { LeadOutreachSection } from "@/components/leads/lead-outreach-section";
+import { AiDecisionsPanel } from "@/components/leads/ai-decisions-panel";
 import { LeadPipelineSection } from "@/components/leads/lead-pipeline-section";
 import { LeadRepliesSection } from "@/components/leads/lead-replies-section";
 import { LeadTimelineSection } from "@/components/leads/lead-timeline-section";
@@ -517,6 +518,11 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             isReviewingDraftId={isReviewingDraftId}
             onGenerateDraft={() => void handleGenerateDraft()}
             onReviewDraft={(draftId, approved) => void handleReviewDraft(draftId, approved)}
+          />
+
+          <AiDecisionsPanel
+            leadId={String(lead.id)}
+            pipelineRunId={pipelineRuns[0]?.id ?? null}
           />
 
           <LeadPipelineSection

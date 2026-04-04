@@ -19,6 +19,8 @@ import {
   getTimeSeries,
 } from "@/lib/api/client";
 import type { DashboardStats, IndustryBreakdown, OutreachLog, PipelineStage, TimeSeriesPoint } from "@/types";
+import { AiHealthCard } from "@/components/dashboard/ai-health-card";
+import { TopCorrections } from "@/components/dashboard/top-corrections";
 import { TerritorySummary } from "@/components/dashboard/territory-summary";
 import { sileo } from "sileo";
 
@@ -150,6 +152,11 @@ export default function PanelPage() {
               </CollapsibleSection>
             </>
           )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <AiHealthCard />
+            <TopCorrections />
+          </div>
 
           <TerritorySummary />
         </div>
