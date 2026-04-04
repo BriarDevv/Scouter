@@ -24,11 +24,15 @@ import { CredentialsSection } from "@/components/settings/credentials-section";
 import { MailInboundSection } from "@/components/settings/mail-inbound-section";
 import { MailOutboundSection } from "@/components/settings/mail-outbound-section";
 import { RulesSection } from "@/components/settings/rules-section";
+import { WhatsAppSection } from "@/components/settings/whatsapp-section";
+import { TelegramSection } from "@/components/settings/telegram-section";
 import {
   getMailCredentials,
   getMailSettings,
   getOperationalSettings,
   getSetupReadiness,
+  getWhatsAppCredentials,
+  getTelegramCredentials,
   runSetupAction,
 } from "@/lib/api/client";
 import type {
@@ -38,14 +42,18 @@ import type {
   SetupAction,
   SetupReadiness,
   SetupReadinessStep,
+  WhatsAppCredentials,
 } from "@/types";
+import type { TelegramCredentials } from "@/lib/api/client";
 
 const STEP_LABELS: Record<string, string> = {
   setup: "Preparar entorno",
   brand: "Marca y firma",
-  credentials: "Credenciales",
+  whatsapp: "WhatsApp",
+  credentials: "Email (SMTP)",
   mail_out: "Mail de salida",
   mail_in: "Mail de entrada",
+  telegram: "Notificaciones",
   rules: "Reglas",
   done: "Listo para usar",
 };
@@ -62,6 +70,8 @@ export default function OnboardingPage() {
   const [mailData, setMailData] = useState<MailSettings | null>(null);
   const [opData, setOpData] = useState<OperationalSettings | null>(null);
   const [credsData, setCredsData] = useState<MailCredentials | null>(null);
+  const [waData, setWaData] = useState<WhatsAppCredentials | null>(null);
+  const [tgData, setTgData] = useState<TelegramCredentials | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activeStep, setActiveStep] = useState<string>("setup");
@@ -71,17 +81,21 @@ export default function OnboardingPage() {
   const refresh = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
-    const [readinessRes, mailRes, opRes, credsRes] = await Promise.allSettled([
+    const [readinessRes, mailRes, opRes, credsRes, waRes, tgRes] = await Promise.allSettled([
       getSetupReadiness(),
       getMailSettings(),
       getOperationalSettings(),
       getMailCredentials(),
+      getWhatsAppCredentials(),
+      getTelegramCredentials(),
     ]);
 
     if (readinessRes.status === "fulfilled") setReadiness(readinessRes.value);
     if (mailRes.status === "fulfilled") setMailData(mailRes.value);
     if (opRes.status === "fulfilled") setOpData(opRes.value);
     if (credsRes.status === "fulfilled") setCredsData(credsRes.value);
+    if (waRes.status === "fulfilled") setWaData(waRes.value);
+    if (tgRes.status === "fulfilled") setTgData(tgRes.value);
 
     if (readinessRes.status === "rejected") {
       setLoadError("No se pudo cargar el estado de onboarding.");
@@ -115,6 +129,16 @@ export default function OnboardingPage() {
 
   const handleSavedCreds = (updated: MailCredentials) => {
     setCredsData(updated);
+    void refresh();
+  };
+
+  const handleSavedWa = (updated: WhatsAppCredentials) => {
+    setWaData(updated);
+    void refresh();
+  };
+
+  const handleSavedTg = (updated: TelegramCredentials) => {
+    setTgData(updated);
     void refresh();
   };
 
@@ -224,6 +248,9 @@ export default function OnboardingPage() {
               />
             )}
             {activeStep === "brand" && <BrandSection data={opData} onSaved={handleSavedOps} />}
+            {activeStep === "whatsapp" && waData && (
+              <WhatsAppSection data={waData} onSaved={handleSavedWa} />
+            )}
             {activeStep === "credentials" && (
               <CredentialsSection data={credsData} onSaved={handleSavedCreds} />
             )}
@@ -232,6 +259,9 @@ export default function OnboardingPage() {
             )}
             {activeStep === "mail_in" && (
               <MailInboundSection data={opData} mailData={mailData} onSaved={handleSavedOps} />
+            )}
+            {activeStep === "telegram" && tgData && (
+              <TelegramSection data={tgData} onSaved={handleSavedTg} />
             )}
             {activeStep === "rules" && <RulesSection data={opData} onSaved={handleSavedOps} />}
             {activeStep === "done" && <ReadyStage nextPath={nextPath} />}
