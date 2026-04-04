@@ -25,7 +25,9 @@ If you are a human operator or developer, start with [../README.md](../README.md
 | Operations | [operations/security-backlog.md](operations/security-backlog.md) | Deferred security backlog |
 | Product | [product/proposal.md](product/proposal.md) | Product and positioning context |
 | Audits | [audits/scouter-ai-environment-audit.md](audits/scouter-ai-environment-audit.md) | AI environment audit and scorecard |
+| Audits | [audits/scouter-full-repo-deep-audit.md](audits/scouter-full-repo-deep-audit.md) | Full repo deep audit (code, architecture, correctness, AI slop) |
 | Roadmaps | [roadmaps/scouter-ai-environment-improvement-plan.md](roadmaps/scouter-ai-environment-improvement-plan.md) | AI environment improvement plan |
+| Roadmaps | [roadmaps/scouter-full-repo-hardening-plan.md](roadmaps/scouter-full-repo-hardening-plan.md) | Full repo hardening plan (5 phases) |
 
 ## Start Here By Goal
 

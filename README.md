@@ -12,10 +12,10 @@ Detects businesses that need web development, enriches leads, scores them, runs 
 
 | Metric | Current value |
 | --- | --- |
-| Backend Python | 314 files |
-| Frontend TS/TSX | 112 files |
-| Tests | 42 files / 299 passing |
-| Alembic migrations | 45 |
+| Backend Python | 221 files |
+| Frontend TS/TSX | 108 files |
+| Tests | 43 files / 313 passing |
+| Alembic migrations | 42 |
 | Agent tools (Mote) | 55 |
 | Dashboard pages | 17 |
 | Services | 37 services in 9 subdomains |
@@ -131,7 +131,7 @@ dashboard/              Next.js frontend
 docs/                   Canonical docs, agents, architecture, operations
   agents/               Agent OS: hierarchy, protocols, governance, identities
 skills/                 7 Mote skills + model routing
-tests/                  42 test files, 299 passing
+tests/                  43 test files, 313 passing
 scripts/                CLI and operations helpers
 ```
 
