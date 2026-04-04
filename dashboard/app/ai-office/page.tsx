@@ -191,7 +191,7 @@ export default function AiOfficePage() {
                   <p className="text-xs text-muted-foreground">
                     {inv.pages_visited?.length || 0} paginas · {inv.loops_used} loops · {(inv.duration_ms / 1000).toFixed(1)}s
                   </p>
-                  {inv.findings?.opportunity && (
+                  {Boolean(inv.findings?.opportunity) && (
                     <p className="text-xs text-foreground/70 mt-1 truncate">
                       {String(inv.findings.opportunity)}
                     </p>

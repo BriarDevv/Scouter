@@ -37,7 +37,7 @@ export function InvestigationThreadView({ investigation }: InvestigationThreadVi
       )}
 
       {/* Key findings */}
-      {findings.key_findings && Array.isArray(findings.key_findings) && (
+      {Boolean(findings.key_findings) && Array.isArray(findings.key_findings) && (
         <div className="mt-2 flex flex-wrap gap-1">
           {(findings.key_findings as string[]).slice(0, 5).map((f, i) => (
             <span key={i} className="text-xs bg-cyan-100 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-200 rounded px-2 py-0.5">
@@ -67,7 +67,7 @@ export function InvestigationThreadView({ investigation }: InvestigationThreadVi
               <span className="text-muted-foreground shrink-0">
                 {tc.duration_ms}ms
               </span>
-              {tc.arguments?.url && (
+              {Boolean(tc.arguments?.url) && (
                 <span className="text-muted-foreground truncate">
                   {String(tc.arguments.url).slice(0, 50)}
                 </span>

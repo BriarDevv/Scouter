@@ -90,17 +90,6 @@ def get_signal_correlation(db: Session = Depends(get_session)):
     """Which signals correlate with WON vs LOST outcomes. Delegates to analysis service."""
     from app.services.pipeline.outcome_analysis_service import analyze_signal_correlations
     return analyze_signal_correlations(db)
-            signal_stats[sig]["total"] += 1
-
-    result = []
-    for stats in signal_stats.values():
-        total = stats["total"]
-        stats["win_rate"] = round(stats["won"] / total, 2) if total > 0 else 0
-        result.append(stats)
-
-    return sorted(result, key=lambda x: x["win_rate"], reverse=True)
-
-
 @router.get("/recommendations")
 def get_scoring_recommendations(db: Session = Depends(get_session)):
     """Scoring and prompt improvement recommendations from outcome data."""
