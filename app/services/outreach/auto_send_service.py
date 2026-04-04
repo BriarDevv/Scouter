@@ -59,7 +59,18 @@ def auto_send_draft(db: Session, draft_id: uuid.UUID) -> OutboundConversation | 
 
 
 def _send_whatsapp(db: Session, draft: OutreachDraft, lead: Lead) -> OutboundConversation | None:
-    """Send WhatsApp draft via Kapso and track the conversation."""
+    """Send WhatsApp template first, then queue personalized draft for after reply.
+
+    WhatsApp Business API requires a Meta-approved template as the first message
+    to a new contact. The personalized draft is stored and sent only after the
+    client replies (opening a 24h conversation window).
+
+    Flow:
+    1. Select template based on lead signals
+    2. Send template via Kapso Cloud API
+    3. Store draft in conversation for later delivery
+    4. When client replies → closer_service sends the draft
+    """
     if not lead.phone:
         logger.warning("auto_send_wa_no_phone", lead_id=str(lead.id))
         return None
@@ -76,28 +87,58 @@ def _send_whatsapp(db: Session, draft: OutreachDraft, lead: Lead) -> OutboundCon
     db.flush()
 
     try:
-        from app.services.comms.kapso_service import send_whatsapp_message
+        from app.services.comms.kapso_service import send_template_message
+        from app.services.outreach.template_selection import (
+            build_template_parameters,
+            select_template,
+        )
 
-        result = send_whatsapp_message(lead.phone, draft.body)
+        # Select template based on lead signals
+        signals = lead.signals or []
+        template = select_template(signals)
+        params = build_template_parameters(
+            template,
+            contact_name=lead.contact_name or lead.business_name,
+            business_name=lead.business_name,
+        )
+
+        # Send template (opens conversation)
+        result = send_template_message(
+            phone=lead.phone,
+            template_name=template.name,
+            language=template.language,
+            parameters=params,
+        )
+
         conversation.status = ConversationStatus.SENT
         conversation.provider_message_id = result.get("message_id")
-        conversation.messages_json = [{
-            "role": "mote",
-            "content": draft.body,
-            "timestamp": datetime.now(UTC).isoformat(),
-            "provider_message_id": result.get("message_id"),
-        }]
+        conversation.messages_json = [
+            {
+                "role": "mote",
+                "type": "template",
+                "template_name": template.name,
+                "timestamp": datetime.now(UTC).isoformat(),
+                "provider_message_id": result.get("message_id"),
+            },
+            {
+                "role": "system",
+                "type": "queued_draft",
+                "content": draft.body,
+                "note": "Draft personalizado pendiente — se envía cuando el cliente responde",
+                "timestamp": datetime.now(UTC).isoformat(),
+            },
+        ]
 
-        # Update draft status
         draft.status = DraftStatus.SENT
         draft.sent_at = datetime.now(UTC)
         db.commit()
 
         logger.info(
-            "auto_send_wa_success",
+            "auto_send_wa_template_success",
             lead_id=str(lead.id),
             draft_id=str(draft.id),
             conversation_id=str(conversation.id),
+            template=template.name,
             phone=lead.phone[:6] + "***",
         )
 
@@ -111,7 +152,7 @@ def _send_whatsapp(db: Session, draft: OutreachDraft, lead: Lead) -> OutboundCon
                 channel="whatsapp",
             )
         except Exception:
-            pass  # Notification emitter may not have this function yet
+            pass
 
         return conversation
 
