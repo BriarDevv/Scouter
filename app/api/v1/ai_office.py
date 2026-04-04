@@ -7,6 +7,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -278,10 +279,17 @@ def takeover_conversation(conversation_id: uuid.UUID, db: Session = Depends(get_
     }
 
 
+class TestWhatsAppBody(BaseModel):
+    phone: str = Field(..., description="Phone in E.164 format (e.g. +5491158399708)")
+    message: str = Field(
+        default="Hola! Esto es una prueba de Mote, el agente de Scouter. Si recibiste esto, el outreach funciona correctamente.",
+        max_length=500,
+    )
+
+
 @router.post("/test-send-whatsapp")
 def test_send_whatsapp(
-    phone: str = Query(..., description="Phone in E.164 format (e.g. +5491158399708)"),
-    message: str = Query(default="Hola! Esto es una prueba de Mote, el agente de Scouter. Si recibiste esto, el outreach funciona correctamente."),
+    body: TestWhatsAppBody,
     db: Session = Depends(get_session),
 ):
     """Test WhatsApp sending — sends a test message to the given phone number.
@@ -291,23 +299,19 @@ def test_send_whatsapp(
     import re
 
     # Validate phone format (loose E.164)
-    clean_phone = re.sub(r"[^\d+]", "", phone)
+    clean_phone = re.sub(r"[^\d+]", "", body.phone)
     if len(clean_phone) < 8 or len(clean_phone) > 16:
         raise HTTPException(status_code=422, detail="Phone number must be 8-16 digits")
 
-    # Limit message length
-    if len(message) > 500:
-        raise HTTPException(status_code=422, detail="Message must be under 500 characters")
-
     try:
-        from app.services.comms.kapso_service import send_whatsapp_message
+        from app.services.comms.kapso_service import send_text_message
 
-        result = send_whatsapp_message(clean_phone, message)
+        result = send_text_message(clean_phone, body.message)
         return {
             "status": "sent",
             "phone": clean_phone[:6] + "***",
             "message_id": result.get("message_id"),
-            "message_preview": message[:100],
+            "message_preview": body.message[:100],
         }
     except Exception as exc:
         return {
