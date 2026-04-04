@@ -610,6 +610,8 @@ export interface OperationalSettings {
   // Hermes 3 agent per channel
   telegram_agent_enabled: boolean;
   whatsapp_agent_enabled: boolean;
+  // Resource mode
+  low_resource_mode: boolean | null;
   runtime_mode: string | null;
   pricing_matrix: string | null;
   updated_at: string | null;

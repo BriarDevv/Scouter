@@ -87,5 +87,8 @@ class OperationalSettings(Base):
     # ── Runtime mode (safe | assisted | auto)
     runtime_mode: Mapped[str] = mapped_column(String, default="safe", nullable=False)
 
+    # ── Resource mode — overrides LOW_RESOURCE_MODE env var when set
+    low_resource_mode: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+
     # ── Pricing matrix (JSON string for budget estimation)
     pricing_matrix: Mapped[str | None] = mapped_column(String, nullable=True)

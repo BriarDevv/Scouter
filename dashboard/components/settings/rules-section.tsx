@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { Settings } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { AlertTriangle, Settings } from "lucide-react";
 import {
   SettingsSectionCard,
   FieldRow,
@@ -10,7 +10,16 @@ import {
   SaveButton,
   useSave,
 } from "./settings-primitives";
+import { apiFetch } from "@/lib/api/client";
 import type { OperationalSettings } from "@/types";
+
+interface ResourceModeStatus {
+  db_value: boolean | null;
+  env_value: boolean;
+  desired: boolean;
+  runtime: boolean;
+  restart_required: boolean;
+}
 
 interface RulesSectionProps {
   data: OperationalSettings;
@@ -18,6 +27,14 @@ interface RulesSectionProps {
 }
 
 export function RulesSection({ data, onSaved }: RulesSectionProps) {
+  const [resourceMode, setResourceMode] = useState<ResourceModeStatus | null>(null);
+
+  useEffect(() => {
+    apiFetch<ResourceModeStatus>("/settings/resource-mode")
+      .then(setResourceMode)
+      .catch(() => {});
+  }, [data]);
+
   const [form, setForm] = useState({
     require_approved_drafts: data.require_approved_drafts,
     auto_classify_inbound: data.auto_classify_inbound,
@@ -27,6 +44,7 @@ export function RulesSection({ data, onSaved }: RulesSectionProps) {
     prioritize_quote_replies: data.prioritize_quote_replies,
     prioritize_meeting_replies: data.prioritize_meeting_replies,
     allow_reply_assistant_generation: data.allow_reply_assistant_generation,
+    low_resource_mode: data.low_resource_mode ?? false,
   });
 
   const set = (k: string) => (v: string | boolean) =>
@@ -43,6 +61,7 @@ export function RulesSection({ data, onSaved }: RulesSectionProps) {
       prioritize_quote_replies: form.prioritize_quote_replies,
       prioritize_meeting_replies: form.prioritize_meeting_replies,
       allow_reply_assistant_generation: form.allow_reply_assistant_generation,
+      low_resource_mode: form.low_resource_mode,
     }),
     [form]
   );
@@ -97,7 +116,31 @@ export function RulesSection({ data, onSaved }: RulesSectionProps) {
             type="number"
           />
         </FieldRow>
+        <FieldRow
+          label="Modo bajo recurso (LOW_RESOURCE_MODE)"
+          hint="Un solo worker, una cola, modelos secuenciales. Para notebooks sin GPU dedicada."
+        >
+          <Toggle
+            checked={form.low_resource_mode}
+            onChange={set("low_resource_mode") as (v: boolean) => void}
+            label={form.low_resource_mode ? "Activado" : "Desactivado"}
+          />
+        </FieldRow>
       </div>
+
+      {resourceMode?.restart_required && (
+        <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <p className="font-medium">Reinicio de workers requerido</p>
+            <p className="mt-0.5 text-xs opacity-80">
+              El modo de recursos cambió pero los workers siguen corriendo con la config anterior.
+              Ejecutá <code className="rounded bg-amber-100 px-1 dark:bg-amber-900/30">make restart-workers</code> para aplicar.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="mt-4 flex justify-end">
         <SaveButton onClick={save} saving={saving} />
       </div>

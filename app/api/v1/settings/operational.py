@@ -35,6 +35,33 @@ def patch_operational(body: OperationalSettingsUpdate, db: DbSession):
     return to_response_dict(row)
 
 
+@router.get("/resource-mode")
+def get_resource_mode(db: DbSession):
+    """Return current resource mode: DB setting vs runtime (worker) value."""
+    from app.core.config import settings as env_settings
+
+    row = get_or_create(db)
+    db_value = row.low_resource_mode  # None = use env default
+    env_value = env_settings.LOW_RESOURCE_MODE
+
+    # What the DB says (or env fallback)
+    desired = db_value if db_value is not None else env_value
+
+    # What workers are actually running with (resolved at celery import)
+    try:
+        from app.workers.celery_app import _low_resource as runtime_value
+    except Exception:
+        runtime_value = env_value
+
+    return {
+        "db_value": db_value,
+        "env_value": env_value,
+        "desired": desired,
+        "runtime": runtime_value,
+        "restart_required": desired != runtime_value,
+    }
+
+
 @router.post("/runtime-mode")
 def set_runtime_mode(mode: str, db: DbSession):
     """Apply a runtime mode preset (safe | assisted | auto)."""

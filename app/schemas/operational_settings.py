@@ -56,6 +56,9 @@ class OperationalSettingsUpdate(BaseModel):
     telegram_agent_enabled: bool | None = None
     whatsapp_agent_enabled: bool | None = None
 
+    # Resource mode — overrides LOW_RESOURCE_MODE env var
+    low_resource_mode: bool | None = None
+
     @field_validator("reviewer_confidence_threshold")
     @classmethod
     def validate_threshold(cls, v):
@@ -137,6 +140,7 @@ class OperationalSettingsResponse(BaseModel):
     whatsapp_outreach_enabled: bool
     telegram_agent_enabled: bool
     whatsapp_agent_enabled: bool
+    low_resource_mode: bool | None
     updated_at: str | None
 
 

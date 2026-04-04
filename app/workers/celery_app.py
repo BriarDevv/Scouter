@@ -24,8 +24,22 @@ _TASK_ROUTES_FULL = {
     "app.workers.brief_tasks.task_review_brief": {"queue": "reviewer"},
 }
 
-# Low resource mode: all tasks on single queue, one at a time, one model loaded
-_low_resource = settings.LOW_RESOURCE_MODE
+# Low resource mode: DB setting overrides env var
+def _resolve_low_resource() -> bool:
+    """Check DB for low_resource_mode override, fall back to env var."""
+    try:
+        from app.db.session import SessionLocal
+        with SessionLocal() as db:
+            from app.models.settings import OperationalSettings
+            row = db.get(OperationalSettings, 1)
+            if row and row.low_resource_mode is not None:
+                return row.low_resource_mode
+    except Exception:
+        pass  # DB not available at startup — use env
+    return settings.LOW_RESOURCE_MODE
+
+
+_low_resource = _resolve_low_resource()
 
 celery_app.conf.update(
     task_serializer="json",
