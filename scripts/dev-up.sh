@@ -40,6 +40,19 @@ listener_pids_for_port() {
     | sort -u
 }
 
+process_matches_port_owner() {
+  local port="$1"
+  local pid="$2"
+  local cmd
+  cmd="$(ps -p "$pid" -o args= 2>/dev/null || true)"
+  case "$port" in
+    3000|3001) [[ "$cmd" == *"next dev"* || "$cmd" == *"next-server"* ]] ;;&
+    8000|8010) [[ "$cmd" == *"uvicorn app.main:app"* ]] ;;&
+    *) return 1 ;;&
+  esac
+}
+
+
 record_listener_pid() {
   local port="$1"
   local pidfile="$2"
@@ -57,14 +70,24 @@ kill_listeners_for_port() {
   mapfile -t pids < <(listener_pids_for_port "$port" || true)
   [[ ${#pids[@]} -gt 0 ]] || return 0
 
-  log "Liberando puerto $port (PIDs: ${pids[*]})"
-  kill "${pids[@]}" 2>/dev/null || true
+  local -a owned=()
+  for pid in "${pids[@]}"; do
+    if process_matches_port_owner "$port" "$pid"; then
+      owned+=("$pid")
+    fi
+  done
+  if [[ ${#owned[@]} -eq 0 ]]; then
+    die "El puerto $port está ocupado por un proceso ajeno a Scouter; no lo voy a matar automáticamente"
+  fi
+
+  log "Liberando puerto $port (PIDs: ${owned[*]})"
+  kill "${owned[@]}" 2>/dev/null || true
   sleep 1
 
   mapfile -t pids < <(listener_pids_for_port "$port" || true)
   if [[ ${#pids[@]} -gt 0 ]]; then
-    warn "El puerto $port sigue ocupado; forzando kill -9 (${pids[*]})"
-    kill -9 "${pids[@]}" 2>/dev/null || true
+    warn "El puerto $port sigue ocupado; forzando kill -9 (${owned[*]})"
+    kill -9 "${owned[@]}" 2>/dev/null || true
     sleep 1
   fi
 
@@ -95,8 +118,7 @@ ensure_prereqs() {
   require_cmd ss
   require_cmd npm
 
-  [[ -x "$REPO_ROOT/.venv/bin/python" ]] || die "Falta virtualenv en $REPO_ROOT/.venv"
-  [[ -x "$REPO_ROOT/.venv/bin/uvicorn" ]] || die "Falta uvicorn en $REPO_ROOT/.venv"
+  [[ -x "$REPO_ROOT/.venv/bin/python" ]] || die "Falta python en $REPO_ROOT/.venv"
   [[ -f "$REPO_ROOT/alembic.ini" ]] || die "No encontré alembic.ini en $REPO_ROOT"
 
   if [[ ! -d "$REPO_ROOT/dashboard/node_modules" ]]; then
@@ -115,7 +137,7 @@ run_migrations() {
 
 start_backend() {
   log "Levantando backend real en 127.0.0.1:$BACKEND_PORT"
-  setsid -f bash -lc "cd '$REPO_ROOT' && exec .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port '$BACKEND_PORT' >'$BACKEND_LOG' 2>&1"
+  setsid -f bash -lc "cd '$REPO_ROOT' && exec .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port '$BACKEND_PORT' >'$BACKEND_LOG' 2>&1"
 }
 
 start_dashboard() {

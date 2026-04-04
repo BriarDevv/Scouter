@@ -127,13 +127,13 @@ PY
 service_command() {
   case "$1" in
     backend)
-      printf "cd %q && .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000" "$REPO_ROOT"
+      printf "cd %q && .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000" "$REPO_ROOT"
       ;;
     worker)
-      printf "cd %q && .venv/bin/celery -A app.workers.celery_app worker --loglevel=info --concurrency=2 --pool=prefork --queues=default,enrichment,scoring,llm,reviewer --hostname=clawscout-wsl" "$REPO_ROOT"
+      printf "cd %q && .venv/bin/python -m celery -A app.workers.celery_app worker --loglevel=info --concurrency=2 --pool=prefork --queues=default,enrichment,scoring,llm,reviewer --hostname=scouter-wsl" "$REPO_ROOT"
       ;;
     dashboard)
-      printf "cd %q && npm run dev -- --hostname 0.0.0.0 --port 3000" "$REPO_ROOT/dashboard"
+      printf "cd %q && npm run dev -- --hostname 127.0.0.1 --port 3000" "$REPO_ROOT/dashboard"
       ;;
     *)
       die "Servicio no soportado: $1"
@@ -143,18 +143,18 @@ service_command() {
 
 service_session() {
   case "$1" in
-    backend) printf 'clawscout-api' ;;
-    worker) printf 'clawscout-worker' ;;
-    dashboard) printf 'clawscout-dashboard' ;;
+    backend) printf 'scouter-api' ;;
+    worker) printf 'scouter-worker' ;;
+    dashboard) printf 'scouter-dashboard' ;;
     *) die "Servicio no soportado: $1" ;;
   esac
 }
 
 service_pattern() {
   case "$1" in
-    backend) printf 'uvicorn app.main:app --host 0.0.0.0 --port 8000' ;;
+    backend) printf 'uvicorn app.main:app --host 127.0.0.1 --port 8000' ;;
     worker) printf 'celery -A app.workers.celery_app worker' ;;
-    dashboard) printf 'next dev --hostname 0.0.0.0 --port 3000' ;;
+    dashboard) printf 'next dev --hostname 127.0.0.1 --port 3000' ;;
     *) die "Servicio no soportado: $1" ;;
   esac
 }
@@ -199,7 +199,7 @@ start_service() {
 
 show_prereq_status() {
   local docker_status="no disponible"
-  local clawscout_ollama_base=""
+  local scouter_ollama_base=""
 
   if docker info >/dev/null 2>&1; then
     docker_status="accesible desde WSL"
@@ -208,7 +208,7 @@ show_prereq_status() {
   fi
 
   if [[ -f "$ENV_FILE" ]]; then
-    clawscout_ollama_base="$(parse_env_value "OLLAMA_BASE_URL" "$ENV_FILE" || true)"
+    scouter_ollama_base="$(parse_env_value "OLLAMA_BASE_URL" "$ENV_FILE" || true)"
   fi
 
   log "WSL detectado: OK"
@@ -217,8 +217,8 @@ show_prereq_status() {
   log "Node: $(command -v node)"
   log "npm: $(command -v npm)"
   log "Docker: $docker_status"
-  if [[ -n "$clawscout_ollama_base" ]]; then
-    log "ClawScout .env OLLAMA_BASE_URL: $clawscout_ollama_base"
+  if [[ -n "$scouter_ollama_base" ]]; then
+    log "Scouter .env OLLAMA_BASE_URL: $scouter_ollama_base"
   else
     warn "No encontré OLLAMA_BASE_URL en $ENV_FILE"
   fi
@@ -255,7 +255,7 @@ print_start_guide() {
 }
 
 main() {
-  local key clawscout_base_url=""
+  local key scouter_base_url=""
 
   is_wsl || die "Este script está pensado para WSL/Linux-first."
 
@@ -271,8 +271,8 @@ main() {
   fi
 
   [[ -d "$REPO_ROOT/.venv" ]] || warn "No encontré $REPO_ROOT/.venv. Backend/worker no van a arrancar hasta crear el venv."
-  [[ -x "$REPO_ROOT/.venv/bin/uvicorn" ]] || warn "No encontré .venv/bin/uvicorn. Ejecutá 'pip install -e \".[dev]\"' en el venv Linux."
-  [[ -x "$REPO_ROOT/.venv/bin/celery" ]] || warn "No encontré .venv/bin/celery. Ejecutá 'pip install -e \".[dev]\"' en el venv Linux."
+  [[ -x "$REPO_ROOT/.venv/bin/python" ]] || warn "No encontré .venv/bin/python. Ejecutá 'python -m pip install -e \".[dev]\"' en el venv Linux."
+  [[ -x "$REPO_ROOT/.venv/bin/python" ]] || warn "No encontré .venv/bin/python. Ejecutá 'python -m pip install -e \".[dev]\"' en el venv Linux."
   [[ -d "$REPO_ROOT/dashboard/node_modules" ]] || warn "No encontré dashboard/node_modules. Ejecutá 'cd dashboard && npm ci'."
 
   normalize_services

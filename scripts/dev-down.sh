@@ -5,6 +5,15 @@ log() {
   printf '[dev-down] %s\n' "$*"
 }
 
+warn() {
+  printf '[dev-down] WARN: %s\n' "$*" >&2
+}
+
+die() {
+  printf '[dev-down] ERROR: %s\n' "$*" >&2
+  exit 1
+}
+
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 RUNTIME_DIR="$REPO_ROOT/.dev-runtime"
@@ -20,6 +29,19 @@ listener_pids_for_port() {
     | cut -d= -f2 \
     | sort -u
 }
+
+process_matches_port_owner() {
+  local port="$1"
+  local pid="$2"
+  local cmd
+  cmd="$(ps -p "$pid" -o args= 2>/dev/null || true)"
+  case "$port" in
+    3000|3001) [[ "$cmd" == *"next dev"* || "$cmd" == *"next-server"* ]] ;;&
+    8000|8010) [[ "$cmd" == *"uvicorn app.main:app"* ]] ;;&
+    *) return 1 ;;&
+  esac
+}
+
 
 kill_pidfile_process() {
   local pidfile="$1"
@@ -40,12 +62,23 @@ kill_listeners_for_port() {
   local -a pids=()
   mapfile -t pids < <(listener_pids_for_port "$port" || true)
   [[ ${#pids[@]} -gt 0 ]] || return 0
-  log "Liberando puerto $port (PIDs: ${pids[*]})"
-  kill "${pids[@]}" 2>/dev/null || true
+  local -a owned=()
+  for pid in "${pids[@]}"; do
+    if process_matches_port_owner "$port" "$pid"; then
+      owned+=("$pid")
+    fi
+  done
+  if [[ ${#owned[@]} -eq 0 ]]; then
+    die "El puerto $port está ocupado por un proceso ajeno a Scouter; no lo voy a matar automáticamente"
+  fi
+
+  log "Liberando puerto $port (PIDs: ${owned[*]})"
+  kill "${owned[@]}" 2>/dev/null || true
   sleep 1
   mapfile -t pids < <(listener_pids_for_port "$port" || true)
   if [[ ${#pids[@]} -gt 0 ]]; then
-    kill -9 "${pids[@]}" 2>/dev/null || true
+    warn "El puerto $port sigue ocupado; forzando kill -9 (${owned[*]})"
+    kill -9 "${owned[@]}" 2>/dev/null || true
   fi
 }
 
