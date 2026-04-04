@@ -9,16 +9,20 @@ const SERVER_API_KEY = process.env.API_KEY || "";
 
 /** Allowed API path prefixes — requests outside this list get 403. */
 const ALLOWED_PREFIXES = [
-  "leads/", "dashboard/", "settings/", "setup/",
-  "scoring/", "enrichment/", "outreach/", "tasks/",
-  "performance/", "mail/", "suppression/", "reviews/",
-  "ai-office/", "pipelines/", "leader/", "telegram/",
-  "notifications/", "chat/", "whatsapp/",
+  "ai-office/", "briefs/", "chat/", "crawl/",
+  "dashboard/", "enrichment/", "leader/", "leads/",
+  "mail/", "notifications/", "outreach/", "performance/",
+  "pipelines/", "replies/", "reviews/", "scoring/",
+  "settings/", "setup/", "suppression/", "tasks/",
+  "telegram/", "territories/", "whatsapp/",
 ];
 
 function isAllowedPath(pathname: string): boolean {
   const normalized = pathname.replace(/^\/+/, "");
-  return ALLOWED_PREFIXES.some((prefix) => normalized.startsWith(prefix));
+  // Match "leads/..." or bare "leads" (no trailing slash for root resource)
+  return ALLOWED_PREFIXES.some(
+    (prefix) => normalized.startsWith(prefix) || normalized === prefix.slice(0, -1),
+  );
 }
 
 const HOP_BY_HOP = new Set([
