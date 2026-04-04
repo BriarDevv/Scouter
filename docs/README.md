@@ -18,6 +18,7 @@ If you are a human operator or developer, start with [../README.md](../README.md
 | Agent OS | [agents/governance.md](agents/governance.md) | Runtime modes, approvals, security, LOW_RESOURCE_MODE |
 | Agent OS | [agents/identities.md](agents/identities.md) | Agent identity cards (Mote, Scout, Executor, Reviewer) |
 | Agent OS | [agents/skills-registry.md](agents/skills-registry.md) | All agent/model skills with implementation paths |
+| Agent OS | [agents/scoring.md](agents/scoring.md) | Lead scoring rules, weights, thresholds |
 | Agent OS | [agents/whatsapp-outreach-strategy.md](agents/whatsapp-outreach-strategy.md) | WhatsApp template strategy + Closer flow |
 | Agent OS | [agents/context.md](agents/context.md) | Operator and agent runtime context |
 | Operations | [operations/local-dev-wsl.md](operations/local-dev-wsl.md) | Local WSL and runtime workflow |
