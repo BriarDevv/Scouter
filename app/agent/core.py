@@ -66,8 +66,8 @@ def _build_system_context(db: Session) -> str:
             f"Ganados: {stats['won']} | "
             f"Score promedio: {stats['avg_score']}"
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("mote_context_stats_failed", error=str(exc))
 
     # Inject latest weekly report if available
     try:
@@ -79,8 +79,8 @@ def _build_system_context(db: Session) -> str:
         )
         if latest and latest.synthesis_text:
             parts.append(f"\nUltimo reporte semanal del equipo IA:\n{latest.synthesis_text[:500]}")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("mote_context_weekly_report_failed", error=str(exc))
 
     return "\n".join(parts)
 

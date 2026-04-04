@@ -247,8 +247,8 @@ def task_research_lead(
                         business_name=lead.business_name if lead else None,
                         signals_count=len(report.detected_signals_json or []),
                     )
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("research_notification_failed", error=str(exc))
 
                 # Write research context for downstream steps
                 if pipeline_uuid:
