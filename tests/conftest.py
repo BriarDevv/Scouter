@@ -1,33 +1,35 @@
+import atexit
 import os
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event
-from sqlalchemy.orm import Session, sessionmaker
+from testcontainers.postgres import PostgresContainer
 
-# Override DB URL before importing app modules
-os.environ["DATABASE_URL"] = "sqlite:///./test.db"
+# ---------------------------------------------------------------------------
+# Start PostgreSQL container BEFORE any app imports.
+# This ensures settings.DATABASE_URL resolves to the container URL everywhere,
+# including app.db.session.SessionLocal used by _persist_invocation.
+# ---------------------------------------------------------------------------
+
+_pg = PostgresContainer("postgres:16-alpine", driver="psycopg2")
+_pg.start()
+os.environ["DATABASE_URL"] = _pg.get_connection_url()
 os.environ["CELERY_BROKER_URL"] = "memory://"
 os.environ["CELERY_RESULT_BACKEND"] = "cache+memory://"
 os.environ["REDIS_URL"] = "redis://localhost:6379/0"
+atexit.register(_pg.stop)
 
-from app.db.session import get_db
-from app.db.base import Base
-import app.models  # noqa: F401 — register all models with Base.metadata
-from app.main import app
+# Now safe to import app modules — they'll pick up the Postgres URL
+from sqlalchemy import create_engine  # noqa: E402
+from sqlalchemy.orm import Session, sessionmaker  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
 
-SQLALCHEMY_TEST_URL = "sqlite:///./test.db"
+from app.db.session import get_db  # noqa: E402
+from app.db.base import Base  # noqa: E402
+import app.models  # noqa: E402, F401 — register all models with Base.metadata
+from app.main import app  # noqa: E402
 
-engine = create_engine(SQLALCHEMY_TEST_URL, connect_args={"check_same_thread": False})
+engine = create_engine(_pg.get_connection_url())
 TestSessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
-
-
-# Enable foreign keys in SQLite
-@event.listens_for(engine, "connect")
-def set_sqlite_pragma(dbapi_conn, connection_record):
-    cursor = dbapi_conn.cursor()
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.close()
 
 
 @pytest.fixture(scope="session", autouse=True)

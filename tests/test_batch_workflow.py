@@ -185,7 +185,7 @@ def test_run_batch_pipeline_uses_shared_lead_pipeline_steps(db, monkeypatch):
 
     def fake_draft(db_session, lead_id, *, apply_automation=True):
         calls.append(("draft", str(lead_id)))
-        db_session.get(Lead, lead_id).status = "processed"
+        db_session.get(Lead, lead_id).status = "contacted"
         db_session.commit()
         return type(
             "DraftResult",
