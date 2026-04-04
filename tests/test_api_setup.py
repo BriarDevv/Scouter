@@ -169,7 +169,8 @@ def test_setup_readiness_endpoint_blocks_unsupported_platform_and_derives_wizard
     assert payload["updates"]["can_autopull"] is False
 
 
-def test_setup_action_refresh_is_safe_noop(client):
+def test_setup_action_refresh_is_safe_noop(client, monkeypatch):
+    monkeypatch.setattr("app.api.v1.setup._ACTION_COOLDOWN_SECONDS", 0.0)
     response = client.post("/api/v1/setup/actions/refresh")
     assert response.status_code == 200
     payload = response.json()
@@ -178,6 +179,7 @@ def test_setup_action_refresh_is_safe_noop(client):
 
 
 def test_setup_action_preflight_runs_whitelisted_command(client, monkeypatch):
+    monkeypatch.setattr("app.api.v1.setup._ACTION_COOLDOWN_SECONDS", 0.0)
     captured = {}
 
     def fake_run_command(cmd, timeout):
@@ -277,7 +279,8 @@ def test_setup_readiness_exposes_update_action_only_when_autopull_is_possible(
     assert "git pull --ff-only" in update_action["manual_instructions"]
 
 
-def test_setup_action_rejects_unknown_action(client):
+def test_setup_action_rejects_unknown_action(client, monkeypatch):
+    monkeypatch.setattr("app.api.v1.setup._ACTION_COOLDOWN_SECONDS", 0.0)
     response = client.post("/api/v1/setup/actions/nope")
     assert response.status_code == 404
     assert response.json()["detail"] == "Setup action not found"

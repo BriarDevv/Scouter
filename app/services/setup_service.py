@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import platform
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -71,15 +72,23 @@ def _current_platform() -> str:
     return system
 
 
+_MAX_OUTPUT_CHARS = 2000
+_CREDENTIAL_URL_RE = re.compile(r"://[^@/\s]+:[^@/\s]+@")
+
+
 def _sanitize_output(output: str | None) -> str | None:
     if not output:
         return None
-    sanitized = output.replace(str(REPO_ROOT), "<repo>")
+    # Truncate first to avoid processing huge output
+    sanitized = output[-_MAX_OUTPUT_CHARS:] if len(output) > _MAX_OUTPUT_CHARS else output
+    sanitized = sanitized.replace(str(REPO_ROOT), "<repo>")
     sanitized = sanitized.replace(str(Path.home()), "<home>")
     for key in ("POSTGRES_PASSWORD", "MAIL_SMTP_PASSWORD", "MAIL_IMAP_PASSWORD", "API_KEY"):
         value = os.getenv(key)
         if value:
             sanitized = sanitized.replace(value, "<redacted>")
+    # Strip credentials embedded in URLs (e.g. postgresql://user:pass@host)
+    sanitized = _CREDENTIAL_URL_RE.sub("://<redacted>@", sanitized)
     return sanitized
 
 
@@ -159,6 +168,9 @@ def _config_steps(db: Session) -> tuple[list[dict], list[str]]:
     wizard_steps: list[str] = []
     config_ids = {"brand", "credentials", "mail_out", "mail_in", "rules"}
 
+    # mail_in (IMAP) is optional — existing users may only do outbound
+    optional_steps = {"mail_in"}
+
     for step in setup["steps"]:
         mapped = _to_step(
             step["id"],
@@ -166,6 +178,7 @@ def _config_steps(db: Session) -> tuple[list[dict], list[str]]:
             step["status"],
             step.get("detail"),
             step.get("action"),
+            required=step["id"] not in optional_steps,
         )
         if step["id"] in config_ids:
             steps.append(mapped)

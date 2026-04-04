@@ -7,8 +7,16 @@ import type {
   SignalType,
 } from "@/types";
 
-export const API_BASE_URL = "/api/proxy";
-export const SYSTEM_HEALTH_URL = "/api/system/health";
+/** Browser uses the Next.js proxy; SSR uses the backend directly. */
+export const API_BASE_URL =
+  typeof window === "undefined"
+    ? (process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1")
+    : "/api/proxy";
+
+export const SYSTEM_HEALTH_URL =
+  typeof window === "undefined"
+    ? `${(process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1").replace(/\/api\/v1\/?$/, "")}/health/detailed`
+    : "/api/system/health";
 
 export const STATUS_CONFIG: Record<LeadStatus, { label: string; color: string; bg: string }> = {
   new:         { label: "Nuevo",       color: "text-slate-700 dark:text-slate-300",    bg: "bg-slate-100 dark:bg-slate-800/50" },

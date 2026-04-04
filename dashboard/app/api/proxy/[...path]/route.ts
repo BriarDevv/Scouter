@@ -6,6 +6,21 @@ export const dynamic = "force-dynamic";
 const BACKEND_API_BASE =
   process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
 const SERVER_API_KEY = process.env.API_KEY || "";
+
+/** Allowed API path prefixes — requests outside this list get 403. */
+const ALLOWED_PREFIXES = [
+  "leads/", "dashboard/", "settings/", "setup/",
+  "scoring/", "enrichment/", "outreach/", "tasks/",
+  "performance/", "mail/", "suppression/", "reviews/",
+  "ai-office/", "pipelines/", "leader/", "telegram/",
+  "notifications/", "chat/", "whatsapp/",
+];
+
+function isAllowedPath(pathname: string): boolean {
+  const normalized = pathname.replace(/^\/+/, "");
+  return ALLOWED_PREFIXES.some((prefix) => normalized.startsWith(prefix));
+}
+
 const HOP_BY_HOP = new Set([
   "connection",
   "content-length",
@@ -36,6 +51,14 @@ function buildHeaders(source: Headers): Headers {
 async function proxyRequest(request: NextRequest, params: Promise<{ path: string[] }>) {
   const { path } = await params;
   const pathname = path.join("/");
+
+  if (!isAllowedPath(pathname)) {
+    return new Response(JSON.stringify({ detail: "Proxy: path not allowed" }), {
+      status: 403,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   const url = new URL(`${BACKEND_API_BASE.replace(/\/$/, "")}/${pathname}`);
   url.search = request.nextUrl.search;
 

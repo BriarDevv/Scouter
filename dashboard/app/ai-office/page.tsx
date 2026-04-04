@@ -15,6 +15,7 @@ import {
   TrendingUp,
   AlertTriangle,
 } from "lucide-react";
+import { apiFetch } from "@/lib/api/client";
 
 interface AgentInfo {
   name: string;
@@ -63,8 +64,6 @@ interface InvestigationRecord {
   created_at: string | null;
 }
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
 const AGENT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   mote: Brain,
   scout: Search,
@@ -94,14 +93,14 @@ export default function AiOfficePage() {
   useEffect(() => {
     async function load() {
       try {
-        const [statusRes, decisionsRes, investigationsRes] = await Promise.all([
-          fetch(`${API}/api/v1/ai-office/status`).then((r) => (r.ok ? r.json() : null)),
-          fetch(`${API}/api/v1/ai-office/decisions?limit=15`).then((r) => (r.ok ? r.json() : [])),
-          fetch(`${API}/api/v1/ai-office/investigations?limit=5`).then((r) => (r.ok ? r.json() : [])),
+        const [statusRes, decisionsRes, investigationsRes] = await Promise.allSettled([
+          apiFetch<AiOfficeStatus>("/ai-office/status"),
+          apiFetch<DecisionRecord[]>("/ai-office/decisions?limit=15"),
+          apiFetch<InvestigationRecord[]>("/ai-office/investigations?limit=5"),
         ]);
-        setStatus(statusRes);
-        setDecisions(decisionsRes);
-        setInvestigations(investigationsRes);
+        if (statusRes.status === "fulfilled") setStatus(statusRes.value);
+        if (decisionsRes.status === "fulfilled") setDecisions(decisionsRes.value);
+        if (investigationsRes.status === "fulfilled") setInvestigations(investigationsRes.value);
       } catch {
         // API may not be running
       } finally {

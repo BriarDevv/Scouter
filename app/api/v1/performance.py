@@ -90,6 +90,8 @@ def get_signal_correlation(db: Session = Depends(get_session)):
     """Which signals correlate with WON vs LOST outcomes. Delegates to analysis service."""
     from app.services.pipeline.outcome_analysis_service import analyze_signal_correlations
     return analyze_signal_correlations(db)
+
+
 @router.get("/recommendations")
 def get_scoring_recommendations(db: Session = Depends(get_session)):
     """Scoring and prompt improvement recommendations from outcome data."""

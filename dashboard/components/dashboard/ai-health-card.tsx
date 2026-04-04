@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Brain, CheckCircle, AlertTriangle, Clock } from "lucide-react";
+import { apiFetch } from "@/lib/api/client";
 
 interface AiHealthData {
   approval_rate: number | null;
@@ -18,10 +19,9 @@ export function AiHealthCard() {
     // GET /api/v1/performance/ai-health
     async function load() {
       try {
-        const resp = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/performance/ai-health`);
-        if (resp.ok) setData(await resp.json());
+        setData(await apiFetch<AiHealthData>("/performance/ai-health"));
       } catch {
-        // Endpoint may not exist yet — show placeholder
+        // Endpoint may not be running — show placeholder
       }
     }
     load();
