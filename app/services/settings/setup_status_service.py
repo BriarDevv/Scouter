@@ -9,11 +9,25 @@ from app.services.outreach.mail_credentials_service import get_or_create as get_
 from app.services.settings.operational_settings_service import get_or_create as get_ops
 
 
+def _get_wa_creds(db: Session):
+    from app.models.whatsapp_credentials import WhatsAppCredentials
+
+    return db.get(WhatsAppCredentials, 1)
+
+
+def _get_tg_creds(db: Session):
+    from app.models.telegram_credentials import TelegramCredentials
+
+    return db.get(TelegramCredentials, 1)
+
+
 def get_setup_status(db: Session) -> dict:
     ops = get_ops(db)
     creds = get_creds(db)
     smtp = get_effective_smtp(db)
     imap = get_effective_imap(db)
+    wa = _get_wa_creds(db)
+    tg = _get_tg_creds(db)
 
     steps = []
 
@@ -40,7 +54,49 @@ def get_setup_status(db: Session) -> dict:
             "action": None,
         })
 
-    # ── Step 2: Mail Outbound ─────────────────────────────────────────
+    # ── Step 2: WhatsApp (CallMeBot notifications + Kapso outreach) ───
+    wa_has_phone = bool(wa and wa.phone_number)
+    wa_has_key = bool(wa and wa.api_key)
+    if wa_has_phone and wa_has_key:
+        if wa.last_test_ok is None:
+            steps.append({
+                "id": "whatsapp",
+                "label": "WhatsApp",
+                "status": "warning",
+                "detail": "Credenciales cargadas pero conexión no probada",
+                "action": "Probar conexión",
+            })
+        elif not wa.last_test_ok:
+            steps.append({
+                "id": "whatsapp",
+                "label": "WhatsApp",
+                "status": "warning",
+                "detail": f"Última prueba falló: {wa.last_test_error or 'error'}",
+                "action": "Probar conexión",
+            })
+        else:
+            steps.append({
+                "id": "whatsapp",
+                "label": "WhatsApp",
+                "status": "complete",
+                "detail": f"{wa.phone_number} · CallMeBot",
+                "action": None,
+            })
+    else:
+        wa_missing = []
+        if not wa_has_phone:
+            wa_missing.append("número de teléfono")
+        if not wa_has_key:
+            wa_missing.append("API key")
+        steps.append({
+            "id": "whatsapp",
+            "label": "WhatsApp",
+            "status": "incomplete",
+            "detail": f"Falta: {', '.join(wa_missing)}",
+            "action": "Configurar WhatsApp",
+        })
+
+    # ── Step 3: Mail Outbound ─────────────────────────────────────────
     smtp_missing = []
     if not smtp.host:
         smtp_missing.append("servidor SMTP")
@@ -85,7 +141,7 @@ def get_setup_status(db: Session) -> dict:
             "action": None,
         })
 
-    # ── Step 3: Mail Inbound ──────────────────────────────────────────
+    # ── Step 4: Mail Inbound ──────────────────────────────────────────
     imap_missing = []
     if not imap.host:
         imap_missing.append("servidor IMAP")
@@ -127,12 +183,54 @@ def get_setup_status(db: Session) -> dict:
             "action": None,
         })
 
-    # ── Step 4: Rules ─────────────────────────────────────────────────
+    # ── Step 5: Telegram notifications ────────────────────────────────
+    tg_has_token = bool(tg and tg.bot_token)
+    tg_has_chat = bool(tg and tg.chat_id)
+    if tg_has_token and tg_has_chat:
+        if tg.last_test_ok is None:
+            steps.append({
+                "id": "telegram",
+                "label": "Telegram",
+                "status": "warning",
+                "detail": "Bot configurado pero conexión no probada",
+                "action": "Probar conexión",
+            })
+        elif not tg.last_test_ok:
+            steps.append({
+                "id": "telegram",
+                "label": "Telegram",
+                "status": "warning",
+                "detail": f"Última prueba falló: {tg.last_test_error or 'error'}",
+                "action": "Probar conexión",
+            })
+        else:
+            steps.append({
+                "id": "telegram",
+                "label": "Telegram",
+                "status": "complete",
+                "detail": f"@{tg.bot_username or 'bot'} · chat {tg.chat_id}",
+                "action": None,
+            })
+    else:
+        tg_missing = []
+        if not tg_has_token:
+            tg_missing.append("bot token")
+        if not tg_has_chat:
+            tg_missing.append("chat ID")
+        steps.append({
+            "id": "telegram",
+            "label": "Telegram",
+            "status": "incomplete",
+            "detail": f"Falta: {', '.join(tg_missing)}",
+            "action": "Configurar Telegram",
+        })
+
+    # ── Step 6: Rules ─────────────────────────────────────────────────
     steps.append({
         "id": "rules",
         "label": "Reglas operativas",
         "status": "complete",
-        "detail": "Usando configuración por defecto" if True else None,
+        "detail": "Usando configuración por defecto",
         "action": None,
     })
 
@@ -147,6 +245,14 @@ def get_setup_status(db: Session) -> dict:
         and creds.imap_last_test_ok is True
     )
 
+    # At least one outreach channel configured (WhatsApp OR Email)
+    wa_step = next((s for s in steps if s["id"] == "whatsapp"), None)
+    mail_step = next((s for s in steps if s["id"] == "mail_out"), None)
+    has_outreach_channel = (
+        (wa_step and wa_step["status"] != "incomplete")
+        or (mail_step and mail_step["status"] != "incomplete")
+    )
+
     if "incomplete" in statuses:
         overall = "incomplete"
     elif "warning" in statuses:
@@ -159,4 +265,5 @@ def get_setup_status(db: Session) -> dict:
         "overall": overall,
         "ready_to_send": ready_to_send,
         "ready_to_receive": ready_to_receive,
+        "has_outreach_channel": has_outreach_channel,
     }
