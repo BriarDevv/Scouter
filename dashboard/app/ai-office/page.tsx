@@ -71,11 +71,11 @@ const AGENT_ICONS: Record<string, React.ComponentType<{ className?: string }>> =
   reviewer: CheckCircle,
 };
 
-const AGENT_COLORS: Record<string, string> = {
-  mote: "violet",
-  scout: "cyan",
-  executor: "blue",
-  reviewer: "emerald",
+const AGENT_COLOR_CLASSES: Record<string, { border: string; bg: string; icon: string }> = {
+  mote:     { border: "border-violet-100 dark:border-violet-900/30", bg: "bg-violet-50/30 dark:bg-violet-950/20",   icon: "text-violet-600 dark:text-violet-400" },
+  scout:    { border: "border-cyan-100 dark:border-cyan-900/30",     bg: "bg-cyan-50/30 dark:bg-cyan-950/20",       icon: "text-cyan-600 dark:text-cyan-400" },
+  executor: { border: "border-blue-100 dark:border-blue-900/30",     bg: "bg-blue-50/30 dark:bg-blue-950/20",       icon: "text-blue-600 dark:text-blue-400" },
+  reviewer: { border: "border-emerald-100 dark:border-emerald-900/30", bg: "bg-emerald-50/30 dark:bg-emerald-950/20", icon: "text-emerald-600 dark:text-emerald-400" },
 };
 
 const STATUS_DOT: Record<string, string> = {
@@ -125,9 +125,8 @@ export default function AiOfficePage() {
           ? (["mote", "scout", "executor", "reviewer"] as const).map((key) => {
               const agent = status.agents[key];
               const Icon = AGENT_ICONS[key];
-              const color = AGENT_COLORS[key];
               return (
-                <AgentCard key={key} agent={agent} agentKey={key} Icon={Icon} color={color} />
+                <AgentCard key={key} agent={agent} agentKey={key} Icon={Icon} colorClasses={AGENT_COLOR_CLASSES[key]} />
               );
             })
           : Array.from({ length: 4 }).map((_, i) => (
@@ -260,22 +259,18 @@ function AgentCard({
   agent,
   agentKey,
   Icon,
-  color,
+  colorClasses,
 }: {
   agent: AgentInfo;
   agentKey: string;
   Icon: React.ComponentType<{ className?: string }>;
-  color: string;
+  colorClasses: { border: string; bg: string; icon: string };
 }) {
-  const borderColor = `border-${color}-100 dark:border-${color}-900/30`;
-  const bgColor = `bg-${color}-50/30 dark:bg-${color}-950/20`;
-  const iconColor = `text-${color}-600 dark:text-${color}-400`;
-
   return (
-    <div className={`rounded-xl border ${borderColor} ${bgColor} p-4`}>
+    <div className={`rounded-xl border ${colorClasses.border} ${colorClasses.bg} p-4`}>
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <Icon className={`h-5 w-5 ${iconColor}`} />
+          <Icon className={`h-5 w-5 ${colorClasses.icon}`} />
           <span className="text-sm font-semibold">{agent.name}</span>
         </div>
         <Circle className={`h-2.5 w-2.5 fill-current ${STATUS_DOT[agent.status] || STATUS_DOT.idle}`} />

@@ -159,6 +159,13 @@ export function AiDecisionsPanel({ leadId, pipelineRunId }: AiDecisionsPanelProp
   );
 }
 
+const STEP_COLOR_CLASSES: Record<string, { border: string; bg: string; title: string }> = {
+  violet:  { border: "border-violet-100 dark:border-violet-900/30",   bg: "bg-violet-50/40 dark:bg-violet-950/20",   title: "text-violet-700 dark:text-violet-300" },
+  blue:    { border: "border-blue-100 dark:border-blue-900/30",       bg: "bg-blue-50/40 dark:bg-blue-950/20",       title: "text-blue-700 dark:text-blue-300" },
+  emerald: { border: "border-emerald-100 dark:border-emerald-900/30", bg: "bg-emerald-50/40 dark:bg-emerald-950/20", title: "text-emerald-700 dark:text-emerald-300" },
+  amber:   { border: "border-amber-100 dark:border-amber-900/30",     bg: "bg-amber-50/40 dark:bg-amber-950/20",     title: "text-amber-700 dark:text-amber-300" },
+};
+
 function StepCard({
   icon: Icon,
   title,
@@ -170,15 +177,13 @@ function StepCard({
   color: string;
   children: React.ReactNode;
 }) {
-  const borderColor = `border-${color}-100 dark:border-${color}-900/30`;
-  const bgColor = `bg-${color}-50/40 dark:bg-${color}-950/20`;
-  const titleColor = `text-${color}-700 dark:text-${color}-300`;
+  const classes = STEP_COLOR_CLASSES[color] ?? STEP_COLOR_CLASSES.violet;
 
   return (
-    <div className={`rounded-xl border ${borderColor} ${bgColor} p-3`}>
+    <div className={`rounded-xl border ${classes.border} ${classes.bg} p-3`}>
       <div className="flex items-center gap-2 mb-2">
-        <Icon className={`h-4 w-4 ${titleColor}`} />
-        <p className={`text-xs font-medium ${titleColor}`}>{title}</p>
+        <Icon className={`h-4 w-4 ${classes.title}`} />
+        <p className={`text-xs font-medium ${classes.title}`}>{title}</p>
       </div>
       {children}
     </div>

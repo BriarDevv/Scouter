@@ -15,13 +15,11 @@ export function AiHealthCard() {
   const [data, setData] = useState<AiHealthData | null>(null);
 
   useEffect(() => {
-    // For now, this is a placeholder that will work once the backend endpoint exists
-    // GET /api/v1/performance/ai-health
     async function load() {
       try {
         setData(await apiFetch<AiHealthData>("/performance/ai-health"));
       } catch {
-        // Endpoint may not be running — show placeholder
+        // silent — endpoint may not exist yet
       }
     }
     load();
@@ -73,6 +71,15 @@ export function AiHealthCard() {
   );
 }
 
+const METRIC_COLOR_CLASSES: Record<string, string> = {
+  emerald: "text-emerald-600 dark:text-emerald-400",
+  red:     "text-red-600 dark:text-red-400",
+  amber:   "text-amber-600 dark:text-amber-400",
+  blue:    "text-blue-600 dark:text-blue-400",
+  violet:  "text-violet-600 dark:text-violet-400",
+  muted:   "text-muted-foreground",
+};
+
 function Metric({
   icon: Icon,
   label,
@@ -84,9 +91,7 @@ function Metric({
   value: string;
   color: string;
 }) {
-  const textColor = color === "muted"
-    ? "text-muted-foreground"
-    : `text-${color}-600 dark:text-${color}-400`;
+  const textColor = METRIC_COLOR_CLASSES[color] ?? "text-muted-foreground";
 
   return (
     <div className="text-center">
