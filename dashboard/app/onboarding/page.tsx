@@ -54,7 +54,7 @@ export default function OnboardingPage() {
   const searchParams = useSearchParams();
   const rawNextPath = searchParams.get("next") || "/";
   const nextPath =
-    rawNextPath.startsWith("/") && !rawNextPath.startsWith("//")
+    rawNextPath.startsWith("/") && !rawNextPath.startsWith("//") && !rawNextPath.startsWith("/\\")
       ? rawNextPath
       : "/";
 

@@ -18,6 +18,8 @@ const ALLOWED_PREFIXES = [
 ];
 
 function isAllowedPath(pathname: string): boolean {
+  // Block path traversal attempts
+  if (pathname.includes("..") || pathname.includes("//")) return false;
   const normalized = pathname.replace(/^\/+/, "");
   // Match "leads/..." or bare "leads" (no trailing slash for root resource)
   return ALLOWED_PREFIXES.some(
