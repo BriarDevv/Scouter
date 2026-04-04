@@ -1,4 +1,4 @@
-Create a new dashboard page for ClawScout.
+Create a new dashboard page for Scouter.
 
 The user will provide: page name, route, and purpose.
 

@@ -1,6 +1,6 @@
 # Model Routing Reference
 
-Which model handles what. This is the authoritative reference for ClawScout.
+Which model handles what. This is the authoritative reference for Scouter.
 
 ## Models
 
@@ -12,7 +12,7 @@ Which model handles what. This is the authoritative reference for ClawScout.
 
 ## Routing rules
 
-1. **Data queries** → No model. Tool-only via clawscoutctl.py.
+1. **Data queries** → No model. Tool-only via scouterctl.py.
 2. **Briefs / summaries** → leader (via opsctl.py, which runs tools first).
 3. **Draft generation** → executor (via API, async task).
 4. **Reply classification** → executor (via API).

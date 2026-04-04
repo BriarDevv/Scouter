@@ -1,12 +1,12 @@
 ---
-name: clawscout-whatsapp
-description: "WhatsApp integration status, credential management, and conversational channel configuration for ClawScout."
+name: scouter-whatsapp
+description: "WhatsApp integration status, credential management, and conversational channel configuration for Scouter."
 metadata: { "hermes": { "emoji": "💬", "os": ["linux"], "requires": { "bins": ["python3"] } } }
 ---
 
-# ClawScout WhatsApp Skill
+# Scouter WhatsApp Skill
 
-Manage WhatsApp as a notification and conversational channel for ClawScout.
+Manage WhatsApp as a notification and conversational channel for Scouter.
 
 ## When to use
 
@@ -18,8 +18,8 @@ Manage WhatsApp as a notification and conversational channel for ClawScout.
 ## When NOT to use
 
 - Sending a WhatsApp message manually → not supported
-- Notification queries → use **clawscout-notifications**
-- Lead/draft data → use **clawscout-data**
+- Notification queries → use **scouter-notifications**
+- Lead/draft data → use **scouter-data**
 
 ## Capabilities
 
@@ -33,7 +33,7 @@ Configuration is in Settings → Notifications & WhatsApp.
 ## Commands
 
 ```bash
-cd /home/briar/src/ClawScout && .venv/bin/python scripts/clawscoutctl.py --data-only --compact <command> [args]
+cd /home/mateo/Scouter && .venv/bin/python scripts/scouterctl.py --data-only --compact <command> [args]
 ```
 
 | Request | Command |

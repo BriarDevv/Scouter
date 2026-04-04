@@ -1,10 +1,10 @@
 ---
-name: clawscout-mail
-description: "Mail operations. Exec: cd /home/briar/src/ClawScout && .venv/bin/python scripts/mailctl.py --data-only --compact <cmd>. Commands: recent-drafts --limit N | draft-detail --draft-id ID | send-status --draft-id ID | send-draft --draft-id ID. Return ONLY the JSON output."
+name: scouter-mail
+description: "Mail operations. Exec: cd /home/mateo/Scouter && .venv/bin/python scripts/mailctl.py --data-only --compact <cmd>. Commands: recent-drafts --limit N | draft-detail --draft-id ID | send-status --draft-id ID | send-draft --draft-id ID. Return ONLY the JSON output."
 metadata: { "hermes": { "emoji": "✉️", "os": ["linux"], "requires": { "bins": ["python3"] } } }
 ---
 
-# ClawScout Mail Skill
+# Scouter Mail Skill
 
 Send approved drafts and check delivery status. Uses mailctl.py for grounded mail operations.
 
@@ -16,10 +16,10 @@ Send approved drafts and check delivery status. Uses mailctl.py for grounded mai
 
 ## When NOT to use
 
-- Generating new drafts → use **clawscout-actions**
-- Reviewing drafts → use **clawscout-actions**
-- Listing all drafts (not mail-specific) → use **clawscout-data**
-- Reply assisted drafts → use **clawscout-actions**
+- Generating new drafts → use **scouter-actions**
+- Reviewing drafts → use **scouter-actions**
+- Listing all drafts (not mail-specific) → use **scouter-data**
+- Reply assisted drafts → use **scouter-actions**
 
 ## Hard rules
 
@@ -30,7 +30,7 @@ Send approved drafts and check delivery status. Uses mailctl.py for grounded mai
 ## Commands
 
 ```bash
-cd /home/briar/src/ClawScout && .venv/bin/python scripts/mailctl.py --data-only --compact <command> [args]
+cd /home/mateo/Scouter && .venv/bin/python scripts/mailctl.py --data-only --compact <command> [args]
 ```
 
 | Request | Command |

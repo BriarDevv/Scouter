@@ -1,12 +1,12 @@
 ---
-name: clawscout-notifications
-description: "ClawScout notifications. Exec: cd /home/briar/src/ClawScout && .venv/bin/python scripts/clawscoutctl.py --data-only --compact <cmd>. Commands: notifications-list --limit N | notifications-list --category business|system|security | notifications-counts | notification-resolve --id UUID | notifications-mark-read. Return ONLY the JSON output."
+name: scouter-notifications
+description: "Scouter notifications. Exec: cd /home/mateo/Scouter && .venv/bin/python scripts/scouterctl.py --data-only --compact <cmd>. Commands: notifications-list --limit N | notifications-list --category business|system|security | notifications-counts | notification-resolve --id UUID | notifications-mark-read. Return ONLY the JSON output."
 metadata: { "hermes": { "emoji": "🔔", "os": ["linux"], "requires": { "bins": ["python3"] } } }
 ---
 
-# ClawScout Notifications Skill
+# Scouter Notifications Skill
 
-Manage the ClawScout notification center — business alerts, system events, and security incidents.
+Manage the Scouter notification center — business alerts, system events, and security incidents.
 
 ## When to use
 
@@ -18,9 +18,9 @@ Manage the ClawScout notification center — business alerts, system events, and
 
 ## When NOT to use
 
-- Lead/draft/reply data → use **clawscout-data**
-- Operational summaries → use **clawscout-briefs**
-- WhatsApp configuration → use **clawscout-whatsapp**
+- Lead/draft/reply data → use **scouter-data**
+- Operational summaries → use **scouter-briefs**
+- WhatsApp configuration → use **scouter-whatsapp**
 
 ## Hard rules
 
@@ -31,7 +31,7 @@ Manage the ClawScout notification center — business alerts, system events, and
 ## Commands
 
 ```bash
-cd /home/briar/src/ClawScout && .venv/bin/python scripts/clawscoutctl.py --data-only --compact <command> [args]
+cd /home/mateo/Scouter && .venv/bin/python scripts/scouterctl.py --data-only --compact <command> [args]
 ```
 
 | Request | Command |
