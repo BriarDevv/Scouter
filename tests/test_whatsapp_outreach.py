@@ -67,10 +67,11 @@ def test_outreach_draft_subject_nullable():
 
 def test_kapso_raises_without_api_key(monkeypatch):
     monkeypatch.setattr("app.services.comms.kapso_service.settings.KAPSO_API_KEY", None)
-    from app.services.comms.kapso_service import KapsoError, send_whatsapp_message
+    monkeypatch.setattr("app.services.comms.kapso_service.settings.KAPSO_PHONE_NUMBER_ID", "12345")
+    from app.services.comms.kapso_service import KapsoError, send_text_message
 
     with pytest.raises(KapsoError, match="KAPSO_API_KEY"):
-        send_whatsapp_message("+5491155551234", "test")
+        send_text_message("5491155551234", "test")
 
 
 # ---------------------------------------------------------------------------
@@ -79,20 +80,25 @@ def test_kapso_raises_without_api_key(monkeypatch):
 
 
 def test_kapso_builds_correct_payload(monkeypatch):
-    """Verify Kapso payload format matches Platform API spec."""
+    """Verify Kapso payload format matches WhatsApp Cloud API spec."""
     monkeypatch.setattr("app.services.comms.kapso_service.settings.KAPSO_API_KEY", "test-key")
+    monkeypatch.setattr("app.services.comms.kapso_service.settings.KAPSO_PHONE_NUMBER_ID", "647015955153740")
     monkeypatch.setattr(
         "app.services.comms.kapso_service.settings.KAPSO_BASE_URL",
-        "https://app.kapso.ai/api/v1",
+        "https://api.kapso.ai/meta/whatsapp",
     )
 
     captured = {}
 
     class MockResponse:
-        status_code = 201
+        status_code = 200
 
         def json(self):
-            return {"data": {"id": "msg-123", "status": "sent"}}
+            return {
+                "messaging_product": "whatsapp",
+                "contacts": [{"input": "5491155551234", "wa_id": "5491155551234"}],
+                "messages": [{"id": "wamid.ABC123"}],
+            }
 
         def raise_for_status(self):
             pass
@@ -114,17 +120,17 @@ def test_kapso_builds_correct_payload(monkeypatch):
         "app.services.comms.kapso_service.httpx.Client", lambda **kw: MockClient()
     )
 
-    from app.services.comms.kapso_service import send_whatsapp_message
+    from app.services.comms.kapso_service import send_text_message
 
-    result = send_whatsapp_message("+5491155551234", "Hola test")
+    result = send_text_message("+5491155551234", "Hola test")
 
-    assert captured["url"] == "https://app.kapso.ai/api/v1/whatsapp_messages"
-    assert captured["json"]["message"]["phone_number"] == "+5491155551234"
-    assert captured["json"]["message"]["content"] == "Hola test"
-    assert captured["json"]["message"]["message_type"] == "text"
+    assert captured["url"] == "https://api.kapso.ai/meta/whatsapp/v24.0/647015955153740/messages"
+    assert captured["json"]["messaging_product"] == "whatsapp"
+    assert captured["json"]["to"] == "5491155551234"
+    assert captured["json"]["type"] == "text"
+    assert captured["json"]["text"]["body"] == "Hola test"
     assert captured["headers"]["X-API-Key"] == "test-key"
-    assert result["message_id"] == "msg-123"
-    assert result["status"] == "sent"
+    assert result["message_id"] == "wamid.ABC123"
 
 
 # ---------------------------------------------------------------------------
