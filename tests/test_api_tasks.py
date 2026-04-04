@@ -159,6 +159,90 @@ def test_draft_skipped_when_no_email(db):
     assert _should_generate_draft(lead) is True
 
 
+def test_orphan_pipeline_detected(db):
+    """Janitor should mark PipelineRun stuck in 'running' for 45 min as failed."""
+    import uuid as _uuid
+    from sqlalchemy import text
+    from app.models.lead import Lead
+    from app.models.task_tracking import PipelineRun
+    from app.workers.janitor import sweep_stale_tasks
+    from tests.conftest import TestSessionLocal
+
+    lead = Lead(business_name="Orphan Pipeline Lead", city="Cordoba")
+    db.add(lead)
+    db.commit()
+    db.refresh(lead)
+
+    run = PipelineRun(
+        lead_id=lead.id,
+        correlation_id=str(_uuid.uuid4()),
+        status="running",
+        current_step="research",
+    )
+    db.add(run)
+    db.commit()
+    db.refresh(run)
+    run_id = run.id
+
+    # Force updated_at to 45 minutes ago to bypass onupdate.
+    # UUID must be stripped of hyphens to match SQLite's binary storage format.
+    db.execute(
+        text("UPDATE pipeline_runs SET updated_at = :ts WHERE id = :rid"),
+        {"ts": datetime.now(UTC) - timedelta(minutes=45), "rid": str(run_id).replace("-", "")},
+    )
+    db.commit()
+
+    # Sweep via TestSessionLocal so timezone handling is consistent (same as stale-task test).
+    result = sweep_stale_tasks(session_factory=TestSessionLocal)
+
+    db.expire_all()
+    db.refresh(run)
+    assert result["orphans_failed"] >= 1
+    assert run.status == "failed"
+    assert "orphaned" in run.error.lower()
+
+
+def test_recent_pipeline_not_orphaned(db):
+    """Janitor should NOT touch a PipelineRun updated only 5 minutes ago."""
+    import uuid as _uuid
+    from sqlalchemy import text
+    from app.models.lead import Lead
+    from app.models.task_tracking import PipelineRun
+    from app.workers.janitor import sweep_stale_tasks
+    from tests.conftest import TestSessionLocal
+
+    lead = Lead(business_name="Recent Pipeline Lead", city="Mendoza")
+    db.add(lead)
+    db.commit()
+    db.refresh(lead)
+
+    run = PipelineRun(
+        lead_id=lead.id,
+        correlation_id=str(_uuid.uuid4()),
+        status="running",
+        current_step="research",
+    )
+    db.add(run)
+    db.commit()
+    db.refresh(run)
+    run_id = run.id
+
+    # updated_at is only 5 minutes ago — well within the 30-min orphan threshold.
+    # UUID must be stripped of hyphens to match SQLite's binary storage format.
+    db.execute(
+        text("UPDATE pipeline_runs SET updated_at = :ts WHERE id = :rid"),
+        {"ts": datetime.now(UTC) - timedelta(minutes=5), "rid": str(run_id).replace("-", "")},
+    )
+    db.commit()
+
+    sweep_stale_tasks(session_factory=TestSessionLocal)
+    db.commit()
+
+    db.expire_all()
+    db.refresh(run)
+    assert run.status == "running"
+
+
 def test_janitor_marks_stale_tasks_as_failed(db):
     """Janitor should mark tasks stuck > 10 min as failed."""
     stale_task = TaskRun(

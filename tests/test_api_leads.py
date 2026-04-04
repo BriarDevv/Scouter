@@ -67,3 +67,35 @@ def test_get_lead_detail_includes_contract_fields(client):
 def test_create_lead_validation(client):
     resp = client.post("/api/v1/leads", json={})
     assert resp.status_code == 422
+
+
+# --- GET /leads/names ---
+
+def test_leads_names_empty(client):
+    resp = client.get("/api/v1/leads/names")
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+def test_leads_names_returns_id_and_business_name(client):
+    created = client.post("/api/v1/leads", json={"business_name": "Names Test Cafe"})
+    assert created.status_code == 201
+    lead_id = created.json()["id"]
+
+    resp = client.get("/api/v1/leads/names")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["id"] == lead_id
+    assert data[0]["business_name"] == "Names Test Cafe"
+
+
+def test_leads_names_ordered_by_name(client):
+    client.post("/api/v1/leads", json={"business_name": "Zara Bistro"})
+    client.post("/api/v1/leads", json={"business_name": "Alpha Cafe"})
+    client.post("/api/v1/leads", json={"business_name": "Midtown Diner"})
+
+    resp = client.get("/api/v1/leads/names")
+    assert resp.status_code == 200
+    names = [item["business_name"] for item in resp.json()]
+    assert names == sorted(names)
