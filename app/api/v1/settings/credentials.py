@@ -3,7 +3,7 @@ from typing import Annotated
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.deps import get_session
+from app.db.session import get_db
 from app.core.config import settings as app_settings
 from app.schemas.mail_credentials import (
     ConnectionTestResult,
@@ -23,7 +23,7 @@ from app.services.outreach.mail_credentials_service import (
 )
 
 router = APIRouter()
-DbSession = Annotated[object, Depends(get_session)]
+DbSession = Annotated[object, Depends(get_db)]
 
 
 @router.get("/mail-credentials", response_model=MailCredentialsResponse)

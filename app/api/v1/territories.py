@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_session
+from app.db.session import get_db
 from app.schemas.territory import (
     TerritoryCreate,
     TerritoryResponse,
@@ -28,19 +28,19 @@ router = APIRouter(prefix="/territories", tags=["territories"])
 
 
 @router.get("", response_model=list[TerritoryWithStats])
-def list_all(db: Session = Depends(get_session)):
+def list_all(db: Session = Depends(get_db)):
     """Listar todos los territorios con estadísticas."""
     return get_all_territories_with_stats(db)
 
 
 @router.post("", response_model=TerritoryResponse, status_code=201)
-def create(data: TerritoryCreate, db: Session = Depends(get_session)):
+def create(data: TerritoryCreate, db: Session = Depends(get_db)):
     """Crear un nuevo territorio."""
     return create_territory(db, data)
 
 
 @router.get("/{territory_id}", response_model=TerritoryWithStats)
-def get_one(territory_id: UUID, db: Session = Depends(get_session)):
+def get_one(territory_id: UUID, db: Session = Depends(get_db)):
     """Obtener un territorio con sus estadísticas."""
     territory = get_territory(db, territory_id)
     if territory is None:
@@ -49,7 +49,7 @@ def get_one(territory_id: UUID, db: Session = Depends(get_session)):
 
 
 @router.patch("/{territory_id}", response_model=TerritoryResponse)
-def patch(territory_id: UUID, data: TerritoryUpdate, db: Session = Depends(get_session)):
+def patch(territory_id: UUID, data: TerritoryUpdate, db: Session = Depends(get_db)):
     """Actualizar un territorio existente."""
     territory = update_territory(db, territory_id, data)
     if territory is None:
@@ -58,7 +58,7 @@ def patch(territory_id: UUID, data: TerritoryUpdate, db: Session = Depends(get_s
 
 
 @router.delete("/{territory_id}", status_code=204)
-def remove(territory_id: UUID, db: Session = Depends(get_session)):
+def remove(territory_id: UUID, db: Session = Depends(get_db)):
     """Eliminar un territorio."""
     if not delete_territory(db, territory_id):
         raise HTTPException(status_code=404, detail="Territorio no encontrado")
@@ -68,7 +68,7 @@ def remove(territory_id: UUID, db: Session = Depends(get_session)):
 def territory_leads(
     territory_id: UUID,
     limit: int = Query(50, ge=1, le=200),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     """Obtener los leads dentro de las ciudades del territorio."""
     territory = get_territory(db, territory_id)

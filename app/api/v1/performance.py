@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_session
+from app.db.session import get_db
 from app.models.investigation_thread import InvestigationThread
 from app.schemas.dashboard import (
     CityBreakdownResponse,
@@ -21,25 +21,25 @@ router = APIRouter(prefix="/performance", tags=["performance"])
 
 
 @router.get("/industry", response_model=list[IndustryBreakdownResponse])
-def industry(db: Session = Depends(get_session)):
+def industry(db: Session = Depends(get_db)):
     """Return a simple industry breakdown using current lead and status data."""
     return get_industry_breakdown(db)
 
 
 @router.get("/city", response_model=list[CityBreakdownResponse])
-def city(db: Session = Depends(get_session)):
+def city(db: Session = Depends(get_db)):
     """Return a simple city breakdown using current lead and status data."""
     return get_city_breakdown(db)
 
 
 @router.get("/source", response_model=list[SourcePerformanceResponse])
-def source(db: Session = Depends(get_session)):
+def source(db: Session = Depends(get_db)):
     """Return a simple source performance breakdown using current lead and status data."""
     return get_source_performance(db)
 
 
 @router.get("/ai-health")
-def get_ai_health(db: Session = Depends(get_session)):
+def get_ai_health(db: Session = Depends(get_db)):
     """AI health metrics: approval rate, fallback rate, avg latency, invocation count (24h)."""
     from datetime import UTC, datetime, timedelta
     from app.models.llm_invocation import LLMInvocation
@@ -66,7 +66,7 @@ def get_ai_health(db: Session = Depends(get_session)):
 
 
 @router.get("/outcomes")
-def get_outcome_analytics(db: Session = Depends(get_session)):
+def get_outcome_analytics(db: Session = Depends(get_db)):
     """Outcome analytics: WON/LOST breakdown by quality, industry, signals. Delegates to analysis service."""
     from app.services.pipeline.outcome_analysis_service import (
         analyze_industry_performance,
@@ -86,21 +86,21 @@ def get_outcome_analytics(db: Session = Depends(get_session)):
 
 
 @router.get("/outcomes/signals")
-def get_signal_correlation(db: Session = Depends(get_session)):
+def get_signal_correlation(db: Session = Depends(get_db)):
     """Which signals correlate with WON vs LOST outcomes. Delegates to analysis service."""
     from app.services.pipeline.outcome_analysis_service import analyze_signal_correlations
     return analyze_signal_correlations(db)
 
 
 @router.get("/recommendations")
-def get_scoring_recommendations(db: Session = Depends(get_session)):
+def get_scoring_recommendations(db: Session = Depends(get_db)):
     """Scoring and prompt improvement recommendations from outcome data."""
     from app.services.pipeline.outcome_analysis_service import generate_scoring_recommendations
     return generate_scoring_recommendations(db)
 
 
 @router.get("/analysis/summary")
-def get_analysis_summary(db: Session = Depends(get_session)):
+def get_analysis_summary(db: Session = Depends(get_db)):
     """Full outcome analysis: summary, signals, quality accuracy, industry performance."""
     from app.services.pipeline.outcome_analysis_service import (
         analyze_industry_performance,
@@ -117,7 +117,7 @@ def get_analysis_summary(db: Session = Depends(get_session)):
 
 
 @router.get("/investigations/{lead_id}")
-def get_investigation(lead_id: uuid.UUID, db: Session = Depends(get_session)):
+def get_investigation(lead_id: uuid.UUID, db: Session = Depends(get_db)):
     """Return Scout investigation thread for a lead."""
     thread = (
         db.query(InvestigationThread)

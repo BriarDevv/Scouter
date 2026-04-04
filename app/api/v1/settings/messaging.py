@@ -4,7 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.api.deps import get_session
+from app.db.session import get_db
 from app.core.logging import get_logger
 from app.schemas.telegram import (
     TelegramCredentialsResponse,
@@ -44,7 +44,7 @@ from app.services.comms.whatsapp_service import (
 
 logger = get_logger(__name__)
 router = APIRouter()
-DbSession = Annotated[object, Depends(get_session)]
+DbSession = Annotated[object, Depends(get_db)]
 
 
 @router.get("/whatsapp-credentials", response_model=WhatsAppCredentialsResponse)

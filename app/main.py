@@ -8,7 +8,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_session
+from app.db.session import get_db
 from app.api.request_context import (
     CORRELATION_ID_HEADER,
     REQUEST_ID_HEADER,
@@ -100,5 +100,5 @@ def health():
 
 
 @app.get("/health/detailed")
-def health_detailed(db: Session = Depends(get_session)):
+def health_detailed(db: Session = Depends(get_db)):
     return get_system_health(db)

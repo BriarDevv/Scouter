@@ -4,7 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_session
+from app.db.session import get_db
 from app.api.request_context import get_correlation_id
 from app.schemas.lead import LeadResponse
 from app.schemas.task_tracking import TaskEnqueueResponse
@@ -25,7 +25,7 @@ from app.services.pipeline.task_tracking_service import (
 from app.workers.tasks import task_analyze_lead, task_full_pipeline
 
 router = APIRouter(prefix="/scoring", tags=["scoring"])
-DbSession = Annotated[Session, Depends(get_session)]
+DbSession = Annotated[Session, Depends(get_db)]
 
 
 @router.post("/rescore-all")

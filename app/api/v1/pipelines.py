@@ -4,7 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_session
+from app.db.session import get_db
 from app.api.request_context import get_correlation_id
 from app.schemas.task_tracking import (
     PipelineRunDetailResponse,
@@ -27,7 +27,7 @@ from app.services.pipeline.task_tracking_service import (
 )
 
 router = APIRouter(prefix="/pipelines", tags=["pipelines"])
-DbSession = Annotated[Session, Depends(get_session)]
+DbSession = Annotated[Session, Depends(get_db)]
 
 
 @router.get("/runs", response_model=list[PipelineRunSummaryResponse])

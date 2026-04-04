@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_session
+from app.db.session import get_db
 from app.mail.inbound_provider import InboundMailProviderError
 from app.schemas.inbound_mail import (
     EmailThreadDetailResponse,
@@ -33,7 +33,7 @@ router = APIRouter(prefix="/mail/inbound", tags=["mail-inbound"])
 @router.post("/sync", response_model=InboundMailSyncRunResponse)
 def sync_inbound_mail(
     limit: int | None = Query(None, ge=1, le=200),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     try:
         return sync_inbound_messages(db, limit=limit)
@@ -49,7 +49,7 @@ def list_messages(
     thread_id: uuid.UUID | None = None,
     classification_status: str | None = None,
     limit: int = Query(50, ge=1, le=200),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     return list_inbound_messages(
         db,
@@ -63,13 +63,13 @@ def list_messages(
 @router.post("/messages/classify-pending", response_model=list[InboundMessageResponse])
 def classify_pending_messages(
     limit: int = Query(25, ge=1, le=100),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     return classify_pending_inbound_messages(db, limit=limit)
 
 
 @router.get("/messages/{message_id}", response_model=InboundMessageResponse)
-def get_message(message_id: uuid.UUID, db: Session = Depends(get_session)):
+def get_message(message_id: uuid.UUID, db: Session = Depends(get_db)):
     message = get_inbound_message(db, message_id)
     if not message:
         raise HTTPException(status_code=404, detail="Inbound message not found")
@@ -80,13 +80,13 @@ def get_message(message_id: uuid.UUID, db: Session = Depends(get_session)):
 def list_threads(
     lead_id: uuid.UUID | None = None,
     limit: int = Query(50, ge=1, le=200),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     return list_email_threads(db, lead_id=lead_id, limit=limit)
 
 
 @router.get("/threads/{thread_id}", response_model=EmailThreadDetailResponse)
-def get_thread(thread_id: uuid.UUID, db: Session = Depends(get_session)):
+def get_thread(thread_id: uuid.UUID, db: Session = Depends(get_db)):
     thread = get_email_thread(db, thread_id)
     if not thread:
         raise HTTPException(status_code=404, detail="Email thread not found")
@@ -94,7 +94,7 @@ def get_thread(thread_id: uuid.UUID, db: Session = Depends(get_session)):
 
 
 @router.get("/status", response_model=InboundMailStatusResponse)
-def get_status(db: Session = Depends(get_session)):
+def get_status(db: Session = Depends(get_db)):
     return {
         "enabled": settings.MAIL_INBOUND_ENABLED,
         "provider": settings.MAIL_INBOUND_PROVIDER.lower(),
@@ -108,7 +108,7 @@ def get_status(db: Session = Depends(get_session)):
 
 
 @router.post("/messages/{message_id}/classify", response_model=InboundMessageResponse)
-def classify_message(message_id: uuid.UUID, db: Session = Depends(get_session)):
+def classify_message(message_id: uuid.UUID, db: Session = Depends(get_db)):
     message = classify_inbound_message(db, message_id)
     if not message:
         raise HTTPException(status_code=404, detail="Inbound message not found")

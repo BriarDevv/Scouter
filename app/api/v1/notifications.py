@@ -4,7 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.api.deps import get_session
+from app.db.session import get_db
 from app.schemas.notification import (
     NotificationBulkAction,
     NotificationCountsResponse,
@@ -31,7 +31,7 @@ def list_notifs(
     severity: str | None = None,
     status: str | None = None,
     type: str | None = None,
-    db=Depends(get_session),
+    db=Depends(get_db),
 ):
     items, total, unread_count = list_notifications(
         db, page=page, page_size=page_size, category=category,
@@ -44,12 +44,12 @@ def list_notifs(
 
 
 @router.get("/counts", response_model=NotificationCountsResponse)
-def counts(db=Depends(get_session)):
+def counts(db=Depends(get_db)):
     return get_notification_counts(db)
 
 
 @router.get("/{notification_id}", response_model=NotificationResponse)
-def get_notif(notification_id: UUID, db=Depends(get_session)):
+def get_notif(notification_id: UUID, db=Depends(get_db)):
     notif = get_notification(db, notification_id)
     if not notif:
         raise HTTPException(status_code=404, detail="Notificacion no encontrada.")
@@ -57,7 +57,7 @@ def get_notif(notification_id: UUID, db=Depends(get_session)):
 
 
 @router.patch("/{notification_id}", response_model=NotificationResponse)
-def patch_notif(notification_id: UUID, body: NotificationStatusUpdate, db=Depends(get_session)):
+def patch_notif(notification_id: UUID, body: NotificationStatusUpdate, db=Depends(get_db)):
     if body.status not in ("read", "acknowledged", "resolved"):
         raise HTTPException(status_code=422, detail="Estado invalido.")
     notif = update_notification_status(db, notification_id, body.status)
@@ -67,7 +67,7 @@ def patch_notif(notification_id: UUID, body: NotificationStatusUpdate, db=Depend
 
 
 @router.post("/bulk", response_model=dict)
-def bulk_action(body: NotificationBulkAction, db=Depends(get_session)):
+def bulk_action(body: NotificationBulkAction, db=Depends(get_db)):
     if body.action not in ("mark_read", "mark_resolved"):
         raise HTTPException(status_code=422, detail="Accion invalida.")
     count = bulk_update_notifications(db, ids=body.ids, action=body.action, category=body.category)

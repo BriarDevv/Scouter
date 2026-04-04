@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_session
+from app.db.session import get_db
 from app.api.request_context import get_correlation_id
 from app.core.config import settings as env
 from app.crawlers.google_maps_crawler import DEFAULT_CATEGORIES
@@ -20,7 +20,7 @@ from app.services.pipeline.operational_task_service import (
 from app.services.pipeline.task_tracking_service import queue_task_run, request_task_stop
 
 router = APIRouter(prefix="/crawl", tags=["crawl"])
-DbSession = Annotated[Session, Depends(get_session)]
+DbSession = Annotated[Session, Depends(get_db)]
 
 
 # ── Territory-based crawl (async via Celery) ──────────────────────────

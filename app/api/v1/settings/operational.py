@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.deps import get_session
+from app.db.session import get_db
 from app.schemas.operational_settings import (
     OperationalSettingsResponse,
     OperationalSettingsUpdate,
@@ -15,7 +15,7 @@ from app.services.settings.operational_settings_service import (
 )
 
 router = APIRouter()
-DbSession = Annotated[object, Depends(get_session)]
+DbSession = Annotated[object, Depends(get_db)]
 
 
 @router.get("/operational", response_model=OperationalSettingsResponse)

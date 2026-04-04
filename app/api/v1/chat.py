@@ -14,7 +14,7 @@ from app.agent.events import (
     ToolStart,
     TurnComplete,
 )
-from app.api.deps import get_session
+from app.db.session import get_db
 from app.core.logging import get_logger
 from app.schemas.chat import (
     ConfirmationRequest,
@@ -43,14 +43,14 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 @router.post(
     "/conversations", response_model=ConversationResponse, status_code=201
 )
-def create(db: Session = Depends(get_session)):
+def create(db: Session = Depends(get_db)):
     return create_conversation(db)
 
 
 @router.get("/conversations")
 def list_all(
     limit: int = Query(20, ge=1, le=100),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ) -> list[ConversationSummary]:
     return [
         ConversationSummary(**c) for c in list_conversations(db, limit=limit)
@@ -60,7 +60,7 @@ def list_all(
 @router.get("/conversations/{conversation_id}")
 def get_detail(
     conversation_id: uuid.UUID,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ) -> ConversationDetail:
     conv = get_conversation(db, conversation_id)
     if not conv:
@@ -104,7 +104,7 @@ def get_detail(
 
 @router.delete("/conversations/{conversation_id}", status_code=204)
 def delete(
-    conversation_id: uuid.UUID, db: Session = Depends(get_session)
+    conversation_id: uuid.UUID, db: Session = Depends(get_db)
 ):
     if not delete_conversation(db, conversation_id):
         raise HTTPException(404, "Conversación no encontrada")
@@ -114,7 +114,7 @@ def delete(
 async def send_message(
     conversation_id: uuid.UUID,
     body: SendMessageRequest,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     conv = get_conversation(db, conversation_id)
     if not conv:

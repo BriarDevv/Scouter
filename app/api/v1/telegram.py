@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.agent.channel_router import handle_channel_message
-from app.api.deps import get_session
+from app.db.session import get_db
 from app.core.logging import get_logger
 from app.services.settings.operational_settings_service import get_or_create as get_settings
 from app.services.comms.telegram_audit import log_inbound, log_outbound
@@ -44,7 +44,7 @@ class TelegramUpdate(BaseModel):
 def webhook_inbound(
     request: Request,
     body: TelegramUpdate,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
     x_telegram_bot_api_secret_token: str = Header("", alias="X-Telegram-Bot-Api-Secret-Token"),
 ) -> TelegramWebhookResponse:
     """Receive Telegram updates, process via Hermes 3 agent, send response."""

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_session
+from app.db.session import get_db
 from app.models.inbound_mail import InboundMessage
 from app.models.lead import Lead
 from app.models.outreach import OutreachDraft
@@ -24,7 +24,7 @@ router = APIRouter(prefix="/reviews", tags=["reviews"])
 
 
 @router.post("/leads/{lead_id}", response_model=LeadReviewResponse)
-def review_lead(lead_id: uuid.UUID, db: Session = Depends(get_session)):
+def review_lead(lead_id: uuid.UUID, db: Session = Depends(get_db)):
     """Run a reviewer-only second opinion for a lead."""
     payload = review_lead_with_reviewer(db, lead_id)
     if not payload:
@@ -33,7 +33,7 @@ def review_lead(lead_id: uuid.UUID, db: Session = Depends(get_session)):
 
 
 @router.post("/leads/{lead_id}/async", response_model=TaskEnqueueResponse)
-def review_lead_async(lead_id: uuid.UUID, db: Session = Depends(get_session)):
+def review_lead_async(lead_id: uuid.UUID, db: Session = Depends(get_db)):
     """Queue a reviewer-only second opinion for a lead."""
     if not db.get(Lead, lead_id):
         raise HTTPException(status_code=404, detail="Lead not found")
@@ -57,7 +57,7 @@ def review_lead_async(lead_id: uuid.UUID, db: Session = Depends(get_session)):
 
 
 @router.post("/drafts/{draft_id}", response_model=DraftReviewResponse)
-def review_draft(draft_id: uuid.UUID, db: Session = Depends(get_session)):
+def review_draft(draft_id: uuid.UUID, db: Session = Depends(get_db)):
     """Run a reviewer-only second opinion for an outreach draft."""
     payload = review_draft_with_reviewer(db, draft_id)
     if not payload:
@@ -66,7 +66,7 @@ def review_draft(draft_id: uuid.UUID, db: Session = Depends(get_session)):
 
 
 @router.post("/drafts/{draft_id}/async", response_model=TaskEnqueueResponse)
-def review_draft_async(draft_id: uuid.UUID, db: Session = Depends(get_session)):
+def review_draft_async(draft_id: uuid.UUID, db: Session = Depends(get_db)):
     """Queue a reviewer-only second opinion for an outreach draft."""
     draft = db.get(OutreachDraft, draft_id)
     if not draft:
@@ -91,7 +91,7 @@ def review_draft_async(draft_id: uuid.UUID, db: Session = Depends(get_session)):
 
 
 @router.post("/inbound/messages/{message_id}", response_model=InboundReplyReviewResponse)
-def review_inbound_message(message_id: uuid.UUID, db: Session = Depends(get_session)):
+def review_inbound_message(message_id: uuid.UUID, db: Session = Depends(get_db)):
     """Run a reviewer-only second opinion for an inbound reply."""
     payload = review_inbound_message_with_reviewer(db, message_id)
     if not payload:
@@ -100,7 +100,7 @@ def review_inbound_message(message_id: uuid.UUID, db: Session = Depends(get_sess
 
 
 @router.post("/inbound/messages/{message_id}/async", response_model=TaskEnqueueResponse)
-def review_inbound_message_async(message_id: uuid.UUID, db: Session = Depends(get_session)):
+def review_inbound_message_async(message_id: uuid.UUID, db: Session = Depends(get_db)):
     """Queue a reviewer-only second opinion for an inbound reply."""
     message = db.get(InboundMessage, message_id)
     if not message:
@@ -127,7 +127,7 @@ def review_inbound_message_async(message_id: uuid.UUID, db: Session = Depends(ge
 @router.get("/corrections/summary")
 def get_corrections_summary(
     days: int = Query(default=30, ge=1, le=365),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     """Aggregate reviewer corrections by category for the last N days.
 

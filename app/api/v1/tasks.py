@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_session
+from app.db.session import get_db
 from app.schemas.task_tracking import TaskStatusResponse
 from app.services.pipeline.task_tracking_service import get_pipeline_run, get_task_run, list_task_runs
 from app.workers.celery_app import celery_app
@@ -70,7 +70,7 @@ def list_tasks(
     lead_id: uuid.UUID | None = None,
     pipeline_run_id: uuid.UUID | None = None,
     limit: int = Query(20, ge=1, le=100),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     """List recent tracked tasks for operator workflows and future supervisors."""
     return [
@@ -86,7 +86,7 @@ def list_tasks(
 
 
 @router.get("/{task_id}/status", response_model=TaskStatusResponse)
-def get_task_status(task_id: str, db: Session = Depends(get_session)):
+def get_task_status(task_id: str, db: Session = Depends(get_db)):
     """Return the persisted status of an async task."""
     task_run = get_task_run(db, task_id)
     if task_run:

@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_session
+from app.db.session import get_db
 from app.schemas.reply_assistant import (
     ReplyAssistantDraftResponse,
     ReplyAssistantDraftReviewResponse,
@@ -44,7 +44,7 @@ router = APIRouter(prefix="/replies", tags=["reply-assistant"])
 
 
 @router.post("/{message_id}/draft-response", response_model=ReplyAssistantDraftResponse)
-def create_or_refresh_reply_draft(message_id: uuid.UUID, db: Session = Depends(get_session)):
+def create_or_refresh_reply_draft(message_id: uuid.UUID, db: Session = Depends(get_db)):
     message = get_inbound_message_with_reply_context(db, message_id)
     if not message:
         raise HTTPException(status_code=404, detail="Inbound message not found")
@@ -52,7 +52,7 @@ def create_or_refresh_reply_draft(message_id: uuid.UUID, db: Session = Depends(g
 
 
 @router.get("/{message_id}/draft-response", response_model=ReplyAssistantDraftResponse)
-def get_reply_draft(message_id: uuid.UUID, db: Session = Depends(get_session)):
+def get_reply_draft(message_id: uuid.UUID, db: Session = Depends(get_db)):
     draft = get_reply_assistant_draft_for_message(db, message_id)
     if not draft:
         raise HTTPException(status_code=404, detail="Reply assistant draft not found")
@@ -63,7 +63,7 @@ def get_reply_draft(message_id: uuid.UUID, db: Session = Depends(get_session)):
 def patch_reply_draft(
     message_id: uuid.UUID,
     payload: ReplyAssistantDraftUpdateRequest,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     try:
         return update_reply_assistant_draft(
@@ -78,7 +78,7 @@ def patch_reply_draft(
 
 
 @router.post("/{message_id}/draft-response/send", response_model=ReplyAssistantSendResponse)
-def send_reply_draft(message_id: uuid.UUID, db: Session = Depends(get_session)):
+def send_reply_draft(message_id: uuid.UUID, db: Session = Depends(get_db)):
     try:
         return send_reply_assistant_draft(db, message_id)
     except ReplyDraftNotFoundError as exc:
@@ -96,7 +96,7 @@ def send_reply_draft(message_id: uuid.UUID, db: Session = Depends(get_session)):
 
 
 @router.get("/{message_id}/draft-response/send-status", response_model=ReplyAssistantSendStatusResponse)
-def get_reply_draft_send_status(message_id: uuid.UUID, db: Session = Depends(get_session)):
+def get_reply_draft_send_status(message_id: uuid.UUID, db: Session = Depends(get_db)):
     try:
         return get_reply_send_status(db, message_id)
     except ReplyDraftNotFoundError as exc:
@@ -104,7 +104,7 @@ def get_reply_draft_send_status(message_id: uuid.UUID, db: Session = Depends(get
 
 
 @router.post("/{message_id}/draft-response/review", response_model=TaskEnqueueResponse)
-def review_reply_draft(message_id: uuid.UUID, db: Session = Depends(get_session)):
+def review_reply_draft(message_id: uuid.UUID, db: Session = Depends(get_db)):
     message = get_inbound_message_with_reply_context(db, message_id)
     if not message:
         raise HTTPException(status_code=404, detail="Inbound message not found")
@@ -131,7 +131,7 @@ def review_reply_draft(message_id: uuid.UUID, db: Session = Depends(get_session)
 
 
 @router.get("/{message_id}/draft-response/review", response_model=ReplyAssistantDraftReviewResponse)
-def get_reply_draft_review(message_id: uuid.UUID, db: Session = Depends(get_session)):
+def get_reply_draft_review(message_id: uuid.UUID, db: Session = Depends(get_db)):
     review = get_reply_assistant_review_for_message(db, message_id)
     if not review:
         raise HTTPException(status_code=404, detail="Reply assistant draft review not found")

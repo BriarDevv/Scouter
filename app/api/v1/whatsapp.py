@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.agent.channel_router import handle_channel_message
-from app.api.deps import get_session
+from app.db.session import get_db
 from app.core.logging import get_logger
 from app.services.settings.operational_settings_service import get_or_create as get_settings
 from app.services.comms.whatsapp_audit import log_inbound, log_outbound
@@ -42,7 +42,7 @@ def webhook_verify(challenge: str = Query("", alias="hub.challenge")) -> dict:
 @router.post("/webhook", response_model=WebhookResponse)
 def webhook_inbound(
     body: InboundMessageBody,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
     x_webhook_secret: str = Header("", alias="X-Webhook-Secret"),
 ) -> WebhookResponse:
     """Receive WhatsApp messages, process via Hermes 3 agent, send response."""

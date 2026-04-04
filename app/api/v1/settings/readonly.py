@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from app.api.deps import get_session
+from app.db.session import get_db
 from app.core.config import settings as env
 from app.schemas.mail_credentials import SetupStatusResponse
 from app.schemas.operational_settings import (
@@ -14,7 +14,7 @@ from app.services.settings.settings_service import get_llm_settings, get_mail_se
 from app.services.settings.setup_status_service import get_setup_status
 
 router = APIRouter()
-DbSession = Annotated[object, Depends(get_session)]
+DbSession = Annotated[object, Depends(get_db)]
 
 
 @router.get("/llm", response_model=LLMSettingsResponse)

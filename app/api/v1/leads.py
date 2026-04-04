@@ -5,13 +5,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_session
+from app.db.session import get_db
 from app.models.lead import Lead, LeadStatus
 from app.models.research_report import LeadResearchReport
 from app.schemas.lead import (
     LeadCreate,
     LeadDetailResponse,
     LeadListResponse,
+    LeadNameResponse,
     LeadResponse,
     LeadStatusUpdate,
 )
@@ -22,7 +23,7 @@ router = APIRouter(prefix="/leads", tags=["leads"])
 
 
 @router.post("", response_model=LeadResponse, status_code=201)
-def create(data: LeadCreate, db: Session = Depends(get_session)):
+def create(data: LeadCreate, db: Session = Depends(get_db)):
     """Create a new lead. Deduplicates automatically."""
     try:
         lead = create_lead(db, data)
@@ -37,7 +38,7 @@ def list_all(
     page_size: int = Query(50, ge=1, le=500),
     status: LeadStatus | None = None,
     min_score: float | None = None,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     """List leads with pagination and optional filters."""
     leads, total = list_leads(db, page=page, page_size=page_size, status=status, min_score=min_score)
@@ -49,7 +50,7 @@ def export_leads(
     format: str = "csv",
     status: str | None = None,
     quality: str | None = None,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     """Export leads as CSV, JSON, or XLSX."""
     from app.services.research.export_service import (
@@ -63,7 +64,7 @@ def export_leads(
         query = query.filter(Lead.status == status)
     if quality:
         query = query.filter(Lead.llm_quality == quality)
-    leads = query.order_by(Lead.created_at.desc()).all()
+    leads = query.order_by(Lead.created_at.desc()).yield_per(100)
 
     if format == "json":
         data = export_leads_json(db, leads)
@@ -88,8 +89,23 @@ def export_leads(
         )
 
 
+@router.get("/names", response_model=list[LeadNameResponse])
+def list_names(
+    limit: int = Query(5000, ge=1, le=10000),
+    db: Session = Depends(get_db),
+):
+    """Return a lightweight list of {id, business_name} for all leads."""
+    rows = (
+        db.query(Lead.id, Lead.business_name)
+        .order_by(Lead.business_name)
+        .limit(limit)
+        .all()
+    )
+    return [LeadNameResponse(id=row.id, business_name=row.business_name) for row in rows]
+
+
 @router.get("/{lead_id}", response_model=LeadDetailResponse)
-def get_by_id(lead_id: uuid.UUID, db: Session = Depends(get_session)):
+def get_by_id(lead_id: uuid.UUID, db: Session = Depends(get_db)):
     """Get a lead by ID with all signals."""
     lead = get_lead(db, lead_id)
     if not lead:
@@ -99,7 +115,7 @@ def get_by_id(lead_id: uuid.UUID, db: Session = Depends(get_session)):
 
 @router.patch("/{lead_id}/status", response_model=LeadResponse)
 def patch_status(
-    lead_id: uuid.UUID, data: LeadStatusUpdate, db: Session = Depends(get_session),
+    lead_id: uuid.UUID, data: LeadStatusUpdate, db: Session = Depends(get_db),
 ):
     """Update the current pipeline status for a lead."""
     lead = update_lead_status(db, lead_id, data.status)
@@ -109,7 +125,7 @@ def patch_status(
 
 
 @router.get("/{lead_id}/research", response_model=ResearchReportResponse)
-def get_research_report(lead_id: uuid.UUID, db: Session = Depends(get_session)):
+def get_research_report(lead_id: uuid.UUID, db: Session = Depends(get_db)):
     """Get research report for a lead."""
     lead = db.get(Lead, lead_id)
     if not lead:
@@ -121,7 +137,7 @@ def get_research_report(lead_id: uuid.UUID, db: Session = Depends(get_session)):
 
 
 @router.post("/{lead_id}/research", response_model=ResearchReportResponse, status_code=201)
-def trigger_research(lead_id: uuid.UUID, db: Session = Depends(get_session)):
+def trigger_research(lead_id: uuid.UUID, db: Session = Depends(get_db)):
     """Trigger research for a lead. Runs synchronously."""
     from app.services.research.research_service import run_research
 

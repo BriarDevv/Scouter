@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_session
+from app.db.session import get_db
 from app.api.request_context import get_correlation_id
 from app.mail.provider import MailProviderError
 from app.models.outreach import DraftStatus
@@ -39,7 +39,7 @@ router = APIRouter(prefix="/outreach", tags=["outreach"])
 
 
 @router.post("/{lead_id}/draft", response_model=OutreachDraftResponse, status_code=201)
-def generate_draft(lead_id: uuid.UUID, db: Session = Depends(get_session)):
+def generate_draft(lead_id: uuid.UUID, db: Session = Depends(get_db)):
     """Generate an outreach email draft for a lead (sync)."""
     draft = generate_outreach_draft(db, lead_id)
     if not draft:
@@ -51,7 +51,7 @@ def generate_draft(lead_id: uuid.UUID, db: Session = Depends(get_session)):
 def generate_draft_async(
     lead_id: uuid.UUID,
     request: Request,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     """Queue outreach draft generation as an async task."""
     correlation_id = get_correlation_id(request)
@@ -80,14 +80,14 @@ def list_all_drafts(
     lead_id: uuid.UUID | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     """List outreach drafts, optionally filtered by status."""
     return list_drafts(db, status=status, lead_id=lead_id, page=page, page_size=page_size)
 
 
 @router.get("/drafts/{draft_id}", response_model=OutreachDraftResponse)
-def get_draft_by_id(draft_id: uuid.UUID, db: Session = Depends(get_session)):
+def get_draft_by_id(draft_id: uuid.UUID, db: Session = Depends(get_db)):
     """Get a single outreach draft by ID."""
     draft = get_draft(db, draft_id)
     if not draft:
@@ -96,7 +96,7 @@ def get_draft_by_id(draft_id: uuid.UUID, db: Session = Depends(get_session)):
 
 
 @router.post("/drafts/{draft_id}/send", response_model=OutreachDeliveryResponse)
-def send_draft_by_id(draft_id: uuid.UUID, db: Session = Depends(get_session)):
+def send_draft_by_id(draft_id: uuid.UUID, db: Session = Depends(get_db)):
     """Send an approved outreach draft through the configured mail provider."""
     try:
         delivery = send_draft(db, draft_id)
@@ -119,7 +119,7 @@ def send_draft_by_id(draft_id: uuid.UUID, db: Session = Depends(get_session)):
 
 
 @router.get("/drafts/{draft_id}/deliveries", response_model=list[OutreachDeliveryResponse])
-def list_draft_deliveries(draft_id: uuid.UUID, db: Session = Depends(get_session)):
+def list_draft_deliveries(draft_id: uuid.UUID, db: Session = Depends(get_db)):
     """List delivery attempts for a specific outreach draft."""
     draft = get_draft(db, draft_id)
     if not draft:
@@ -128,7 +128,7 @@ def list_draft_deliveries(draft_id: uuid.UUID, db: Session = Depends(get_session
 
 
 @router.post("/drafts/{draft_id}/review", response_model=OutreachDraftResponse)
-def review(draft_id: uuid.UUID, data: OutreachDraftReview, db: Session = Depends(get_session)):
+def review(draft_id: uuid.UUID, data: OutreachDraftReview, db: Session = Depends(get_db)):
     """Human-in-the-loop: approve or reject an outreach draft."""
     draft = review_draft(db, draft_id, approved=data.approved, feedback=data.feedback)
     if not draft:
@@ -137,7 +137,7 @@ def review(draft_id: uuid.UUID, data: OutreachDraftReview, db: Session = Depends
 
 
 @router.patch("/drafts/{draft_id}", response_model=OutreachDraftResponse)
-def patch_draft(draft_id: uuid.UUID, data: OutreachDraftUpdate, db: Session = Depends(get_session)):
+def patch_draft(draft_id: uuid.UUID, data: OutreachDraftUpdate, db: Session = Depends(get_db)):
     """Update outreach draft content or status."""
     draft = update_draft(
         db,
@@ -157,7 +157,7 @@ def list_outreach_logs(
     lead_id: uuid.UUID | None = None,
     draft_id: uuid.UUID | None = None,
     limit: int = Query(50, ge=1, le=200),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     """List recent outreach activity logs."""
     return list_logs(db, lead_id=lead_id, draft_id=draft_id, limit=limit)

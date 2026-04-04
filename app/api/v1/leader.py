@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_session
+from app.db.session import get_db
 from app.models.lead import LeadStatus
 from app.models.outreach import DraftStatus
 from app.schemas.leader import (
@@ -29,7 +29,7 @@ router = APIRouter(prefix="/leader", tags=["leader"])
 
 
 @router.get("/overview", response_model=LeaderOverviewResponse)
-def overview(db: Session = Depends(get_session)):
+def overview(db: Session = Depends(get_db)):
     """Return a compact operational snapshot for a future leader layer."""
     return get_system_overview(db)
 
@@ -38,7 +38,7 @@ def overview(db: Session = Depends(get_session)):
 def top_leads(
     limit: int = Query(10, ge=1, le=100),
     status: LeadStatus | None = None,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     """Return the highest-scoring leads, optionally filtered by status."""
     return list_top_leads(db, limit=limit, status=status)
@@ -48,7 +48,7 @@ def top_leads(
 def recent_drafts(
     limit: int = Query(10, ge=1, le=100),
     status: DraftStatus | None = None,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     """Return recent outreach drafts with lead context for operator workflows."""
     return list_recent_drafts(db, limit=limit, status=status)
@@ -58,7 +58,7 @@ def recent_drafts(
 def recent_pipelines(
     limit: int = Query(10, ge=1, le=100),
     status: str | None = None,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     """Return recent pipeline runs for future leader monitoring and drill-down."""
     return list_recent_pipelines(db, limit=limit, status=status)
@@ -67,7 +67,7 @@ def recent_pipelines(
 @router.get("/task-health", response_model=LeaderTaskHealthResponse)
 def task_health(
     limit: int = Query(10, ge=1, le=100),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     """Return recent running and failed tasks plus headline counts."""
     return get_task_health(db, limit=limit)
@@ -76,7 +76,7 @@ def task_health(
 @router.get("/activity", response_model=list[LeaderActivityItemResponse])
 def recent_activity(
     limit: int = Query(10, ge=1, le=100),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     """Return recent operational activity with lead context."""
     return list_recent_activity_items(db, limit=limit)
@@ -85,7 +85,7 @@ def recent_activity(
 @router.get("/replies/summary", response_model=LeaderReplySummaryResponse)
 def reply_summary(
     hours: int = Query(24, ge=1, le=168),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     """Return a grounded operational summary of recent inbound replies."""
     return get_reply_summary(db, hours=hours)
@@ -99,7 +99,7 @@ def list_replies(
     classification_status: str | None = None,
     important_only: bool = False,
     needs_reviewer: bool = False,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     """Return recent inbound replies for reply-centric leader workflows."""
     label_values = tuple(label.strip() for label in (labels or "").split(",") if label.strip())

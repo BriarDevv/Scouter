@@ -3,12 +3,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.deps import get_session
+from app.db.session import get_db
 from app.schemas.setup import SetupActionResultResponse, SetupReadinessResponse
 from app.services.setup_service import get_setup_readiness, run_setup_action
 
 router = APIRouter(prefix="/setup", tags=["setup"])
-DbSession = Annotated[object, Depends(get_session)]
+DbSession = Annotated[object, Depends(get_db)]
 
 # Simple in-process rate limit for setup actions (1 action per 5 seconds)
 _last_action_time: float = 0.0

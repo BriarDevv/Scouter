@@ -11,7 +11,7 @@ os.environ["CELERY_BROKER_URL"] = "memory://"
 os.environ["CELERY_RESULT_BACKEND"] = "cache+memory://"
 os.environ["REDIS_URL"] = "redis://localhost:6379/0"
 
-from app.api.deps import get_session
+from app.db.session import get_db
 from app.db.base import Base
 import app.models  # noqa: F401 — register all models with Base.metadata
 from app.main import app
@@ -63,7 +63,7 @@ def client(db: Session):
     def _override():
         yield db
 
-    app.dependency_overrides[get_session] = _override
+    app.dependency_overrides[get_db] = _override
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
