@@ -1,106 +1,83 @@
 # Scouter Dashboard
 
-Panel de control SaaS para el sistema de prospeccion Scouter.
-Construido con **Next.js 16** (App Router), **TypeScript**, **Tailwind CSS v4**, **shadcn/ui** (base-ui), **recharts** y **lucide-react**.
+Next.js 16 App Router frontend for the Scouter lead prospecting system.
 
-## Setup
+**Stack:** TypeScript (strict), Tailwind CSS v4, shadcn/ui (base-ui), recharts, lucide-react.
+
+## Quick Start
 
 ```bash
-# Instalar dependencias
-npm ci
-
-# Servidor de desarrollo (puerto 3000)
-npm run dev
+cd dashboard
+npm install
+npm run dev          # http://localhost:3000
+npx tsc --noEmit     # Type check
 ```
 
-Abri [http://localhost:3000](http://localhost:3000) en tu navegador.
+## Pages
 
-## Variables de entorno
+| Route | Description |
+|-------|-------------|
+| `/` | Mote chat (main page) |
+| `/panel` | Dashboard overview — stats, pipeline, AI health |
+| `/leads` | Lead table with filters and search |
+| `/leads/[id]` | Lead detail — signals, score, AI decisions, Scout findings |
+| `/ai-office` | AI team dashboard — agents, decisions, investigations, outcomes |
+| `/onboarding` | First-run setup wizard |
+| `/outreach` | Draft management |
+| `/performance` | Analytics by industry, city, source |
+| `/settings` | Configuration — brand, credentials, channels, rules |
+| `/responses` | Inbound reply classification |
+| `/notifications` | System notifications |
 
-| Variable | Default | Descripcion |
-|----------|---------|-------------|
-| `NEXT_PUBLIC_API_URL` | `http://localhost:8000/api/v1` | URL base de la API |
-| `NEXT_PUBLIC_USE_REAL_API` | `true` | `false` para usar datos mock locales |
+## Structure
 
-El toggle vive en `lib/api/client.ts`. Cuando `NEXT_PUBLIC_USE_REAL_API` es `"false"`, el cliente devuelve datos mock desde `data/mock.ts` sin tocar el backend.
+```
+app/                    Pages (App Router)
+  api/proxy/[...path]/  Server-side API proxy (hides API_KEY from browser)
+  api/system/health/    Health check proxy
+components/
+  charts/               Recharts wrappers
+  chat/                 Mote chat UI
+  dashboard/            AI health card, top corrections, stats
+  layout/               Sidebar, shell, readiness-gate, page-header
+  leads/                AI decisions panel, investigation thread view
+  settings/             All settings sections (brand, WhatsApp, Telegram, etc.)
+  shared/               Reusable primitives (empty-state, stat-card, badges)
+  ui/                   shadcn/ui base components
+lib/
+  api/client.ts         All backend API functions via apiFetch()
+  constants.ts          Status configs, API_BASE_URL, score thresholds
+  hooks/                use-chat, use-chat-panel
+types/
+  index.ts              All TypeScript interfaces
+```
 
-## Paginas
+## Key Files for AI Agents
 
-| Ruta | Descripcion |
-|------|-------------|
-| `/` | **Overview** -- metricas generales, pipeline, graficos temporales |
-| `/leads` | **Leads** -- tabla paginada con filtros y busqueda |
-| `/leads/[id]` | **Lead Detail** -- senales, score, drafts, timeline |
-| `/outreach` | **Outreach** -- drafts pendientes, aprobados, enviados |
-| `/performance` | **Performance** -- metricas por industria, ciudad, fuente |
-| `/suppression` | **Suppression** -- lista de supresion global |
-| `/responses` | **Responses** -- respuestas inbound clasificadas |
-| `/activity` | **Activity** -- log de actividad del sistema |
-| `/notifications` | **Notifications** -- notificaciones y alertas |
-| `/security` | **Security** -- configuracion de seguridad |
-| `/settings` | **Settings** -- configuracion general del sistema |
+| File | Purpose |
+|------|---------|
+| `lib/api/client.ts` | Every API call — uses `/api/proxy` in browser, direct URL in SSR |
+| `types/index.ts` | All shared TypeScript interfaces (~800 lines) |
+| `lib/constants.ts` | Status/quality/signal configs, score thresholds |
+| `components/layout/readiness-gate.tsx` | Gates dashboard behind onboarding |
+| `app/layout.tsx` | Root layout with theme, sidebar, readiness gate |
 
-## Notas sobre la libreria de componentes
+## API Proxy
 
-Este proyecto usa **shadcn/ui con base-ui (NO Radix)**. La diferencia clave:
-
-- Usar la prop `render` en vez de `asChild` para composicion de componentes.
-- Los componentes base viven en `components/ui/`.
-- Componentes compartidos del dashboard en `components/shared/` (StatCard, StatusBadge, QualityBadge, ScoreBadge, EmptyState, PageHeader).
+All browser API calls route through `/api/proxy/[...path]`:
+- Injects `API_KEY` server-side (never exposed to browser)
+- Path allowlist prevents SSRF (23 allowed prefixes)
+- `API_BASE_URL` = `/api/proxy` in browser, direct backend URL in SSR
 
 ## Tailwind CSS v4
 
-- Se usa `@theme inline` en `app/globals.css` para definir variables de diseno.
-- **No existe `tailwind.config.ts`** -- toda la configuracion esta inline.
-- PostCSS se configura en `postcss.config.mjs` con `@tailwindcss/postcss`.
+- `@theme inline` in `app/globals.css` for design variables
+- **No `tailwind.config.ts`** — all configuration is inline
+- PostCSS via `postcss.config.mjs` with `@tailwindcss/postcss`
 
-## Estructura
+## Component Library
 
-```
-dashboard/
-+-- app/                  # App Router -- paginas y layouts
-|   +-- layout.tsx        # Layout raiz con providers
-|   +-- page.tsx          # Overview / home
-|   +-- leads/            # Leads y detalle
-|   +-- outreach/         # Gestion de drafts
-|   +-- performance/      # Metricas de rendimiento
-|   +-- suppression/      # Lista de supresion
-|   +-- responses/        # Respuestas inbound
-|   +-- activity/         # Log de actividad
-|   +-- notifications/    # Notificaciones
-|   +-- security/         # Seguridad
-|   +-- settings/         # Configuracion
-+-- components/
-|   +-- ui/               # shadcn/ui base components
-|   +-- shared/           # Componentes reutilizables
-|   +-- charts/           # Graficos (recharts)
-|   +-- dashboard/        # Widgets del dashboard
-|   +-- layout/           # Sidebar, header, navigation
-|   +-- leads/            # Componentes de leads
-|   +-- providers/        # Context providers
-|   +-- settings/         # Componentes de settings
-+-- data/                 # Mock data para desarrollo
-+-- lib/
-|   +-- api/              # Cliente API + mock fallback
-|   +-- hooks/            # Custom hooks
-|   +-- constants.ts      # Configuracion de estados, colores, umbrales
-|   +-- formatters.ts     # Utilidades de formato
-|   +-- utils.ts          # Utilidades generales
-+-- types/                # TypeScript type definitions
-+-- public/               # Assets estaticos
-```
-
-## Scripts
-
-| Comando | Descripcion |
-|---------|-------------|
-| `npm run dev` | Servidor de desarrollo (puerto 3000) |
-| `npm run build` | Build de produccion |
-| `npm run start` | Servidor de produccion |
-| `npm run lint` | ESLint |
-
-## Type checking
-
-```bash
-npx tsc --noEmit
-```
+Uses **shadcn/ui with base-ui (NOT Radix)**:
+- Use `render` prop instead of `asChild` for composition
+- Base components in `components/ui/`
+- Shared dashboard components in `components/shared/`

@@ -23,6 +23,8 @@ If you are a human operator or developer, start with [../README.md](../README.md
 | Operations | [operations/local-dev-wsl.md](operations/local-dev-wsl.md) | Local WSL and runtime workflow |
 | Operations | [operations/security-backlog.md](operations/security-backlog.md) | Deferred security backlog |
 | Product | [product/proposal.md](product/proposal.md) | Product and positioning context |
+| Audits | [audits/scouter-ai-environment-audit.md](audits/scouter-ai-environment-audit.md) | AI environment audit and scorecard |
+| Roadmaps | [roadmaps/scouter-ai-environment-improvement-plan.md](roadmaps/scouter-ai-environment-improvement-plan.md) | AI environment improvement plan |
 
 ## Start Here By Goal
 
