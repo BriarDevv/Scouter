@@ -55,6 +55,7 @@ _ALLOWED_SETTINGS_FIELDS = {
     "telegram_alerts_enabled", "whatsapp_outreach_enabled",
     "telegram_agent_enabled", "whatsapp_agent_enabled",
     "runtime_mode", "pricing_matrix",
+    "low_resource_mode",
 }
 
 

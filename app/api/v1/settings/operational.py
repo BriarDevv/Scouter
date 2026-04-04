@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.schemas.operational_settings import (
@@ -15,7 +16,7 @@ from app.services.settings.operational_settings_service import (
 )
 
 router = APIRouter()
-DbSession = Annotated[object, Depends(get_db)]
+DbSession = Annotated[Session, Depends(get_db)]
 
 
 @router.get("/operational", response_model=OperationalSettingsResponse)

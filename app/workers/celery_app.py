@@ -1,4 +1,5 @@
 from celery import Celery
+from celery.schedules import crontab
 
 from app.core.config import settings
 
@@ -72,7 +73,7 @@ celery_app.conf.update(
         },
         "weekly-ai-report": {
             "task": "app.workers.weekly_tasks.task_weekly_report",
-            "schedule": 604800.0,  # every 7 days (Sunday ~20:00 via offset)
+            "schedule": crontab(day_of_week=0, hour=20, minute=0),
         },
     },
 )
