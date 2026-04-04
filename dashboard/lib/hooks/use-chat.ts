@@ -56,8 +56,6 @@ export function useChat(conversationId: string | null): UseChatReturn {
 
     try {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
-      const apiKey = process.env.NEXT_PUBLIC_API_KEY;
-      if (apiKey) headers["X-API-Key"] = apiKey;
 
       const res = await fetch(
         `${API_BASE_URL}/chat/conversations/${targetId}/messages`,
