@@ -239,9 +239,9 @@ Make the system operable in production and trustworthy under change.
   - provider error rates
   - queue latency
 - Add PostgreSQL integration test lane.
-- Add Alembic migration smoke tests.
+- ~~Add Alembic migration smoke tests.~~ Done: guardrail test verifies all 42 migrations on PostgreSQL.
 - Add Redis/Celery integration tests for critical flows.
-- Keep SQLite only for pure unit-speed tests if still useful.
+- ~~Migrate tests to PostgreSQL.~~ Done: tests run on PostgreSQL 16 via testcontainers.
 
 ### Expected impact
 

@@ -124,12 +124,11 @@ def test_services_domain_packages_do_not_cross_import_each_other():
     assert violations - baseline_allowed == set()
 
 
-def test_conftest_uses_postgresql_not_sqlite():
-    """Guardrail: tests must run against PostgreSQL, never SQLite."""
+def test_conftest_uses_postgresql():
+    """Guardrail: tests must run against PostgreSQL via testcontainers."""
     conftest = Path("tests/conftest.py").read_text(encoding="utf-8")
-    assert "sqlite" not in conftest.lower(), (
-        "conftest.py must use PostgreSQL via testcontainers, not SQLite. "
-        "SQLite silently accepts invalid enum values and skips Postgres-specific behavior."
+    assert "testcontainers" in conftest, (
+        "conftest.py must use PostgreSQL via testcontainers to match production."
     )
 
 

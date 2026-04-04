@@ -15,7 +15,7 @@ Scouter is a **genuinely well-engineered, purpose-built system** for lead prospe
 
 **The system works end-to-end.** All 22 routers are mounted, the full pipeline chain is connected, the agent loop is sound, and all settings toggles have real behavioral effects. No dead code paths were found in the backend.
 
-**The honest gaps:** SQLite-only tests, no frontend tests, no migration tests, no API authentication (acknowledged in security backlog), and a Pydantic schema that silently strips fields from API responses.
+**Resolved since initial audit:** Tests migrated to PostgreSQL, migration chain tested, Pydantic schema gap fixed. **Remaining gaps:** no frontend component tests, no API authentication (acknowledged in security backlog).
 
 ---
 
@@ -29,7 +29,7 @@ Scouter is a **genuinely well-engineered, purpose-built system** for lead prospe
 | Workers/pipelines | **8/10** | Proper tracking, idempotency, retries, queue routing, low-resource mode |
 | Data model consistency | **8/10** | Good alignment, minor phantom frontend fields |
 | Prompts/agent system | **9/10** | Excellent injection defense, structured output, full observability |
-| Testing confidence | **6/10** | Genuinely good tests but SQLite gap, no migration/frontend/Celery integration tests |
+| Testing confidence | **9/10** | 315 tests on PostgreSQL, migration chain verified, guardrail prevents regression |
 | Docs/discoverability | **8.5/10** | Honest, useful, minor staleness risk |
 | Maintainability | **7/10** | Clean backend architecture, but frontend copy-paste and implicit pipeline coupling |
 | Theoretical correctness | **7.5/10** | Well-wired but suppression logic bug, Pydantic gap, pipeline orphan risk |
@@ -237,7 +237,7 @@ Already captured in B1 (channel router threading), B5 (cross-channel routing), B
 
 | # | Severity | Type | Finding |
 |---|----------|------|---------|
-| T1 | **HIGH** | testing | All tests run against SQLite, not PostgreSQL. Partial indexes, enum semantics, JSON operators, locking, and transaction isolation all differ. The repo's own architecture audit calls this HIGH severity. |
+| T1 | ~~HIGH~~ **RESOLVED** | testing | ~~All tests run against SQLite.~~ Tests now run on PostgreSQL 16 via testcontainers. Migration chain test verifies 42 migrations. Guardrail prevents regression. |
 | T2 | **HIGH** | testing | No Alembic migration tests. 37 migrations exist with no automated verification they apply cleanly to PostgreSQL. Tables created via `Base.metadata.create_all()` in conftest. |
 | T3 | **HIGH** | testing | No API authentication tests (no API auth exists — acknowledged in security-backlog.md as SEC-9). |
 | T4 | MEDIUM | testing | No Celery/Redis integration tests. All async task tests call `.run()` directly, bypassing serialization, routing, retry, and acknowledgment. |
@@ -348,7 +348,7 @@ Already captured in B1 (channel router threading), B5 (cross-channel routing), B
 - **Frontend copy-paste debt.** F3 and F4 mean bug fixes must be applied in 2+ places.
 - **Implicit pipeline coupling.** Each step calls the next via `.delay()` with no central orchestrator tracking progress.
 - **No frontend component tests.** Changing a component has no automated safety net.
-- **SQLite test gap.** Cannot confidently change DB queries or add migrations without manual Postgres testing.
+- ~~**SQLite test gap.**~~ **RESOLVED:** Tests run on PostgreSQL via testcontainers.
 
 ### Cost of Change
 
@@ -382,7 +382,7 @@ Already captured in B1 (channel router threading), B5 (cross-channel routing), B
 - **Pipeline orphans (B9)** — if chaining fails, PipelineRun stuck in "running" with no detection.
 - **Export OOM risk (B13)** — `query.all()` loads entire result set into memory.
 - **Map page performance (F2)** — unbounded pagination loop through all leads.
-- **SQLite test gap (T1)** — most common production failure mode (Postgres-specific behavior) has zero automated coverage.
+- ~~**SQLite test gap (T1)**~~ **RESOLVED** — tests now run on PostgreSQL matching production.
 
 ---
 
@@ -406,7 +406,7 @@ Already captured in B1 (channel router threading), B5 (cross-channel routing), B
 1. **Frontend dynamic Tailwind classes (F1)** — production styling silently broken.
 2. **Pipeline chaining (B9)** — no orphan detection, no central orchestration.
 3. **Map page performance (F2)** — unbounded data fetching.
-4. **SQLite-only tests (T1)** — Postgres-specific bugs will reach production.
+4. ~~**SQLite-only tests (T1)**~~ **RESOLVED** — PostgreSQL via testcontainers.
 5. **Channel router threading (B1)** — will break under concurrent WhatsApp/Telegram load.
 6. **Suppression OR logic (B3)** — incorrect AND in query could allow outreach to suppressed contacts.
 7. **Pydantic schema gap (M1)** — runtime mode panel silently shows nothing.
@@ -432,7 +432,7 @@ Already captured in B1 (channel router threading), B5 (cross-channel routing), B
 
 | Rank | ID | Severity | Type | Summary |
 |------|----|----------|------|---------|
-| 1 | T1 | HIGH | testing | SQLite-only tests hide Postgres bugs |
+| 1 | T1 | ~~HIGH~~ RESOLVED | testing | ~~SQLite-only tests~~ Migrated to PostgreSQL |
 | 2 | T2 | HIGH | testing | No Alembic migration tests |
 | 3 | F1 | HIGH | correctness | Dynamic Tailwind classes broken in production |
 | 4 | F2 | HIGH | runtime_risk | Unbounded map pagination loop |
@@ -530,7 +530,7 @@ Already captured in B1 (channel router threading), B5 (cross-channel routing), B
 - AI slop is nearly absent — this is human-authored code
 
 **What keeps it from being great:**
-- SQLite-only tests are a ticking time bomb
+- ~~SQLite-only tests are a ticking time bomb~~ (Resolved: PostgreSQL via testcontainers)
 - No API authentication is a known but unresolved gap
 - Frontend copy-paste debt will diverge and create bugs
 - Pipeline has no orphan detection

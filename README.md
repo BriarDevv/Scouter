@@ -145,7 +145,7 @@ bash scripts/import.sh export.zip   # Restore on new machine
 ## Tests
 
 ```bash
-pytest -v                           # Backend (SQLite isolation)
+pytest -v                           # Backend (PostgreSQL via testcontainers)
 cd dashboard && npx tsc --noEmit    # Frontend type check
 ```
 

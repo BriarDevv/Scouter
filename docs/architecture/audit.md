@@ -402,20 +402,14 @@ The problem is not absence of contexts. The problem is that the contexts do not 
 
 ### High 8: Test strategy creates false confidence on database behavior
 
-- Severity: High
-- Impact: production-only bugs, migration blind spots, locking/index semantics missed
-- Evidence:
-  - `tests/conftest.py` forces `sqlite:///./test.db`
-  - tables are created via `Base.metadata.create_all()`
-  - tests do not validate Alembic migrations against PostgreSQL
-  - partial indexes, enum semantics, JSON behavior, locking, and transaction semantics differ from Postgres 16
-- Why this is a problem:
-  - SQLite is acceptable for unit-level speed, but not as the main correctness oracle for a PostgreSQL system.
-  - The architecture relies on DB semantics that SQLite does not faithfully represent.
-- Exact recommendation:
-  - Keep lightweight SQLite tests only for pure unit boundaries if desired.
-  - Add a PostgreSQL integration test lane using transactional rollback/savepoint patterns.
-  - Add migration smoke tests on real Postgres.
+- Severity: ~~High~~ **RESOLVED (2026-04-04)**
+- Impact: ~~production-only bugs, migration blind spots, locking/index semantics missed~~
+- Resolution:
+  - Tests now run against PostgreSQL 16 via `testcontainers` (Docker container per session).
+  - Alembic migration chain test verifies all 42 migrations apply cleanly.
+  - Architecture guardrail test enforces PostgreSQL usage in conftest.
+  - Found and fixed 1 bug during migration: `"processed"` was not a valid `LeadStatus` enum value.
+- Remaining:
   - Add Redis/Celery integration tests for key async flows.
 
 ### Medium 1: Routers are not consistently thin
@@ -555,7 +549,7 @@ The problem is not absence of contexts. The problem is that the contexts do not 
 - Control plane mistakes caused by mutable config/secrets exposure.
 - Silent AI degradation being treated as successful work.
 - UI/contract divergence hidden by manual TS types.
-- Production-only DB/workflow bugs escaping SQLite-based tests.
+- ~~Production-only DB/workflow bugs escaping SQLite-based tests.~~ (Resolved: tests now run on PostgreSQL)
 
 ## Conceptual Bottlenecks
 

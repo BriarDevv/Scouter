@@ -185,7 +185,7 @@ def test_orphan_pipeline_detected(db):
     run_id = run.id
 
     # Force updated_at to 45 minutes ago to bypass onupdate.
-    # UUID must be stripped of hyphens to match SQLite's binary storage format.
+    # UUID must be cast to string without hyphens for raw SQL comparison.
     db.execute(
         text("UPDATE pipeline_runs SET updated_at = :ts WHERE id = :rid"),
         {"ts": datetime.now(UTC) - timedelta(minutes=45), "rid": str(run_id).replace("-", "")},
@@ -228,7 +228,7 @@ def test_recent_pipeline_not_orphaned(db):
     run_id = run.id
 
     # updated_at is only 5 minutes ago — well within the 30-min orphan threshold.
-    # UUID must be stripped of hyphens to match SQLite's binary storage format.
+    # UUID must be cast to string without hyphens for raw SQL comparison.
     db.execute(
         text("UPDATE pipeline_runs SET updated_at = :ts WHERE id = :rid"),
         {"ts": datetime.now(UTC) - timedelta(minutes=5), "rid": str(run_id).replace("-", "")},

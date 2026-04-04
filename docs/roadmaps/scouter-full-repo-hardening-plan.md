@@ -231,7 +231,7 @@ One logical change per commit. Backend and frontend changes in separate commits.
 
 | Risk | Mitigation |
 |------|------------|
-| Postgres test migration breaks CI | Run SQLite and Postgres in parallel during transition |
+| ~~Postgres test migration breaks CI~~ | ~~Run in parallel during transition~~ **RESOLVED: migrated to PostgreSQL** |
 | Crypto key migration corrupts encrypted values | Write reversible migration with backup before re-encryption |
 | Channel router rewrite changes agent behavior | Add integration test before and after rewrite to verify behavior parity |
 | Frontend refactor breaks pages | Add TypeScript compilation check in CI + smoke test critical paths |
@@ -270,7 +270,7 @@ One logical change per commit. Backend and frontend changes in separate commits.
 - security-backlog.md up to date
 
 ### Phase 4 ✓ when:
-- Test suite runs against PostgreSQL (not SQLite)
+- ~~Test suite runs against PostgreSQL (not SQLite)~~ **DONE**
 - Migration chain test passes on fresh Postgres
 - At least one Celery integration test verifies full pipeline dispatch
 - At least 3 frontend component tests exist
