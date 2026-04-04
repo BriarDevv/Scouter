@@ -108,6 +108,30 @@ def get_signal_correlation(db: Session = Depends(get_session)):
     return sorted(result, key=lambda x: x["win_rate"], reverse=True)
 
 
+@router.get("/recommendations")
+def get_scoring_recommendations(db: Session = Depends(get_session)):
+    """Scoring and prompt improvement recommendations from outcome data."""
+    from app.services.pipeline.outcome_analysis_service import generate_scoring_recommendations
+    return generate_scoring_recommendations(db)
+
+
+@router.get("/analysis/summary")
+def get_analysis_summary(db: Session = Depends(get_session)):
+    """Full outcome analysis: summary, signals, quality accuracy, industry performance."""
+    from app.services.pipeline.outcome_analysis_service import (
+        analyze_industry_performance,
+        analyze_quality_accuracy,
+        analyze_signal_correlations,
+        get_outcome_summary,
+    )
+    return {
+        "summary": get_outcome_summary(db),
+        "signal_correlations": analyze_signal_correlations(db),
+        "quality_accuracy": analyze_quality_accuracy(db),
+        "industry_performance": analyze_industry_performance(db),
+    }
+
+
 @router.get("/investigations/{lead_id}")
 def get_investigation(lead_id: uuid.UUID, db: Session = Depends(get_session)):
     """Return Scout investigation thread for a lead."""
