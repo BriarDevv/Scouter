@@ -141,6 +141,8 @@ class OperationalSettingsResponse(BaseModel):
     telegram_agent_enabled: bool
     whatsapp_agent_enabled: bool
     low_resource_mode: bool | None
+    runtime_mode: str | None = None
+    pricing_matrix: str | None = None
     updated_at: str | None
 
 
