@@ -304,3 +304,103 @@ def test_send_whatsapp(
             "phone": phone[:6] + "***",
             "error": str(exc),
         }
+
+
+@router.post("/conversations/{conversation_id}/reply")
+def closer_reply(
+    conversation_id: uuid.UUID,
+    client_message: str = Query(..., description="Client's inbound message"),
+    db: Session = Depends(get_session),
+):
+    """Mote generates a response to a client message (closer mode).
+
+    Detects intent, uses full lead context (dossier, brief, research),
+    and generates a personalized WhatsApp-style response.
+    """
+    from app.services.outreach.closer_service import generate_closer_response
+
+    result = generate_closer_response(db, conversation_id, client_message)
+    if result.get("error"):
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+
+@router.post("/conversations/{conversation_id}/send-reply")
+def send_closer_reply(
+    conversation_id: uuid.UUID,
+    db: Session = Depends(get_session),
+):
+    """Send Mote's latest response to the client via WhatsApp.
+
+    Takes the last mote message from the conversation and sends it.
+    """
+    convo = db.get(OutboundConversation, conversation_id)
+    if not convo:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    if convo.operator_took_over:
+        raise HTTPException(status_code=400, detail="Operator took over — Mote cannot send")
+
+    messages = convo.messages_json or []
+    mote_messages = [m for m in messages if m.get("role") == "mote"]
+    if not mote_messages:
+        raise HTTPException(status_code=400, detail="No Mote response to send")
+
+    latest_response = mote_messages[-1]["content"]
+
+    from app.models.lead import Lead
+    lead = db.get(Lead, convo.lead_id)
+    if not lead or not lead.phone:
+        raise HTTPException(status_code=400, detail="Lead has no phone number")
+
+    try:
+        from app.services.comms.whatsapp_service import send_alert, _get_or_create_credentials, _get_provider
+        from app.core.crypto import decrypt_safe
+
+        creds = _get_or_create_credentials(db)
+        provider = _get_provider(creds.provider)
+        ok = provider.send_message(lead.phone, latest_response, decrypt_safe(creds.api_key))
+
+        if ok:
+            return {"status": "sent", "message_preview": latest_response[:100]}
+        return {"status": "failed", "error": "Provider returned false"}
+    except Exception as exc:
+        return {"status": "failed", "error": str(exc)}
+
+
+@router.get("/weekly-reports")
+def get_weekly_reports(
+    limit: int = Query(default=5, ge=1, le=20),
+    db: Session = Depends(get_session),
+):
+    """Return recent weekly AI team reports."""
+    from app.models.weekly_report import WeeklyReport
+
+    reports = (
+        db.query(WeeklyReport)
+        .order_by(WeeklyReport.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "id": str(r.id),
+            "week_start": r.week_start.isoformat(),
+            "week_end": r.week_end.isoformat(),
+            "metrics": r.metrics_json,
+            "recommendations": r.recommendations_json,
+            "synthesis": r.synthesis_text,
+            "synthesis_model": r.synthesis_model,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in reports
+    ]
+
+
+@router.post("/weekly-reports/generate")
+def trigger_weekly_report(db: Session = Depends(get_session)):
+    """Manually trigger a weekly report generation."""
+    from app.workers.weekly_tasks import task_weekly_report
+
+    task = task_weekly_report.delay()
+    return {"status": "queued", "task_id": task.id}
