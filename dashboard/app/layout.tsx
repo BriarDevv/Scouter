@@ -27,7 +27,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "ClawScout — Lead Prospecting Dashboard",
+  title: "Scouter — Lead Prospecting Dashboard",
   description: "Sistema privado de prospección comercial para desarrollo web",
 };
 
@@ -37,7 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("clawscout-theme");if(t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme:dark)").matches))document.documentElement.classList.add("dark");if(localStorage.getItem("clawscout-sidebar-collapsed")==="true")document.documentElement.classList.add("sidebar-collapsed")}catch(e){}})()`,
+            __html: `(function(){try{var t=localStorage.getItem("scouter-theme");if(t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme:dark)").matches))document.documentElement.classList.add("dark");if(localStorage.getItem("scouter-sidebar-collapsed")==="true")document.documentElement.classList.add("sidebar-collapsed")}catch(e){}})()`,
           }}
         />
       </head>
