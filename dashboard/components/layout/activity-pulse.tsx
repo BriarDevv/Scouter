@@ -6,83 +6,18 @@ import { cn } from "@/lib/utils";
 import { getTasks, getLLMSettings, getBatchPipelineStatus } from "@/lib/api/client";
 import type { BatchPipelineProgress } from "@/lib/api/client";
 import type { TaskStatusRecord, LLMSettings } from "@/types";
+import { STEP_CONFIG, getStepConfig, getModelForStep, isActive } from "@/lib/task-utils";
+import { ModelBadge } from "@/components/shared/model-badge";
 import {
   BrainCircuit,
-  Search,
-  BarChart3,
-  Sparkles,
-  FileText,
-  CheckCircle2,
   XCircle,
   Loader2,
   Clock,
+  CheckCircle2,
   ChevronRight,
 } from "lucide-react";
 
 const POLL_INTERVAL = 4_000;
-
-const STEP_CONFIG: Record<string, { label: string; icon: typeof BrainCircuit }> = {
-  pipeline_dispatch: { label: "Iniciando pipeline", icon: BrainCircuit },
-  enrichment:        { label: "Enriqueciendo",      icon: Search },
-  scoring:           { label: "Puntuando",           icon: BarChart3 },
-  analysis:          { label: "Analizando con IA",   icon: Sparkles },
-  draft_generation:  { label: "Generando draft",     icon: FileText },
-  lead_review:       { label: "Review de lead",      icon: Sparkles },
-  draft_review:      { label: "Review de draft",     icon: Sparkles },
-  inbound_reply_review:  { label: "Clasificando reply",   icon: Sparkles },
-  reply_draft_review:    { label: "Generando respuesta",  icon: FileText },
-  completed:         { label: "Completado",          icon: CheckCircle2 },
-};
-
-const REVIEWER_STEPS = new Set(["lead_review", "draft_review"]);
-const NO_LLM_STEPS = new Set(["enrichment", "scoring", "pipeline_dispatch", "completed"]);
-
-function getStepConfig(step: string | null | undefined) {
-  if (!step) return { label: "Procesando", icon: BrainCircuit };
-  return STEP_CONFIG[step] ?? { label: step.replace(/_/g, " "), icon: BrainCircuit };
-}
-
-function getModelForStep(step: string | null | undefined, llm: LLMSettings | null): string | null {
-  if (!step) return null;
-  if (NO_LLM_STEPS.has(step)) return "_system";
-  if (!llm) return null;
-  if (REVIEWER_STEPS.has(step)) return llm.reviewer_model;
-  return llm.executor_model;
-}
-
-function formatModelShort(model: string): string {
-  // "qwen3.5:9b" → "9B", "qwen3.5:27b" → "27B"
-  const match = model.match(/:(\d+[bB])/);
-  if (match) return match[1].toUpperCase();
-  return model.split(":").pop()?.toUpperCase() || model;
-}
-
-function isActive(status: string) {
-  return ["running", "started", "queued", "pending", "retrying"].includes(status);
-}
-
-function ModelBadge({ model }: { model: string | null }) {
-  if (!model) return null;
-  if (model === "_system") {
-    return (
-      <span className="inline-flex items-center rounded px-1 py-px text-[9px] font-bold font-data leading-tight bg-zinc-100 dark:bg-zinc-800/60 text-zinc-500 dark:text-zinc-400">
-        SIS
-      </span>
-    );
-  }
-  const short = formatModelShort(model);
-  const isReviewer = model.includes("27b") || model.includes("14b");
-  return (
-    <span className={cn(
-      "inline-flex items-center rounded px-1 py-px text-[9px] font-bold font-data leading-tight",
-      isReviewer
-        ? "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300"
-        : "bg-cyan-100 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300"
-    )}>
-      {short}
-    </span>
-  );
-}
 
 function TaskRow({ task, llm }: { task: TaskStatusRecord; llm: LLMSettings | null }) {
   const step = getStepConfig(task.current_step);

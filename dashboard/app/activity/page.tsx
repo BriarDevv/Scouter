@@ -9,14 +9,12 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton, SkeletonCard } from "@/components/shared/skeleton";
 import { RelativeTime } from "@/components/shared/relative-time";
 import { Button } from "@/components/ui/button";
-import { getTasks, getLeads, getLLMSettings } from "@/lib/api/client";
-import type { TaskStatusRecord, Lead, LLMSettings } from "@/types";
+import { getTasks, getLeadNames, getLLMSettings } from "@/lib/api/client";
+import type { TaskStatusRecord, LLMSettings } from "@/types";
+import { getStepConfig, getModelForStep, isActive } from "@/lib/task-utils";
+import { ModelBadge } from "@/components/shared/model-badge";
 import {
   BrainCircuit,
-  Search,
-  BarChart3,
-  Sparkles,
-  FileText,
   CheckCircle2,
   XCircle,
   Loader2,
@@ -24,83 +22,9 @@ import {
   RefreshCw,
   ArrowRight,
   AlertTriangle,
-  Zap,
 } from "lucide-react";
 
 const POLL_INTERVAL = 3_000;
-
-const STEP_CONFIG: Record<string, { label: string; icon: typeof BrainCircuit; description: string }> = {
-  pipeline_dispatch: { label: "Iniciando pipeline",     icon: Zap,           description: "Coordinando los pasos del pipeline completo" },
-  enrichment:        { label: "Enriqueciendo",          icon: Search,        description: "Buscando información pública del negocio" },
-  scoring:           { label: "Puntuando",              icon: BarChart3,     description: "Calculando score basado en señales detectadas" },
-  analysis:          { label: "Analizando con IA",      icon: Sparkles,      description: "Generando resumen, evaluación y ángulo comercial" },
-  draft_generation:  { label: "Generando draft",        icon: FileText,      description: "Escribiendo borrador de email personalizado" },
-  lead_review:       { label: "Review de lead",         icon: Sparkles,      description: "IA evaluando calidad y fit del lead" },
-  draft_review:      { label: "Review de draft",        icon: Sparkles,      description: "IA revisando calidad del borrador" },
-  inbound_reply_review:  { label: "Clasificando reply",   icon: Sparkles,    description: "IA clasificando respuesta inbound recibida" },
-  reply_draft_review:    { label: "Generando respuesta",  icon: FileText,    description: "IA redactando respuesta al reply del lead" },
-  completed:         { label: "Completado",             icon: CheckCircle2,  description: "Todos los pasos finalizaron correctamente" },
-};
-
-const REVIEWER_STEPS = new Set(["lead_review", "draft_review"]);
-const NO_LLM_STEPS = new Set(["enrichment", "scoring", "pipeline_dispatch", "completed"]);
-
-function getStepConfig(step: string | null | undefined) {
-  if (!step) return { label: "Procesando", icon: BrainCircuit, description: "Tarea en curso" };
-  return STEP_CONFIG[step] ?? { label: step.replace(/_/g, " "), icon: BrainCircuit, description: "" };
-}
-
-function getModelForStep(step: string | null | undefined, llm: LLMSettings | null): string | null {
-  if (!step) return null;
-  if (NO_LLM_STEPS.has(step)) return "_system";
-  if (!llm) return null;
-  if (REVIEWER_STEPS.has(step)) return llm.reviewer_model;
-  return llm.executor_model;
-}
-
-function formatModelShort(model: string): string {
-  const match = model.match(/:(\d+[bB])/);
-  if (match) return match[1].toUpperCase();
-  return model.split(":").pop()?.toUpperCase() || model;
-}
-
-function ModelBadge({ model, size = "sm" }: { model: string | null; size?: "sm" | "md" }) {
-  if (!model) return null;
-  if (model === "_system") {
-    return (
-      <span
-        className={cn(
-          "inline-flex items-center rounded font-bold font-data leading-tight",
-          size === "md" ? "px-1.5 py-0.5 text-[10px]" : "px-1 py-px text-[9px]",
-          "bg-zinc-100 dark:bg-zinc-800/60 text-zinc-500 dark:text-zinc-400"
-        )}
-        title="Sistema (sin LLM)"
-      >
-        SIS
-      </span>
-    );
-  }
-  const short = formatModelShort(model);
-  const isReviewer = model.includes("27b") || model.includes("14b");
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded font-bold font-data leading-tight",
-        size === "md" ? "px-1.5 py-0.5 text-[10px]" : "px-1 py-px text-[9px]",
-        isReviewer
-          ? "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300"
-          : "bg-cyan-100 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300"
-      )}
-      title={model}
-    >
-      {short}
-    </span>
-  );
-}
-
-function isActive(status: string) {
-  return ["running", "started", "queued", "pending", "retrying"].includes(status);
-}
 
 function isFailed(status: string) {
   return status === "failed";
@@ -130,7 +54,6 @@ function ActiveTaskCard({
   llm: LLMSettings | null;
 }) {
   const step = getStepConfig(task.current_step);
-  const StepIcon = step.icon;
   const model = getModelForStep(task.current_step, llm);
   const [elapsed, setElapsed] = useState(() => formatElapsed(task.started_at ?? task.created_at));
 
@@ -291,16 +214,16 @@ export default function ActivityPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [taskData, leadsData, llmData] = await Promise.all([
+      const [taskData, leadNames, llmData] = await Promise.all([
         getTasks({ limit: 50 }),
-        getLeads({ page: 1, page_size: 200 }),
+        getLeadNames(),
         getLLMSettings(),
       ]);
       setTasks(taskData);
       setLlm(llmData);
 
       const map: Record<string, string> = {};
-      for (const lead of leadsData.items) {
+      for (const lead of leadNames) {
         map[lead.id] = lead.business_name;
       }
       setLeadMap(map);
