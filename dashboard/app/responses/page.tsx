@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
+  ChevronLeft,
+  ChevronRight,
   Inbox,
   Info,
   LifeBuoy,
@@ -51,17 +53,23 @@ import type {
   OutreachDraft,
 } from "@/types";
 
+const LEADS_PAGE_SIZE = 50;
+
 export default function ResponsesPage() {
   const [messages, setMessages] = useState<InboundMessage[]>([]);
   const [threads, setThreads] = useState<EmailThreadSummary[]>([]);
   const [status, setStatus] = useState<InboundMailStatus | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [leadsPage, setLeadsPage] = useState(1);
+  const [leadsTotal, setLeadsTotal] = useState(0);
   const [drafts, setDrafts] = useState<OutreachDraft[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isClassifying, setIsClassifying] = useState(false);
   const [classifyingMessageId, setClassifyingMessageId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "pending" | "classified" | "failed">("all");
+
+  const leadsTotalPages = Math.max(1, Math.ceil(leadsTotal / LEADS_PAGE_SIZE));
 
   async function loadInboxData() {
     setLoading(true);
@@ -70,13 +78,14 @@ export default function ResponsesPage() {
         getInboundMessages({ limit: 100 }),
         getInboundThreads({ limit: 50 }),
         getInboundMailStatus(),
-        getLeads({ page: 1, page_size: 200 }),
+        getLeads({ page: leadsPage, page_size: LEADS_PAGE_SIZE }),
         getDrafts(),
       ]);
       setMessages(nextMessages);
       setThreads(nextThreads);
       setStatus(nextStatus);
       setLeads(nextLeads.items);
+      setLeadsTotal(nextLeads.total);
       setDrafts(nextDrafts);
     } catch (err) {
       sileo.error({
@@ -90,7 +99,8 @@ export default function ResponsesPage() {
 
   useEffect(() => {
     void loadInboxData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leadsPage]);
 
   const leadById = useMemo(
     () => new Map(leads.map((lead) => [lead.id, lead])),
@@ -500,6 +510,37 @@ export default function ResponsesPage() {
               )}
             </div>
           </CollapsibleSection>
+
+          {/* Leads pagination for name resolution */}
+          {leadsTotalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-border pt-4">
+              <span className="text-xs text-muted-foreground">
+                {leadsTotal} leads · {leadsPage} / {leadsTotalPages}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl gap-1.5"
+                  disabled={leadsPage <= 1}
+                  onClick={() => setLeadsPage((p) => p - 1)}
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl gap-1.5"
+                  disabled={leadsPage >= leadsTotalPages}
+                  onClick={() => setLeadsPage((p) => p + 1)}
+                >
+                  Siguiente
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
         </div>

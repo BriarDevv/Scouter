@@ -31,7 +31,7 @@ import type {
 } from "@/types";
 import { DRAFT_STATUS_CONFIG, INBOUND_MATCH_VIA_LABELS } from "@/lib/constants";
 import {
-  Mail, CheckCircle, XCircle, Loader2, FileText, Send,
+  Mail, CheckCircle, XCircle, Loader2, FileText, Send, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -39,11 +39,15 @@ import { sileo } from "sileo";
 
 const FILTER_OPTIONS: (DraftStatus | "all")[] = ["all", "pending_review", "approved", "sent", "rejected"];
 
+const LEADS_PAGE_SIZE = 50;
+
 export default function OutreachPage() {
   const [filter, setFilter] = useState<DraftStatus | "all">("all");
   const [selectedDraft, setSelectedDraft] = useState<OutreachDraft | null>(null);
   const [drafts, setDrafts] = useState<OutreachDraft[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [leadsPage, setLeadsPage] = useState(1);
+  const [leadsTotal, setLeadsTotal] = useState(0);
   const [inboundMessages, setInboundMessages] = useState<InboundMessage[]>([]);
   const [inboundThreads, setInboundThreads] = useState<EmailThreadSummary[]>([]);
   const [selectedDeliveries, setSelectedDeliveries] = useState<OutreachDelivery[]>([]);
@@ -51,13 +55,15 @@ export default function OutreachPage() {
   const [isReviewingDraftId, setIsReviewingDraftId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const leadsTotalPages = Math.max(1, Math.ceil(leadsTotal / LEADS_PAGE_SIZE));
+
   useEffect(() => {
     let active = true;
 
     async function loadOutreachData() {
       const [nextDrafts, nextLeads, nextInboundMessages, nextInboundThreads] = await Promise.all([
         getDrafts(),
-        getLeads({ page: 1, page_size: 200 }),
+        getLeads({ page: leadsPage, page_size: LEADS_PAGE_SIZE }),
         getInboundMessages({ limit: 100 }).catch(() => null),
         getInboundThreads({ limit: 50 }).catch(() => null),
       ]);
@@ -66,6 +72,7 @@ export default function OutreachPage() {
 
       setDrafts(nextDrafts);
       setLeads(nextLeads.items);
+      setLeadsTotal(nextLeads.total);
       if (nextInboundMessages && nextInboundThreads) {
         setInboundMessages(nextInboundMessages);
         setInboundThreads(nextInboundThreads);
@@ -86,7 +93,7 @@ export default function OutreachPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [leadsPage]);
 
   useEffect(() => {
     let active = true;
@@ -333,6 +340,37 @@ export default function OutreachPage() {
               />
             )}
           </div>
+
+          {/* Leads pagination for name resolution */}
+          {leadsTotalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-border pt-4">
+              <span className="text-xs text-muted-foreground">
+                {leadsTotal} lead{leadsTotal !== 1 ? "s" : ""} · página {leadsPage} / {leadsTotalPages}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl gap-1.5"
+                  disabled={leadsPage <= 1}
+                  onClick={() => setLeadsPage((p) => p - 1)}
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl gap-1.5"
+                  disabled={leadsPage >= leadsTotalPages}
+                  onClick={() => setLeadsPage((p) => p + 1)}
+                >
+                  Siguiente
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right: Thread details only */}

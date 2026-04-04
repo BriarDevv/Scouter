@@ -626,12 +626,16 @@ export async function getBatchPipelineStatus(): Promise<BatchPipelineProgress | 
 
 // ─── Map (individual leads) ───────────────────────────
 
-export async function getLeadsWithCoords(): Promise<Lead[]> {
+const LEADS_WITH_COORDS_MAX_PAGES = 10;
+
+export async function getLeadsWithCoords(signal?: AbortSignal): Promise<Lead[]> {
   const all: Lead[] = [];
   let page = 1;
-  while (true) {
+  while (page <= LEADS_WITH_COORDS_MAX_PAGES) {
+    if (signal?.aborted) break;
     const res = await apiFetch<PaginatedResponse<Lead>>(
-      `/leads?page=${page}&page_size=200`
+      `/leads?page=${page}&page_size=200`,
+      signal ? { signal } : undefined
     );
     all.push(...res.items);
     if (all.length >= res.total) break;

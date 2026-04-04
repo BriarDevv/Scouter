@@ -5,7 +5,8 @@ import { PageHeader } from "@/components/layout/page-header";
 import { getLeads, getLeadResearch } from "@/lib/api/client";
 import type { Lead, LeadResearchReport } from "@/types";
 import Link from "next/link";
-import { FileSearch, ExternalLink, CheckCircle, AlertCircle, Clock } from "lucide-react";
+import { FileSearch, ExternalLink, CheckCircle, AlertCircle, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface DossierEntry {
@@ -20,45 +21,68 @@ const CONFIDENCE_COLORS: Record<string, string> = {
   mismatch: "text-red-600 dark:text-red-400",
 };
 
+const LEADS_PAGE_SIZE = 50;
+const RESEARCH_CONCURRENCY = 5;
+
+async function fetchResearchBatched(leads: Lead[]): Promise<DossierEntry[]> {
+  const results: DossierEntry[] = [];
+  for (let i = 0; i < leads.length; i += RESEARCH_CONCURRENCY) {
+    const batch = leads.slice(i, i + RESEARCH_CONCURRENCY);
+    const settled = await Promise.allSettled(
+      batch.map(async (lead) => {
+        const research = await getLeadResearch(lead.id);
+        return research ? { lead, research } : null;
+      })
+    );
+    for (const r of settled) {
+      if (
+        r.status === "fulfilled" &&
+        r.value !== null &&
+        r.value.research.status === "completed"
+      ) {
+        results.push(r.value);
+      }
+    }
+  }
+  return results;
+}
+
 export default function DossiersPage() {
   const [entries, setEntries] = useState<DossierEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [total, setTotal] = useState(0);
+
+  const totalPages = Math.max(1, Math.ceil(total / LEADS_PAGE_SIZE));
 
   useEffect(() => {
+    let active = true;
+
     async function load() {
+      setLoading(true);
       try {
-        const res = await getLeads({ page_size: 200 });
+        const res = await getLeads({ page: currentPage, page_size: LEADS_PAGE_SIZE });
+        if (!active) return;
+        setTotal(res.total);
         const highLeads = (res.items || []).filter(
           (l: Lead) => l.quality === "high" || (l.score != null && l.score >= 60)
         );
 
-        // Fetch research for each HIGH lead in parallel
-        const results = await Promise.allSettled(
-          highLeads.map(async (lead) => {
-            const research = await getLeadResearch(lead.id);
-            return research ? { lead, research } : null;
-          })
-        );
-
-        const withDossiers = results
-          .filter(
-            (r): r is PromiseFulfilledResult<DossierEntry | null> =>
-              r.status === "fulfilled"
-          )
-          .map((r) => r.value)
-          .filter(
-            (entry): entry is DossierEntry =>
-              entry !== null && entry.research.status === "completed"
-          );
-
+        const withDossiers = await fetchResearchBatched(highLeads);
+        if (!active) return;
         setEntries(withDossiers);
       } catch (err) {
         console.warn("Failed to load dossiers:", err);
       }
-      setLoading(false);
+      if (active) setLoading(false);
     }
-    load();
-  }, []);
+
+    void load();
+
+    return () => {
+      active = false;
+    };
+  }, [currentPage]);
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -128,6 +152,36 @@ export default function DossiersPage() {
               ))
             )}
           </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-border pt-4">
+              <span className="text-xs text-muted-foreground">
+                {total} lead{total !== 1 ? "s" : ""} · página {currentPage} / {totalPages}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl gap-1.5"
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl gap-1.5"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                >
+                  Siguiente
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
