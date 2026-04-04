@@ -53,11 +53,13 @@ def _cached_tools_schema() -> str:
 
 
 def _build_system_context(db: Session) -> str:
-    """Gather a quick stats summary for the agent's system prompt."""
+    """Gather a quick stats summary + latest weekly report for the agent's system prompt."""
+    parts = []
+
     try:
         from app.services.dashboard_svc.dashboard_service import get_dashboard_stats
         stats = get_dashboard_stats(db)
-        return (
+        parts.append(
             f"Total leads: {stats['total_leads']} | "
             f"Contactados: {stats['contacted']} | "
             f"Respondieron: {stats['replied']} | "
@@ -65,7 +67,22 @@ def _build_system_context(db: Session) -> str:
             f"Score promedio: {stats['avg_score']}"
         )
     except Exception:
-        return ""
+        pass
+
+    # Inject latest weekly report if available
+    try:
+        from app.models.weekly_report import WeeklyReport
+        latest = (
+            db.query(WeeklyReport)
+            .order_by(WeeklyReport.created_at.desc())
+            .first()
+        )
+        if latest and latest.synthesis_text:
+            parts.append(f"\nUltimo reporte semanal del equipo IA:\n{latest.synthesis_text[:500]}")
+    except Exception:
+        pass
+
+    return "\n".join(parts)
 
 
 def _get_model() -> str:

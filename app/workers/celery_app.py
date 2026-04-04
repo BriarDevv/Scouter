@@ -3,7 +3,7 @@ from celery import Celery
 from app.core.config import settings
 
 celery_app = Celery(
-    "clawscout",
+    "scouter",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
 )
@@ -56,6 +56,10 @@ celery_app.conf.update(
             "task": "app.workers.janitor.task_sweep_stale",
             "schedule": 300.0,  # every 5 minutes
         },
+        "weekly-ai-report": {
+            "task": "app.workers.weekly_tasks.task_weekly_report",
+            "schedule": 604800.0,  # every 7 days (Sunday ~20:00 via offset)
+        },
     },
 )
 
@@ -67,3 +71,4 @@ import app.workers.janitor  # noqa: E402, F401 — register janitor beat task
 import app.workers.pipeline_tasks  # noqa: E402, F401 — register pipeline tasks
 import app.workers.research_tasks  # noqa: E402, F401 — register research tasks
 import app.workers.review_tasks  # noqa: E402, F401 — register review tasks
+import app.workers.weekly_tasks  # noqa: E402, F401 — register weekly report beat task

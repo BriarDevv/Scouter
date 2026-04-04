@@ -24,6 +24,7 @@ from app.models.llm_invocation import LLMInvocation
 from app.models.investigation_thread import InvestigationThread
 from app.models.outbound_conversation import OutboundConversation, ConversationStatus
 from app.models.outcome_snapshot import OutcomeSnapshot
+from app.models.weekly_report import WeeklyReport
 from app.models.review_correction import ReviewCorrection, CorrectionCategory, CorrectionSeverity
 from app.models.commercial_brief import (
     CommercialBrief,
@@ -82,4 +83,5 @@ __all__ = [
     "OutboundConversation",
     "ConversationStatus",
     "OutcomeSnapshot",
+    "WeeklyReport",
 ]
