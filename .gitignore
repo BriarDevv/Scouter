@@ -13,7 +13,7 @@ __pycache__/
 *.egg-info/
 .installed.cfg
 *.egg
-clawscout.egg-info/
+scouter.egg-info/
 
 # Virtual environments
 .venv/
@@ -79,7 +79,7 @@ out/
 celerybeat-schedule
 celerybeat-schedule.db
 
-# ClawScout runtime
+# Scouter runtime
 logs/
 .pids/
 
@@ -87,4 +87,4 @@ logs/
 .omc/
 
 # Export bundles (contain secrets)
-clawscout-export-*/
+scouter-export-*/

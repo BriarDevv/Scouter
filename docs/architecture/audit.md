@@ -1,4 +1,4 @@
-# ClawScout Architecture Audit
+# Scouter Architecture Audit
 
 Date: 2026-04-02
 Auditor: Codex acting as Principal Architect / Staff Engineer
@@ -24,7 +24,7 @@ Scope: backend, workers, LLM layer, frontend contracts, infra, DX, testing, secu
 
 ## Executive Summary
 
-ClawScout is not a bad codebase. It is also not an architecturally excellent one.
+Scouter is not a bad codebase. It is also not an architecturally excellent one.
 
 It is a feature-rich modular monolith with several good foundations:
 
@@ -346,7 +346,7 @@ The problem is not absence of contexts. The problem is that the contexts do not 
   - no evidence of TanStack Query/SWR or serious server-component-first data loading
 - Why this is a problem:
   - Next App Router defaults to server components for a reason.
-  - ClawScout is operational software with many read-heavy screens; pushing most page composition to the client is unnecessary and costly.
+  - Scouter is operational software with many read-heavy screens; pushing most page composition to the client is unnecessary and costly.
 - Exact recommendation:
   - Move read-heavy route shells to server components by default.
   - Keep client islands only for live controls, polling widgets, chat, and interactive mutations.

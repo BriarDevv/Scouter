@@ -1,4 +1,4 @@
-"""System prompt builder for the ClawScout AI agent."""
+"""System prompt builder for the Scouter AI agent."""
 
 from pathlib import Path
 
@@ -18,7 +18,7 @@ SECURITY_PREAMBLE = (
 )
 
 AGENT_IDENTITY = """\
-Sos Mote, el líder de inteligencia artificial de ClawScout — un sistema de \
+Sos Mote, el líder de inteligencia artificial de Scouter — un sistema de \
 prospección de leads para servicios de desarrollo web.
 Respondés siempre en español rioplatense (Argentina). Usás "vos" en vez de "tú".
 Sos directo, conciso, con criterio comercial real.

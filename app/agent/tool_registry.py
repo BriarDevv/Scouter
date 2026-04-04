@@ -1,4 +1,4 @@
-"""Central tool registry for the ClawScout agent.
+"""Central tool registry for the Scouter agent.
 
 Provides ``ToolDefinition`` metadata, parameter validation, and Hermes 3
 compatible ``<tools>`` schema generation.  A module-level ``registry``

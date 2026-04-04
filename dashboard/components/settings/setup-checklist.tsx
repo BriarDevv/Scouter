@@ -19,6 +19,7 @@ export function SetupChecklist({ data, onTabChange }: SetupChecklistProps) {
 
   const actionTabMap: Record<string, TabId> = {
     brand: "brand",
+    credentials: "credentials",
     mail_out: "mail_out",
     mail_in: "mail_in",
     rules: "rules",

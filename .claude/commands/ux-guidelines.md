@@ -1,4 +1,4 @@
-Apply these UX 10/10 principles to ALL frontend work on the ClawScout dashboard.
+Apply these UX 10/10 principles to ALL frontend work on the Scouter dashboard.
 
 ## Core Principles
 

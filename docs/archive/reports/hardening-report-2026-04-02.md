@@ -1,4 +1,4 @@
-# ClawScout — Hardening Report + Propuesta vs Realidad
+# Scouter — Hardening Report + Propuesta vs Realidad
 
 **Fecha:** 2026-04-02
 **Branch:** `main`
@@ -12,7 +12,7 @@
 | Bug | Causa | Fix |
 |-----|-------|-----|
 | Enum uppercase en Postgres | SQLAlchemy enviaba `PENDING` en vez de `pending` | `values_callable` en todos los modelos nuevos |
-| Research queue no consumida | Worker startup no listaba queue `research` | Agregada a `clawscout.sh` y `docker-compose.yml` |
+| Research queue no consumida | Worker startup no listaba queue `research` | Agregada a `scouter.sh` y `docker-compose.yml` |
 | Schema UUID serialization | Pydantic no serializaba UUID a string | `field_serializer` en schemas brief/research |
 
 ### Hardening implementado
@@ -179,7 +179,7 @@ Pipeline NOT-HIGH (Panaderia Don Miguel, BSAS):
 | Item | Notas |
 |------|-------|
 | Demo generation (templates + Claude Code) | Requiere decisiones de arquitectura |
-| demo.clawscout.ai hosting | Requiere dominio + infra |
+| demo.scouter.ai hosting | Requiere dominio + infra |
 | Demo tracking (views, interactions) | Depende de demo generation |
 
 ---

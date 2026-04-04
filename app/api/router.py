@@ -17,6 +17,7 @@ from app.api.v1.replies import router as replies_router
 from app.api.v1.reviews import router as reviews_router
 from app.api.v1.scoring import router as scoring_router
 from app.api.v1.settings import router as settings_router
+from app.api.v1.setup import router as setup_router
 from app.api.v1.suppression import router as suppression_router
 from app.api.v1.tasks import router as tasks_router
 from app.api.v1.telegram import router as telegram_router
@@ -29,6 +30,7 @@ api_router.include_router(leads_router)
 api_router.include_router(leader_router)
 api_router.include_router(enrichment_router)
 api_router.include_router(scoring_router)
+api_router.include_router(setup_router)
 api_router.include_router(settings_router)
 api_router.include_router(mail_inbound_router)
 api_router.include_router(outreach_router)

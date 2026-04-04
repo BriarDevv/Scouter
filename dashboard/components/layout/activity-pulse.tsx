@@ -133,7 +133,7 @@ function TaskRow({ task, llm }: { task: TaskStatusRecord; llm: LLMSettings | nul
   );
 }
 
-const PULSE_STORAGE_KEY = "clawscout-activity-expanded";
+const PULSE_STORAGE_KEY = "scouter-activity-expanded";
 
 export function ActivityPulse() {
   const [tasks, setTasks] = useState<TaskStatusRecord[]>([]);

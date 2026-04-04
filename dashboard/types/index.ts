@@ -673,6 +673,54 @@ export interface SetupStatus {
   ready_to_receive: boolean;
 }
 
+export interface SetupReadinessStep extends SetupStep {
+  required: boolean;
+}
+
+export interface SetupAction {
+  id: string;
+  label: string;
+  kind: "api" | "manual";
+  description: string;
+  method: string;
+  endpoint: string | null;
+  manual_instructions: string | null;
+}
+
+export interface SetupUpdateStatus {
+  supported: boolean;
+  current_branch: string | null;
+  updates_available: boolean;
+  dirty: boolean;
+  can_autopull: boolean;
+  detail: string | null;
+}
+
+export interface SetupReadiness {
+  overall: "blocked" | "setup_required" | "config_required" | "ready";
+  summary: string;
+  target_platform: string;
+  current_platform: string;
+  dashboard_unlocked: boolean;
+  hermes_unlocked: boolean;
+  recommended_route: string;
+  platform_steps: SetupReadinessStep[];
+  runtime_steps: SetupReadinessStep[];
+  config_steps: SetupReadinessStep[];
+  wizard_steps: string[];
+  actions: SetupAction[];
+  updates: SetupUpdateStatus;
+}
+
+export interface SetupActionResult {
+  action_id: string;
+  status: "completed" | "failed" | "noop";
+  summary: string;
+  detail: string | null;
+  stdout_tail: string | null;
+  manual_instructions: string | null;
+}
+
 // ─── Notifications ─────────────────────────────────────
 
 export interface NotificationItem {

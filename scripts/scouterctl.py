@@ -190,17 +190,17 @@ class APIClient:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Thin local wrapper around the ClawScout HTTP API for leader workflows."
+        description="Thin local wrapper around the Scouter HTTP API for leader workflows."
     )
     parser.add_argument(
         "--base-url",
-        default=os.getenv("CLAWSCOUT_API_BASE_URL", DEFAULT_BASE_URL),
-        help=f"ClawScout API base URL (default: {DEFAULT_BASE_URL})",
+        default=os.getenv("SCOUTER_API_BASE_URL", DEFAULT_BASE_URL),
+        help=f"Scouter API base URL (default: {DEFAULT_BASE_URL})",
     )
     parser.add_argument(
         "--timeout",
         type=float,
-        default=float(os.getenv("CLAWSCOUT_API_TIMEOUT", str(DEFAULT_TIMEOUT_SECONDS))),
+        default=float(os.getenv("SCOUTER_API_TIMEOUT", str(DEFAULT_TIMEOUT_SECONDS))),
         help=f"HTTP timeout in seconds (default: {DEFAULT_TIMEOUT_SECONDS})",
     )
     parser.add_argument(

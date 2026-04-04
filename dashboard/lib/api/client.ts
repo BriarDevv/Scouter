@@ -36,6 +36,8 @@ import type {
   MailCredentials,
   ConnectionTestResult,
   SetupStatus,
+  SetupReadiness,
+  SetupActionResult,
   NotificationItem,
   NotificationListResponse,
   NotificationCounts,
@@ -51,13 +53,10 @@ import type {
   OutcomeAnalytics,
   SignalCorrelation,
 } from "@/types";
-import { API_BASE_URL } from "@/lib/constants";
-
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
+import { API_BASE_URL, SYSTEM_HEALTH_URL } from "@/lib/constants";
 
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (API_KEY) headers["X-API-Key"] = API_KEY;
   const method = options?.method?.toUpperCase() || "GET";
   const maxRetries = method === "GET" ? 2 : 0;
 
@@ -449,6 +448,14 @@ export async function getSetupStatus(): Promise<SetupStatus> {
   return apiFetch("/settings/setup-status");
 }
 
+export async function getSetupReadiness(): Promise<SetupReadiness> {
+  return apiFetch("/setup/readiness");
+}
+
+export async function runSetupAction(actionId: string): Promise<SetupActionResult> {
+  return apiFetch(`/setup/actions/${actionId}`, { method: "POST" });
+}
+
 // ─── Notifications ─────────────────────────────────────
 
 export async function getNotifications(params?: {
@@ -498,7 +505,7 @@ export async function getWhatsAppCredentials() {
   return apiFetch<WhatsAppCredentials>("/settings/whatsapp-credentials");
 }
 
-export async function updateWhatsAppCredentials(updates: Record<string, any>) {
+export async function updateWhatsAppCredentials(updates: Record<string, unknown>) {
   return apiFetch<WhatsAppCredentials>("/settings/whatsapp-credentials", {
     method: "PATCH",
     body: JSON.stringify(updates),
@@ -551,8 +558,7 @@ export async function testTelegramConnection(): Promise<ConnectionTestResult> {
 
 export async function getSystemHealth(): Promise<import("@/types").SystemHealth> {
   // /health/detailed is at the app root, not under /api/v1
-  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1").replace(/\/api\/v1$/, "");
-  const res = await fetch(`${baseUrl}/health/detailed`, {
+  const res = await fetch(SYSTEM_HEALTH_URL, {
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
   });

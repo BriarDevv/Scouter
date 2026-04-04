@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================================
-# ClawScout Export — empaqueta todo lo necesario para migrar a otra PC
+# Scouter Export — empaqueta todo lo necesario para migrar a otra PC
 # Uso: bash scripts/export.sh [--keep-dir] [carpeta-destino|zip-destino]
 # ============================================================================
 set -euo pipefail
@@ -11,7 +11,7 @@ if [[ "${1:-}" == "--keep-dir" ]]; then
   shift
 fi
 
-INPUT_PATH="${1:-clawscout-export-$(date +%Y%m%d-%H%M)}"
+INPUT_PATH="${1:-scouter-export-$(date +%Y%m%d-%H%M)}"
 if [[ "$INPUT_PATH" == *.zip ]]; then
   ZIP_PATH="$INPUT_PATH"
   EXPORT_DIR="${INPUT_PATH%.zip}"
@@ -23,7 +23,7 @@ fi
 mkdir -p "$EXPORT_DIR"
 
 echo "╔══════════════════════════════════════╗"
-echo "║     ClawScout Export                 ║"
+echo "║     Scouter Export                 ║"
 echo "╚══════════════════════════════════════╝"
 echo ""
 
@@ -39,10 +39,10 @@ fi
 echo "→ Exportando base de datos..."
 if docker ps --format '{{.Names}}' | grep -q postgres; then
   CONTAINER=$(docker ps --format '{{.Names}}' | grep postgres | head -1)
-  docker exec "$CONTAINER" pg_dump -U clawscout clawscout 2>/dev/null | gzip > "$EXPORT_DIR/db.sql.gz"
+  docker exec "$CONTAINER" pg_dump -U scouter scouter 2>/dev/null | gzip > "$EXPORT_DIR/db.sql.gz"
   echo "✔ Base de datos exportada ($(du -h "$EXPORT_DIR/db.sql.gz" | cut -f1))"
 elif command -v pg_dump &>/dev/null; then
-  pg_dump -h 127.0.0.1 -U clawscout clawscout 2>/dev/null | gzip > "$EXPORT_DIR/db.sql.gz"
+  pg_dump -h 127.0.0.1 -U scouter scouter 2>/dev/null | gzip > "$EXPORT_DIR/db.sql.gz"
   echo "✔ Base de datos exportada via pg_dump local"
 else
   echo "⚠ No se pudo exportar DB — Postgres no está corriendo"

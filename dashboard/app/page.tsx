@@ -170,7 +170,7 @@ export default function ChatPage() {
               {currentTitle || "Mote"}
             </p>
             {!currentTitle && (
-              <p className="text-xs text-muted-foreground mt-0.5">Agente IA · ClawScout</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Agente IA · Scouter</p>
             )}
           </div>
           <button

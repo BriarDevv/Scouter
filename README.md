@@ -1,4 +1,4 @@
-# ClawScout
+# Scouter
 
 Private lead prospecting system for web development services.
 Detects businesses that need web development or redesign, enriches leads, scores them,
@@ -47,7 +47,7 @@ runs AI-assisted research and outreach flows, and supports human-in-the-loop rev
 ## Installation from Scratch
 
 > Everything runs inside **WSL** (Windows Subsystem for Linux). The repo **must** live
-> in the WSL filesystem (e.g. `~/src/ClawScout`), **not** in `/mnt/c/...` — running
+> in the WSL filesystem (e.g. `~/src/Scouter`), **not** in `/mnt/c/...` — running
 > from the Windows filesystem is significantly slower.
 
 ### 1. Install WSL2 + Ubuntu
@@ -117,8 +117,8 @@ nvm use 24
 # Clone the repo inside WSL (NOT in /mnt/c/)
 cd ~
 mkdir -p src && cd src
-git clone https://github.com/BriarDevv/ClawScout.git
-cd ClawScout
+git clone https://github.com/BriarDevv/Scouter.git
+cd Scouter
 
 # Configure environment
 cp .env.example .env                     # Edit with your values: nano .env
@@ -144,7 +144,7 @@ ollama pull qwen3.5:27b
 ollama pull hermes3:8b
 
 # Make management script executable
-chmod +x scripts/clawscout.sh
+chmod +x scripts/scouter.sh
 ```
 
 For the full WSL workflow and troubleshooting guide, see
@@ -157,7 +157,7 @@ For the full WSL workflow and troubleshooting guide, see
 ### Start
 
 ```bash
-cd ~/src/ClawScout
+cd ~/src/Scouter
 make up                                  # Starts everything: Postgres, Redis, API, Worker, Dashboard
 ```
 
@@ -177,25 +177,25 @@ make status                              # Shows what is running and on which po
 
 ```bash
 make logs                                # All logs live (Ctrl+C to exit)
-./scripts/clawscout.sh logs api          # API only
-./scripts/clawscout.sh logs worker       # Celery worker only
-./scripts/clawscout.sh logs dashboard    # Dashboard only
+./scripts/scouter.sh logs api          # API only
+./scripts/scouter.sh logs worker       # Celery worker only
+./scripts/scouter.sh logs dashboard    # Dashboard only
 ```
 
 ### All Commands
 
 | Command | Shortcut | What it does |
 | --- | --- | --- |
-| `make up` | `./scripts/clawscout.sh start` | Start everything |
-| `make down` | `./scripts/clawscout.sh stop` | Stop everything (preserves data) |
-| `make restart` | `./scripts/clawscout.sh restart` | Stop + start |
-| `make status` | `./scripts/clawscout.sh status` | Show status of each service |
-| `make logs` | `./scripts/clawscout.sh logs` | Live logs |
-| `make preflight` | `./scripts/clawscout.sh preflight` | Verify configuration |
-| `make seed` | `./scripts/clawscout.sh seed` | Load sample data |
+| `make up` | `./scripts/scouter.sh start` | Start everything |
+| `make down` | `./scripts/scouter.sh stop` | Stop everything (preserves data) |
+| `make restart` | `./scripts/scouter.sh restart` | Stop + start |
+| `make status` | `./scripts/scouter.sh status` | Show status of each service |
+| `make logs` | `./scripts/scouter.sh logs` | Live logs |
+| `make preflight` | `./scripts/scouter.sh preflight` | Verify configuration |
+| `make seed` | `./scripts/scouter.sh seed` | Load sample data |
 | `make test` | `pytest -q` | Run backend tests |
 | `make migrate` | `alembic upgrade head` | Run pending database migrations |
-| `make nuke` | `./scripts/clawscout.sh nuke` | Stop + delete all data (asks for confirmation) |
+| `make nuke` | `./scripts/scouter.sh nuke` | Stop + delete all data (asks for confirmation) |
 
 ### API + Dashboard Only (no Docker or Celery)
 
@@ -249,7 +249,7 @@ docker compose down                      # Stop
 
 ## Migration / Backup
 
-Export the full environment (DB, secrets, configs) to move ClawScout to another machine:
+Export the full environment (DB, secrets, configs) to move Scouter to another machine:
 
 ```bash
 # On the current machine
@@ -259,7 +259,7 @@ bash scripts/export.sh
 # bash scripts/export.sh --keep-dir
 
 # Copy the export ZIP to the new machine, then:
-bash scripts/import.sh /path/to/clawscout-export-YYYYMMDD-HHMM.zip
+bash scripts/import.sh /path/to/scouter-export-YYYYMMDD-HHMM.zip
 
 # Download Ollama models (listed by import.sh)
 ollama pull qwen3.5:4b && ollama pull qwen3.5:9b
@@ -361,7 +361,7 @@ All these toggles default to `false`, so automatic AI features don't run unless 
 ## Project Structure
 
 ```
-ClawScout/
+Scouter/
 ├── app/                      # Python backend
 │   ├── agent/tools/          # 55 Mote tool surfaces for chat-driven operations
 │   ├── api/v1/               # FastAPI endpoints and webhooks

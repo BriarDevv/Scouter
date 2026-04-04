@@ -121,11 +121,11 @@ export function TelegramSection({ data, onSaved }: TelegramSectionProps) {
 
         <div className="grid gap-0 lg:grid-cols-2 lg:gap-x-8">
           <div>
-            <FieldRow label="Username del bot" hint="Sin @, ej: ClawScoutBot">
+            <FieldRow label="Username del bot" hint="Sin @, ej: ScouterBot">
               <TextInput
                 value={form.bot_username}
                 onChange={set("bot_username")}
-                placeholder="ClawScoutBot"
+                placeholder="ScouterBot"
               />
             </FieldRow>
             <FieldRow label="Chat ID" hint="Tu ID de chat personal o de grupo para recibir alertas">

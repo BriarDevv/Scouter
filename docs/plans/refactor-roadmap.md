@@ -1,4 +1,4 @@
-# ClawScout Refactor Roadmap
+# Scouter Refactor Roadmap
 
 Date: 2026-04-02
 Strategy: incremental, low-drama, modular-monolith hardening
@@ -360,7 +360,7 @@ Small
 
 Write these early. They will force the architecture to become explicit.
 
-1. ADR: ClawScout remains a modular monolith
+1. ADR: Scouter remains a modular monolith
 2. ADR: PostgreSQL is the canonical workflow state store; Redis is not source of truth
 3. ADR: Transaction ownership lives in application commands, not inner services
 4. ADR: Lead lifecycle status is split from pipeline stage

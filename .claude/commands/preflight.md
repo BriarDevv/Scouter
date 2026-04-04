@@ -1,8 +1,8 @@
-Run the ClawScout preflight check to verify all system components are ready.
+Run the Scouter preflight check to verify all system components are ready.
 
 Execute from WSL:
 ```bash
-wsl.exe -d Ubuntu -- bash -c "cd /home/briar/src/ClawScout && source .venv/bin/activate && python scripts/preflight.py"
+wsl.exe -d Ubuntu -- bash -c "cd /home/mateo/src/Scouter && source .venv/bin/activate && python scripts/preflight.py"
 ```
 
 If any check fails, diagnose and report what's wrong. Common issues:

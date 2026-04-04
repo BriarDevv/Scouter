@@ -17,7 +17,7 @@ or [../../README.md](../../README.md) first.
 
 ## Agent Runtime Context
 
-Mote is the operational AI agent for ClawScout.
+Mote is the operational AI agent for Scouter.
 Its runtime persona lives in [../../SOUL.md](../../SOUL.md) and
 [../../IDENTITY.md](../../IDENTITY.md).
 

@@ -1,5 +1,5 @@
 [project]
-name = "clawscout"
+name = "scouter"
 version = "0.1.0"
 description = "Private lead prospecting system for web development services"
 requires-python = ">=3.12,<3.15"

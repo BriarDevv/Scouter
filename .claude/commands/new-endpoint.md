@@ -1,4 +1,4 @@
-Create a new API endpoint for ClawScout.
+Create a new API endpoint for Scouter.
 
 The user will provide: endpoint path, HTTP method, purpose, and request/response shape.
 

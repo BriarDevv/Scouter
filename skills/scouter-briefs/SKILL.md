@@ -1,10 +1,10 @@
 ---
-name: clawscout-briefs
-description: "Operational briefs and prioritization. Exec: cd /home/briar/src/ClawScout && .venv/bin/python scripts/opsctl.py --compact <cmd>. Commands: replies-digest --hours N | important-replies-brief --hours N | leads-priority --limit N | commercial-brief --hours N | settings-brief. Summarize the JSON output in Spanish."
+name: scouter-briefs
+description: "Operational briefs and prioritization. Exec: cd /home/mateo/Scouter && .venv/bin/python scripts/opsctl.py --compact <cmd>. Commands: replies-digest --hours N | important-replies-brief --hours N | leads-priority --limit N | commercial-brief --hours N | settings-brief. Summarize the JSON output in Spanish."
 metadata: { "hermes": { "emoji": "📋", "os": ["linux"], "requires": { "bins": ["python3"] } } }
 ---
 
-# ClawScout Briefs Skill
+# Scouter Briefs Skill
 
 Operational briefs that run grounded wrappers first, then ask the leader model to summarize.
 
@@ -19,21 +19,21 @@ Operational briefs that run grounded wrappers first, then ask the leader model t
 
 ## When NOT to use
 
-- Exact counts, IDs, raw lists → use **clawscout-data**
-- Sending drafts → use **clawscout-mail**
-- Mutating actions → use **clawscout-actions**
+- Exact counts, IDs, raw lists → use **scouter-data**
+- Sending drafts → use **scouter-mail**
+- Mutating actions → use **scouter-actions**
 
 ## Hard rules
 
 1. Do not improvise tool calls — use `opsctl.py` which handles tool-first + leader-after.
 2. Do not restate counts or IDs not present in the returned JSON.
-3. If the user wants raw exact numbers, redirect to **clawscout-data** instead.
+3. If the user wants raw exact numbers, redirect to **scouter-data** instead.
 4. Model: leader (qwen3.5:4b)
 
 ## Commands
 
 ```bash
-cd /home/briar/src/ClawScout && .venv/bin/python scripts/opsctl.py --compact <command> [args]
+cd /home/mateo/Scouter && .venv/bin/python scripts/opsctl.py --compact <command> [args]
 ```
 
 | Request | Command |

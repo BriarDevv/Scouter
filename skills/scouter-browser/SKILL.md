@@ -1,21 +1,21 @@
 ---
-name: clawscout-browser
+name: scouter-browser
 description: "Inspect public business websites with Playwright through scripts/browserctl.py. Use this for grounded site checks such as title, meta description, h1, contact signals, CTA signals, social links, screenshots, or inspecting a lead's website by lead id."
 metadata: { "hermes": { "emoji": "🌐", "os": ["linux"], "requires": { "bins": ["python3"] } } }
 ---
 
-# ClawScout Browser Skill
+# Scouter Browser Skill
 
 Use this skill for safe, read-only inspection of public websites. This skill is grounded in `scripts/browserctl.py`, which uses Playwright and returns structured JSON.
 
-ClawScout remains the source of truth for lead state. This browser skill is for on-demand inspection only and does not write to the database.
+Scouter remains the source of truth for lead state. This browser skill is for on-demand inspection only and does not write to the database.
 
 ## Use this skill for
 
 - Inspecting a public URL to understand the visible site quality
 - Checking if a site exposes contact signals, CTA signals, or social links
 - Getting a screenshot for a public page when useful
-- Inspecting a lead's current `website_url` through ClawScout by lead id
+- Inspecting a lead's current `website_url` through Scouter by lead id
 
 ## Do not use this skill for
 
@@ -28,7 +28,7 @@ ClawScout remains the source of truth for lead state. This browser skill is for 
 
 ## Command map
 
-Run commands from the ClawScout workspace root:
+Run commands from the Scouter workspace root:
 
 ```bash
 python3 scripts/browserctl.py inspect-url --url <public_url>

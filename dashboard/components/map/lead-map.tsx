@@ -48,7 +48,7 @@ const TILE_PROVIDERS = {
 
 type TileKey = keyof typeof TILE_PROVIDERS;
 
-const STORAGE_KEY = "clawscout-map-tile";
+const STORAGE_KEY = "scouter-map-tile";
 
 function loadTileKey(): TileKey {
   if (typeof window === "undefined") return "dark";

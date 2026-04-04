@@ -1,6 +1,6 @@
-# ClawScout Dashboard
+# Scouter Dashboard
 
-Panel de control SaaS para el sistema de prospeccion ClawScout.
+Panel de control SaaS para el sistema de prospeccion Scouter.
 Construido con **Next.js 16** (App Router), **TypeScript**, **Tailwind CSS v4**, **shadcn/ui** (base-ui), **recharts** y **lucide-react**.
 
 ## Setup

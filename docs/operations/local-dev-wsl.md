@@ -1,12 +1,12 @@
-# ClawScout Linux-First Local Workflow
+# Scouter Linux-First Local Workflow
 
-Validated on WSL2 / Ubuntu with the repo cloned into `~/src/ClawScout`.
+Validated on WSL2 / Ubuntu with the repo cloned into `~/src/Scouter`.
 
 ## A. Arquitectura operativa actual
 
 | Componente | Rol actual | Dónde corre hoy | Estado |
 |---|---|---|---|
-| ClawScout core | Source of truth del sistema | WSL / repo Linux-native | Validado |
+| Scouter core | Source of truth del sistema | WSL / repo Linux-native | Validado |
 | FastAPI backend | API + contratos + tracking | WSL | Validado |
 | Celery worker | Async tasks + pipeline | WSL | Validado |
 | PostgreSQL | Persistencia principal | Docker Desktop | Validado desde WSL |
@@ -20,7 +20,7 @@ Validated on WSL2 / Ubuntu with the repo cloned into `~/src/ClawScout`.
 ## B. Entorno actual recomendado
 
 - Entorno principal: **WSL2 / Ubuntu**
-- Repo principal: `~/src/ClawScout`
+- Repo principal: `~/src/Scouter`
 - Rama principal: `main` (migrado desde `codex/feat/wsl-linux-first` el 2026-03-27)
 - El clon Windows ya no se usa como fallback
 - Windows sigue usándose de forma temporal para:
@@ -34,14 +34,14 @@ Validated on WSL2 / Ubuntu with the repo cloned into `~/src/ClawScout`.
 Para validar prerequisitos y obtener los comandos exactos de arranque:
 
 ```bash
-cd ~/src/ClawScout
+cd ~/src/Scouter
 ./scripts/start-local-stack.sh
 ```
 
 Si querés que además intente levantar servicios en `tmux` sin duplicar procesos ya vivos:
 
 ```bash
-cd ~/src/ClawScout
+cd ~/src/Scouter
 ./scripts/start-local-stack.sh --launch
 ```
 
@@ -61,20 +61,20 @@ Estado validado actual:
 Si Docker Desktop ya tiene integración con Ubuntu, desde WSL:
 
 ```bash
-cd ~/src/ClawScout
+cd ~/src/Scouter
 docker compose up -d postgres redis
 ```
 
 Si Docker sigue estando solo del lado Windows, usar PowerShell:
 
 ```powershell
-docker compose -f C:\Users\mateo\Desktop\ClawScout\docker-compose.yml up -d postgres redis
+docker compose -f C:\Users\mateo\Desktop\Scouter\docker-compose.yml up -d postgres redis
 ```
 
 ### 2. Backend
 
 ```bash
-cd ~/src/ClawScout
+cd ~/src/Scouter
 source .venv/bin/activate
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
@@ -84,20 +84,20 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 Pool validado para Linux / WSL: `prefork`
 
 ```bash
-cd ~/src/ClawScout
+cd ~/src/Scouter
 source .venv/bin/activate
 celery -A app.workers.celery_app worker \
   --loglevel=info \
   --concurrency=2 \
   --pool=prefork \
   --queues=default,enrichment,scoring,llm,reviewer \
-  --hostname=clawscout-wsl
+  --hostname=scouter-wsl
 ```
 
 ### 4. Dashboard
 
 ```bash
-cd ~/src/ClawScout/dashboard
+cd ~/src/Scouter/dashboard
 npm ci
 npm run dev -- --hostname 0.0.0.0 --port 3000
 ```
@@ -115,7 +115,7 @@ curl -I http://127.0.0.1:3000
 ### 6. Tests
 
 ```bash
-cd ~/src/ClawScout
+cd ~/src/Scouter
 source .venv/bin/activate
 pytest -q
 ```
@@ -134,7 +134,7 @@ curl http://127.0.0.1:8000/api/v1/pipelines/runs/<pipeline_run_id>
 ### Python / backend
 
 - Python `3.12`
-- virtualenv Linux en `~/src/ClawScout/.venv`
+- virtualenv Linux en `~/src/Scouter/.venv`
 - instalación base:
 
 ```bash
@@ -152,7 +152,7 @@ pip install -e ".[dev]"
 ### Playwright
 
 ```bash
-cd ~/src/ClawScout
+cd ~/src/Scouter
 source .venv/bin/activate
 pip install -e ".[playwright]"
 python -m playwright install-deps chromium
@@ -196,7 +196,7 @@ Solución validada hoy:
 - El bridge se restaura con:
 
 ```bash
-cd ~/src/ClawScout
+cd ~/src/Scouter
 bash scripts/ensure-ollama-bridge.sh
 ```
 
@@ -217,7 +217,7 @@ Importante:
 
 - la IP del bridge WSL puede cambiar tras reinicios de WSL o de red
 - el helper detecta la gateway actual desde `ip route show default` y relanza una segunda instancia de Ollama atada a esa IP
-- si el `.env` local de ClawScout sigue apuntando a una URL vieja, actualizar `OLLAMA_BASE_URL`
+- si el `.env` local de Scouter sigue apuntando a una URL vieja, actualizar `OLLAMA_BASE_URL`
 - esto es **temporal y reversible** hasta decidir si Ollama migra a WSL
 
 ### CORS dashboard -> backend
@@ -265,7 +265,7 @@ nc -zv 127.0.0.1 6379
 - Restaurar el bridge WSL -> Windows:
 
 ```bash
-cd ~/src/ClawScout
+cd ~/src/Scouter
 bash scripts/ensure-ollama-bridge.sh
 ```
 
@@ -382,7 +382,7 @@ No implementados todavía. Roadmap corto sugerido:
 
 2. **Hermes líder**
    - montar la capa líder de Hermes sobre el backend actual
-   - mantener ClawScout como source of truth
+   - mantener Scouter como source of truth
 
 3. **Tools / canales**
    - navegador: pasar del runtime Playwright validado a tools/crawlers reales

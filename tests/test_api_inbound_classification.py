@@ -72,7 +72,7 @@ def _message_payload(
         references_raw=references_raw,
         from_email=from_email,
         from_name="Owner",
-        to_email="ops@clawscout.local",
+        to_email="ops@scouter.local",
         subject=subject,
         body_text=body_text,
         body_snippet=body_text[:80],

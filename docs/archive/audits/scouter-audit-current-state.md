@@ -1,4 +1,4 @@
-# ClawScout Audit -- Current State
+# Scouter Audit -- Current State
 
 **Fecha:** 2026-04-02 (auditoría inicial) · Actualizado: 2026-04-02 (post-implementación Phase 0–4)
 **Branch:** `main`
@@ -8,7 +8,7 @@
 
 ## 1. Executive Summary
 
-ClawScout es un sistema de prospecting funcional y operativo con base tecnica solida. Tiene un pipeline completo de lead ingestion -> enrichment -> scoring -> LLM analysis -> draft generation -> outreach delivery -> inbound reply handling, con un dashboard Next.js maduro (ahora 15 paginas) y un agente conversacional (Hermes/Claw) con 55 herramientas.
+Scouter es un sistema de prospecting funcional y operativo con base tecnica solida. Tiene un pipeline completo de lead ingestion -> enrichment -> scoring -> LLM analysis -> draft generation -> outreach delivery -> inbound reply handling, con un dashboard Next.js maduro (ahora 15 paginas) y un agente conversacional (Hermes/Claw) con 55 herramientas.
 
 **Post-implementacion Phase 0-4:** Se agregaron dossiers, Commercial Briefs, research pipeline, export (CSV/JSON/XLSX), runtime modes, Prometheus metrics, idempotency guards, y las paginas /dossiers y /briefs al dashboard. Se corrigieron bugs criticos de decrypt WA/TG y se hizo docker hardening.
 
@@ -18,7 +18,7 @@ ClawScout es un sistema de prospecting funcional y operativo con base tecnica so
 
 ## 2. Current Product Reality
 
-ClawScout HOY es:
+Scouter HOY es:
 
 1. **Un crawler de Google Maps** que busca negocios por territorio/categoria (`app/crawlers/google_maps_crawler.py`)
 2. **Un pipeline de enriquecimiento** que analiza websites, extrae emails, detecta senales (`app/services/enrichment_service.py`)

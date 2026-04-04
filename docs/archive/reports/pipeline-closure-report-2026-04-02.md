@@ -1,4 +1,4 @@
-# ClawScout — Pipeline Gap Closure Report
+# Scouter — Pipeline Gap Closure Report
 
 **Fecha:** 2026-04-02
 **Branch:** `main`

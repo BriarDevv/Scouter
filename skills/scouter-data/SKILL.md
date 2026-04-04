@@ -1,12 +1,12 @@
 ---
-name: clawscout-data
-description: "Exact grounded data from ClawScout. Exec: cd /home/briar/src/ClawScout && .venv/bin/python scripts/clawscoutctl.py --data-only --compact <cmd>. Commands: ops-overview | ops-top-leads --limit N | ops-replies-summary --hours N | ops-important-replies --limit N | positive-replies | quote-replies | meeting-replies | ops-recent-drafts --limit N | drafts-ready | recent-pipelines | task-health | running-tasks | failed-tasks | activity --limit N | ops-settings-llm | performance-summary. Return ONLY the JSON output."
+name: scouter-data
+description: "Exact grounded data from Scouter. Exec: cd /home/mateo/Scouter && .venv/bin/python scripts/scouterctl.py --data-only --compact <cmd>. Commands: ops-overview | ops-top-leads --limit N | ops-replies-summary --hours N | ops-important-replies --limit N | positive-replies | quote-replies | meeting-replies | ops-recent-drafts --limit N | drafts-ready | recent-pipelines | task-health | running-tasks | failed-tasks | activity --limit N | ops-settings-llm | performance-summary. Return ONLY the JSON output."
 metadata: { "hermes": { "emoji": "📊", "os": ["linux"], "requires": { "bins": ["python3"] } } }
 ---
 
-# ClawScout Data Skill
+# Scouter Data Skill
 
-ClawScout is the source of truth. This skill returns exact data via grounded wrappers.
+Scouter is the source of truth. This skill returns exact data via grounded wrappers.
 
 ## When to use
 
@@ -16,11 +16,11 @@ ClawScout is the source of truth. This skill returns exact data via grounded wra
 
 ## When NOT to use
 
-- Summaries, prioritization, next-step suggestions → use **clawscout-briefs**
-- Sending drafts, delivery status → use **clawscout-mail**
-- Website inspection → use **clawscout-browser**
-- Generate draft, run pipeline, request review → use **clawscout-actions**
-- Notifications, alerts → use **clawscout-notifications**
+- Summaries, prioritization, next-step suggestions → use **scouter-briefs**
+- Sending drafts, delivery status → use **scouter-mail**
+- Website inspection → use **scouter-browser**
+- Generate draft, run pipeline, request review → use **scouter-actions**
+- Notifications, alerts → use **scouter-notifications**
 
 ## Hard rules
 
@@ -33,7 +33,7 @@ ClawScout is the source of truth. This skill returns exact data via grounded wra
 ## Commands
 
 ```bash
-cd /home/briar/src/ClawScout && .venv/bin/python scripts/clawscoutctl.py --data-only --compact <command> [args]
+cd /home/mateo/Scouter && .venv/bin/python scripts/scouterctl.py --data-only --compact <command> [args]
 ```
 
 | Request | Command |

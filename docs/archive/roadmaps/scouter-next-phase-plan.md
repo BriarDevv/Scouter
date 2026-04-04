@@ -1,7 +1,7 @@
-# ClawScout -- Next Phase Plan
+# Scouter -- Next Phase Plan
 
 **Fecha:** 2026-04-02
-**Basado en:** Auditoria real del repositorio (`docs/archive/audits/clawscout-audit-current-state.md`)
+**Basado en:** Auditoria real del repositorio (`docs/archive/audits/scouter-audit-current-state.md`)
 **Vision objetivo:** `docs/product/proposal.md`
 **Estado de implementacion:** Phase 0-4 DONE (2026-04-02). Phase 5 POSTERGADA.
 
@@ -44,7 +44,7 @@
 ### 0.4 Application metrics (1-2d)
 - Instalar `prometheus-fastapi-instrumentator`
 - Agregar `/metrics` endpoint en `app/main.py`
-- Metricas custom: `clawscout_tasks_total` (counter por tipo+status), `clawscout_llm_calls_total` (counter por role+model), `clawscout_llm_duration_seconds` (histogram)
+- Metricas custom: `scouter_tasks_total` (counter por tipo+status), `scouter_llm_calls_total` (counter por role+model), `scouter_llm_duration_seconds` (histogram)
 - **Archivos:** `app/main.py`, `app/llm/client.py`, `app/workers/tasks.py`, `pyproject.toml`
 
 ### 0.5 Worker idempotency (1d)
@@ -294,7 +294,7 @@
 
 **Objetivo:** Generar demos personalizadas para leads HIGH con brief favorable.
 **Duracion estimada:** No estimar ahora. Requiere decisiones de arquitectura pendientes.
-**Prerequisitos:** Phase 2 completa. Dominio `demo.clawscout.ai` disponible. Claude Code integration path definido.
+**Prerequisitos:** Phase 2 completa. Dominio `demo.scouter.ai` disponible. Claude Code integration path definido.
 
 ### 5.1 Scope tentativo
 - Template system (landing pages base)

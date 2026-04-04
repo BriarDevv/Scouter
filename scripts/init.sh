@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # ============================================================================
-# ClawScout Init — setup completo desde cero (ejecutar UNA sola vez)
+# Scouter Init — setup completo desde cero (ejecutar UNA sola vez)
 # Prerequisitos: WSL2, Docker, Ollama, Python 3.12+, Node 20+
 # Uso: bash scripts/init.sh
 # ============================================================================
 set -euo pipefail
 
 echo "╔══════════════════════════════════════╗"
-echo "║     ClawScout Init                   ║"
+echo "║     Scouter Init                   ║"
 echo "╚══════════════════════════════════════╝"
 echo ""
 
@@ -63,8 +63,8 @@ fi
 
 # Check we're in repo root
 if [ ! -f "pyproject.toml" ] || [ ! -f "docker-compose.yml" ]; then
-  echo "  ✗ No estás en la raíz del repo ClawScout."
-  echo "    Ejecutá: cd ~/src/ClawScout && bash scripts/init.sh"
+  echo "  ✗ No estás en la raíz del repo Scouter."
+  echo "    Ejecutá: cd ~/src/Scouter && bash scripts/init.sh"
   exit 1
 fi
 
@@ -111,7 +111,7 @@ docker compose up -d postgres redis 2>&1 | tail -2
 
 echo "→ Esperando Postgres..."
 for i in $(seq 1 30); do
-  if docker compose exec -T postgres pg_isready -U clawscout &>/dev/null 2>&1; then
+  if docker compose exec -T postgres pg_isready -U scouter &>/dev/null 2>&1; then
     echo "  ✔ Postgres listo"
     break
   fi
@@ -169,13 +169,13 @@ echo "→ Verificación final..."
 [ -f .env ] && echo "  ✔ .env" || echo "  ✗ .env"
 [ -d .venv ] && echo "  ✔ Python venv" || echo "  ✗ Python venv"
 [ -d dashboard/node_modules ] && echo "  ✔ node_modules" || echo "  ✗ node_modules"
-docker compose exec -T postgres pg_isready -U clawscout &>/dev/null 2>&1 && echo "  ✔ Postgres" || echo "  ✗ Postgres"
+docker compose exec -T postgres pg_isready -U scouter &>/dev/null 2>&1 && echo "  ✔ Postgres" || echo "  ✗ Postgres"
 docker compose exec -T redis redis-cli ping &>/dev/null 2>&1 && echo "  ✔ Redis" || echo "  ✗ Redis"
 curl -s http://localhost:11434/api/tags &>/dev/null && echo "  ✔ Ollama" || echo "  ⚠ Ollama no disponible"
 
 # Check DB has tables
 CONTAINER=$(docker ps --format '{{.Names}}' | grep postgres | head -1)
-TABLE_COUNT=$(docker exec "$CONTAINER" psql -U clawscout -d clawscout -t -c "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';" 2>/dev/null | tr -d ' ')
+TABLE_COUNT=$(docker exec "$CONTAINER" psql -U scouter -d scouter -t -c "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';" 2>/dev/null | tr -d ' ')
 echo "  ✔ Base de datos: $TABLE_COUNT tablas"
 
 echo ""

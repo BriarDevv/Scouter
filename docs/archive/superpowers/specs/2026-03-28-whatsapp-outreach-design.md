@@ -2,7 +2,7 @@
 
 ## Problem
 
-ClawScout can generate email outreach drafts but has no way to reach leads via WhatsApp. Many Argentine SMBs (the target market) are more responsive to WhatsApp than email. The system needs a WhatsApp outreach channel with LLM-generated draft messages, human-in-the-loop approval, and delivery via Kapso API.
+Scouter can generate email outreach drafts but has no way to reach leads via WhatsApp. Many Argentine SMBs (the target market) are more responsive to WhatsApp than email. The system needs a WhatsApp outreach channel with LLM-generated draft messages, human-in-the-loop approval, and delivery via Kapso API.
 
 ## Decision Log
 

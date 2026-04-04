@@ -81,7 +81,7 @@ export function Sidebar() {
       <div className="flex h-14 items-center border-b border-sidebar-border px-2.5 shrink-0">
         <div className={cn(lbl, "flex items-center gap-1.5 min-w-0 flex-1")}>
           <span className="font-heading text-base font-bold tracking-tight text-sidebar-foreground">
-            ClawScout
+            Scouter
           </span>
           <span className="rounded-md bg-violet-50 dark:bg-white/8 px-1.5 py-0.5 text-[10px] font-medium text-violet-600 dark:text-white/60 shrink-0">
             v2

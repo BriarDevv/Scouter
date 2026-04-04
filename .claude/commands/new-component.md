@@ -1,4 +1,4 @@
-Create a new React component for the ClawScout dashboard.
+Create a new React component for the Scouter dashboard.
 
 The user will provide: component name, purpose, and where it's used.
 

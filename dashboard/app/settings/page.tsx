@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, Settings, TriangleAlert } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
@@ -10,6 +11,7 @@ import {
   getMailCredentials,
   getMailSettings,
   getOperationalSettings,
+  getSetupReadiness,
   getSetupStatus,
   getWhatsAppCredentials,
   getTelegramCredentials,
@@ -18,6 +20,7 @@ import type {
   MailCredentials,
   MailSettings,
   OperationalSettings,
+  SetupReadiness,
   SetupStatus,
 } from "@/types";
 import { TABS } from "@/components/settings/types";
@@ -43,6 +46,7 @@ export default function SettingsPage() {
   const [opData, setOpData] = useState<OperationalSettings | null>(null);
   const [credsData, setCredsData] = useState<MailCredentials | null>(null);
   const [setupData, setSetupData] = useState<SetupStatus | null>(null);
+  const [readiness, setReadiness] = useState<SetupReadiness | null>(null);
   const [waCredsData, setWaCredsData] = useState<WhatsAppCredentials | null>(null);
   const [tgCredsData, setTgCredsData] = useState<TelegramCredentials | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,6 +55,7 @@ export default function SettingsPage() {
   const refreshSetup = useCallback(async () => {
     try {
       setSetupData(await getSetupStatus());
+      setReadiness(await getSetupReadiness());
     } catch { /* non-critical */ }
   }, []);
 
@@ -62,22 +67,22 @@ export default function SettingsPage() {
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
-    setLoadError(null);
 
     Promise.allSettled([
       getMailSettings(),
       getOperationalSettings(),
       getMailCredentials(),
       getSetupStatus(),
+      getSetupReadiness(),
       getWhatsAppCredentials(),
       getTelegramCredentials(),
-    ]).then(([mail, op, creds, setup, waCreds, tgCreds]) => {
+    ]).then(([mail, op, creds, setup, readinessRes, waCreds, tgCreds]) => {
       if (!active) return;
       if (mail.status === "fulfilled") setMailData(mail.value);
       if (op.status === "fulfilled") setOpData(op.value);
       if (creds.status === "fulfilled") setCredsData(creds.value);
       if (setup.status === "fulfilled") setSetupData(setup.value);
+      if (readinessRes.status === "fulfilled") setReadiness(readinessRes.value);
       if (waCreds.status === "fulfilled") setWaCredsData(waCreds.value);
       if (tgCreds.status === "fulfilled") setTgCredsData(tgCreds.value);
       if (
@@ -148,6 +153,25 @@ export default function SettingsPage() {
       <div className="mx-auto max-w-[1400px] px-8 py-8">
         <div className="space-y-6">
           <PageHeader title="Configuración" description="Ajustes operativos del sistema." />
+
+          {readiness && !readiness.dashboard_unlocked && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="font-semibold">Onboarding profesional pendiente</p>
+                  <p className="mt-1 text-xs text-amber-800/80 dark:text-amber-200/80">
+                    {readiness.summary}
+                  </p>
+                </div>
+                <Link
+                  href="/onboarding"
+                  className="inline-flex items-center rounded-xl bg-violet-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-violet-700"
+                >
+                  Abrir onboarding
+                </Link>
+              </div>
+            </div>
+          )}
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabId)}>
         <TabsList className="h-auto flex-wrap gap-1 rounded-2xl p-1">

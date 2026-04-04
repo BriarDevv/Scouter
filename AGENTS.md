@@ -1,13 +1,13 @@
-# ClawScout AI Entry
+# Scouter AI Entry
 
-This is the canonical entrypoint for AI coding assistants working in ClawScout.
+This is the canonical entrypoint for AI coding assistants working in Scouter.
 
 Use this file to orient quickly, then follow the task-specific reading path below.
 Do not treat archived reports or runtime personality files as the default source of truth.
 
-## What ClawScout Is
+## What Scouter Is
 
-ClawScout is a modular-monolith lead prospecting platform.
+Scouter is a modular-monolith lead prospecting platform.
 The backend handles ingestion, enrichment, scoring, AI-assisted research, outreach, and async workflows.
 The frontend is an operational Next.js dashboard.
 
