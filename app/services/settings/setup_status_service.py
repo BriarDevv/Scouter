@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
-from app.services.outreach.mail_credentials_service import get_effective_imap, get_effective_smtp, get_or_create as get_creds
+from app.services.outreach.mail_credentials_service import get_effective_imap, get_effective_smtp
+from app.services.outreach.mail_credentials_service import get_or_create as get_creds
 from app.services.settings.operational_settings_service import get_or_create as get_ops
 
 
