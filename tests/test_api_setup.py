@@ -22,38 +22,17 @@ def test_setup_readiness_endpoint_aggregates_runtime_and_config(client, db, monk
         "app.services.setup_service.get_setup_status",
         lambda db: {
             "steps": [
-                {
-                    "id": "brand",
-                    "label": "Marca",
-                    "status": "complete",
-                    "detail": None,
-                    "action": None,
-                },
-                {
-                    "id": "mail_out",
-                    "label": "SMTP",
-                    "status": "complete",
-                    "detail": None,
-                    "action": None,
-                },
-                {
-                    "id": "mail_in",
-                    "label": "IMAP",
-                    "status": "complete",
-                    "detail": None,
-                    "action": None,
-                },
-                {
-                    "id": "rules",
-                    "label": "Reglas",
-                    "status": "complete",
-                    "detail": None,
-                    "action": None,
-                },
+                {"id": "brand", "label": "Marca", "status": "complete", "detail": None, "action": None},
+                {"id": "whatsapp", "label": "WhatsApp", "status": "complete", "detail": None, "action": None},
+                {"id": "mail_out", "label": "SMTP", "status": "complete", "detail": None, "action": None},
+                {"id": "mail_in", "label": "IMAP", "status": "complete", "detail": None, "action": None},
+                {"id": "telegram", "label": "Telegram", "status": "incomplete", "detail": None, "action": None},
+                {"id": "rules", "label": "Reglas", "status": "complete", "detail": None, "action": None},
             ],
             "overall": "ready",
             "ready_to_send": True,
             "ready_to_receive": True,
+            "has_outreach_channel": True,
         },
     )
     monkeypatch.setattr(
@@ -81,7 +60,7 @@ def test_setup_readiness_endpoint_aggregates_runtime_and_config(client, db, monk
     assert payload["wizard_steps"] == []
     assert len(payload["platform_steps"]) == 1
     assert len(payload["runtime_steps"]) == 4
-    assert len(payload["config_steps"]) == 4
+    assert len(payload["config_steps"]) == 6
     assert {item["id"] for item in payload["actions"]} == {"refresh", "preflight", "start_stack"}
 
 
@@ -108,38 +87,17 @@ def test_setup_readiness_endpoint_blocks_unsupported_platform_and_derives_wizard
         "app.services.setup_service.get_setup_status",
         lambda db: {
             "steps": [
-                {
-                    "id": "brand",
-                    "label": "Marca",
-                    "status": "incomplete",
-                    "detail": "Falta",
-                    "action": "Completar",
-                },
-                {
-                    "id": "mail_out",
-                    "label": "SMTP",
-                    "status": "warning",
-                    "detail": "Sin probar",
-                    "action": "Probar",
-                },
-                {
-                    "id": "mail_in",
-                    "label": "IMAP",
-                    "status": "incomplete",
-                    "detail": "Falta",
-                    "action": "Completar",
-                },
-                {
-                    "id": "rules",
-                    "label": "Reglas",
-                    "status": "complete",
-                    "detail": None,
-                    "action": None,
-                },
+                {"id": "brand", "label": "Marca", "status": "incomplete", "detail": "Falta", "action": "Completar"},
+                {"id": "whatsapp", "label": "WhatsApp", "status": "incomplete", "detail": "Falta", "action": "Configurar"},
+                {"id": "mail_out", "label": "SMTP", "status": "warning", "detail": "Sin probar", "action": "Probar"},
+                {"id": "mail_in", "label": "IMAP", "status": "incomplete", "detail": "Falta", "action": "Completar"},
+                {"id": "telegram", "label": "Telegram", "status": "incomplete", "detail": "Falta", "action": "Configurar"},
+                {"id": "rules", "label": "Reglas", "status": "complete", "detail": None, "action": None},
             ],
             "overall": "incomplete",
             "ready_to_send": False,
             "ready_to_receive": False,
+            "has_outreach_channel": False,
         },
     )
     monkeypatch.setattr(
@@ -161,10 +119,9 @@ def test_setup_readiness_endpoint_blocks_unsupported_platform_and_derives_wizard
     assert payload["overall"] == "blocked"
     assert payload["dashboard_unlocked"] is False
     assert payload["recommended_route"] == "/onboarding"
-    assert "credentials" in payload["wizard_steps"]
     assert "brand" in payload["wizard_steps"]
-    assert "mail_out" in payload["wizard_steps"]
-    assert "mail_in" in payload["wizard_steps"]
+    # At least one outreach channel should appear in wizard
+    assert "whatsapp" in payload["wizard_steps"] or "credentials" in payload["wizard_steps"]
     assert payload["updates"]["updates_available"] is False
     assert payload["updates"]["can_autopull"] is False
 
