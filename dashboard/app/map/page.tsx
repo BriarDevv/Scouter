@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { MapPin, RefreshCw } from "lucide-react";
+import { sileo } from "sileo";
 import {
   getGeoSummary,
   getLeadsWithCoords,
@@ -48,7 +49,7 @@ export default function MapPage() {
       setLeads(leadsData);
       setTerritories(territoryData);
     } catch (err) {
-      console.error("Error cargando datos del mapa:", err);
+      sileo.error({ title: "Error cargando datos del mapa" });
     } finally {
       setLoading(false);
     }
@@ -69,8 +70,8 @@ export default function MapPage() {
     await loadData();
   }
 
-  async function handleUpdateTerritory(id: string, data: Record<string, unknown>) {
-    await updateTerritory(id, data as any);
+  async function handleUpdateTerritory(id: string, data: Partial<import("@/types").Territory>) {
+    await updateTerritory(id, data);
     await loadData();
   }
 
