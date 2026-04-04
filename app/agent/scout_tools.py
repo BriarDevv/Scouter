@@ -32,6 +32,40 @@ _JUNK_EMAIL_DOMAINS = {"example.com", "sentry.io", "wixpress.com", "w3.org", "sc
 _MAX_PAGE_TEXT = 3000
 _HTTP_TIMEOUT = 15
 
+# SSRF protection — block private IPs and dangerous schemes
+_BLOCKED_SCHEMES = {"file", "ftp", "gopher", "dict", "data", "javascript"}
+
+
+def _validate_url(url: str) -> str | None:
+    """Validate URL is safe for external fetching. Returns None if blocked (SSRF protection)."""
+    import ipaddress
+    import socket
+    from urllib.parse import urlparse
+
+    parsed = urlparse(url)
+    if parsed.scheme.lower() in _BLOCKED_SCHEMES:
+        return None
+    hostname = parsed.hostname
+    if not hostname:
+        return None
+
+    # Check if hostname is a direct IP
+    try:
+        ip = ipaddress.ip_address(hostname)
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+            return None
+    except ValueError:
+        # Hostname is a domain — resolve and check
+        try:
+            resolved = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
+            for _, _, _, _, addr in resolved:
+                ip = ipaddress.ip_address(addr[0])
+                if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+                    return None
+        except socket.gaierror:
+            return None
+    return url
+
 
 def _is_junk_email(email: str) -> bool:
     domain = email.split("@")[-1].lower()
@@ -118,6 +152,10 @@ def browse_page(url: str) -> dict[str, Any]:
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
 
+    # SSRF protection — block private IPs and dangerous schemes
+    if _validate_url(url) is None:
+        return {"error": "URL blocked by security policy (private IP or dangerous scheme)", "url": url}
+
     result = _try_playwright(url)
     if result is None:
         result = _get_page_httpx(url)
@@ -157,6 +195,9 @@ def extract_contacts(url: str) -> dict[str, Any]:
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
 
+    if _validate_url(url) is None:
+        return {"error": "URL blocked by security policy", "emails": [], "phones": [], "whatsapp": False}
+
     result = _try_playwright(url)
     if result is None:
         result = _get_page_httpx(url)
@@ -183,6 +224,9 @@ def check_technical(url: str) -> dict[str, Any]:
 
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
+
+    if _validate_url(url) is None:
+        return {"error": "URL blocked by security policy"}
 
     result = _try_playwright(url)
     if result is None:
@@ -226,6 +270,9 @@ def take_screenshot(url: str) -> dict[str, Any]:
 
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
+
+    if _validate_url(url) is None:
+        return {"error": "URL blocked by security policy", "url": url, "screenshot_path": None}
 
     try:
         from playwright.sync_api import sync_playwright

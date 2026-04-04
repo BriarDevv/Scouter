@@ -280,28 +280,39 @@ def takeover_conversation(conversation_id: uuid.UUID, db: Session = Depends(get_
 
 @router.post("/test-send-whatsapp")
 def test_send_whatsapp(
-    phone: str = Query(..., description="Phone number to send test message to"),
+    phone: str = Query(..., description="Phone in E.164 format (e.g. +5491158399708)"),
     message: str = Query(default="Hola! Esto es una prueba de Mote, el agente de Scouter. Si recibiste esto, el outreach funciona correctamente."),
     db: Session = Depends(get_session),
 ):
     """Test WhatsApp sending — sends a test message to the given phone number.
 
-    Used to verify Kapso integration works before enabling auto-outreach.
+    Restricted: max 500 chars, basic phone validation, rate-limited by global limiter.
     """
+    import re
+
+    # Validate phone format (loose E.164)
+    clean_phone = re.sub(r"[^\d+]", "", phone)
+    if len(clean_phone) < 8 or len(clean_phone) > 16:
+        raise HTTPException(status_code=422, detail="Phone number must be 8-16 digits")
+
+    # Limit message length
+    if len(message) > 500:
+        raise HTTPException(status_code=422, detail="Message must be under 500 characters")
+
     try:
         from app.services.comms.kapso_service import send_whatsapp_message
 
-        result = send_whatsapp_message(phone, message)
+        result = send_whatsapp_message(clean_phone, message)
         return {
             "status": "sent",
-            "phone": phone[:6] + "***",
+            "phone": clean_phone[:6] + "***",
             "message_id": result.get("message_id"),
             "message_preview": message[:100],
         }
     except Exception as exc:
         return {
             "status": "failed",
-            "phone": phone[:6] + "***",
+            "phone": clean_phone[:6] + "***",
             "error": str(exc),
         }
 

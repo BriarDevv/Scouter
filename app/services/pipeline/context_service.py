@@ -17,6 +17,10 @@ from app.models.task_tracking import PipelineRun
 logger = structlog.get_logger(__name__)
 
 
+_MAX_STEP_BYTES = 2048
+_MAX_TOTAL_BYTES = 16384
+
+
 def append_step_context(
     db: Session,
     pipeline_run_id: uuid.UUID | str,
@@ -26,16 +30,29 @@ def append_step_context(
     """Merge step findings into PipelineRun.step_context_json.
 
     Each step writes under its own key, so steps never overwrite each other.
-    Total context stays small — each step should write < 500 bytes.
+    Enforces size limits: 2KB per step, 16KB total.
     """
+    import json as _json
+
     run_id = uuid.UUID(str(pipeline_run_id))
     run = db.get(PipelineRun, run_id)
     if not run:
         logger.warning("pipeline_run_not_found", pipeline_run_id=str(run_id), step=step_name)
         return
 
+    serialized = _json.dumps(context, default=str)
+    if len(serialized) > _MAX_STEP_BYTES:
+        logger.warning("step_context_too_large", step=step_name, size=len(serialized))
+        context = {"truncated": True, "summary": serialized[:500]}
+
     existing = dict(run.step_context_json or {})
     existing[step_name] = context
+
+    total = _json.dumps(existing, default=str)
+    if len(total) > _MAX_TOTAL_BYTES:
+        logger.error("total_context_too_large", step=step_name, size=len(total))
+        return
+
     run.step_context_json = existing
     db.commit()
 
