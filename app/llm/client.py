@@ -8,6 +8,10 @@ import re
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
 
 import httpx
 import structlog
@@ -62,9 +66,6 @@ from app.models.llm_invocation import LLMInvocation
 __all__ = [
     "LLMError",
     "LLMParseError",
-    "_call_ollama_chat",
-    "_chat_completion",
-    "_extract_json",
     "classify_inbound_reply",
     "classify_inbound_reply_structured",
     "evaluate_lead_quality",
@@ -179,33 +180,43 @@ def _context_value(context: dict[str, object], key: str) -> str | None:
     return str(value)
 
 
-def _persist_invocation(metadata: LLMInvocationMetadata) -> None:
+def _persist_invocation(metadata: LLMInvocationMetadata, db: "Session | None" = None) -> None:
+    from sqlalchemy.orm import Session as _Session  # local to avoid circular at module level
+
     context = structlog.contextvars.get_contextvars()
-    try:
-        with SessionLocal() as db:
-            db.add(
-                LLMInvocation(
-                    function_name=metadata.function_name,
-                    prompt_id=metadata.prompt_id,
-                    prompt_version=metadata.prompt_version,
-                    role=metadata.role,
-                    model=metadata.model,
-                    status=metadata.status,
-                    fallback_used=metadata.fallback_used,
-                    degraded=metadata.degraded,
-                    parse_valid=metadata.parse_valid,
-                    latency_ms=metadata.latency_ms,
-                    target_type=metadata.target_type,
-                    target_id=metadata.target_id,
-                    correlation_id=_context_value(context, "correlation_id"),
-                    task_id=_context_value(context, "task_id"),
-                    pipeline_run_id=_context_value(context, "pipeline_run_id"),
-                    lead_id=_context_value(context, "lead_id"),
-                    tags_json=metadata.tags or None,
-                    error=metadata.error,
-                )
+
+    def _do_add(session: _Session) -> None:
+        session.add(
+            LLMInvocation(
+                function_name=metadata.function_name,
+                prompt_id=metadata.prompt_id,
+                prompt_version=metadata.prompt_version,
+                role=metadata.role,
+                model=metadata.model,
+                status=metadata.status,
+                fallback_used=metadata.fallback_used,
+                degraded=metadata.degraded,
+                parse_valid=metadata.parse_valid,
+                latency_ms=metadata.latency_ms,
+                target_type=metadata.target_type,
+                target_id=metadata.target_id,
+                correlation_id=_context_value(context, "correlation_id"),
+                task_id=_context_value(context, "task_id"),
+                pipeline_run_id=_context_value(context, "pipeline_run_id"),
+                lead_id=_context_value(context, "lead_id"),
+                tags_json=metadata.tags or None,
+                error=metadata.error,
             )
-            db.commit()
+        )
+
+    try:
+        if db is not None:
+            _do_add(db)
+            db.flush()
+        else:
+            with SessionLocal() as new_db:
+                _do_add(new_db)
+                new_db.commit()
     except Exception as exc:
         logger.warning(
             "llm_invocation_persist_failed",
