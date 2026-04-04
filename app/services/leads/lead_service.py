@@ -1,7 +1,7 @@
 import hashlib
 import uuid
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
@@ -33,7 +33,7 @@ def is_suppressed(db: Session, email: str | None, domain: str | None = None) -> 
         conditions.append(SuppressionEntry.email == email.lower())
     if domain:
         conditions.append(SuppressionEntry.domain == domain.lower())
-    stmt = select(SuppressionEntry.id).where(*conditions).limit(1)
+    stmt = select(SuppressionEntry.id).where(or_(*conditions)).limit(1)
     return db.execute(stmt).first() is not None
 
 
