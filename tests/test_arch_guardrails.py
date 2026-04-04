@@ -1,6 +1,8 @@
 import re
 from pathlib import Path
 
+import sqlalchemy as sa
+
 
 def test_http_layer_does_not_mutate_dotenv_files():
     violations: list[str] = []
@@ -120,3 +122,58 @@ def test_services_domain_packages_do_not_cross_import_each_other():
                     violations.add(f"{path}: imports {other}")
 
     assert violations - baseline_allowed == set()
+
+
+def test_conftest_uses_postgresql_not_sqlite():
+    """Guardrail: tests must run against PostgreSQL, never SQLite."""
+    conftest = Path("tests/conftest.py").read_text(encoding="utf-8")
+    assert "sqlite" not in conftest.lower(), (
+        "conftest.py must use PostgreSQL via testcontainers, not SQLite. "
+        "SQLite silently accepts invalid enum values and skips Postgres-specific behavior."
+    )
+
+
+def test_alembic_migrations_apply_cleanly():
+    """Verify all Alembic migrations apply to a fresh PostgreSQL database."""
+    from alembic.config import Config
+    from alembic import command
+    from sqlalchemy import inspect as sa_inspect, create_engine as sa_create_engine
+    import os
+
+    db_url = os.environ["DATABASE_URL"]
+    fresh_engine = sa_create_engine(db_url)
+
+    # Drop all tables first to test migrations from scratch
+    from app.db.base import Base
+    Base.metadata.drop_all(bind=fresh_engine)
+
+    # Also drop alembic_version table if it exists
+    with fresh_engine.connect() as conn:
+        conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version CASCADE"))
+        # Drop all enum types that might linger
+        for enum_name in ["leadstatus", "signaltype", "draftstatus", "outboundstatus",
+                          "outboundchannel", "messagedirection", "communicationchannel"]:
+            conn.execute(sa.text(f"DROP TYPE IF EXISTS {enum_name} CASCADE"))
+        conn.commit()
+
+    alembic_cfg = Config("alembic.ini")
+    alembic_cfg.set_main_option("sqlalchemy.url", db_url)
+    command.upgrade(alembic_cfg, "head")
+
+    inspector = sa_inspect(fresh_engine)
+    tables = set(inspector.get_table_names())
+    assert "leads" in tables, "leads table must exist after migrations"
+    assert "pipeline_runs" in tables, "pipeline_runs table must exist after migrations"
+    assert "llm_invocations" in tables, "llm_invocations table must exist after migrations"
+    assert "operational_settings" in tables, "operational_settings table must exist after migrations"
+
+    # Restore tables via create_all for remaining tests
+    Base.metadata.drop_all(bind=fresh_engine)
+    with fresh_engine.connect() as conn:
+        conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version CASCADE"))
+        for enum_name in ["leadstatus", "signaltype", "draftstatus", "outboundstatus",
+                          "outboundchannel", "messagedirection", "communicationchannel"]:
+            conn.execute(sa.text(f"DROP TYPE IF EXISTS {enum_name} CASCADE"))
+        conn.commit()
+    Base.metadata.create_all(bind=fresh_engine)
+    fresh_engine.dispose()
