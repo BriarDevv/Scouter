@@ -1,4 +1,4 @@
-# ClawScout Pipeline Runtime Audit
+# Scouter Pipeline Runtime Audit
 
 **Fecha:** 2026-04-02
 **Branch:** `main`
@@ -8,7 +8,7 @@
 
 ## 1. Executive Summary
 
-El pipeline de ClawScout tiene todas las piezas implementadas, pero **la cadena principal (`task_full_pipeline`) no integra la lane HIGH**. El flujo de Celery `chain()` salta de `analyze` a `draft`, corriendo la generacion de draft EN PARALELO con research/brief en vez de DESPUES. Esto significa que los drafts de leads HIGH se generan sin considerar el dossier ni el brief comercial.
+El pipeline de Scouter tiene todas las piezas implementadas, pero **la cadena principal (`task_full_pipeline`) no integra la lane HIGH**. El flujo de Celery `chain()` salta de `analyze` a `draft`, corriendo la generacion de draft EN PARALELO con research/brief en vez de DESPUES. Esto significa que los drafts de leads HIGH se generan sin considerar el dossier ni el brief comercial.
 
 Las piezas individuales (research, dossier LLM, brief generation, brief review) estan wired correctamente entre si via `.delay()` chains. El problema es que `task_full_pipeline` no las incluye en su cadena Celery, y `task_generate_draft` corre sin esperar a que el flujo HIGH complete.
 

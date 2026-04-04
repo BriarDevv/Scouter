@@ -604,7 +604,7 @@ KAPSO_BASE_URL=https://api.kapso.ai/meta/whatsapp
 - [ ] **Step 2: Run migration in WSL**
 
 ```bash
-wsl.exe -- bash -lc "cd ~/src/ClawScout && source .venv/bin/activate && alembic upgrade head"
+wsl.exe -- bash -lc "cd ~/src/Scouter && source .venv/bin/activate && alembic upgrade head"
 ```
 
 Expected: `Running upgrade ... -> a1b2c3d4e5f7, add channel column to outreach_drafts`
@@ -612,7 +612,7 @@ Expected: `Running upgrade ... -> a1b2c3d4e5f7, add channel column to outreach_d
 - [ ] **Step 3: Verify column exists**
 
 ```bash
-wsl.exe -- bash -lc "cd ~/src/ClawScout && source .venv/bin/activate && python3 -c \"
+wsl.exe -- bash -lc "cd ~/src/Scouter && source .venv/bin/activate && python3 -c \"
 from app.db.session import SessionLocal
 from sqlalchemy import text
 db = SessionLocal()
@@ -638,7 +638,7 @@ git commit -m "chore: add Kapso config to .env.example"
 - [ ] **Step 1: Run backend tests**
 
 ```bash
-wsl.exe -- bash -lc "cd ~/src/ClawScout && source .venv/bin/activate && python3 -m pytest tests/ --tb=short"
+wsl.exe -- bash -lc "cd ~/src/Scouter && source .venv/bin/activate && python3 -m pytest tests/ --tb=short"
 ```
 
 Expected: 133+ passed, 0 failed
@@ -668,7 +668,7 @@ git push origin main
 - [ ] **Step 5: Pull + restart in WSL**
 
 ```bash
-wsl.exe -- bash -lc "cd ~/src/ClawScout && git pull origin main && make down && sleep 2 && make up"
+wsl.exe -- bash -lc "cd ~/src/Scouter && git pull origin main && make down && sleep 2 && make up"
 ```
 
 - [ ] **Step 6: End-to-end test via agent**

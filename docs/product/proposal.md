@@ -1,8 +1,8 @@
-# CLAWSCOUT
+# SCOUTER
 ## Propuesta de negocio
 ### AI closer operativo para investigar negocios, estimar oportunidad comercial, generar demos y preparar outreach con evidencia
 
-Documento pensado para alinear visión entre socios, definir el diferencial real del producto y priorizar qué construir primero para convertir ClawScout en una herramienta comercial confiable, escalable y realmente útil para generar clientes.
+Documento pensado para alinear visión entre socios, definir el diferencial real del producto y priorizar qué construir primero para convertir Scouter en una herramienta comercial confiable, escalable y realmente útil para generar clientes.
 
 ---
 
@@ -10,9 +10,9 @@ Documento pensado para alinear visión entre socios, definir el diferencial real
 
 La oportunidad no está en vender “scraping + drafts”, porque eso ya es relativamente replicable. La oportunidad está en construir un sistema que transforme datos dispersos de negocios en una acción comercial concreta: investigación, entendimiento del negocio, estimación comercial, demo específica y outreach listo para enviar.
 
-La propuesta es reposicionar ClawScout como un **AI closer operativo**. Un sistema donde **Hermes** actúa como cerebro de negocio, coordina investigación con Playwright, aprovecha la data obtenida por scraping y dispara, solo cuando corresponde, workflows más caros como review premium o generación de demo personalizada.
+La propuesta es reposicionar Scouter como un **AI closer operativo**. Un sistema donde **Hermes** actúa como cerebro de negocio, coordina investigación con Playwright, aprovecha la data obtenida por scraping y dispara, solo cuando corresponde, workflows más caros como review premium o generación de demo personalizada.
 
-ClawScout no debería quedarse en “encontrar negocios”. Debería avanzar hasta un punto mucho más útil: dejar cada lead importante convertido en un **paquete comercial accionable** con contexto, señales, recomendación de contacto, presupuesto estimado interno y una demo confiable cuando valga la pena.
+Scouter no debería quedarse en “encontrar negocios”. Debería avanzar hasta un punto mucho más útil: dejar cada lead importante convertido en un **paquete comercial accionable** con contexto, señales, recomendación de contacto, presupuesto estimado interno y una demo confiable cuando valga la pena.
 
 ---
 
@@ -32,13 +32,13 @@ Los problemas concretos son:
 
 ## 3. Propuesta de valor
 
-ClawScout se posiciona como una plataforma que convierte un lead en un **paquete comercial accionable**.
+Scouter se posiciona como una plataforma que convierte un lead en un **paquete comercial accionable**.
 
 No solo descubre negocios: los investiga, arma un dossier, estima su potencial comercial, decide si vale la pena invertir en ellos, produce drafts mejores y puede escalar a una demo personalizada con una URL confiable.
 
 ### Nueva promesa de producto
 
-**ClawScout entiende negocios, verifica presencia digital, estima oportunidad comercial, genera demos y prepara outreach listo para cerrar.**
+**Scouter entiende negocios, verifica presencia digital, estima oportunidad comercial, genera demos y prepara outreach listo para cerrar.**
 
 ### Qué cambia con este posicionamiento
 
@@ -65,7 +65,7 @@ El flujo ideal prioriza calidad sobre automatización ciega. Para leads de alta 
 
 ### Flujo especial para leads HIGH
 
-Para leads `HIGH`, ClawScout debería generar un bloque premium de análisis antes del contacto:
+Para leads `HIGH`, Scouter debería generar un bloque premium de análisis antes del contacto:
 
 - investigación del negocio
 - verificación de presencia digital
@@ -94,7 +94,7 @@ No se trata solo de “qué decirle” al lead. Se trata de saber:
 
 #### 5.1 Presupuesto estimado interno
 
-ClawScout debería generar un **presupuesto aproximado interno**, no como cifra exacta sino como rango y tier.
+Scouter debería generar un **presupuesto aproximado interno**, no como cifra exacta sino como rango y tier.
 
 Campos sugeridos:
 
@@ -116,7 +116,7 @@ Este dato es **interno**. No debería mostrarse automáticamente al lead. Sirve 
 
 #### 5.2 Tipo de proyecto probable
 
-ClawScout debería estimar qué tipo de necesidad parece tener el negocio.
+Scouter debería estimar qué tipo de necesidad parece tener el negocio.
 
 Campos sugeridos:
 
@@ -153,7 +153,7 @@ Se construye con señales como:
 
 #### 5.4 Recomendación de contacto
 
-ClawScout no debería limitarse a redactar el mensaje. También debería indicar cómo conviene abrir la conversación.
+Scouter no debería limitarse a redactar el mensaje. También debería indicar cómo conviene abrir la conversación.
 
 Campos sugeridos:
 
@@ -181,7 +181,7 @@ Ejemplos de razones:
 
 #### 5.5 Data adicional para el equipo
 
-Además del draft de WhatsApp o email, ClawScout debería devolver un bloque de lectura interna para el equipo comercial.
+Además del draft de WhatsApp o email, Scouter debería devolver un bloque de lectura interna para el equipo comercial.
 
 Campos sugeridos:
 
@@ -256,7 +256,7 @@ Para los leads `HIGH`, Playwright agrega muchísimo valor porque permite investi
 
 ### Lógica de confianza
 
-ClawScout no debería hablar en absolutos cuando la fuente es parcial. En su lugar, debería manejar niveles de confianza.
+Scouter no debería hablar en absolutos cuando la fuente es parcial. En su lugar, debería manejar niveles de confianza.
 
 Campos sugeridos:
 
@@ -354,7 +354,7 @@ El diferencial no debería apoyarse en una sola tecnología. Debería aparecer e
 
 ### En una frase
 
-**ClawScout no solo encuentra leads. Los convierte en oportunidades priorizadas, entendidas y accionables.**
+**Scouter no solo encuentra leads. Los convierte en oportunidades priorizadas, entendidas y accionables.**
 
 ---
 
@@ -434,8 +434,8 @@ La demo tiene que sentirse seria y confiable, tanto para el equipo como para el 
 
 ### Idea de dominio
 
-- `demo.clawscout.ai`
-- `preview.clawscout.ai`
+- `demo.scouter.ai`
+- `preview.scouter.ai`
 - subdominio por lead o campaña
 
 La demo no debería verse como algo improvisado. Tiene que sostener la confianza comercial del producto.
@@ -470,7 +470,7 @@ Eso permite que humanos y agentes trabajen sobre la misma base.
 
 ## 12. Modelo comercial posible
 
-ClawScout puede venderse como herramienta, como servicio asistido o como sistema híbrido.
+Scouter puede venderse como herramienta, como servicio asistido o como sistema híbrido.
 
 ### Enfoque inicial recomendado
 
@@ -569,7 +569,7 @@ Antes de pensar en un líder más grande, conviene ganar en:
 
 ### Cierre de la idea
 
-ClawScout debería convertirse en un sistema capaz de pasar de lead frío a **dossier, Commercial Brief, demo y outreach listo para cerrar**, con un líder visible, una operación clara y artifacts confiables.
+Scouter debería convertirse en un sistema capaz de pasar de lead frío a **dossier, Commercial Brief, demo y outreach listo para cerrar**, con un líder visible, una operación clara y artifacts confiables.
 
 La propuesta no compite por “tener IA”. Compite por **entender mejor al negocio, priorizar mejor, vender mejor y ejecutar mejor**.
 
@@ -597,7 +597,7 @@ Aprobar esta visión y bajar el producto a:
 
 #### 2. Tabla interna de pricing
 
-Definir la matriz base que ClawScout usará para inferir presupuesto estimado por tipo de proyecto y complejidad.
+Definir la matriz base que Scouter usará para inferir presupuesto estimado por tipo de proyecto y complejidad.
 
 #### 3. Política de contacto
 

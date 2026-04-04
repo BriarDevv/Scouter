@@ -1,4 +1,4 @@
-# ClawScout — Code Restructuring Report
+# Scouter — Code Restructuring Report
 
 **Fecha:** 2026-04-03
 **Branch:** `main`

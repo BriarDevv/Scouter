@@ -1,4 +1,4 @@
-# ClawScout — Informe de Implementacion Phase 0-4
+# Scouter — Informe de Implementacion Phase 0-4
 
 **Fecha:** 2026-04-02
 **Autor:** Claude Opus 4.6 (OMC autopilot)
@@ -13,7 +13,7 @@ Se ejecuto el roadmap completo de Phase 0 a Phase 4 en una sola sesion. Phase 5 
 
 El trabajo se dividio en 3 etapas paralelas: backend Phase 1, backend Phase 2, y frontend Phases 1-4. Phase 0 y Phase 3 se implementaron directamente. Todo fue verificado con 178 tests pasando y TypeScript compilando sin errores.
 
-**Resultado:** ClawScout paso de ser un sistema de scraping + drafts a tener dossiers, commercial briefs, export, runtime modes, Prometheus metrics, y un dashboard con 15 paginas funcionales y 55 agent tools.
+**Resultado:** Scouter paso de ser un sistema de scraping + drafts a tener dossiers, commercial briefs, export, runtime modes, Prometheus metrics, y un dashboard con 15 paginas funcionales y 55 agent tools.
 
 ---
 
@@ -328,9 +328,9 @@ tests/test_brief.py
 .dockerignore
 
 # Docs
-docs/archive/audits/clawscout-audit-current-state.md
+docs/archive/audits/scouter-audit-current-state.md
 docs/archive/reports/implementation-report-2026-04-02.md
-docs/archive/roadmaps/clawscout-next-phase-plan.md
+docs/archive/roadmaps/scouter-next-phase-plan.md
 ```
 
 ---
@@ -340,7 +340,7 @@ docs/archive/roadmaps/clawscout-next-phase-plan.md
 No se implemento por decision explicita. Queda documentada en el roadmap. Prerequisitos para abordarla:
 
 1. Phase 2 validada con datos reales (briefs utiles)
-2. Dominio `demo.clawscout.ai` disponible
+2. Dominio `demo.scouter.ai` disponible
 3. Decision sobre Claude Code SDK vs API vs subprocess
 4. Decision sobre hosting (Vercel preview, Cloudflare Pages, self-hosted)
 5. Template framework definido (plain HTML, Next.js static export)

@@ -1,7 +1,7 @@
-# ClawScout Target Architecture
+# Scouter Target Architecture
 
 Date: 2026-04-02
-Goal: move ClawScout from a feature-rich modular monolith with porous boundaries to a pragmatic, operable, AI-first modular monolith with strong workflow and contract discipline.
+Goal: move Scouter from a feature-rich modular monolith with porous boundaries to a pragmatic, operable, AI-first modular monolith with strong workflow and contract discipline.
 
 ## Design Principles
 
@@ -16,7 +16,7 @@ Goal: move ClawScout from a feature-rich modular monolith with porous boundaries
 
 ## What "Excellent" Looks Like Here
 
-For ClawScout, architecturally excellent does not mean:
+For Scouter, architecturally excellent does not mean:
 
 - microservices,
 - CQRS everywhere,
