@@ -71,7 +71,8 @@ export function useChat(conversationId: string | null): UseChatReturn {
         throw new Error(`HTTP ${res.status}`);
       }
 
-      const reader = res.body!.getReader();
+      if (!res.body) { setError("Empty response from server"); return; }
+      const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
 

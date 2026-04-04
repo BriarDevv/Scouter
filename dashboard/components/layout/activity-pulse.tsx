@@ -164,8 +164,8 @@ export function ActivityPulse() {
             "text-[11px] font-semibold uppercase tracking-wider",
             hasActive ? "text-sidebar-foreground" : "text-muted-foreground"
           )}>
-            IA {batchRunning
-              ? `· Pipeline ${batch!.processed ?? 0}/${batch!.total ?? 0}`
+            IA {batch && batch.status === "running"
+              ? `· Pipeline ${batch.processed ?? 0}/${batch.total ?? 0}`
               : hasActive
                 ? `· ${activeTasks.length} activa${activeTasks.length > 1 ? "s" : ""}`
                 : "· Idle"}
@@ -179,19 +179,19 @@ export function ActivityPulse() {
 
       {expanded ? (
         <>
-          {batchRunning && (
+          {batch && batch.status === "running" && (
             <div className="mb-1.5 rounded-lg bg-violet-500/10 border border-violet-500/20 px-2.5 py-2 ml-1">
               <div className="flex items-center gap-2">
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-500" />
                 <div className="min-w-0 flex-1">
                   <p className="text-[11px] font-semibold text-violet-400">
-                    Pipeline {batch!.processed ?? 0}/{batch!.total ?? 0}
+                    Pipeline {batch.processed ?? 0}/{batch.total ?? 0}
                   </p>
-                  {batch!.current_lead && (
+                  {batch.current_lead && (
                     <p className="text-[10px] text-violet-300/70 truncate">
-                      {batch!.current_step && STEP_CONFIG[batch!.current_step]
-                        ? STEP_CONFIG[batch!.current_step].label
-                        : batch!.current_step} — {batch!.current_lead}
+                      {batch.current_step && STEP_CONFIG[batch.current_step]
+                        ? STEP_CONFIG[batch.current_step].label
+                        : batch.current_step} — {batch.current_lead}
                     </p>
                   )}
                 </div>
@@ -214,19 +214,19 @@ export function ActivityPulse() {
         </>
       ) : (
         <div className="pl-1">
-          {batchRunning && (
+          {batch && batch.status === "running" && (
             <div className="flex items-center gap-2 py-1.5">
               <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-500 shrink-0" />
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-violet-400 truncate">
-                  Pipeline {batch!.processed ?? 0}/{batch!.total ?? 0}
-                  {batch!.current_step && STEP_CONFIG[batch!.current_step]
-                    ? ` · ${STEP_CONFIG[batch!.current_step].label}`
+                  Pipeline {batch.processed ?? 0}/{batch.total ?? 0}
+                  {batch.current_step && STEP_CONFIG[batch.current_step]
+                    ? ` · ${STEP_CONFIG[batch.current_step].label}`
                     : ""}
                 </p>
-                {batch!.current_lead && (
+                {batch.current_lead && (
                   <p className="text-[10px] text-violet-300/70 truncate">
-                    {batch!.current_lead}
+                    {batch.current_lead}
                   </p>
                 )}
               </div>
