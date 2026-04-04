@@ -11,6 +11,9 @@ If you are a human operator or developer, start with [../README.md](../README.md
 | --- | --- | --- |
 | Architecture | [architecture/audit.md](architecture/audit.md) | Current-state architecture assessment |
 | Architecture | [architecture/target.md](architecture/target.md) | Target architecture direction |
+| Architecture | [architecture/adrs/ADR-001-postgresql-testcontainers.md](architecture/adrs/ADR-001-postgresql-testcontainers.md) | ADR-001: PostgreSQL for all tests via testcontainers |
+| Architecture | [architecture/adrs/ADR-002-local-llm-role-based-routing.md](architecture/adrs/ADR-002-local-llm-role-based-routing.md) | ADR-002: Local LLM-first with role-based model routing |
+| Architecture | [architecture/adrs/ADR-003-conventional-commits.md](architecture/adrs/ADR-003-conventional-commits.md) | ADR-003: Conventional commits as the single commit convention |
 | Plans | [plans/refactor-roadmap.md](plans/refactor-roadmap.md) | Active refactor roadmap |
 | Agent OS | [agents/agent-os-implementation.md](agents/agent-os-implementation.md) | Agent OS implementation reference (what was built) |
 | Agent OS | [agents/hierarchy.md](agents/hierarchy.md) | Team structure, who decides what |
