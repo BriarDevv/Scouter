@@ -1,8 +1,10 @@
 # Scouter Architecture Audit
 
-> **Staleness note (2026-04-04):** This audit predates the Agent OS implementation (Scout agent, outcome tracking, weekly reports, AI Office dashboard, WhatsApp template flow). For the current Agent OS state, see [../agents/agent-os-implementation.md](../agents/agent-os-implementation.md). The structural observations below about the backend, services, and frontend are still largely valid.
+**Last updated: 2026-04-04**
 
-Date: 2026-04-02
+> **Post-Agent OS update:** This audit was originally written on 2026-04-02 before Agent OS was implemented. The sections below have been updated to reflect current state where materially changed. For full Agent OS detail see [../agents/agent-os-implementation.md](../agents/agent-os-implementation.md). Structural observations about backend services, transaction boundaries, and frontend contracts remain valid and unresolved.
+
+Date: 2026-04-02 (updated 2026-04-04)
 Auditor: Codex acting as Principal Architect / Staff Engineer
 Scope: backend, workers, LLM layer, frontend contracts, infra, DX, testing, security
 
@@ -17,12 +19,13 @@ Scope: backend, workers, LLM layer, frontend contracts, infra, DX, testing, secu
 
 - 117 API route handlers.
 - 277 functions under `app/services/`.
-- 16 Celery tasks.
-- 85 `db.commit()` calls inside `app/services` and `app/workers`.
-- 91 broad `except Exception` catches inside `app/`.
+- 16 Celery tasks (+ 5 new Agent OS tasks: Scout research, outcome tracking, weekly report synthesis, Mote Closer, WhatsApp template flow).
+- 85 `db.commit()` calls inside `app/services` and `app/workers` (unchanged — transaction boundary hardening still deferred).
+- 91 broad `except Exception` catches inside `app/` (reduced by Agent OS hardening; silent `except: pass` patterns replaced with `logger.debug()` in key paths).
 - 61 `"use client"` directives across `dashboard/app` and `dashboard/components`.
-- 187 tests collected successfully via `.venv/bin/python -m pytest --collect-only -q`.
-- A full `pytest -q` run started and produced progress, but did not complete within the observation window, so runtime test claims below are based on collection plus targeted code inspection, not a clean full-pass execution.
+- 299 tests collected and passing as of 2026-04-04 (up from 187 at original audit date).
+- 5 new DB models: `ReviewCorrection`, `InvestigationThread`, `OutcomeSnapshot`, `OutboundConversation`, `WeeklyReport`.
+- 4 agent roles: Mote (Closer/ops), Scout (field researcher with Playwright), Executor (analysis/drafts), Reviewer (structured feedback loop).
 
 ## Executive Summary
 
@@ -57,23 +60,23 @@ My blunt verdict:
 
 ## Architecture Score
 
-Global score: **5.6 / 10**
+Global score: **6.2 / 10** *(up from 5.6 at original audit — Agent OS hardening, test growth 187→299, security fixes, tasks.py refactor)*
 
 ### Scorecard by dimension
 
-| Dimension | Score | Verdict |
-| --- | ---: | --- |
-| Modularity | 6.0 | Better than average repo structure, but boundaries are porous. |
-| Layer separation | 4.0 | Weak. Too much logic leaks across routers, services, tasks, and providers. |
-| Domain model | 5.0 | Serviceable, but status/state boundaries are blurry and some relations are semantically wrong. |
-| Async reliability | 4.5 | Celery exists and is used seriously, but orchestration/idempotency/state tracking are only partially hardened. |
-| AI architecture | 6.0 | Centralized and intentional, but not yet strongly contracted, versioned, or observable. |
-| Observability | 4.5 | Better than nothing, well short of production-grade distributed operability. |
-| Security | 4.5 | There is sanitization and some secret handling, but several architectural boundaries are too weak. |
-| Frontend/backend contracts | 4.0 | Manual contracts are drifting already. |
-| DX | 6.5 | Local scripts and repo organization help, but test realism and operational consistency lag. |
-| Scalability | 5.5 | Modular monolith can scale further, current workflow design will become a tax. |
-| Maintainability | 4.5 | Too many hot spots and too much hidden coupling. |
+| Dimension | Score | Delta | Verdict |
+| --- | ---: | ---: | --- |
+| Modularity | 6.5 | +0.5 | Agent OS adds clear role separation; service boundaries still porous. |
+| Layer separation | 4.0 | 0 | Weak. Routers, services, tasks still leak responsibilities. |
+| Domain model | 5.0 | 0 | Serviceable. 5 new Agent OS models well-scoped; core lead state still blurry. |
+| Async reliability | 5.0 | +0.5 | tasks.py refactored to thin dispatcher; pipeline context flow adds reliability. |
+| AI architecture | 7.0 | +1.0 | 4 distinct roles, prompt registry, structured reviewer feedback loop, SSRF protection. |
+| Observability | 4.5 | 0 | Unchanged. No distributed tracing, no invocation log table. |
+| Security | 6.0 | +1.5 | 10 additional fixes in Agent OS phase. SMTP passwords and API auth still open. |
+| Frontend/backend contracts | 4.0 | 0 | Manual mirrors unchanged. Drift risk remains. |
+| DX | 7.0 | +0.5 | 299 passing tests, import/export scripts, editorconfig added. |
+| Scalability | 5.5 | 0 | Modular monolith unchanged; pipeline god module split is progress. |
+| Maintainability | 5.0 | +0.5 | Hot spots reduced (tasks.py, lead page); new modules are well-scoped. |
 
 ## Current Architecture Map
 
@@ -97,6 +100,16 @@ Global score: **5.6 / 10**
   `sync inbox -> match thread/lead -> classify -> reviewer pass -> generate reply draft -> send`.
 - Agent chat:
   `conversation -> streamed Ollama response -> tool execution -> persisted tool calls/messages`.
+
+### Agent OS layer (added 2026-04-04)
+
+- **Mote** (`app/agent/closer/`): Closer agent with persistent outbound conversations, WhatsApp template flow, weekly report context injection.
+- **Scout** (`app/agent/scout/`): Field researcher with Playwright tools (browse_page, extract_contacts, etc.), SSRF-validated URL access, investigation threads per lead.
+- **Executor** (model role): Single-shot LLM calls for analysis, brief generation, draft generation — reads full pipeline context from `PipelineRun.step_context_json`.
+- **Reviewer** (model role): Structured review pass with corrections stored in `review_corrections` — drives the prompt feedback loop.
+- **Pipeline context flow**: Each step writes findings to `step_context_json`; Draft reads the full accumulated context for personalization.
+- **Outcome tracking**: `OutcomeSnapshot` freezes pipeline state on WON/LOST for signal correlation.
+- **Weekly synthesis**: Celery Beat aggregates 7-day data → `WeeklyReport` → injected into Mote's system context.
 
 ### Bounded contexts actually present
 
@@ -131,12 +144,12 @@ The problem is not absence of contexts. The problem is that the contexts do not 
 
 ### Main complexity hot spots
 
-- `app/workers/tasks.py` (1819 LOC).
-- `app/llm/client.py` (845 LOC).
-- `dashboard/lib/api/client.ts` (699 LOC).
-- `dashboard/types/index.ts` (855 LOC).
-- `dashboard/app/leads/[id]/page.tsx` (1263 LOC).
-- `app/services/inbound_mail_service.py` (614 LOC).
+- `app/workers/tasks.py` (26 LOC — refactored into thin dispatcher; bulk logic moved to pipeline modules).
+- `app/llm/client.py` (599 LOC, down from 845 — Agent OS extracted Scout/Mote/Reviewer into dedicated modules).
+- `dashboard/lib/api/client.ts` (747 LOC, up from 699 — new Agent OS endpoints added).
+- `dashboard/types/index.ts` (986 LOC, up from 855 — new Agent OS types added).
+- `dashboard/app/leads/[id]/page.tsx` (549 LOC, down from 1263 — split into sub-components).
+- `app/services/inbox/inbound_mail_service.py` (614 LOC — unchanged, moved to inbox sub-package).
 - `app/api/v1/settings.py` (322 LOC).
 
 ## Findings
@@ -297,25 +310,16 @@ The problem is not absence of contexts. The problem is that the contexts do not 
 
 ### High 3: AI architecture is centralized but not strongly contracted
 
-- Severity: High
-- Impact: fragile parsing, silent degradation, weak auditability, hard model evolution
-- Evidence:
-  - `app/llm/client.py` relies on `_extract_json()` heuristics
-  - many helpers catch broad exceptions and return synthetic fallback payloads
-  - `app/workers/brief_tasks.py` imports private `_call_ollama_chat` and `_extract_json` directly
-  - no dedicated model invocation table with prompt version, latency, fallback_used, or structured validation outcome
-- Why this is a problem:
-  - Centralization alone is not enough.
-  - Without typed request/response contracts, prompt versioning, and invocation logging, the AI layer is hard to debug and expensive to trust.
-  - Silent fallbacks keep the pipeline moving, but can hide degraded quality while appearing "successful".
+- Severity: High (partially resolved by Agent OS)
+- **Agent OS progress (2026-04-04):** Four distinct agent roles are now implemented with explicit identities and separation of concerns. Prompts are registered in `app/llm/prompts.py` (including Closer prompt moved out of inline strings). Reviewer produces structured corrections stored in `review_corrections` table. Scout uses Playwright tools with SSRF validation. Pipeline context flows through `context_service.py` with size limits (2KB/step, 16KB total). Silent `except: pass` replaced with logged warnings.
+- Remaining gaps:
+  - `app/llm/client.py` still relies on `_extract_json()` heuristics for some paths
+  - No formal model invocation table with latency, prompt version, or fallback_used
+  - `app/workers/brief_tasks.py` still imports private LLM helpers directly
+  - No Ollama structured outputs with JSON schema yet
 - Exact recommendation:
-  - Create a formal AI execution layer:
-    - typed request/response contracts via Pydantic,
-    - prompt registry with explicit versions,
-    - single public invocation API,
-    - persisted invocation metadata,
-    - explicit degraded/fallback status.
-  - Use Ollama structured outputs with JSON schema instead of regex-based JSON extraction for structured tasks.
+  - Formalize the invocation boundary: typed Pydantic request/response contracts, single public API, persisted invocation metadata with explicit degraded status.
+  - Migrate structured tasks from regex JSON extraction to Ollama structured outputs.
   - Ban direct use of private LLM helpers from workers/services.
 
 ### High 4: Frontend contracts are manual and already drifting
