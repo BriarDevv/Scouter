@@ -13,7 +13,34 @@ logger = get_logger(__name__)
 
 STALE_THRESHOLD = timedelta(minutes=10)
 PIPELINE_STALE_THRESHOLD = timedelta(minutes=15)
+ORPHAN_THRESHOLD = timedelta(minutes=30)
 ACTIVE_STATUSES = ("running", "queued", "retrying", "stopping")
+
+
+def sweep_orphan_pipelines(db) -> int:
+    """Find PipelineRun records stuck in 'running' with no activity for 30+ minutes."""
+    orphan_cutoff = datetime.now(UTC) - ORPHAN_THRESHOLD
+    orphans = db.execute(
+        select(PipelineRun).where(
+            PipelineRun.status == "running",
+            PipelineRun.updated_at < orphan_cutoff,
+        )
+    ).scalars().all()
+
+    count = 0
+    for pipeline_run in orphans:
+        pipeline_run.status = "failed"
+        pipeline_run.error = "orphaned — no activity for 30 minutes"
+        pipeline_run.finished_at = datetime.now(UTC)
+        count += 1
+        logger.warning(
+            "janitor_marked_orphan_pipeline",
+            pipeline_run_id=str(pipeline_run.id),
+            lead_id=str(pipeline_run.lead_id),
+            current_step=pipeline_run.current_step,
+            last_updated=str(pipeline_run.updated_at),
+        )
+    return count
 
 
 def sweep_stale_tasks(session_factory=None) -> dict:
@@ -74,10 +101,12 @@ def sweep_stale_tasks(session_factory=None) -> dict:
                 last_updated=str(pipeline_run.updated_at),
             )
 
-        if task_count or pipeline_count:
+        orphan_count = sweep_orphan_pipelines(db)
+
+        if task_count or pipeline_count or orphan_count:
             db.commit()
 
-    result = {"tasks_failed": task_count, "pipelines_failed": pipeline_count}
+    result = {"tasks_failed": task_count, "pipelines_failed": pipeline_count, "orphans_failed": orphan_count}
     logger.info("janitor_sweep_done", **result)
     return result
 
