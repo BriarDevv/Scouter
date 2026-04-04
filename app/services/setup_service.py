@@ -166,12 +166,25 @@ def _config_steps(db: Session) -> tuple[list[dict], list[str]]:
     setup = get_setup_status(db)
     steps: list[dict] = []
     wizard_steps: list[str] = []
-    config_ids = {"brand", "credentials", "mail_out", "mail_in", "rules"}
+    config_ids = {"brand", "whatsapp", "mail_out", "mail_in", "telegram", "rules"}
 
-    # mail_in (IMAP) is optional — existing users may only do outbound
-    optional_steps = {"mail_in"}
+    # Optional steps — don't block dashboard unlock
+    # mail_out and mail_in are optional if WhatsApp is configured (and vice versa)
+    # telegram is always optional (notifications, not outreach)
+    optional_steps = {"mail_in", "telegram"}
+
+    # If WhatsApp is configured, mail_out becomes optional (and vice versa)
+    has_outreach = setup.get("has_outreach_channel", False)
+    wa_step_data = next((s for s in setup["steps"] if s["id"] == "whatsapp"), None)
+    mail_step_data = next((s for s in setup["steps"] if s["id"] == "mail_out"), None)
+    if wa_step_data and wa_step_data["status"] != "incomplete":
+        optional_steps.add("mail_out")
+    if mail_step_data and mail_step_data["status"] != "incomplete":
+        optional_steps.add("whatsapp")
 
     for step in setup["steps"]:
+        if step["id"] not in config_ids:
+            continue
         mapped = _to_step(
             step["id"],
             step["label"],
@@ -180,18 +193,25 @@ def _config_steps(db: Session) -> tuple[list[dict], list[str]]:
             step.get("action"),
             required=step["id"] not in optional_steps,
         )
-        if step["id"] in config_ids:
-            steps.append(mapped)
-        if step["id"] == "brand" and step["status"] != "complete":
-            wizard_steps.append("brand")
-        if step["id"] == "credentials" and step["status"] != "complete":
-            wizard_steps.append("credentials")
-        if step["id"] in {"mail_out", "mail_in"} and step["status"] != "complete":
-            if "credentials" not in wizard_steps:
-                wizard_steps.append("credentials")
-            wizard_steps.append(step["id"])
-        if step["id"] == "rules" and step["status"] != "complete":
-            wizard_steps.append("rules")
+        steps.append(mapped)
+
+        # Build wizard steps for incomplete required items
+        is_required = step["id"] not in optional_steps
+        if step["status"] != "complete" and is_required:
+            if step["id"] == "brand":
+                wizard_steps.append("brand")
+            elif step["id"] == "whatsapp":
+                wizard_steps.append("whatsapp")
+            elif step["id"] in {"mail_out", "mail_in"}:
+                if "credentials" not in wizard_steps:
+                    wizard_steps.append("credentials")
+                wizard_steps.append(step["id"])
+            elif step["id"] == "rules":
+                wizard_steps.append("rules")
+
+    # Always show outreach step if no outreach channel configured
+    if not has_outreach and "whatsapp" not in wizard_steps and "credentials" not in wizard_steps:
+        wizard_steps.insert(1 if "brand" in wizard_steps else 0, "whatsapp")
 
     return steps, wizard_steps
 
@@ -257,8 +277,20 @@ def get_setup_readiness(db: Session) -> dict:
 
     platform_ready = _platform_ready(platform_steps)
     runtime_ready = _runtime_ready(runtime_steps)
-    config_ready = _config_ready(config_steps)
-    dashboard_unlocked = platform_ready and runtime_ready and config_ready
+
+    # Brand is always required
+    brand_step = next((s for s in config_steps if s["id"] == "brand"), None)
+    brand_ready = brand_step is not None and brand_step["status"] != "incomplete"
+
+    # At least one outreach channel (WhatsApp or Email)
+    wa_step = next((s for s in config_steps if s["id"] == "whatsapp"), None)
+    mail_step = next((s for s in config_steps if s["id"] == "mail_out"), None)
+    has_outreach = (
+        (wa_step is not None and wa_step["status"] != "incomplete")
+        or (mail_step is not None and mail_step["status"] != "incomplete")
+    )
+
+    dashboard_unlocked = platform_ready and runtime_ready and brand_ready and has_outreach
 
     if not platform_ready:
         overall = "blocked"
@@ -266,9 +298,12 @@ def get_setup_readiness(db: Session) -> dict:
     elif not runtime_ready:
         overall = "setup_required"
         summary = "Faltan componentes del runtime local antes de habilitar el dashboard."
-    elif not config_ready:
+    elif not brand_ready:
         overall = "config_required"
-        summary = "El runtime está listo, pero todavía faltan configuraciones mínimas guiadas."
+        summary = "Configurá tu marca y firma para continuar."
+    elif not has_outreach:
+        overall = "config_required"
+        summary = "Configurá al menos un canal de contacto: WhatsApp o Email."
     else:
         overall = "ready"
         summary = "Scouter está listo para desbloquear dashboard y usar Hermes."
