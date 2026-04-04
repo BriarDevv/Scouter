@@ -13,6 +13,11 @@ If you are a human operator or developer, start with [../README.md](../README.md
 | Architecture | [architecture/target.md](architecture/target.md) | Target architecture direction |
 | Plans | [plans/refactor-roadmap.md](plans/refactor-roadmap.md) | Active refactor roadmap |
 | Agent OS | [agents/agent-os-implementation.md](agents/agent-os-implementation.md) | Agent OS implementation reference (what was built) |
+| Agent OS | [agents/hierarchy.md](agents/hierarchy.md) | Team structure, who decides what |
+| Agent OS | [agents/protocols.md](agents/protocols.md) | Communication, feedback loops, error handling |
+| Agent OS | [agents/governance.md](agents/governance.md) | Runtime modes, approvals, security, LOW_RESOURCE_MODE |
+| Agent OS | [agents/identities.md](agents/identities.md) | Agent identity cards (Mote, Scout, Executor, Reviewer) |
+| Agent OS | [agents/skills-registry.md](agents/skills-registry.md) | All agent/model skills with implementation paths |
 | Agent OS | [agents/whatsapp-outreach-strategy.md](agents/whatsapp-outreach-strategy.md) | WhatsApp template strategy + Closer flow |
 | Agent OS | [agents/context.md](agents/context.md) | Operator and agent runtime context |
 | Operations | [operations/local-dev-wsl.md](operations/local-dev-wsl.md) | Local WSL and runtime workflow |
@@ -23,7 +28,7 @@ If you are a human operator or developer, start with [../README.md](../README.md
 
 | Goal | Read in this order |
 | --- | --- |
-| Understand the Agent OS | [agents/agent-os-implementation.md](agents/agent-os-implementation.md) |
+| Understand the Agent OS | [agents/hierarchy.md](agents/hierarchy.md) -> [agents/protocols.md](agents/protocols.md) -> [agents/identities.md](agents/identities.md) |
 | Set up WhatsApp outreach | [agents/whatsapp-outreach-strategy.md](agents/whatsapp-outreach-strategy.md) |
 | Understand the current architecture | [architecture/audit.md](architecture/audit.md) -> [architecture/target.md](architecture/target.md) |
 | Follow the current implementation sequence | [plans/refactor-roadmap.md](plans/refactor-roadmap.md) |
