@@ -50,7 +50,7 @@ The frontend is an operational Next.js dashboard.
 
 - Keep changes incremental. This repo is being hardened by seam, not rewritten by big bang.
 - Prefer canonical docs over archived reports when they disagree.
-- Do not move [SOUL.md](SOUL.md), [IDENTITY.md](IDENTITY.md), or [HEARTBEAT.md](HEARTBEAT.md) unless you have a strong tooling reason.
+- Do not move [SOUL.md](SOUL.md) or [IDENTITY.md](IDENTITY.md) unless you have a strong tooling reason.
 - Treat `docs/archive/` as historical context, not as instruction priority.
 - Update `docs/README.md` when you add or rename canonical documentation.
 
@@ -76,5 +76,4 @@ The frontend is an operational Next.js dashboard.
 ## Runtime Assets vs Documentation
 
 - [SOUL.md](SOUL.md) and [IDENTITY.md](IDENTITY.md) are runtime inputs consumed by `app/agent/prompts.py`.
-- [HEARTBEAT.md](HEARTBEAT.md) stays in root for compatibility with tooling that may probe it.
 - They are not the main onboarding path for either humans or coding agents.

@@ -85,6 +85,7 @@ logs/
 
 # OMC
 .omc/
+.omx/
 
 # Export bundles (contain secrets)
 scouter-export-*/
