@@ -1,9 +1,8 @@
 # Security Audit — Pending Findings
 
-> Audit date: 2026-03-14
-> Branch: `codex/feat/ux-rework`
-> Commit (audit fixes): `57f87b7`
-> Commit (migration): pending (this commit)
+> Original audit: 2026-03-14 (commit `57f87b7`)
+> Agent OS hardening: 2026-04-04 (10 additional fixes, see below)
+> Remaining: 5 items (1 HIGH, 3 MEDIUM, 1 LOW)
 
 This document lists security findings from the comprehensive audit that were
 **not corrected** in the current phase. Each entry explains why it was deferred
@@ -141,6 +140,23 @@ not from untrusted external users. The risk is low but non-zero.
 1. Add a `sanitizeUrl(url)` utility in `dashboard/lib/utils.ts` that returns
    `#` for any URL not starting with `http://`, `https://`, or `mailto:`.
 2. Apply it to all external-URL link components.
+
+---
+
+## Resolved post-audit (Agent OS hardening, 2026-04-04)
+
+| Finding | Fix | Commit |
+|---------|-----|--------|
+| SSRF in Scout tools (browse_page, extract_contacts, etc.) | `_validate_url()` blocks private IPs, loopback, reserved ranges, dangerous schemes | Agent OS implementation |
+| Prompt injection in Closer service | `_sanitize_client_message()` + `<client_message>` delimiters in system prompt | Agent OS implementation |
+| WhatsApp test endpoint: phone in query params | Moved to POST body with Pydantic validation (`TestWhatsAppBody`) | `5a894d7` |
+| WhatsApp test endpoint: no input validation | Phone format validation (8-16 digits), message length cap (500 chars) | Agent OS implementation |
+| Pipeline context size unbounded | `context_service.py`: 2KB per step, 16KB total limits | Agent OS implementation |
+| Next.js proxy: open SSRF | Path allowlist (23 prefixes) + `..`/`//` traversal guard | `ed1c873`, `d6f46ed` |
+| Setup actions: no rate limiting | 5-second cooldown between POST actions | `ed1c873` |
+| Silent `except: pass` hiding errors | Replaced with `logger.debug()` in research_tasks, agent/core, closer_service | `bcde504` |
+| Closer prompt hardcoded outside registry | Moved to `app/llm/prompts.py` as `CLOSER_RESPONSE_SYSTEM` | `2b80ac9` |
+| Output sanitization weak | URL credential stripping regex + 2KB output cap in `_sanitize_output` | `ed1c873` |
 
 ---
 
