@@ -121,9 +121,10 @@ function CategoryBadge({ category }: { category: string }) {
   );
 }
 
-function WhatsAppIndicator({ channelState }: { channelState: Record<string, any> | null }) {
+function WhatsAppIndicator({ channelState }: { channelState: Record<string, unknown> | null }) {
   if (!channelState?.whatsapp) return null;
-  const status = channelState.whatsapp.status;
+  const wa = channelState.whatsapp as { status?: string };
+  const status = wa.status;
   return (
     <span
       title={`WhatsApp: ${status}`}

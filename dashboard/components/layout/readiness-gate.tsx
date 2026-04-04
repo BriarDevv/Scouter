@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { getSetupReadiness } from "@/lib/api/client";
 import type { SetupReadiness } from "@/types";
@@ -13,14 +13,19 @@ export function ReadinessGate({ children }: { children: React.ReactNode }) {
   const [readiness, setReadiness] = useState<SetupReadiness | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const hasChecked = useRef(false);
 
   useEffect(() => {
+    // Once the dashboard is confirmed unlocked, skip subsequent checks
+    if (hasChecked.current && readiness?.dashboard_unlocked) return;
+
     let cancelled = false;
 
     async function load() {
       try {
         const data = await getSetupReadiness();
         if (!cancelled) {
+          hasChecked.current = true;
           setReadiness(data);
           setFailed(false);
         }
@@ -35,6 +40,7 @@ export function ReadinessGate({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   const isAllowedWhileLocked = useMemo(() => ALLOWED_WHILE_LOCKED.has(pathname), [pathname]);

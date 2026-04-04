@@ -100,9 +100,9 @@ export default function PanelPage() {
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               {Array.from({ length: 4 }).map((_, i) => <SkeletonStatCard key={i} />)}
             </div>
-          ) : (
-            <StatsGrid stats={stats!} />
-          )}
+          ) : stats ? (
+            <StatsGrid stats={stats} />
+          ) : null}
 
           {/* Charts & Data */}
           {loading ? (

@@ -38,7 +38,8 @@ function MetricTable({
   data,
 }: {
   title: string;
-  columns: { key: string; label: string; format?: (v: any) => string }[];
+  columns: { key: string; label: string; format?: (v: number) => string }[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: Record<string, any>[];
 }) {
   return (

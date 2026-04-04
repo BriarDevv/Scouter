@@ -92,13 +92,18 @@ export interface Lead {
   longitude: number | null;
   dedup_hash: string | null;
   created_at: string;
+  owner?: string | null;
+  notes?: string | null;
   updated_at: string;
   enriched_at: string | null;
   scored_at: string | null;
   signals?: LeadSignal[];
   source?: LeadSource | null;
-  owner?: string | null;
-  notes?: string | null;
+}
+
+export interface LeadName {
+  id: string;
+  business_name: string;
 }
 
 export interface LeadSignal {
@@ -734,12 +739,12 @@ export interface NotificationItem {
   message: string;
   source_kind: string | null;
   source_id: string | null;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
   status: "unread" | "read" | "acknowledged" | "resolved";
   read_at: string | null;
   acknowledged_at: string | null;
   resolved_at: string | null;
-  channel_state: Record<string, any> | null;
+  channel_state: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }
