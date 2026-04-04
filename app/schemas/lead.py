@@ -107,3 +107,10 @@ class LeadSourceResponse(BaseModel):
 class LeadDetailResponse(LeadResponse):
     signals: list[LeadSignalResponse] = Field(default_factory=list)
     source: LeadSourceResponse | None = None
+
+
+class LeadNameResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: uuid.UUID
+    business_name: str

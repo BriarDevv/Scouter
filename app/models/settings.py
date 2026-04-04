@@ -7,7 +7,7 @@ here. Secrets live in dedicated credential tables/services.
 
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String
+from sqlalchemy import JSON, Boolean, CheckConstraint, DateTime, Float, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -15,6 +15,7 @@ from app.db.base import Base
 
 class OperationalSettings(Base):
     __tablename__ = "operational_settings"
+    __table_args__ = (CheckConstraint("id = 1", name="singleton_check"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
 
