@@ -110,7 +110,7 @@ def _collect_metrics(db, week_start: datetime, week_end: datetime) -> dict:
 
     # Drafts
     drafts_generated = db.query(func.count(OutreachDraft.id)).filter(
-        OutreachDraft.created_at >= week_start
+        OutreachDraft.generated_at >= week_start
     ).scalar() or 0
 
     # Invocations

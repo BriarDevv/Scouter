@@ -94,11 +94,12 @@ def _send_whatsapp(db: Session, draft: OutreachDraft, lead: Lead) -> OutboundCon
         )
 
         # Select template based on lead signals
-        signals = lead.signals or []
+        raw_signals = lead.signals or []
+        signals = [s.signal_type.value if hasattr(s, "signal_type") else str(s) for s in raw_signals]
         template = select_template(signals)
         params = build_template_parameters(
             template,
-            contact_name=lead.contact_name or lead.business_name,
+            contact_name=getattr(lead, "contact_name", None) or lead.business_name,
             business_name=lead.business_name,
         )
 
