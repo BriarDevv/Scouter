@@ -1,58 +1,15 @@
 from datetime import UTC, datetime
 
 from app.core.config import settings
-from app.mail.inbound_provider import InboundMailMessage
 from app.models.inbound_mail import EmailThread, InboundMailClassificationStatus, InboundMessage
-from app.models.lead import Lead, LeadStatus
-from app.models.outreach import DraftStatus, OutreachDraft
-from app.models.outreach_delivery import OutreachDelivery, OutreachDeliveryStatus
 from app.models.reply_assistant import ReplyAssistantDraft
 from app.models.reply_assistant_send import ReplyAssistantSend, ReplyAssistantSendStatus
 
-
-def _create_sent_delivery(
-    db,
-    *,
-    recipient_email: str = "owner@example.com",
-    provider_message_id: str = "out-123",
-    subject: str = "Approved subject",
-):
-    lead = Lead(
-        business_name="Inbound Lead",
-        city="Cordoba",
-        email=recipient_email,
-        status=LeadStatus.CONTACTED,
-    )
-    db.add(lead)
-    db.flush()
-
-    draft = OutreachDraft(
-        lead_id=lead.id,
-        subject=subject,
-        body="Draft body",
-        status=DraftStatus.SENT,
-        sent_at=datetime(2026, 3, 13, 10, 0, tzinfo=UTC),
-    )
-    db.add(draft)
-    db.flush()
-
-    delivery = OutreachDelivery(
-        lead_id=lead.id,
-        draft_id=draft.id,
-        provider="smtp",
-        provider_message_id=provider_message_id,
-        recipient_email=recipient_email,
-        subject_snapshot=subject,
-        status=OutreachDeliveryStatus.SENT,
-        sent_at=datetime(2026, 3, 13, 10, 0, tzinfo=UTC),
-    )
-    db.add(delivery)
-    db.commit()
-    return lead, draft, delivery
+from helpers import create_sent_delivery, message_payload
 
 
 def _create_sent_reply_send(db, *, recipient_email: str = "owner@example.com"):
-    lead, draft, delivery = _create_sent_delivery(db, recipient_email=recipient_email)
+    lead, draft, delivery = create_sent_delivery(db, recipient_email=recipient_email)
     thread = EmailThread(
         lead_id=lead.id,
         draft_id=draft.id,
@@ -133,33 +90,6 @@ def _create_sent_reply_send(db, *, recipient_email: str = "owner@example.com"):
     return lead, draft, delivery, thread, inbound, reply_draft, reply_send
 
 
-def _message_payload(
-    *,
-    provider_message_id: str,
-    message_id: str,
-    in_reply_to: str | None = None,
-    references_raw: str | None = None,
-    from_email: str = "owner@example.com",
-    subject: str = "Re: Approved subject",
-    body_text: str = "Hola, me interesa seguir conversando.",
-):
-    return InboundMailMessage(
-        provider="imap",
-        provider_mailbox="INBOX",
-        provider_message_id=provider_message_id,
-        message_id=message_id,
-        in_reply_to=in_reply_to,
-        references_raw=references_raw,
-        from_email=from_email,
-        from_name="Owner",
-        to_email="ops@scouter.local",
-        subject=subject,
-        body_text=body_text,
-        body_snippet=body_text[:80],
-        received_at=datetime(2026, 3, 13, 11, 0, tzinfo=UTC),
-        raw_metadata={"uid": provider_message_id},
-    )
-
 
 def test_inbound_sync_blocked_when_disabled(client, monkeypatch):
     monkeypatch.setattr(settings, "MAIL_INBOUND_ENABLED", False)
@@ -170,8 +100,8 @@ def test_inbound_sync_blocked_when_disabled(client, monkeypatch):
 
 
 def test_inbound_sync_deduplicates_and_matches_by_message_id(client, db, monkeypatch):
-    lead, draft, delivery = _create_sent_delivery(db, provider_message_id="out-abc")
-    payload = _message_payload(
+    lead, draft, delivery = create_sent_delivery(db, provider_message_id="out-abc")
+    payload = message_payload(
         provider_message_id="imap-001",
         message_id="<reply-001@example.com>",
         in_reply_to="<out-abc>",
@@ -227,8 +157,8 @@ def test_inbound_sync_deduplicates_and_matches_by_message_id(client, db, monkeyp
 
 
 def test_inbound_sync_matches_by_references(client, db, monkeypatch):
-    lead, draft, delivery = _create_sent_delivery(db, provider_message_id="out-ref-123")
-    payload = _message_payload(
+    lead, draft, delivery = create_sent_delivery(db, provider_message_id="out-ref-123")
+    payload = message_payload(
         provider_message_id="imap-002",
         message_id="<reply-002@example.com>",
         references_raw="<something@example.com> <out-ref-123>",
@@ -256,8 +186,8 @@ def test_inbound_sync_matches_by_references(client, db, monkeypatch):
 
 
 def test_inbound_sync_falls_back_to_subject_and_email(client, db, monkeypatch):
-    lead, draft, delivery = _create_sent_delivery(db, provider_message_id="out-fallback")
-    payload = _message_payload(
+    lead, draft, delivery = create_sent_delivery(db, provider_message_id="out-fallback")
+    payload = message_payload(
         provider_message_id="imap-003",
         message_id="<reply-003@example.com>",
         subject="Re: Approved subject",
@@ -288,8 +218,8 @@ def test_inbound_sync_falls_back_to_subject_and_email(client, db, monkeypatch):
 
 
 def test_inbound_status_and_detail_endpoints(client, db, monkeypatch):
-    _create_sent_delivery(db, provider_message_id="out-status")
-    payload = _message_payload(
+    create_sent_delivery(db, provider_message_id="out-status")
+    payload = message_payload(
         provider_message_id="imap-004",
         message_id="<reply-004@example.com>",
         in_reply_to="<out-status>",
@@ -331,7 +261,7 @@ def test_inbound_status_and_detail_endpoints(client, db, monkeypatch):
 
 def test_inbound_sync_matches_reply_assistant_send_message_ids(client, db, monkeypatch):
     lead, _, _, thread, _, _, reply_send = _create_sent_reply_send(db)
-    payload = _message_payload(
+    payload = message_payload(
         provider_message_id="imap-reply-followup-001",
         message_id="<followup-001@example.com>",
         in_reply_to=f"<{reply_send.provider_message_id}>",
