@@ -198,12 +198,9 @@ def _execute_tool(db: Session, tool_name: str, arguments: dict) -> tuple[Any, st
         return None, str(exc)
 
     try:
-        # Tools take db as first arg, rest as kwargs
-        import inspect
-        sig = inspect.signature(tool_def.handler)
-        params = list(sig.parameters.keys())
-
-        if params and params[0] == "db":
+        # Use the takes_db flag cached at registration time to avoid calling
+        # inspect.signature on every tool invocation.
+        if tool_def.takes_db:
             result = tool_def.handler(db, **validated_args)
         else:
             result = tool_def.handler(**validated_args)

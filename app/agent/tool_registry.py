@@ -7,6 +7,7 @@ singleton is exposed for convenience.
 
 from __future__ import annotations
 
+import inspect
 import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -49,6 +50,7 @@ class ToolDefinition:
     category: str = "general"
     requires_confirmation: bool = False
     handler: Callable[..., Any] | None = None
+    takes_db: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -72,10 +74,31 @@ class ToolRegistry:
         """Register a tool definition.
 
         Overwrites any previous registration with the same name and logs a
-        warning if that happens.
+        warning if that happens.  Inspects the handler signature once at
+        registration time to set ``takes_db``.
         """
         if tool.name in self._tools:
             logger.warning("tool_overwritten", tool_name=tool.name)
+
+        # Cache whether the handler expects ``db`` as its first parameter so
+        # _execute_tool does not need to call inspect.signature on every call.
+        if tool.handler is not None and not tool.takes_db:
+            try:
+                params = list(inspect.signature(tool.handler).parameters.keys())
+                if params and params[0] == "db":
+                    # ToolDefinition is frozen; rebuild with takes_db=True
+                    tool = ToolDefinition(
+                        name=tool.name,
+                        description=tool.description,
+                        parameters=tool.parameters,
+                        category=tool.category,
+                        requires_confirmation=tool.requires_confirmation,
+                        handler=tool.handler,
+                        takes_db=True,
+                    )
+            except (TypeError, ValueError):
+                pass
+
         self._tools[tool.name] = tool
         logger.debug("tool_registered", tool_name=tool.name, category=tool.category)
 
