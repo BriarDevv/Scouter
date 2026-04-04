@@ -132,6 +132,16 @@ def to_response_dict(row: WhatsAppCredentials) -> dict:
     }
 
 
+def send_message_to_phone(db: Session, phone: str, message: str) -> bool:
+    """Send a WhatsApp message to a specific phone number using configured credentials."""
+    creds = _get_or_create_credentials(db)
+    if not creds.phone_number or not creds.api_key:
+        logger.debug("whatsapp_send_skipped_no_credentials")
+        return False
+    provider = _get_provider(creds.provider)
+    return provider.send_message(phone, message, decrypt_safe(creds.api_key))
+
+
 def send_alert(
     db: Session,
     *,

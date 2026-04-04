@@ -370,12 +370,9 @@ def send_closer_reply(
         raise HTTPException(status_code=400, detail="Lead has no phone number")
 
     try:
-        from app.services.comms.whatsapp_service import send_alert, _get_or_create_credentials, _get_provider
-        from app.core.crypto import decrypt_safe
+        from app.services.comms.whatsapp_service import send_message_to_phone
 
-        creds = _get_or_create_credentials(db)
-        provider = _get_provider(creds.provider)
-        ok = provider.send_message(lead.phone, latest_response, decrypt_safe(creds.api_key))
+        ok = send_message_to_phone(db, lead.phone, latest_response)
 
         if ok:
             return {"status": "sent", "message_preview": latest_response[:100]}
