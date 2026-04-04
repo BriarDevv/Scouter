@@ -127,7 +127,7 @@ docs/
 - docs/README.md index with canonical/archive separation
 - 7 .claude/commands/ cover common workflows
 - Consistent naming conventions (no cross-contamination)
-- 299 tests provide safety net for changes
+- 315 tests provide safety net for changes
 - Architecture guardrail tests prevent structural regressions
 - skills/MODEL_ROUTING.md prevents model misuse
 
@@ -394,7 +394,7 @@ AGENTS.md (add skills):
 
 ## 23. Final Verdict
 
-Scouter is a **genuinely good AI habitat**. The AGENTS.md -> docs/README.md onboarding hierarchy is best-in-class. The Agent OS documentation suite is comprehensive and matches the code. The test safety net (299 tests + arch guardrails) supports confident autonomous work.
+Scouter is a **genuinely good AI habitat**. The AGENTS.md -> docs/README.md onboarding hierarchy is best-in-class. The Agent OS documentation suite is comprehensive and matches the code. The test safety net (315 tests + arch guardrails) supports confident autonomous work.
 
 The repo needs polish, not renovation. The top improvements are all low-to-medium effort with high returns: fix the broken dashboard/README.md reference, clean root noise, make skills discoverable, and create a prompt catalog.
 

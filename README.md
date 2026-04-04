@@ -12,14 +12,14 @@ Detects businesses that need web development, enriches leads, scores them, runs 
 
 | Metric | Current value |
 | --- | --- |
-| Backend Python | 221 files |
-| Frontend TS/TSX | 108 files |
+| Backend Python | 222 files |
+| Frontend TS/TSX | 113 files |
 | Tests | 43 files / 315 passing (PostgreSQL) |
 | Alembic migrations | 42 |
 | Agent tools (Mote) | 55 |
 | Dashboard pages | 17 |
-| Services | 37 services in 9 subdomains |
-| Agent OS docs | 10 canonical docs |
+| Services | 44 services in 9 subdomains |
+| Agent OS docs | 9 canonical docs |
 
 ## AI Agent OS
 
@@ -121,7 +121,7 @@ app/                    Python backend
   api/v1/               FastAPI endpoints
   llm/                  Model routing, prompts, invocations, contracts
   models/               SQLAlchemy ORM (28 models)
-  services/             Business logic (9 subdomains)
+  services/             Business logic (9 subdomains, 44 service files)
   workers/              Celery tasks
   workflows/            Explicit orchestration seams
 dashboard/              Next.js frontend
@@ -131,7 +131,7 @@ dashboard/              Next.js frontend
 docs/                   Canonical docs, agents, architecture, operations
   agents/               Agent OS: hierarchy, protocols, governance, identities
 skills/                 7 Mote skills + model routing
-tests/                  43 test files, 315 passing (PostgreSQL)
+tests/                  43 test files, 315 passing (PostgreSQL, via testcontainers)
 scripts/                CLI and operations helpers
 ```
 

@@ -3,7 +3,7 @@
 **Status:** Implemented, formalized, and hardened
 **Date:** 2026-04-04
 **Commits:** 40+ on main
-**Tests:** 299 passing
+**Tests:** 315 passing
 **Audited:** Security (3 HIGH fixed), Architecture (PASS), Quality (8.5/10)
 **Docs:** hierarchy, protocols, governance, identities, skills-registry
 
@@ -175,7 +175,7 @@ Run: `.venv/bin/python3 -m alembic upgrade head`
 
 ## Current State (2026-04-04)
 
-**Tests:** 299 passing (291 backend + 8 AI Office endpoints)
+**Tests:** 315 passing (291 backend + 8 AI Office endpoints + 16 added in hardening phase)
 **Docs:** 5 canonical Agent OS docs (hierarchy, protocols, governance, identities, skills-registry)
 
 ### Closed since initial implementation

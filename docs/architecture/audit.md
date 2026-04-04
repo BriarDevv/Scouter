@@ -23,7 +23,7 @@ Scope: backend, workers, LLM layer, frontend contracts, infra, DX, testing, secu
 - 85 `db.commit()` calls inside `app/services` and `app/workers` (unchanged — transaction boundary hardening still deferred).
 - 91 broad `except Exception` catches inside `app/` (reduced by Agent OS hardening; silent `except: pass` patterns replaced with `logger.debug()` in key paths).
 - 61 `"use client"` directives across `dashboard/app` and `dashboard/components`.
-- 299 tests collected and passing as of 2026-04-04 (up from 187 at original audit date).
+- 315 tests collected and passing as of 2026-04-04 (up from 187 at original audit date).
 - 5 new DB models: `ReviewCorrection`, `InvestigationThread`, `OutcomeSnapshot`, `OutboundConversation`, `WeeklyReport`.
 - 4 agent roles: Mote (Closer/ops), Scout (field researcher with Playwright), Executor (analysis/drafts), Reviewer (structured feedback loop).
 
@@ -60,7 +60,7 @@ My blunt verdict:
 
 ## Architecture Score
 
-Global score: **6.2 / 10** *(up from 5.6 at original audit — Agent OS hardening, test growth 187→299, security fixes, tasks.py refactor)*
+Global score: **6.2 / 10** *(up from 5.6 at original audit — Agent OS hardening, test growth 187→315, security fixes, tasks.py refactor)*
 
 ### Scorecard by dimension
 
@@ -74,7 +74,7 @@ Global score: **6.2 / 10** *(up from 5.6 at original audit — Agent OS hardenin
 | Observability | 4.5 | 0 | Unchanged. No distributed tracing, no invocation log table. |
 | Security | 6.0 | +1.5 | 10 additional fixes in Agent OS phase. SMTP passwords and API auth still open. |
 | Frontend/backend contracts | 4.0 | 0 | Manual mirrors unchanged. Drift risk remains. |
-| DX | 7.0 | +0.5 | 299 passing tests, import/export scripts, editorconfig added. |
+| DX | 7.0 | +0.5 | 315 passing tests, import/export scripts, editorconfig added. |
 | Scalability | 5.5 | 0 | Modular monolith unchanged; pipeline god module split is progress. |
 | Maintainability | 5.0 | +0.5 | Hot spots reduced (tasks.py, lead page); new modules are well-scoped. |
 
