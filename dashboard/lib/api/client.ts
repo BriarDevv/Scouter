@@ -6,6 +6,7 @@ import type {
   EmailThreadDetail,
   EmailThreadSummary,
   Lead,
+  LeadName,
   InboundMailStatus,
   InboundMessage,
   OutreachDraft,
@@ -93,6 +94,10 @@ export async function getLeads(params?: {
   const suffix = query.size ? `?${query.toString()}` : "";
   return apiFetch(`/leads${suffix}`);
 
+}
+
+export async function getLeadNames(): Promise<LeadName[]> {
+  return apiFetch("/leads/names");
 }
 
 export async function getLeadById(id: string): Promise<Lead> {
