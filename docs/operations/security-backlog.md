@@ -2,6 +2,7 @@
 
 > Original audit: 2026-03-14 (commit `57f87b7`)
 > Agent OS hardening: 2026-04-04 (10 additional fixes, see below)
+> Phase 3 hardening: 2026-04-04 (2 additional fixes, see below)
 > Remaining: 5 items (1 HIGH, 3 MEDIUM, 1 LOW)
 
 This document lists security findings from the comprehensive audit that were
@@ -142,6 +143,13 @@ not from untrusted external users. The risk is low but non-zero.
 2. Apply it to all external-URL link components.
 
 ---
+
+## Resolved post-audit (Phase 3 hardening, 2026-04-04)
+
+| Finding | Fix | Commit |
+|---------|-----|--------|
+| API key visible in structured log output | `api_key` added to scrubbing regex in `app/core/logging.py` | Phase 3 |
+| `decrypt_safe()` silent on invalid token | Now logs a warning before returning original value, making decryption failures observable | Phase 3 |
 
 ## Resolved post-audit (Agent OS hardening, 2026-04-04)
 
