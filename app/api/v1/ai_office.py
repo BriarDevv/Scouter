@@ -11,7 +11,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_session
+from app.db.session import get_db
+from app.core.config import settings
 from app.models.conversation import Conversation, Message
 from app.models.investigation_thread import InvestigationThread
 from app.models.llm_invocation import LLMInvocation
@@ -24,7 +25,7 @@ router = APIRouter(prefix="/ai-office", tags=["ai-office"])
 
 
 @router.get("/status")
-def get_agent_status(db: Session = Depends(get_session)):
+def get_agent_status(db: Session = Depends(get_db)):
     """Return status overview for all agents in the AI team."""
     now = datetime.now(UTC)
     last_24h = now - timedelta(hours=24)
@@ -112,7 +113,7 @@ def get_agent_status(db: Session = Depends(get_session)):
             "mote": {
                 "name": "Mote",
                 "role": "Jefe de operaciones",
-                "model": "hermes3:8b",
+                "model": settings.ollama_agent_model,
                 "status": "online" if mote_last_active and (now - mote_last_active).total_seconds() < 3600 else "idle",
                 "last_active": mote_last_active.isoformat() if mote_last_active else None,
                 "active_conversations": active_conversations,
@@ -120,7 +121,7 @@ def get_agent_status(db: Session = Depends(get_session)):
             "scout": {
                 "name": "Scout",
                 "role": "Investigador de campo",
-                "model": "qwen3.5:9b",
+                "model": settings.ollama_executor_model,
                 "status": "active" if active_research_tasks > 0 else "idle",
                 "active_investigations": active_research_tasks,
                 "investigations_24h": scout_investigations_24h,
@@ -128,7 +129,7 @@ def get_agent_status(db: Session = Depends(get_session)):
             "executor": {
                 "name": "Executor",
                 "role": "Analista",
-                "model": "qwen3.5:9b",
+                "model": settings.ollama_executor_model,
                 "status": "active" if executor_invocations_24h > 0 else "idle",
                 "invocations_24h": executor_invocations_24h,
                 "fallback_rate": round(executor_fallback_count / max(executor_invocations_24h, 1), 2),
@@ -136,7 +137,7 @@ def get_agent_status(db: Session = Depends(get_session)):
             "reviewer": {
                 "name": "Reviewer",
                 "role": "Control de calidad",
-                "model": "qwen3.5:27b",
+                "model": settings.ollama_reviewer_model,
                 "status": "active" if reviewer_invocations_24h > 0 else "idle",
                 "invocations_24h": reviewer_invocations_24h,
                 "approval_rate": round(reviewer_succeeded / reviewer_total, 2),
@@ -153,7 +154,7 @@ def get_agent_status(db: Session = Depends(get_session)):
 @router.get("/decisions")
 def get_recent_decisions(
     limit: int = Query(default=20, ge=1, le=100),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     """Return recent AI decisions across all agents."""
     invocations = (
@@ -185,7 +186,7 @@ def get_recent_decisions(
 @router.get("/investigations")
 def get_recent_investigations(
     limit: int = Query(default=10, ge=1, le=50),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     """Return recent Scout investigations."""
     threads = (
@@ -214,7 +215,7 @@ def get_recent_investigations(
 @router.get("/conversations")
 def get_outbound_conversations(
     limit: int = Query(default=20, ge=1, le=100),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     """Return recent Mote outbound conversations."""
     convos = (
@@ -242,7 +243,7 @@ def get_outbound_conversations(
 
 
 @router.get("/conversations/{conversation_id}")
-def get_conversation_detail(conversation_id: uuid.UUID, db: Session = Depends(get_session)):
+def get_conversation_detail(conversation_id: uuid.UUID, db: Session = Depends(get_db)):
     """Return full conversation thread with messages."""
     convo = db.get(OutboundConversation, conversation_id)
     if not convo:
@@ -264,7 +265,7 @@ def get_conversation_detail(conversation_id: uuid.UUID, db: Session = Depends(ge
 
 
 @router.post("/conversations/{conversation_id}/takeover")
-def takeover_conversation(conversation_id: uuid.UUID, db: Session = Depends(get_session)):
+def takeover_conversation(conversation_id: uuid.UUID, db: Session = Depends(get_db)):
     """Operator takes over a Mote conversation."""
     from app.services.outreach.auto_send_service import operator_takeover
 
@@ -290,7 +291,7 @@ class TestWhatsAppBody(BaseModel):
 @router.post("/test-send-whatsapp")
 def test_send_whatsapp(
     body: TestWhatsAppBody,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     """Test WhatsApp sending — sends a test message to the given phone number.
 
@@ -325,7 +326,7 @@ def test_send_whatsapp(
 def closer_reply(
     conversation_id: uuid.UUID,
     client_message: str = Query(..., description="Client's inbound message"),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     """Mote generates a response to a client message (closer mode).
 
@@ -343,7 +344,7 @@ def closer_reply(
 @router.post("/conversations/{conversation_id}/send-reply")
 def send_closer_reply(
     conversation_id: uuid.UUID,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     """Send Mote's latest response to the client via WhatsApp.
 
@@ -386,7 +387,7 @@ def send_closer_reply(
 @router.get("/weekly-reports")
 def get_weekly_reports(
     limit: int = Query(default=5, ge=1, le=20),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
     """Return recent weekly AI team reports."""
     from app.models.weekly_report import WeeklyReport
@@ -413,7 +414,7 @@ def get_weekly_reports(
 
 
 @router.post("/weekly-reports/generate")
-def trigger_weekly_report(db: Session = Depends(get_session)):
+def trigger_weekly_report(db: Session = Depends(get_db)):
     """Manually trigger a weekly report generation."""
     from app.workers.weekly_tasks import task_weekly_report
 

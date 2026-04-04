@@ -2,10 +2,10 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_session
+from app.db.session import get_db
 from app.models.commercial_brief import CommercialBrief
 from app.schemas.brief import CommercialBriefResponse
 
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/briefs", tags=["briefs"])
     "/leads/{lead_id}", response_model=CommercialBriefResponse
 )
 def get_brief_for_lead(
-    lead_id: uuid.UUID, db: Session = Depends(get_session)
+    lead_id: uuid.UUID, db: Session = Depends(get_db)
 ):
     """Get the commercial brief for a specific lead."""
     brief = (
@@ -33,7 +33,7 @@ def get_brief_for_lead(
     "/leads/{lead_id}", response_model=CommercialBriefResponse
 )
 def generate_brief_for_lead(
-    lead_id: uuid.UUID, db: Session = Depends(get_session)
+    lead_id: uuid.UUID, db: Session = Depends(get_db)
 ):
     """Generate a commercial brief for a lead."""
     from app.services.research.brief_service import generate_brief
@@ -44,12 +44,12 @@ def generate_brief_for_lead(
     return brief
 
 
-@router.get("/", response_model=list[CommercialBriefResponse])
+@router.get("", response_model=list[CommercialBriefResponse])
 def list_briefs(
     budget_tier: str | None = None,
     contact_priority: str | None = None,
-    limit: int = 50,
-    db: Session = Depends(get_session),
+    limit: int = Query(default=50, ge=1, le=500),
+    db: Session = Depends(get_db),
 ):
     """List commercial briefs with optional filters."""
     query = db.query(CommercialBrief)
