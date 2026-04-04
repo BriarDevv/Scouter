@@ -1,5 +1,7 @@
 # Scouter Refactor Roadmap
 
+> **Staleness note (2026-04-04):** Many items here were completed as part of the Agent OS implementation. For the current execution state and remaining backlog, see [../agents/agent-os-implementation.md](../agents/agent-os-implementation.md).
+
 Date: 2026-04-02
 Strategy: incremental, low-drama, modular-monolith hardening
 

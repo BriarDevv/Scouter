@@ -1,5 +1,7 @@
 # Scouter Target Architecture
 
+> **Staleness note (2026-04-04):** Written before Agent OS. Many targets here (workflow discipline, contract boundaries, test coverage) have been partially or fully achieved. Read with that context.
+
 Date: 2026-04-02
 Goal: move Scouter from a feature-rich modular monolith with porous boundaries to a pragmatic, operable, AI-first modular monolith with strong workflow and contract discipline.
 

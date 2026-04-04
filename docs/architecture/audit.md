@@ -1,5 +1,7 @@
 # Scouter Architecture Audit
 
+> **Staleness note (2026-04-04):** This audit predates the Agent OS implementation (Scout agent, outcome tracking, weekly reports, AI Office dashboard, WhatsApp template flow). For the current Agent OS state, see [../agents/agent-os-implementation.md](../agents/agent-os-implementation.md). The structural observations below about the backend, services, and frontend are still largely valid.
+
 Date: 2026-04-02
 Auditor: Codex acting as Principal Architect / Staff Engineer
 Scope: backend, workers, LLM layer, frontend contracts, infra, DX, testing, security
