@@ -1,4 +1,4 @@
-"""AI Office API — agent status, decision log, and recommendations.
+"""AI Office API — agent status, decision log, conversations, and recommendations.
 
 Provides the data layer for the /ai-office dashboard page.
 """
@@ -6,7 +6,7 @@ Provides the data layer for the /ai-office dashboard page.
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -14,6 +14,7 @@ from app.api.deps import get_session
 from app.models.conversation import Conversation, Message
 from app.models.investigation_thread import InvestigationThread
 from app.models.llm_invocation import LLMInvocation
+from app.models.outbound_conversation import OutboundConversation
 from app.models.outcome_snapshot import OutcomeSnapshot
 from app.models.review_correction import ReviewCorrection
 from app.models.task_tracking import TaskRun
@@ -207,3 +208,99 @@ def get_recent_investigations(
         }
         for t in threads
     ]
+
+
+@router.get("/conversations")
+def get_outbound_conversations(
+    limit: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_session),
+):
+    """Return recent Mote outbound conversations."""
+    convos = (
+        db.query(OutboundConversation)
+        .order_by(OutboundConversation.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    return [
+        {
+            "id": str(c.id),
+            "lead_id": str(c.lead_id),
+            "channel": c.channel,
+            "status": c.status.value if hasattr(c.status, "value") else c.status,
+            "mode": c.mode,
+            "messages_count": len(c.messages_json or []),
+            "operator_took_over": c.operator_took_over,
+            "error": c.error,
+            "created_at": c.created_at.isoformat() if c.created_at else None,
+            "updated_at": c.updated_at.isoformat() if c.updated_at else None,
+        }
+        for c in convos
+    ]
+
+
+@router.get("/conversations/{conversation_id}")
+def get_conversation_detail(conversation_id: uuid.UUID, db: Session = Depends(get_session)):
+    """Return full conversation thread with messages."""
+    convo = db.get(OutboundConversation, conversation_id)
+    if not convo:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    return {
+        "id": str(convo.id),
+        "lead_id": str(convo.lead_id),
+        "draft_id": str(convo.draft_id) if convo.draft_id else None,
+        "channel": convo.channel,
+        "status": convo.status.value if hasattr(convo.status, "value") else convo.status,
+        "mode": convo.mode,
+        "messages": convo.messages_json or [],
+        "operator_took_over": convo.operator_took_over,
+        "provider_message_id": convo.provider_message_id,
+        "error": convo.error,
+        "created_at": convo.created_at.isoformat() if convo.created_at else None,
+    }
+
+
+@router.post("/conversations/{conversation_id}/takeover")
+def takeover_conversation(conversation_id: uuid.UUID, db: Session = Depends(get_session)):
+    """Operator takes over a Mote conversation."""
+    from app.services.outreach.auto_send_service import operator_takeover
+
+    convo = operator_takeover(db, conversation_id)
+    if not convo:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    return {
+        "id": str(convo.id),
+        "status": convo.status.value if hasattr(convo.status, "value") else convo.status,
+        "operator_took_over": True,
+    }
+
+
+@router.post("/test-send-whatsapp")
+def test_send_whatsapp(
+    phone: str = Query(..., description="Phone number to send test message to"),
+    message: str = Query(default="Hola! Esto es una prueba de Mote, el agente de Scouter. Si recibiste esto, el outreach funciona correctamente."),
+    db: Session = Depends(get_session),
+):
+    """Test WhatsApp sending — sends a test message to the given phone number.
+
+    Used to verify Kapso integration works before enabling auto-outreach.
+    """
+    try:
+        from app.services.comms.kapso_service import send_whatsapp_message
+
+        result = send_whatsapp_message(phone, message)
+        return {
+            "status": "sent",
+            "phone": phone[:6] + "***",
+            "message_id": result.get("message_id"),
+            "message_preview": message[:100],
+        }
+    except Exception as exc:
+        return {
+            "status": "failed",
+            "phone": phone[:6] + "***",
+            "error": str(exc),
+        }

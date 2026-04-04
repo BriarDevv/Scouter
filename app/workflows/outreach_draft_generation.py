@@ -163,7 +163,11 @@ def run_outreach_draft_generation_workflow(
 
 
 def run_outreach_draft_automation(db: Session, draft_id: uuid.UUID) -> None:
-    """Apply optional auto-approval and auto-send after draft generation."""
+    """Apply optional auto-approval and auto-send after draft generation.
+
+    In 'outreach' runtime mode, Mote sends automatically via auto_send_service
+    after approval, creating an OutboundConversation for tracking.
+    """
     draft = db.get(OutreachDraft, draft_id)
     if not draft:
         return
@@ -177,6 +181,28 @@ def run_outreach_draft_automation(db: Session, draft_id: uuid.UUID) -> None:
     db.commit()
     logger.info("draft_auto_approved", draft_id=str(draft.id), lead_id=str(draft.lead_id))
 
+    # Mote auto-send: use OutboundConversation tracking
+    try:
+        from app.services.outreach.auto_send_service import auto_send_draft
+
+        convo = auto_send_draft(db, draft.id)
+        if convo:
+            logger.info(
+                "mote_auto_send_success",
+                draft_id=str(draft.id),
+                lead_id=str(draft.lead_id),
+                channel=convo.channel,
+                conversation_id=str(convo.id),
+            )
+            return
+    except Exception as exc:
+        logger.warning(
+            "mote_auto_send_failed_fallback_to_mail",
+            draft_id=str(draft.id),
+            error=str(exc),
+        )
+
+    # Fallback: traditional email send
     if not ops.mail_enabled:
         return
 
