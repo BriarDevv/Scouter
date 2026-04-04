@@ -1,45 +1,68 @@
 ---
 name: scouter-briefs
-description: "Operational briefs and prioritization. Exec: cd /home/mateo/Scouter && .venv/bin/python scripts/opsctl.py --compact <cmd>. Commands: replies-digest --hours N | important-replies-brief --hours N | leads-priority --limit N | commercial-brief --hours N | settings-brief. Summarize the JSON output in Spanish."
-metadata: { "hermes": { "emoji": "📋", "os": ["linux"], "requires": { "bins": ["python3"] } } }
+description: "Operational briefs and prioritization via API. Use curl or apiFetch to query /api/v1/briefs, /api/v1/dashboard/stats, /api/v1/performance/ai-health, /api/v1/leads?quality=high. Summarize results in Spanish."
+metadata: { "hermes": { "emoji": "📋", "os": ["linux"] } }
 ---
 
 # Scouter Briefs Skill
 
-Operational briefs that run grounded wrappers first, then ask the leader model to summarize.
+Operational briefs using API endpoints. Query real data, then summarize.
 
 ## When to use
 
-- "resumime los replies importantes"
-- "qué leads debería mirar primero"
-- "qué drafts parecen más urgentes"
-- "qué cambió hoy en el inbox comercial"
-- "resumime el estado operativo"
-- Any question asking for prioritization or next-step suggestions
+- "resumime los briefs pendientes"
+- "que leads deberia mirar primero"
+- "como esta la salud del sistema IA"
+- "que cambio hoy"
+- Any question asking for prioritization or operational summary
 
 ## When NOT to use
 
-- Exact counts, IDs, raw lists → use **scouter-data**
-- Sending drafts → use **scouter-mail**
-- Mutating actions → use **scouter-actions**
+- Sending drafts -> use **scouter-mail**
+- Mutating actions -> use **scouter-actions**
+- Raw data exports -> use **scouter-data**
 
 ## Hard rules
 
-1. Do not improvise tool calls — use `opsctl.py` which handles tool-first + leader-after.
-2. Do not restate counts or IDs not present in the returned JSON.
-3. If the user wants raw exact numbers, redirect to **scouter-data** instead.
-4. Model: leader (qwen3.5:4b)
+1. Always query the API first — do not make up data.
+2. Summarize in Spanish (rioplatense).
+3. If the backend is not running, say so instead of guessing.
 
-## Commands
+## API Queries
 
 ```bash
-cd /home/mateo/Scouter && .venv/bin/python scripts/opsctl.py --compact <command> [args]
+API="http://localhost:8000/api/v1"
+
+# Commercial briefs list
+curl -s "$API/briefs" | python3 -m json.tool
+
+# High-priority leads
+curl -s "$API/leads?quality=high&limit=10" | python3 -m json.tool
+
+# Dashboard overview stats
+curl -s "$API/dashboard/stats" | python3 -m json.tool
+
+# AI health (approval rate, fallback rate, latency)
+curl -s "$API/performance/ai-health" | python3 -m json.tool
+
+# Recent AI decisions
+curl -s "$API/ai-office/decisions?limit=10" | python3 -m json.tool
+
+# Outcome analytics
+curl -s "$API/performance/outcomes" | python3 -m json.tool
+
+# Scoring recommendations
+curl -s "$API/performance/recommendations" | python3 -m json.tool
 ```
 
-| Request | Command |
+## Brief Types
+
+| Request | API endpoint |
 |---|---|
-| Replies digest | `replies-digest --hours <n> --limit <n>` |
-| Important replies brief | `important-replies-brief --hours <n> --limit <n>` |
-| Leads priority | `leads-priority --limit <n> --drafts-limit <n>` |
-| Commercial brief | `commercial-brief --hours <n> --limit <n> --drafts-limit <n>` |
-| Settings brief | `settings-brief` |
+| Commercial briefs | `GET /api/v1/briefs` |
+| Priority leads | `GET /api/v1/leads?quality=high&limit=10` |
+| System overview | `GET /api/v1/dashboard/stats` |
+| AI health | `GET /api/v1/performance/ai-health` |
+| Outcome summary | `GET /api/v1/performance/outcomes` |
+| Recommendations | `GET /api/v1/performance/recommendations` |
+| Weekly reports | `GET /api/v1/ai-office/weekly-reports?limit=1` |
