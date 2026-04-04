@@ -59,6 +59,34 @@ The Agent OS runs 4 AI roles through a pipeline with accumulated context, struct
 - Treat `docs/archive/` as historical context, not as instruction priority.
 - Update `docs/README.md` when you add or rename canonical documentation.
 
+## Commit Conventions
+
+This repo uses **conventional commits** as the standard for all changes. Follow these rules strictly:
+
+- **Format:** `type(scope): short description in English`
+- **Types:** `feat`, `fix`, `test`, `docs`, `chore`, `refactor`
+- **Scope:** the module or area touched (e.g., `kapso`, `setup`, `agent-os`, `security`, `onboarding`, `closer`, `readme`)
+- **Granularity:** one logical change per commit — prefer 5 small commits over 1 large one
+- **Language:** English, imperative mood, present tense ("add" not "added")
+- **Splitting:** if a change includes both code and tests, make separate commits (e.g., `feat(outreach): ...` then `test(outreach): ...`)
+- **Docs changes:** use `docs(scope):` even for README updates
+- **Co-authorship:** always include the `Co-Authored-By` trailer
+
+### Examples
+
+```
+feat(setup): add WhatsApp and Telegram steps to setup status
+fix(security): move phone from query param to POST body
+test(agent-os): add 48 tests for untested Agent OS services
+docs(agents): add canonical hierarchy, protocols, governance, identities
+chore(repo): clean root noise and fix archive duplicates
+refactor(closer): move closer prompt to prompt registry
+```
+
+### Why this matters
+
+Conventional commits make the repo navigable by `git log --oneline`. Each commit tells a clear story. The operator uses this history to understand what changed, when, and why — without reading diffs.
+
 ## Validation Expectations
 
 - Backend deltas: targeted `pytest` and `ruff` on the touched area.

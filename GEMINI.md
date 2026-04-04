@@ -1,6 +1,7 @@
 # Gemini Compatibility Shim
 
 Canonical AI instructions live in [AGENTS.md](AGENTS.md).
+Commit conventions, coding rules, and repo navigation are all there — always follow them.
 
 Recommended read order:
 
