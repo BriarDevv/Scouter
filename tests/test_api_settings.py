@@ -48,17 +48,17 @@ def test_llm_settings_endpoint_marks_executor_override(client, monkeypatch):
 def test_mail_settings_endpoint_returns_non_sensitive_mail_state(client, db, monkeypatch):
     monkeypatch.setattr(settings, "MAIL_PROVIDER", "smtp")
     monkeypatch.setattr(settings, "MAIL_ENABLED", True)
-    monkeypatch.setattr(settings, "MAIL_FROM_EMAIL", "sales@clawscout.local")
-    monkeypatch.setattr(settings, "MAIL_FROM_NAME", "ClawScout Sales")
-    monkeypatch.setattr(settings, "MAIL_REPLY_TO", "replies@clawscout.local")
+    monkeypatch.setattr(settings, "MAIL_FROM_EMAIL", "sales@scouter.local")
+    monkeypatch.setattr(settings, "MAIL_FROM_NAME", "Scouter Sales")
+    monkeypatch.setattr(settings, "MAIL_REPLY_TO", "replies@scouter.local")
     monkeypatch.setattr(settings, "MAIL_SEND_TIMEOUT", 45)
     monkeypatch.setattr(settings, "MAIL_SMTP_HOST", "smtp.local")
-    monkeypatch.setattr(settings, "MAIL_SMTP_USERNAME", "sales@clawscout.local")
+    monkeypatch.setattr(settings, "MAIL_SMTP_USERNAME", "sales@scouter.local")
     monkeypatch.setattr(settings, "MAIL_SMTP_PASSWORD", "super-secret")
     monkeypatch.setattr(settings, "MAIL_INBOUND_PROVIDER", "imap")
     monkeypatch.setattr(settings, "MAIL_INBOUND_ENABLED", True)
     monkeypatch.setattr(settings, "MAIL_IMAP_HOST", "imap.local")
-    monkeypatch.setattr(settings, "MAIL_IMAP_USERNAME", "inbox@clawscout.local")
+    monkeypatch.setattr(settings, "MAIL_IMAP_USERNAME", "inbox@scouter.local")
     monkeypatch.setattr(settings, "MAIL_IMAP_PASSWORD", "imap-secret")
     monkeypatch.setattr(settings, "MAIL_IMAP_MAILBOX", "INBOX")
     monkeypatch.setattr(settings, "MAIL_IMAP_SEARCH_CRITERIA", "ALL")
@@ -95,16 +95,16 @@ def test_mail_settings_endpoint_returns_non_sensitive_mail_state(client, db, mon
     assert payload["editable"] is True
     assert payload["outbound"]["enabled"] is True
     assert payload["outbound"]["provider"] == "smtp"
-    assert payload["outbound"]["from_email"] == "sales@clawscout.local"
-    assert payload["outbound"]["from_name"] == "ClawScout Sales"
-    assert payload["outbound"]["reply_to"] == "replies@clawscout.local"
+    assert payload["outbound"]["from_email"] == "sales@scouter.local"
+    assert payload["outbound"]["from_name"] == "Scouter Sales"
+    assert payload["outbound"]["reply_to"] == "replies@scouter.local"
     assert payload["outbound"]["send_timeout_seconds"] == 45
     assert payload["outbound"]["require_approved_drafts"] is True
     assert payload["outbound"]["configured"] is True
     assert payload["outbound"]["ready"] is True
     assert payload["inbound"]["enabled"] is True
     assert payload["inbound"]["provider"] == "imap"
-    assert payload["inbound"]["account"] == "inbox@clawscout.local"
+    assert payload["inbound"]["account"] == "inbox@scouter.local"
     assert payload["inbound"]["mailbox"] == "INBOX"
     assert payload["inbound"]["sync_limit"] == 50
     assert payload["inbound"]["timeout_seconds"] == 20

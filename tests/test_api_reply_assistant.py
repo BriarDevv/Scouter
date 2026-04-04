@@ -82,7 +82,7 @@ def _seed_inbound_reply(db):
         references_raw="<provider-msg-001>",
         from_email=lead.email,
         from_name="Owner",
-        to_email="ops@clawscout.local",
+        to_email="ops@scouter.local",
         subject="Re: Seguimiento sitio web",
         body_text="Hola, me interesa. ¿Podés pasarme una propuesta breve?",
         body_snippet="Hola, me interesa. ¿Podés pasarme una propuesta breve?",
@@ -108,9 +108,9 @@ def _configure_reply_send_mail(db):
         OperationalSettings(
             id=1,
             mail_enabled=True,
-            mail_from_email="ops@clawscout.local",
-            mail_from_name="ClawScout Ops",
-            mail_reply_to="reply@clawscout.local",
+            mail_from_email="ops@scouter.local",
+            mail_from_name="Scouter Ops",
+            mail_reply_to="reply@scouter.local",
             mail_send_timeout_seconds=30,
         )
     )
@@ -119,7 +119,7 @@ def _configure_reply_send_mail(db):
             id=1,
             smtp_host="smtp.local",
             smtp_port=587,
-            smtp_username="ops@clawscout.local",
+            smtp_username="ops@scouter.local",
             smtp_password="super-secret",
             smtp_starttls=True,
             smtp_ssl=False,

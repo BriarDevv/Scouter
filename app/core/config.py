@@ -9,14 +9,14 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # App
-    APP_NAME: str = "ClawScout"
+    APP_NAME: str = "Scouter"
     APP_ENV: str = "development"
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
     SECRET_KEY: str = "change-me-to-a-random-secret-key"
 
     # Database
-    DATABASE_URL: str = "postgresql://clawscout:changeme@localhost:5432/clawscout"
+    DATABASE_URL: str = "postgresql://scouter:changeme@localhost:5432/scouter"
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     CRAWLER_RATE_LIMIT_PER_SECOND: float = 1.0
     CRAWLER_TIMEOUT: int = 15
     CRAWLER_MAX_RETRIES: int = 2
-    CRAWLER_USER_AGENT: str = "ClawScout/1.0 (research)"
+    CRAWLER_USER_AGENT: str = "Scouter/1.0 (research)"
 
     # Outreach
     OUTREACH_AUTO_SEND: bool = False
@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     MAIL_PROVIDER: str = "smtp"
     MAIL_ENABLED: bool = False
     MAIL_FROM_EMAIL: str | None = None
-    MAIL_FROM_NAME: str = "ClawScout"
+    MAIL_FROM_NAME: str = "Scouter"
     MAIL_REPLY_TO: str | None = None
     MAIL_SMTP_HOST: str | None = None
     MAIL_SMTP_PORT: int = 587

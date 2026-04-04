@@ -30,7 +30,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [resolved, setResolved] = useState<"light" | "dark">("light");
 
   useEffect(() => {
-    const stored = localStorage.getItem("clawscout-theme") as Theme | null;
+    const stored = localStorage.getItem("scouter-theme") as Theme | null;
     if (stored) {
       setThemeState(stored);
     }
@@ -44,9 +44,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.classList.toggle("dark", res === "dark");
 
     if (theme !== "system") {
-      localStorage.setItem("clawscout-theme", theme);
+      localStorage.setItem("scouter-theme", theme);
     } else {
-      localStorage.removeItem("clawscout-theme");
+      localStorage.removeItem("scouter-theme");
     }
   }, [theme]);
 

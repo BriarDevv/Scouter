@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================================
-# ClawScout Import — restaura un export en una PC nueva
+# Scouter Import — restaura un export en una PC nueva
 # Prerequisito: seguir el README primero (WSL, Docker, Ollama, Python, Node)
 # Uso: bash scripts/import.sh <carpeta-export|archivo.zip>
 # ============================================================================
@@ -19,7 +19,7 @@ trap cleanup EXIT
 if [ -d "$INPUT_PATH" ]; then
   IMPORT_DIR="$INPUT_PATH"
 elif [ -f "$INPUT_PATH" ] && [[ "$INPUT_PATH" == *.zip ]]; then
-  TEMP_IMPORT_DIR="$(mktemp -d /tmp/clawscout-import-XXXXXX)"
+  TEMP_IMPORT_DIR="$(mktemp -d /tmp/scouter-import-XXXXXX)"
   echo "→ Descomprimiendo ZIP..."
   python3 - "$INPUT_PATH" "$TEMP_IMPORT_DIR" <<'PY'
 import sys
@@ -43,7 +43,7 @@ else
 fi
 
 echo "╔══════════════════════════════════════╗"
-echo "║     ClawScout Import                 ║"
+echo "║     Scouter Import                 ║"
 echo "╚══════════════════════════════════════╝"
 echo "Importando desde: $IMPORT_DIR"
 echo ""
@@ -74,7 +74,7 @@ echo "→ Levantando Postgres + Redis..."
 docker compose up -d postgres redis 2>&1 | tail -2
 echo "→ Esperando que Postgres esté listo..."
 for i in $(seq 1 30); do
-  if docker compose exec -T postgres pg_isready -U clawscout &>/dev/null; then
+  if docker compose exec -T postgres pg_isready -U scouter &>/dev/null; then
     break
   fi
   sleep 1
@@ -87,10 +87,10 @@ if [ -f "$IMPORT_DIR/db.sql.gz" ]; then
   CONTAINER=$(docker ps --format '{{.Names}}' | grep postgres | head -1)
   
   # Dropear y recrear la DB para import limpio
-  docker exec "$CONTAINER" psql -U clawscout -d postgres -c "DROP DATABASE IF EXISTS clawscout;" 2>/dev/null
-  docker exec "$CONTAINER" psql -U clawscout -d postgres -c "CREATE DATABASE clawscout;" 2>/dev/null
+  docker exec "$CONTAINER" psql -U scouter -d postgres -c "DROP DATABASE IF EXISTS scouter;" 2>/dev/null
+  docker exec "$CONTAINER" psql -U scouter -d postgres -c "CREATE DATABASE scouter;" 2>/dev/null
   
-  gunzip -c "$IMPORT_DIR/db.sql.gz" | docker exec -i "$CONTAINER" psql -U clawscout -d clawscout -q 2>/dev/null
+  gunzip -c "$IMPORT_DIR/db.sql.gz" | docker exec -i "$CONTAINER" psql -U scouter -d scouter -q 2>/dev/null
   echo "✔ Base de datos restaurada (leads, chats, briefs, credentials, settings, todo)"
 else
   echo "→ Sin dump de DB — corriendo migraciones desde cero..."
@@ -150,7 +150,7 @@ ERRORS=0
 [ -d dashboard/node_modules ] && echo "  ✔ node_modules OK" || { echo "  ✗ node_modules falta"; ERRORS=$((ERRORS+1)); }
 
 # Check Postgres
-docker compose exec -T postgres pg_isready -U clawscout &>/dev/null && echo "  ✔ Postgres OK" || { echo "  ✗ Postgres no responde"; ERRORS=$((ERRORS+1)); }
+docker compose exec -T postgres pg_isready -U scouter &>/dev/null && echo "  ✔ Postgres OK" || { echo "  ✗ Postgres no responde"; ERRORS=$((ERRORS+1)); }
 
 # Check Redis
 docker compose exec -T redis redis-cli ping &>/dev/null && echo "  ✔ Redis OK" || { echo "  ✗ Redis no responde"; ERRORS=$((ERRORS+1)); }
@@ -161,14 +161,14 @@ curl -s http://localhost:11434/api/tags &>/dev/null && echo "  ✔ Ollama OK" ||
 # Check DB has data
 if [ -f "$IMPORT_DIR/db.sql.gz" ]; then
   CONTAINER=$(docker ps --format '{{.Names}}' | grep postgres | head -1)
-  LEAD_COUNT=$(docker exec "$CONTAINER" psql -U clawscout -d clawscout -t -c "SELECT count(*) FROM leads;" 2>/dev/null | tr -d ' ')
+  LEAD_COUNT=$(docker exec "$CONTAINER" psql -U scouter -d scouter -t -c "SELECT count(*) FROM leads;" 2>/dev/null | tr -d ' ')
   echo "  ✔ Base de datos: $LEAD_COUNT leads"
 fi
 
 echo ""
 if [ "$ERRORS" -eq 0 ]; then
   echo "════════════════════════════════════════"
-  echo "✔ Import completo. Tu ClawScout está listo."
+  echo "✔ Import completo. Tu Scouter está listo."
   echo ""
   echo "Para levantar todo:"
   echo "  make up"

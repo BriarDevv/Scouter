@@ -11,9 +11,9 @@ from pathlib import Path
 from typing import Any
 from urllib import error, parse, request
 
-DEFAULT_API_BASE_URL = os.getenv("CLAWSCOUT_API_BASE_URL", "http://127.0.0.1:8000/api/v1")
-DEFAULT_TIMEOUT_MS = int(os.getenv("CLAWSCOUT_BROWSER_TIMEOUT_MS", "15000"))
-DEFAULT_SCREENSHOT_DIR = os.getenv("CLAWSCOUT_BROWSER_SCREENSHOT_DIR", "/tmp/clawscout-browser")
+DEFAULT_API_BASE_URL = os.getenv("SCOUTER_API_BASE_URL", "http://127.0.0.1:8000/api/v1")
+DEFAULT_TIMEOUT_MS = int(os.getenv("SCOUTER_BROWSER_TIMEOUT_MS", "15000"))
+DEFAULT_SCREENSHOT_DIR = os.getenv("SCOUTER_BROWSER_SCREENSHOT_DIR", "/tmp/scouter-browser")
 DEFAULT_IMPORTANT_LINKS_LIMIT = 8
 SCRIPT_PATH = Path(__file__).resolve()
 WORKSPACE_ROOT = SCRIPT_PATH.parent.parent
@@ -44,7 +44,7 @@ PHONE_RE = re.compile(r"(?:\+?\d(?:[ .()-]?\d){7,14})")
 
 
 def ensure_playwright_runtime() -> None:
-    if os.environ.get("CLAWSCOUT_BROWSERCTL_REEXEC") == "1":
+    if os.environ.get("SCOUTER_BROWSERCTL_REEXEC") == "1":
         return
 
     try:
@@ -55,7 +55,7 @@ def ensure_playwright_runtime() -> None:
         if not venv_python.exists():
             return
         env = os.environ.copy()
-        env["CLAWSCOUT_BROWSERCTL_REEXEC"] = "1"
+        env["SCOUTER_BROWSERCTL_REEXEC"] = "1"
         os.execve(
             str(venv_python),
             [str(venv_python), str(SCRIPT_PATH), *sys.argv[1:]],
@@ -73,7 +73,7 @@ EMAIL_RE = re.compile(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", re.IGNORECASE)
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Inspect public websites with Playwright and return grounded JSON for ClawScout."
+        description="Inspect public websites with Playwright and return grounded JSON for Scouter."
     )
     parser.add_argument(
         "--timeout-ms",
@@ -89,7 +89,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--api-base-url",
         default=DEFAULT_API_BASE_URL,
-        help=f"ClawScout API base URL for lead helpers (default: {DEFAULT_API_BASE_URL}).",
+        help=f"Scouter API base URL for lead helpers (default: {DEFAULT_API_BASE_URL}).",
     )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -101,7 +101,7 @@ def parse_args() -> argparse.Namespace:
 
     inspect_business_site = subparsers.add_parser(
         "inspect-business-site",
-        help="Fetch a lead from ClawScout and inspect its website_url.",
+        help="Fetch a lead from Scouter and inspect its website_url.",
     )
     inspect_business_site.add_argument("--lead-id", required=True)
     inspect_business_site.add_argument("--screenshot", action="store_true")

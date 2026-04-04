@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ClawScout Preflight Check — verifica que todos los componentes esten listos."""
+"""Scouter Preflight Check — verifica que todos los componentes esten listos."""
 
 import os
 import sys
@@ -183,7 +183,7 @@ def check_dashboard_build():
 
 
 def main():
-    print(f"\n{BOLD}\U0001f50d ClawScout Preflight Check{RESET}")
+    print(f"\n{BOLD}\U0001f50d Scouter Preflight Check{RESET}")
     print("\u2550" * 40)
     print()
 

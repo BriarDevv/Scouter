@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ============================================================================
-# ClawScout — Script de gestion unificado
-# Uso: ./scripts/clawscout.sh {start|stop|restart|status|logs|preflight|seed|nuke}
+# Scouter — Script de gestion unificado
+# Uso: ./scripts/scouter.sh {start|stop|restart|status|logs|preflight|seed|nuke}
 #      o via Make: make up | make down | make status | make logs
 # ============================================================================
 
@@ -31,6 +31,12 @@ log_fail() { echo -e "  ${RED}✘${NC} $1"; }
 log_info() { echo -e "  ${CYAN}→${NC} $1"; }
 log_warn() { echo -e "  ${YELLOW}⚠${NC} $1"; }
 
+legacy_container_present() {
+    local legacy_project
+    legacy_project="$(printf '%s%s' 'claw' 'scout')"
+    docker ps -a --format '{{.Names}}' | grep -Eq "^${legacy_project}-(postgres|redis)-1$"
+}
+
 is_running() {
     local pidfile="$PID_DIR/$1.pid"
     if [[ -f "$pidfile" ]]; then
@@ -49,10 +55,30 @@ get_pid() {
     [[ -f "$pidfile" ]] && cat "$pidfile"
 }
 
+record_background_pid() {
+    local pattern="$1"
+    local pidfile="$2"
+    local label="$3"
+    local pid
+
+    pid="$(pgrep -f "$pattern" | head -n 1 || true)"
+    [[ -n "$pid" ]] || {
+        log_warn "$label no arrancó — ver logs"
+        return 1
+    }
+    printf '%s\n' "$pid" >"$pidfile"
+    return 0
+}
+
 # ─── Start ─────────────────────────────────────────────────────────────────
 
 cmd_start() {
-    echo -e "\n${BOLD}🚀 Encendiendo ClawScout${NC}\n"
+    echo -e "\n${BOLD}🚀 Encendiendo Scouter${NC}\n"
+
+    if legacy_container_present; then
+        log_info "Detectado stack Docker legado; migrando volumenes y limpiando contenedores viejos..."
+    fi
+    bash "$SCRIPT_DIR/migrate-legacy-stack.sh"
 
     # 1. Docker infra (postgres + redis)
     if docker compose -f "$PROJECT_DIR/docker-compose.yml" ps --status running 2>/dev/null | grep -q postgres; then
@@ -69,52 +95,42 @@ cmd_start() {
         fi
     fi
 
-    # 2. Celery worker
+    # 2. API + Dashboard via dev-up.sh (maneja migraciones, puertos, PIDs)
+    log_info "Levantando API + Dashboard (via dev-up.sh)..."
+    echo ""
+    bash "$SCRIPT_DIR/dev-up.sh"
+
+    # 3. Celery worker
     if is_running worker; then
         log_ok "Worker ya esta corriendo (PID $(get_pid worker))"
     else
-        if [[ ! -f "$PROJECT_DIR/.venv/bin/activate" ]]; then
-            log_fail "No se encontro .venv — ejecutar: python3 -m venv .venv && pip install -e '.[dev]'"
+        if [[ ! -x "$PROJECT_DIR/.venv/bin/python" ]]; then
+            log_fail "No se encontro .venv — ejecutar: python3 -m venv .venv && python -m pip install -e '.[dev]'"
             return 1
         fi
         log_info "Iniciando Celery worker..."
-        cd "$PROJECT_DIR"
-        # shellcheck disable=SC1091
-        source "$PROJECT_DIR/.venv/bin/activate"
-        nohup celery -A app.workers.celery_app worker \
-            --loglevel=info --concurrency=4 \
-            -Q default,enrichment,scoring,llm,reviewer,research \
-            >>"$LOG_DIR/worker.log" 2>&1 &
-        echo $! > "$PID_DIR/worker.pid"
+        setsid -f bash -lc "cd '$PROJECT_DIR' && exec '$PROJECT_DIR/.venv/bin/python' -m celery -A app.workers.celery_app worker --loglevel=info --concurrency=4 -Q default,enrichment,scoring,llm,reviewer,research >>'$LOG_DIR/worker.log' 2>&1"
         sleep 2
-        if is_running worker; then
+        if record_background_pid ".venv/bin/python -m celery -A app.workers.celery_app worker" "$PID_DIR/worker.pid" "Worker" && is_running worker; then
             log_ok "Worker corriendo (PID $(get_pid worker))"
         else
             log_warn "Worker no arranco — ver logs/worker.log"
         fi
     fi
 
-    # 2b. Celery beat (scheduler for janitor and periodic tasks)
+    # 3b. Celery beat (scheduler for janitor and periodic tasks)
     if is_running beat; then
         log_ok "Beat ya esta corriendo (PID $(get_pid beat))"
     else
         log_info "Iniciando Celery beat..."
-        nohup celery -A app.workers.celery_app beat \
-            --loglevel=info \
-            >>"$LOG_DIR/beat.log" 2>&1 &
-        echo $! > "$PID_DIR/beat.pid"
+        setsid -f bash -lc "cd '$PROJECT_DIR' && exec '$PROJECT_DIR/.venv/bin/python' -m celery -A app.workers.celery_app beat --loglevel=info >>'$LOG_DIR/beat.log' 2>&1"
         sleep 2
-        if is_running beat; then
+        if record_background_pid ".venv/bin/python -m celery -A app.workers.celery_app beat" "$PID_DIR/beat.pid" "Beat" && is_running beat; then
             log_ok "Beat corriendo (PID $(get_pid beat))"
         else
             log_warn "Beat no arranco — ver logs/beat.log"
         fi
     fi
-
-    # 3. API + Dashboard via dev-up.sh (maneja migraciones, puertos, PIDs)
-    log_info "Levantando API + Dashboard (via dev-up.sh)..."
-    echo ""
-    bash "$SCRIPT_DIR/dev-up.sh"
 
     echo ""
     echo -e "${BOLD}Todo encendido.${NC} Servicios:"
@@ -127,7 +143,7 @@ cmd_start() {
 # ─── Stop ──────────────────────────────────────────────────────────────────
 
 cmd_stop() {
-    echo -e "\n${BOLD}🛑 Apagando ClawScout${NC}\n"
+    echo -e "\n${BOLD}🛑 Apagando Scouter${NC}\n"
 
     # 1. API + Dashboard via dev-down.sh
     log_info "Deteniendo API + Dashboard (via dev-down.sh)..."
@@ -168,7 +184,11 @@ cmd_stop() {
 # ─── Status ────────────────────────────────────────────────────────────────
 
 cmd_status() {
-    echo -e "\n${BOLD}📊 Estado de ClawScout${NC}\n"
+    echo -e "\n${BOLD}📊 Estado de Scouter${NC}\n"
+
+    if legacy_container_present; then
+        log_warn "Hay contenedores Docker legados del nombre anterior; ejecutar './scripts/scouter.sh start' para migrarlos"
+    fi
 
     # Docker services
     for svc in postgres redis; do
@@ -297,7 +317,7 @@ cmd_restart() {
 # ─── Main ──────────────────────────────────────────────────────────────────
 
 usage() {
-    echo -e "${BOLD}ClawScout${NC} — Script de gestion\n"
+    echo -e "${BOLD}Scouter${NC} — Script de gestion\n"
     echo "Uso: $0 {comando}"
     echo ""
     echo "Comandos:"
@@ -311,11 +331,11 @@ usage() {
     echo "  nuke        Parar todo Y borrar datos (pide confirmacion)"
     echo ""
     echo "Atajos via Make:"
-    echo "  make up       = ./scripts/clawscout.sh start"
-    echo "  make down     = ./scripts/clawscout.sh stop"
-    echo "  make status   = ./scripts/clawscout.sh status"
-    echo "  make logs     = ./scripts/clawscout.sh logs"
-    echo "  make restart  = ./scripts/clawscout.sh restart"
+    echo "  make up       = ./scripts/scouter.sh start"
+    echo "  make down     = ./scripts/scouter.sh stop"
+    echo "  make status   = ./scripts/scouter.sh status"
+    echo "  make logs     = ./scripts/scouter.sh logs"
+    echo "  make restart  = ./scripts/scouter.sh restart"
     echo ""
 }
 

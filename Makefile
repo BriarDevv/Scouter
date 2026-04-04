@@ -4,28 +4,28 @@ SHELL := /usr/bin/env bash
 
 # ─── Stack completo (infra + API + worker + dashboard) ─────────────────────
 up:
-	bash scripts/clawscout.sh start
+	bash scripts/scouter.sh start
 
 down:
-	bash scripts/clawscout.sh stop
+	bash scripts/scouter.sh stop
 
 restart:
-	bash scripts/clawscout.sh restart
+	bash scripts/scouter.sh restart
 
 status:
-	bash scripts/clawscout.sh status
+	bash scripts/scouter.sh status
 
 logs:
-	bash scripts/clawscout.sh logs
+	bash scripts/scouter.sh logs
 
 preflight:
-	bash scripts/clawscout.sh preflight
+	bash scripts/scouter.sh preflight
 
 seed:
-	bash scripts/clawscout.sh seed
+	bash scripts/scouter.sh seed
 
 nuke:
-	bash scripts/clawscout.sh nuke
+	bash scripts/scouter.sh nuke
 
 # ─── Test & Migrations ───────────────────────────────────────────────────
 test:

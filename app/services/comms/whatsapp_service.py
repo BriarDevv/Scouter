@@ -66,7 +66,7 @@ class CallMeBotProvider(WhatsAppProvider):
             return False
 
     def test_connection(self, phone: str, api_key: str) -> dict:
-        test_msg = "ClawScout WhatsApp test - canal configurado correctamente."
+        test_msg = "Scouter WhatsApp test - canal configurado correctamente."
         ok = self.send_message(phone, test_msg, api_key)
         return {"ok": ok, "error": None if ok else "No se pudo enviar el mensaje de prueba."}
 
@@ -147,7 +147,7 @@ def send_alert(
 
     sev_emoji = {"critical": "\u26a0\ufe0f", "high": "\U0001f534", "warning": "\U0001f7e1", "info": "\u2139\ufe0f"}
     emoji = sev_emoji.get(severity, "\u2139\ufe0f")
-    text = f"{emoji} *ClawScout — {title}*\n\n{message}\n\nSeveridad: {severity.upper()}"
+    text = f"{emoji} *Scouter — {title}*\n\n{message}\n\nSeveridad: {severity.upper()}"
 
     if getattr(settings, "WHATSAPP_DRY_RUN", False):
         logger.info("whatsapp_dry_run", message=text[:100])

@@ -140,7 +140,7 @@ def send_alert(
         "info": "\u2139\ufe0f",
     }
     emoji = sev_emoji.get(severity, "\u2139\ufe0f")
-    text = f"{emoji} <b>ClawScout — {title}</b>\n\n{message}\n\nSeveridad: {severity.upper()}"
+    text = f"{emoji} <b>Scouter — {title}</b>\n\n{message}\n\nSeveridad: {severity.upper()}"
     return send_message(db, text)
 
 
@@ -171,7 +171,7 @@ def test_telegram(db: Session) -> dict:
 
         # If chat_id is set, try sending a test message
         if creds.chat_id:
-            send_ok = send_message(db, "✅ ClawScout Telegram test — canal configurado correctamente.")
+            send_ok = send_message(db, "✅ Scouter Telegram test — canal configurado correctamente.")
             if not send_ok:
                 result = {
                     "ok": False,

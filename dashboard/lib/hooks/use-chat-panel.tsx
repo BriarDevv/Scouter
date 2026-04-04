@@ -22,8 +22,8 @@ interface ChatPanelState {
 
 const ChatPanelContext = createContext<ChatPanelState | null>(null);
 
-const CHAT_STORAGE_KEY = "clawscout-chat-open";
-const SIDEBAR_STORAGE_KEY = "clawscout-sidebar-collapsed";
+const CHAT_STORAGE_KEY = "scouter-chat-open";
+const SIDEBAR_STORAGE_KEY = "scouter-sidebar-collapsed";
 
 export function ChatPanelProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);

@@ -36,9 +36,9 @@ def _configure_db_mail(db):
         OperationalSettings(
             id=1,
             mail_enabled=True,
-            mail_from_email="ops@clawscout.local",
-            mail_from_name="ClawScout Ops",
-            mail_reply_to="reply@clawscout.local",
+            mail_from_email="ops@scouter.local",
+            mail_from_name="Scouter Ops",
+            mail_reply_to="reply@scouter.local",
             mail_send_timeout_seconds=45,
         )
     )
@@ -47,7 +47,7 @@ def _configure_db_mail(db):
             id=1,
             smtp_host="smtp.local",
             smtp_port=587,
-            smtp_username="ops@clawscout.local",
+            smtp_username="ops@scouter.local",
             smtp_password="super-secret",
             smtp_starttls=True,
             smtp_ssl=False,
