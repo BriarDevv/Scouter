@@ -193,3 +193,21 @@ def test_execute_tool_get_current_time():
     assert error is None
     assert "datetime" in result
     assert "date" in result
+
+
+# ── takes_db auto-detection ────────────────────────────────
+
+def test_tool_takes_db_auto_detected():
+    import app.agent.tools  # noqa: F401
+    from app.agent.tool_registry import registry
+    tool = registry.get("generate_draft")
+    assert tool is not None, "generate_draft not found in registry"
+    assert tool.takes_db is True
+
+
+def test_tool_without_db_has_takes_db_false():
+    import app.agent.tools  # noqa: F401
+    from app.agent.tool_registry import registry
+    tool = registry.get("get_current_time")
+    assert tool is not None, "get_current_time not found in registry"
+    assert tool.takes_db is False

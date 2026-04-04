@@ -48,3 +48,13 @@ def test_is_encrypted():
     assert not is_encrypted("")
     token = encrypt("test")
     assert is_encrypted(token)
+
+
+def test_decrypt_safe_invalid_fernet_returns_value(capsys):
+    """A string that looks like Fernet (starts with gAAAAA) but is invalid
+    should be returned as-is (passthrough) and emit a warning to stdout."""
+    bad_token = "gAAAAAbadtokendata1234567890abcdef"
+    result = decrypt_safe(bad_token)
+    assert result == bad_token
+    captured = capsys.readouterr()
+    assert "decrypt" in captured.out.lower() or "decrypt" in captured.err.lower()

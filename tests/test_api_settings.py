@@ -146,3 +146,17 @@ def test_mail_settings_endpoint_reports_missing_secret_backed_requirements(clien
     assert payload["inbound"]["ready"] is False
     assert "MAIL_IMAP_PASSWORD" in payload["inbound"]["missing_requirements"]
     assert payload["inbound"]["last_sync"] is None
+
+
+def test_operational_settings_includes_runtime_mode(client):
+    response = client.get("/api/v1/settings/operational")
+    assert response.status_code == 200
+    payload = response.json()
+    assert "runtime_mode" in payload
+
+
+def test_operational_settings_includes_pricing_matrix(client):
+    response = client.get("/api/v1/settings/operational")
+    assert response.status_code == 200
+    payload = response.json()
+    assert "pricing_matrix" in payload

@@ -223,6 +223,7 @@ def to_response_dict(row: OperationalSettings) -> dict:
         "whatsapp_outreach_enabled": row.whatsapp_outreach_enabled,
         "telegram_agent_enabled": row.telegram_agent_enabled,
         "whatsapp_agent_enabled": row.whatsapp_agent_enabled,
+        "low_resource_mode": row.low_resource_mode,
         "runtime_mode": row.runtime_mode,
         "pricing_matrix": row.pricing_matrix,
         "updated_at": row.updated_at.isoformat() if row.updated_at else None,
