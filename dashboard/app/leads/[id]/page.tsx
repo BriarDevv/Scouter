@@ -145,7 +145,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         setBrief(nextBrief);
         setLatestTask(null);
         setIsMissing(false);
-      } catch {
+      } catch (err) {
+        console.warn("Failed to load lead context:", err);
         if (!active) return;
         setLead(null);
         setDrafts([]);

@@ -33,7 +33,7 @@ export default function ChatPage() {
   useEffect(() => {
     listConversations()
       .then(setConversations)
-      .catch(() => {})
+      .catch((err) => console.warn("Failed to load conversations:", err))
       .finally(() => setLoadingList(false));
   }, []);
 

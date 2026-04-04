@@ -227,8 +227,8 @@ export default function ActivityPage() {
         map[lead.id] = lead.business_name;
       }
       setLeadMap(map);
-    } catch {
-      // keep last state
+    } catch (err) {
+      console.warn("Failed to load activity data:", err);
     } finally {
       setLoading(false);
     }

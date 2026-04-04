@@ -29,7 +29,7 @@ export default function BriefsPage() {
   useEffect(() => {
     listBriefs({ limit: 100 })
       .then(setBriefs)
-      .catch(() => {})
+      .catch((err) => console.warn("Failed to load briefs:", err))
       .finally(() => setLoading(false));
   }, []);
 

@@ -52,8 +52,8 @@ export default function DossiersPage() {
           );
 
         setEntries(withDossiers);
-      } catch {
-        // ignore
+      } catch (err) {
+        console.warn("Failed to load dossiers:", err);
       }
       setLoading(false);
     }
