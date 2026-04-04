@@ -536,12 +536,6 @@ export interface InboundMailSettings {
   search_criteria: string;
   auto_classify_inbound: boolean;
   use_reviewer_for_labels: string[];
-  // Notifications & WhatsApp
-  notifications_enabled: boolean;
-  notification_score_threshold: number;
-  whatsapp_alerts_enabled: boolean;
-  whatsapp_min_severity: string;
-  whatsapp_categories: string[];
   last_sync: MailLastSync | null;
   missing_requirements: string[];
 }
@@ -577,6 +571,7 @@ export interface OperationalSettings {
   calendar_url: string | null;
   signature_cta: string | null;
   signature_include_portfolio: boolean;
+  signature_is_solo: boolean;
   default_outreach_tone: string;
   default_reply_tone: string;
   default_closing_line: string | null;
@@ -634,6 +629,7 @@ export interface CredentialsStatus {
   imap: CredentialStatusItem[];
   all_smtp_ready: boolean;
   all_imap_ready: boolean;
+  kapso_api_key: boolean;
 }
 
 // ─── Mail Credentials ──────────────────────────────────────────────
