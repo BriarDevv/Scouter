@@ -120,7 +120,7 @@ def collect_batch_data(db: Session, since: datetime) -> dict:
 
     signal_rows = (
         db.query(LeadSignal.signal_type, func.count().label("cnt"))
-        .filter(LeadSignal.created_at >= since)
+        .filter(LeadSignal.detected_at >= since)
         .group_by(LeadSignal.signal_type)
         .order_by(func.count().desc())
         .limit(15)
