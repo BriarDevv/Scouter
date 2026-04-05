@@ -162,10 +162,17 @@ class ToolRegistry:
             return "<tools>\n</tools>"
 
         lines: list[str] = ["<tools>"]
+        # Group tools by category for better model navigation
+        by_category: dict[str, list[ToolDefinition]] = {}
         for tool in self._tools.values():
-            lines.append("<tool>")
-            lines.append(json.dumps(self._tool_json(tool), ensure_ascii=False))
-            lines.append("</tool>")
+            cat = tool.category or "general"
+            by_category.setdefault(cat, []).append(tool)
+        for cat, tools in by_category.items():
+            lines.append(f"<!-- {cat} tools ({len(tools)}) -->")
+            for tool in tools:
+                lines.append("<tool>")
+                lines.append(json.dumps(self._tool_json(tool), ensure_ascii=False))
+                lines.append("</tool>")
         lines.append("</tools>")
         return "\n".join(lines)
 
