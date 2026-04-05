@@ -12,6 +12,30 @@ from app.services.settings.operational_settings_service import get_brand_context
 
 logger = get_logger(__name__)
 
+
+def _get_correction_hints(db: Session, limit: int = 3, days: int = 30) -> str:
+    """Query top reviewer correction categories and format as hints for the Executor."""
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy import func
+
+    from app.models.review_correction import ReviewCorrection
+
+    cutoff = datetime.now(UTC) - timedelta(days=days)
+    rows = (
+        db.query(ReviewCorrection.category, func.count().label("cnt"))
+        .filter(ReviewCorrection.created_at >= cutoff)
+        .group_by(ReviewCorrection.category)
+        .order_by(func.count().desc())
+        .limit(limit)
+        .all()
+    )
+    if not rows:
+        return ""
+    lines = [f"- {cat} ({cnt} correcciones recientes)" for cat, cnt in rows]
+    return "Errores comunes detectados por el Reviewer (evitalos):\n" + "\n".join(lines)
+
+
 WORD_LIMIT = 150
 PLURAL_MARKERS = ("nosotros", "nuestro", "nuestros", "nuestra", "nuestras", "nuestro equipo")
 _URL_RE = re.compile(r"https?://[^\s,)>\]]+", re.IGNORECASE)
@@ -102,6 +126,19 @@ def generate_draft_content(
             Injected into the LLM prompt so drafts are informed by the full pipeline.
     """
     brand_ctx = get_brand_context(db) if db is not None else None
+
+    # Enrich pipeline context with top reviewer correction patterns
+    if db is not None:
+        try:
+            correction_hints = _get_correction_hints(db)
+            if correction_hints:
+                pipeline_context_text = (
+                    pipeline_context_text + "\n\n" + correction_hints
+                    if pipeline_context_text
+                    else correction_hints
+                )
+        except Exception:
+            pass  # Non-critical: draft generation proceeds without hints
 
     # Enrich suggested angle with CommercialBrief context if available
     suggested_angle = lead.llm_suggested_angle
