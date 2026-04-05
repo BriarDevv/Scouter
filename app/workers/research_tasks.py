@@ -225,31 +225,32 @@ def task_research_lead(
                 except Exception as exc:
                     logger.debug("research_notification_failed", error=str(exc))
 
-                # Write research context for downstream steps
-                if pipeline_uuid:
-                    from app.services.pipeline.context_service import append_step_context
-                    append_step_context(db, pipeline_uuid, "research", {
-                        "status": report.status.value,
-                        "website_exists": report.website_exists,
-                        "whatsapp_detected": report.whatsapp_detected,
-                        "signals": report.detected_signals_json,
-                        "business_description": report.business_description,
-                    })
+            # Write research context for downstream steps (always, even on degraded research)
+            if pipeline_uuid:
+                from app.services.pipeline.context_service import append_step_context
+                append_step_context(db, pipeline_uuid, "research", {
+                    "status": report.status.value,
+                    "website_exists": report.website_exists,
+                    "whatsapp_detected": report.whatsapp_detected,
+                    "signals": report.detected_signals_json,
+                    "business_description": report.business_description,
+                })
 
-                # Chain: generate brief for HIGH leads
-                if pipeline_run_id:
-                    try:
-                        from app.workers.brief_tasks import task_generate_brief
-                        task_generate_brief.delay(lead_id, pipeline_run_id, correlation_id=correlation_id)
-                        logger.info(
-                            "brief_chained_from_research", lead_id=lead_id
-                        )
-                    except Exception as chain_exc:
-                        logger.warning(
-                            "brief_chain_failed",
-                            lead_id=lead_id,
-                            error=str(chain_exc),
-                        )
+            # Chain: generate brief for HIGH leads (always, even on degraded research)
+            if pipeline_run_id:
+                try:
+                    from app.workers.brief_tasks import task_generate_brief
+                    task_generate_brief.delay(lead_id, pipeline_run_id, correlation_id=correlation_id)
+                    logger.info(
+                        "brief_chained_from_research", lead_id=lead_id,
+                        research_status=report.status.value,
+                    )
+                except Exception as chain_exc:
+                    logger.warning(
+                        "brief_chain_failed",
+                        lead_id=lead_id,
+                        error=str(chain_exc),
+                    )
 
             result = {
                 "status": report.status.value,
