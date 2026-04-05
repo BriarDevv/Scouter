@@ -23,6 +23,7 @@ import {
   type OutboundConversation,
   type WeeklyReportData,
 } from "@/lib/api/client";
+import { BatchReviewsSection } from "@/components/ai-office/batch-reviews-section";
 import { MessageSquare, FileText } from "lucide-react";
 
 interface AgentInfo {
@@ -317,6 +318,9 @@ export default function AiOfficePage() {
           <p className="text-sm text-muted-foreground">Sin reportes semanales. Genera uno manualmente o esperá al próximo domingo.</p>
         )}
       </div>
+
+      {/* Batch Reviews */}
+      <BatchReviewsSection />
 
       {/* Decision Log */}
       <div className="rounded-xl border border-border bg-card p-4">

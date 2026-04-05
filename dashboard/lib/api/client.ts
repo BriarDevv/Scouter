@@ -823,3 +823,62 @@ export interface OutboundConversation {
 export async function getOutboundConversations(limit: number = 20): Promise<OutboundConversation[]> {
   return apiFetch<OutboundConversation[]>(`/ai-office/conversations?limit=${limit}`);
 }
+
+// ─── Agent OS: Batch Reviews ───────────────────────────────────────
+
+export interface BatchReviewProposal {
+  id: string;
+  category: string;
+  description: string;
+  impact: string;
+  confidence: string;
+  evidence_summary: string | null;
+  status: string;
+  approved_by: string | null;
+  applied_at: string | null;
+}
+
+export interface BatchReviewSummary {
+  id: string;
+  trigger_reason: string;
+  batch_size: number;
+  status: string;
+  reviewer_verdict: string | null;
+  strategy_brief: string | null;
+  proposals_count: number;
+  proposals_pending: number;
+  created_at: string | null;
+}
+
+export interface BatchReviewDetail extends BatchReviewSummary {
+  period_start: string | null;
+  period_end: string | null;
+  executor_draft: string | null;
+  reviewer_notes: string | null;
+  metrics_json: Record<string, unknown> | null;
+  proposals: BatchReviewProposal[];
+}
+
+export async function getBatchReviews(limit: number = 10): Promise<BatchReviewSummary[]> {
+  return apiFetch<BatchReviewSummary[]>(`/batch-reviews?limit=${limit}`);
+}
+
+export async function getBatchReviewDetail(id: string): Promise<BatchReviewDetail> {
+  return apiFetch<BatchReviewDetail>(`/batch-reviews/${id}`);
+}
+
+export async function triggerBatchReview(): Promise<{ ok: boolean; task_id: string }> {
+  return apiFetch("/batch-reviews/generate", { method: "POST" });
+}
+
+export async function approveProposal(id: string): Promise<{ id: string; status: string }> {
+  return apiFetch(`/batch-reviews/proposals/${id}/approve`, { method: "POST" });
+}
+
+export async function rejectProposal(id: string): Promise<{ id: string; status: string }> {
+  return apiFetch(`/batch-reviews/proposals/${id}/reject`, { method: "POST" });
+}
+
+export async function applyProposal(id: string): Promise<{ id: string; status: string }> {
+  return apiFetch(`/batch-reviews/proposals/${id}/apply`, { method: "POST" });
+}
