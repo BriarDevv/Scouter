@@ -196,13 +196,19 @@ def task_review_brief(
             }
             tracker.succeed(result)
 
-            # Chain to draft generation (pipeline finalized there)
-            if pipeline_uuid:
+            # Chain to draft generation only if brief was approved
+            is_approved = review_payload.approved if review_payload else False
+            if pipeline_uuid and is_approved:
                 from app.workers.tasks import task_generate_draft
 
                 task_generate_draft.delay(lead_id, pipeline_run_id)
                 logger.info(
                     "draft_chained_from_brief_review",
+                    lead_id=lead_id,
+                )
+            elif pipeline_uuid and not is_approved:
+                logger.info(
+                    "draft_skipped_brief_rejected",
                     lead_id=lead_id,
                 )
 
