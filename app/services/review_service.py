@@ -172,6 +172,21 @@ def review_draft_with_reviewer(db: Session, draft_id: uuid.UUID) -> dict | None:
             model=model,
         )
 
+    # Auto-apply revised content when Reviewer suggests revisions
+    revised_body = result.get("revised_body")
+    revised_subject = result.get("revised_subject")
+    if payload["verdict"] == "revise" and revised_body:
+        draft.body = revised_body
+        if revised_subject:
+            draft.subject = revised_subject
+        db.commit()
+        logger.info(
+            "review_draft_auto_applied",
+            draft_id=str(draft.id),
+            lead_id=str(lead.id),
+            has_revised_subject=bool(revised_subject),
+        )
+
     logger.info(
         "review_draft_completed",
         draft_id=str(draft.id),
