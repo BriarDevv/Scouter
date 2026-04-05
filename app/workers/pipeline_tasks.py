@@ -291,10 +291,17 @@ def task_analyze_lead(
                         )
                     except Exception as chain_exc:
                         logger.warning(
-                            "research_chain_failed",
+                            "research_chain_failed_fallback_to_draft",
                             lead_id=lead_id,
                             error=str(chain_exc),
                         )
+                        # Fallback: skip research, go to draft
+                        if pipeline_run_id:
+                            task_generate_draft.delay(
+                                lead_id,
+                                pipeline_run_id=pipeline_run_id,
+                                correlation_id=correlation_id,
+                            )
                 elif pipeline_run_id:
                     task_generate_draft.delay(
                         lead_id,
@@ -346,10 +353,17 @@ def task_analyze_lead(
                     )
                 except Exception as chain_exc:
                     logger.warning(
-                        "research_chain_failed",
+                        "research_chain_failed_fallback_to_draft",
                         lead_id=lead_id,
                         error=str(chain_exc),
                     )
+                    # Fallback: skip research, go to draft
+                    if pipeline_run_id:
+                        task_generate_draft.delay(
+                            lead_id,
+                            pipeline_run_id=pipeline_run_id,
+                            correlation_id=correlation_id,
+                        )
             elif pipeline_run_id:
                 # Non-HIGH: chain directly to draft generation
                 task_generate_draft.delay(
