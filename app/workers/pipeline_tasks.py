@@ -78,6 +78,13 @@ def task_enrich_lead(
                     task_name="task_enrich_lead",
                     lead_id=lead_id,
                 )
+                # Chain forward even on skip so pipeline continues
+                if pipeline_run_id:
+                    task_score_lead.delay(
+                        lead_id,
+                        pipeline_run_id=pipeline_run_id,
+                        correlation_id=correlation_id,
+                    )
                 return result
 
             lead = enrich_lead(db, uuid.UUID(lead_id))
@@ -173,6 +180,13 @@ def task_score_lead(
                     task_name="task_score_lead",
                     lead_id=lead_id,
                 )
+                # Chain forward even on skip so pipeline continues
+                if pipeline_run_id:
+                    task_analyze_lead.delay(
+                        lead_id,
+                        pipeline_run_id=pipeline_run_id,
+                        correlation_id=correlation_id,
+                    )
                 return result
 
             lead = score_lead(db, uuid.UUID(lead_id))
@@ -268,6 +282,25 @@ def task_analyze_lead(
                     task_name="task_analyze_lead",
                     lead_id=lead_id,
                 )
+                # Chain forward even on skip so pipeline continues
+                if lead.llm_quality == "high":
+                    try:
+                        from app.workers.research_tasks import task_research_lead
+                        task_research_lead.delay(
+                            lead_id, pipeline_run_id, correlation_id,
+                        )
+                    except Exception as chain_exc:
+                        logger.warning(
+                            "research_chain_failed",
+                            lead_id=lead_id,
+                            error=str(chain_exc),
+                        )
+                elif pipeline_run_id:
+                    task_generate_draft.delay(
+                        lead_id,
+                        pipeline_run_id=pipeline_run_id,
+                        correlation_id=correlation_id,
+                    )
                 return result
 
             analysis = run_lead_analysis_step(
