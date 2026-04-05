@@ -152,6 +152,101 @@ registry.register(ToolDefinition(
 ))
 
 
+def get_lead_journey(db: Session, *, lead_id: str) -> dict:
+    """Get the full AI journey for a lead: pipeline context, corrections, delivery, investigation."""
+    from app.models.investigation_thread import InvestigationThread
+    from app.models.outreach_draft import OutreachDraft
+    from app.models.review_correction import ReviewCorrection
+    from app.models.task_tracking import PipelineRun
+
+    try:
+        lid = uuid.UUID(lead_id)
+    except ValueError:
+        return {"error": "ID de lead inválido"}
+
+    lead = db.get(Lead, lid)
+    if not lead:
+        return {"error": "Lead no encontrado"}
+
+    journey: dict = {
+        "lead": lead.business_name,
+        "score": lead.score,
+        "quality": lead.llm_quality,
+        "status": lead.status.value if lead.status else None,
+    }
+
+    # Pipeline context (latest run)
+    run = (
+        db.query(PipelineRun)
+        .filter_by(lead_id=lid)
+        .order_by(PipelineRun.created_at.desc())
+        .first()
+    )
+    if run:
+        journey["pipeline"] = {
+            "status": run.status,
+            "current_step": run.current_step,
+            "context_keys": list((run.step_context_json or {}).keys()),
+            "context": run.step_context_json,
+        }
+
+    # Investigation thread (Scout)
+    thread = (
+        db.query(InvestigationThread)
+        .filter_by(lead_id=lid)
+        .order_by(InvestigationThread.created_at.desc())
+        .first()
+    )
+    if thread:
+        journey["scout_investigation"] = {
+            "pages_visited": thread.pages_visited_json,
+            "findings": thread.findings_json,
+            "loops_used": thread.loops_used,
+            "duration_ms": thread.duration_ms,
+        }
+
+    # Review corrections
+    corrections = (
+        db.query(ReviewCorrection)
+        .filter_by(lead_id=lid)
+        .order_by(ReviewCorrection.created_at.desc())
+        .limit(10)
+        .all()
+    )
+    if corrections:
+        journey["corrections"] = [
+            {"category": c.category, "severity": c.severity, "issue": c.issue}
+            for c in corrections
+        ]
+
+    # Outreach draft
+    draft = (
+        db.query(OutreachDraft)
+        .filter_by(lead_id=lid)
+        .order_by(OutreachDraft.created_at.desc())
+        .first()
+    )
+    if draft:
+        journey["draft"] = {
+            "subject": draft.subject,
+            "status": draft.status.value if hasattr(draft.status, "value") else str(draft.status),
+            "channel": getattr(draft, "channel", None),
+        }
+
+    return journey
+
+
+registry.register(ToolDefinition(
+    name="get_lead_journey",
+    description="Ver el viaje completo de un lead: pipeline, Scout, corrections, draft, delivery",
+    parameters=[
+        ToolParameter("lead_id", "string", "UUID del lead"),
+    ],
+    category="leads",
+    handler=get_lead_journey,
+))
+
+
 # ---------------------------------------------------------------------------
 # create_lead
 # ---------------------------------------------------------------------------

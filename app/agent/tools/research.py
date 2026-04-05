@@ -167,3 +167,64 @@ registry.register(ToolDefinition(
         ),
     ],
 ))
+
+
+def get_investigation_thread(db: Session, *, lead_id: str) -> dict:
+    """Get Scout investigation details for a lead."""
+    from app.models.investigation_thread import InvestigationThread
+
+    thread = (
+        db.query(InvestigationThread)
+        .filter_by(lead_id=uuid.UUID(lead_id))
+        .order_by(InvestigationThread.created_at.desc())
+        .first()
+    )
+    if not thread:
+        return {"status": "not_found", "lead_id": lead_id}
+
+    return {
+        "lead_id": lead_id,
+        "agent_model": thread.agent_model,
+        "pages_visited": thread.pages_visited_json,
+        "findings": thread.findings_json,
+        "tool_calls": thread.tool_calls_json,
+        "loops_used": thread.loops_used,
+        "duration_ms": thread.duration_ms,
+        "error": thread.error,
+        "created_at": thread.created_at.isoformat() if thread.created_at else None,
+    }
+
+
+def trigger_scout_investigation(db: Session, *, lead_id: str) -> dict:
+    """Trigger a deep Scout investigation (Playwright + LLM) for a lead."""
+    from app.workers.research_tasks import task_research_lead
+
+    task = task_research_lead.delay(lead_id)
+    return {
+        "status": "queued",
+        "lead_id": lead_id,
+        "task_id": str(task.id),
+        "message": f"Investigación Scout disparada para lead {lead_id}",
+    }
+
+
+registry.register(ToolDefinition(
+    name="get_investigation_thread",
+    description="Ver detalles de investigación de Scout: páginas visitadas, findings, tool calls",
+    handler=get_investigation_thread,
+    parameters=[
+        ToolParameter(name="lead_id", type="string", description="Lead UUID", required=True),
+    ],
+    category="research",
+))
+
+registry.register(ToolDefinition(
+    name="trigger_scout_investigation",
+    description="Disparar investigación profunda de Scout (Playwright + IA) para un lead",
+    handler=trigger_scout_investigation,
+    requires_confirmation=True,
+    parameters=[
+        ToolParameter(name="lead_id", type="string", description="Lead UUID", required=True),
+    ],
+    category="research",
+))

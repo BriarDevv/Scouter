@@ -9,7 +9,7 @@ import pytest
 def test_tool_registry_loads_50_tools():
     import app.agent.tools  # noqa: F401
     from app.agent.tool_registry import registry
-    assert len(registry.list_all()) == 55
+    assert len(registry.list_all()) == 58
 
 
 def test_tool_registry_all_handlers_callable():
@@ -30,7 +30,7 @@ def test_tool_registry_schema_contains_all_tools():
     import app.agent.tools  # noqa: F401
     from app.agent.tool_registry import registry
     schema = registry.to_hermes_schema()
-    assert schema.count("<tool>") == 55
+    assert schema.count("<tool>") == 58
 
 
 def test_tool_registry_validates_required_param():
