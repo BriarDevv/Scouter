@@ -467,6 +467,14 @@ def task_generate_draft(
                 task_name="task_generate_draft",
                 result=result,
             )
+
+            # Trigger batch review threshold check after pipeline completion
+            try:
+                from app.workers.batch_review_tasks import task_check_batch_review
+                task_check_batch_review.delay(correlation_id=correlation_id)
+            except Exception:
+                pass  # Non-critical
+
             return result
     except SoftTimeLimitExceeded:
         logger.error(
