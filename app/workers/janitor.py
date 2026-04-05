@@ -103,10 +103,35 @@ def sweep_stale_tasks(session_factory=None) -> dict:
 
         orphan_count = sweep_orphan_pipelines(db)
 
-        if task_count or pipeline_count or orphan_count:
+        # Sweep stuck BatchReviews (generating/reviewing for >10 min)
+        batch_review_count = 0
+        try:
+            from app.models.batch_review import BatchReview
+            batch_review_cutoff = datetime.now(UTC) - timedelta(minutes=10)
+            stuck_reviews = db.execute(
+                select(BatchReview).where(
+                    BatchReview.status.in_(["generating", "reviewing"]),
+                    BatchReview.updated_at < batch_review_cutoff,
+                )
+            ).scalars().all()
+            for review in stuck_reviews:
+                review.status = "failed"
+                review.reviewer_notes = (
+                    f"Stuck in '{review.status}' for >10 min — marked failed by janitor"
+                )
+                batch_review_count += 1
+                logger.warning(
+                    "janitor_marked_stale_batch_review",
+                    review_id=str(review.id),
+                    previous_status=review.status,
+                )
+        except Exception as exc:
+            logger.debug("janitor_batch_review_sweep_failed", error=str(exc))
+
+        if task_count or pipeline_count or orphan_count or batch_review_count:
             db.commit()
 
-    result = {"tasks_failed": task_count, "pipelines_failed": pipeline_count, "orphans_failed": orphan_count}
+    result = {"tasks_failed": task_count, "pipelines_failed": pipeline_count, "orphans_failed": orphan_count, "batch_reviews_failed": batch_review_count}
     logger.info("janitor_sweep_done", **result)
     return result
 
