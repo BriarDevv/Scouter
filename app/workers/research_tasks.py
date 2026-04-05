@@ -22,8 +22,8 @@ logger = get_logger(__name__)
     bind=True,
     max_retries=1,
     default_retry_delay=30,
-    soft_time_limit=120,
-    time_limit=180,
+    soft_time_limit=300,
+    time_limit=360,
 )
 def task_research_lead(
     self,
@@ -102,6 +102,17 @@ def task_research_lead(
                     )
                     db.add(thread)
                     db.commit()
+
+                    # Write structured Scout context for downstream steps
+                    if pipeline_uuid and scout_result.findings:
+                        from app.services.pipeline.context_service import append_step_context
+                        append_step_context(db, pipeline_uuid, "scout", {
+                            "pages_visited": len(scout_result.pages_visited or []),
+                            "opportunity": scout_result.findings.get("opportunity", ""),
+                            "whatsapp_detected": scout_result.findings.get("whatsapp_detected", False),
+                            "findings_summary": scout_result.findings.get("summary", ""),
+                            "loops_used": scout_result.loops_used,
+                        })
             except Exception as scout_exc:
                 logger.warning(
                     "scout_fallback_to_http",
@@ -203,7 +214,7 @@ def task_research_lead(
                 if pipeline_run_id:
                     try:
                         from app.workers.brief_tasks import task_generate_brief
-                        task_generate_brief.delay(lead_id, pipeline_run_id)
+                        task_generate_brief.delay(lead_id, pipeline_run_id, correlation_id=correlation_id)
                         logger.info(
                             "brief_chained_from_research", lead_id=lead_id
                         )
