@@ -69,18 +69,29 @@ def _build_system_context(db: Session) -> str:
     except Exception as exc:
         logger.debug("mote_context_stats_failed", error=str(exc))
 
-    # Inject latest weekly report + structured learning context
+    # Inject freshest synthesis: batch review (preferred) or weekly report (fallback)
+    batch_brief_injected = False
     try:
-        from app.models.weekly_report import WeeklyReport
-        latest = (
-            db.query(WeeklyReport)
-            .order_by(WeeklyReport.created_at.desc())
-            .first()
-        )
-        if latest and latest.synthesis_text:
-            parts.append(f"\nUltimo reporte semanal del equipo IA:\n{latest.synthesis_text[:1500]}")
+        from app.services.pipeline.batch_review_service import get_latest_strategy_brief
+        brief = get_latest_strategy_brief(db)
+        if brief:
+            parts.append(f"\nUltima reunion del equipo IA:\n{brief[:1500]}")
+            batch_brief_injected = True
     except Exception as exc:
-        logger.debug("mote_context_weekly_report_failed", error=str(exc))
+        logger.debug("mote_context_batch_review_failed", error=str(exc))
+
+    if not batch_brief_injected:
+        try:
+            from app.models.weekly_report import WeeklyReport
+            latest = (
+                db.query(WeeklyReport)
+                .order_by(WeeklyReport.created_at.desc())
+                .first()
+            )
+            if latest and latest.synthesis_text:
+                parts.append(f"\nUltimo reporte semanal del equipo IA:\n{latest.synthesis_text[:1500]}")
+        except Exception as exc:
+            logger.debug("mote_context_weekly_report_failed", error=str(exc))
 
     # Inject top correction patterns so Mote can advise on quality
     try:
