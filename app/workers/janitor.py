@@ -106,25 +106,28 @@ def sweep_stale_tasks(session_factory=None) -> dict:
         # Sweep stuck BatchReviews (generating/reviewing for >10 min)
         batch_review_count = 0
         try:
-            from app.models.batch_review import BatchReview
-            batch_review_cutoff = datetime.now(UTC) - timedelta(minutes=10)
-            stuck_reviews = db.execute(
-                select(BatchReview).where(
-                    BatchReview.status.in_(["generating", "reviewing"]),
-                    BatchReview.updated_at < batch_review_cutoff,
-                )
-            ).scalars().all()
-            for review in stuck_reviews:
-                review.status = "failed"
-                review.reviewer_notes = (
-                    f"Stuck in '{review.status}' for >10 min — marked failed by janitor"
-                )
-                batch_review_count += 1
-                logger.warning(
-                    "janitor_marked_stale_batch_review",
-                    review_id=str(review.id),
-                    previous_status=review.status,
-                )
+            from sqlalchemy import inspect as sa_inspect
+            if sa_inspect(db.bind).has_table("batch_reviews"):
+                from app.models.batch_review import BatchReview
+                batch_review_cutoff = datetime.now(UTC) - timedelta(minutes=10)
+                stuck_reviews = db.execute(
+                    select(BatchReview).where(
+                        BatchReview.status.in_(["generating", "reviewing"]),
+                        BatchReview.updated_at < batch_review_cutoff,
+                    )
+                ).scalars().all()
+                for review in stuck_reviews:
+                    old_status = review.status
+                    review.status = "failed"
+                    review.reviewer_notes = (
+                        f"Stuck in '{old_status}' for >10 min — marked failed by janitor"
+                    )
+                    batch_review_count += 1
+                    logger.warning(
+                        "janitor_marked_stale_batch_review",
+                        review_id=str(review.id),
+                        previous_status=old_status,
+                    )
         except Exception as exc:
             logger.debug("janitor_batch_review_sweep_failed", error=str(exc))
 
