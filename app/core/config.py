@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     OLLAMA_MODEL: str = DEFAULT_ROLE_MODEL_MAP[LLMRole.EXECUTOR]
     # Supported local models available for role assignment.
     OLLAMA_SUPPORTED_MODELS: str = ",".join(DEFAULT_SUPPORTED_MODELS)
-    OLLAMA_LEADER_MODEL: str = DEFAULT_ROLE_MODEL_MAP[LLMRole.LEADER]
+    OLLAMA_LEADER_MODEL: str | None = DEFAULT_ROLE_MODEL_MAP[LLMRole.LEADER]
     OLLAMA_EXECUTOR_MODEL: str | None = None
     OLLAMA_REVIEWER_MODEL: str | None = DEFAULT_ROLE_MODEL_MAP[LLMRole.REVIEWER]
     OLLAMA_AGENT_MODEL: str | None = DEFAULT_ROLE_MODEL_MAP[LLMRole.AGENT]
@@ -159,8 +159,9 @@ class Settings(BaseSettings):
         return parse_supported_models(self.OLLAMA_SUPPORTED_MODELS)
 
     @property
-    def ollama_leader_model(self) -> str:
-        return self.OLLAMA_LEADER_MODEL.strip()
+    def ollama_leader_model(self) -> str | None:
+        configured = (self.OLLAMA_LEADER_MODEL or "").strip()
+        return configured or None
 
     @property
     def ollama_executor_model(self) -> str:

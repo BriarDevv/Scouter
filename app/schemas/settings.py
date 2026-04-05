@@ -2,7 +2,7 @@ from pydantic import BaseModel
 
 
 class RoleModelDefaultsResponse(BaseModel):
-    leader: str
+    leader: str | None
     executor: str
     reviewer: str | None
 
@@ -12,7 +12,7 @@ class LLMSettingsResponse(BaseModel):
     base_url: str
     read_only: bool
     editable: bool
-    leader_model: str
+    leader_model: str | None
     executor_model: str
     reviewer_model: str | None
     supported_models: list[str]
