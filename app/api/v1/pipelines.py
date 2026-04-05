@@ -124,6 +124,7 @@ def resume_pipeline_run(pipeline_run_id: uuid.UUID, db: DbSession):
         "scoring": "task_analyze_lead",
         "analysis": "task_analyze_lead",  # re-trigger analysis to decide branch
         "research": "task_generate_brief",
+        "scout": "task_generate_brief",  # Scout stuck → skip to brief
         "brief_generation": "task_review_brief",
         "brief_review": "task_generate_draft",
         "draft_generation": None,  # terminal
