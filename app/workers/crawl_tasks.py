@@ -3,6 +3,7 @@
 import uuid
 
 from app.core.logging import get_logger
+from app.db.session import SessionLocal
 from app.workers.celery_app import celery_app
 from app.workflows.territory_crawl import run_territory_crawl_workflow
 
@@ -46,3 +47,38 @@ def task_crawl_territory(
         correlation_id=correlation_id,
         queue=queue,
     )
+
+
+@celery_app.task(
+    name="app.workers.crawl_tasks.task_scheduled_crawl",
+    bind=True,
+    max_retries=0,
+)
+def task_scheduled_crawl(self):
+    """Celery Beat task: crawl all active territories on schedule."""
+    from app.models.territory import Territory
+
+    with SessionLocal() as db:
+        territories = (
+            db.query(Territory)
+            .filter(Territory.is_active.is_(True))
+            .all()
+        )
+        if not territories:
+            logger.info("scheduled_crawl_no_active_territories")
+            return {"status": "skipped", "reason": "no_active_territories"}
+
+        dispatched = 0
+        for t in territories:
+            try:
+                task_crawl_territory.delay(str(t.id))
+                dispatched += 1
+            except Exception as exc:
+                logger.warning(
+                    "scheduled_crawl_dispatch_failed",
+                    territory_id=str(t.id),
+                    error=str(exc),
+                )
+
+        logger.info("scheduled_crawl_dispatched", count=dispatched)
+        return {"status": "ok", "territories_dispatched": dispatched}

@@ -75,6 +75,10 @@ celery_app.conf.update(
             "task": "app.workers.weekly_tasks.task_weekly_report",
             "schedule": crontab(day_of_week=0, hour=20, minute=0),
         },
+        "scheduled-territory-crawl": {
+            "task": "app.workers.crawl_tasks.task_scheduled_crawl",
+            "schedule": crontab(day_of_week="1,4", hour=8, minute=0),  # Mon+Thu 8am
+        },
     },
 )
 
