@@ -200,6 +200,34 @@ class StructuredInvocationResult[ParsedT: BaseModel](BaseModel):
     tags: dict[str, str] = Field(default_factory=dict)
 
 
+# ── Batch Review Contracts ──────────────────────────────────────────
+
+
+class ProposalItem(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    category: str
+    description: str
+    impact: Literal["high", "medium", "low"] = "medium"
+    confidence: Literal["high", "medium", "low"] = "medium"
+    evidence: str = ""
+
+
+class BatchReviewSynthesisResult(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    strategy_brief: str
+    proposals: list[ProposalItem] = Field(default_factory=list)
+
+
+class BatchReviewValidationResult(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    validated_brief: str
+    adjusted_proposals: list[ProposalItem] = Field(default_factory=list)
+    reviewer_notes: str = ""
+
+
 class TextInvocationResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
