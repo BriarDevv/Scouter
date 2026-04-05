@@ -69,7 +69,7 @@ def _build_system_context(db: Session) -> str:
     except Exception as exc:
         logger.debug("mote_context_stats_failed", error=str(exc))
 
-    # Inject latest weekly report if available
+    # Inject latest weekly report + structured learning context
     try:
         from app.models.weekly_report import WeeklyReport
         latest = (
@@ -78,9 +78,32 @@ def _build_system_context(db: Session) -> str:
             .first()
         )
         if latest and latest.synthesis_text:
-            parts.append(f"\nUltimo reporte semanal del equipo IA:\n{latest.synthesis_text[:500]}")
+            parts.append(f"\nUltimo reporte semanal del equipo IA:\n{latest.synthesis_text[:1500]}")
     except Exception as exc:
         logger.debug("mote_context_weekly_report_failed", error=str(exc))
+
+    # Inject top correction patterns so Mote can advise on quality
+    try:
+        from datetime import UTC, datetime, timedelta
+
+        from sqlalchemy import func
+
+        from app.models.review_correction import ReviewCorrection
+
+        cutoff = datetime.now(UTC) - timedelta(days=30)
+        top_corrections = (
+            db.query(ReviewCorrection.category, func.count().label("cnt"))
+            .filter(ReviewCorrection.created_at >= cutoff)
+            .group_by(ReviewCorrection.category)
+            .order_by(func.count().desc())
+            .limit(3)
+            .all()
+        )
+        if top_corrections:
+            lines = [f"  - {cat}: {cnt} veces" for cat, cnt in top_corrections]
+            parts.append("\nPatrones de correccion del Reviewer (ultimos 30 dias):\n" + "\n".join(lines))
+    except Exception as exc:
+        logger.debug("mote_context_corrections_failed", error=str(exc))
 
     return "\n".join(parts)
 
