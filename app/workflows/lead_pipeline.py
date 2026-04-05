@@ -145,6 +145,53 @@ def run_high_value_lane_inline(db: Session, lead_id: uuid.UUID) -> HighValueLane
             error=str(exc),
         )
 
+    # Review the brief if one was generated
+    if result.brief_generated:
+        try:
+            from app.llm.client import review_commercial_brief_structured
+            from app.llm.roles import LLMRole
+            from app.models.commercial_brief import BriefStatus
+
+            lead = db.get(Lead, lead_id)
+            if lead and lead.commercial_briefs:
+                brief = lead.commercial_briefs[0]
+                review_result = review_commercial_brief_structured(
+                    opportunity_score=brief.opportunity_score,
+                    budget_tier=brief.budget_tier.value if brief.budget_tier else None,
+                    estimated_scope=brief.estimated_scope.value if brief.estimated_scope else None,
+                    recommended_contact_method=(
+                        brief.recommended_contact_method.value
+                        if brief.recommended_contact_method
+                        else None
+                    ),
+                    should_call=brief.should_call.value if brief.should_call else None,
+                    call_reason=brief.call_reason,
+                    why_this_lead_matters=brief.why_this_lead_matters,
+                    main_business_signals=brief.main_business_signals or [],
+                    main_digital_gaps=brief.main_digital_gaps or [],
+                    recommended_angle=brief.recommended_angle,
+                    demo_recommended=brief.demo_recommended,
+                    role=LLMRole.REVIEWER,
+                    target_type="commercial_brief",
+                    target_id=str(brief.id),
+                    tags={"lead_id": str(lead_id)},
+                )
+                review_payload = review_result.parsed
+                from datetime import UTC, datetime
+
+                brief.reviewer_model = review_result.model
+                brief.reviewed_at = datetime.now(UTC)
+                if review_payload and review_payload.approved:
+                    brief.status = BriefStatus.REVIEWED
+                db.commit()
+        except Exception as exc:
+            result.warnings.append(f"brief_review:{exc}")
+            logger.warning(
+                "lead_high_value_lane_brief_review_failed",
+                lead_id=str(lead_id),
+                error=str(exc),
+            )
+
     return result
 
 
