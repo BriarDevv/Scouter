@@ -63,6 +63,32 @@ def task_research_lead(
                     analysis = ctx.get("analysis", {})
                     analysis_ctx = f"Quality: {analysis.get('quality', '?')}. {analysis.get('reasoning', '')}"
 
+                # Inject outcome feedback for Scout's industry+city awareness
+                try:
+                    from app.models.outcome_snapshot import OutcomeSnapshot
+                    lead_obj = db.get(Lead, uuid.UUID(lead_id))
+                    if lead_obj and lead_obj.industry:
+                        past_outcomes = (
+                            db.query(OutcomeSnapshot)
+                            .filter(OutcomeSnapshot.lead_industry == lead_obj.industry)
+                            .order_by(OutcomeSnapshot.created_at.desc())
+                            .limit(5)
+                            .all()
+                        )
+                        if past_outcomes:
+                            won = sum(1 for o in past_outcomes if o.outcome == "won")
+                            lost = len(past_outcomes) - won
+                            signals_won = set()
+                            for o in past_outcomes:
+                                if o.outcome == "won" and o.signals_json:
+                                    signals_won.update(o.signals_json[:3])
+                            hint = f"\nOutcome history ({lead_obj.industry}): {won} WON, {lost} LOST."
+                            if signals_won:
+                                hint += f" Winning signals: {', '.join(signals_won)}."
+                            analysis_ctx += hint
+                except Exception:
+                    pass  # Non-critical: Scout proceeds without outcome feedback
+
                 lead = db.get(Lead, uuid.UUID(lead_id))
                 if lead:
                     scout_result = run_scout_investigation(
