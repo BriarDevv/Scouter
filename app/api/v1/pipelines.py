@@ -99,6 +99,59 @@ def get_run(pipeline_run_id: uuid.UUID, db: DbSession):
     )
 
 
+@router.post("/runs/{pipeline_run_id}/resume")
+def resume_pipeline_run(pipeline_run_id: uuid.UUID, db: DbSession):
+    """Resume a stuck pipeline run by re-dispatching the next step."""
+    from app.models.task_tracking import PipelineRun
+
+    run = db.get(PipelineRun, pipeline_run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Pipeline run not found")
+    if run.finished_at is not None:
+        raise HTTPException(status_code=400, detail=f"Pipeline already finished with status: {run.status}")
+    if run.status not in {"running", "failed"}:
+        raise HTTPException(status_code=400, detail=f"Cannot resume pipeline in status: {run.status}")
+
+    lead_id = str(run.lead_id)
+    run_id = str(run.id)
+    correlation_id = run.correlation_id
+
+    # Determine the next step based on current_step
+    step = run.current_step or "pipeline_dispatch"
+    step_chain = {
+        "pipeline_dispatch": "task_enrich_lead",
+        "enrichment": "task_score_lead",
+        "scoring": "task_analyze_lead",
+        "analysis": "task_analyze_lead",  # re-trigger analysis to decide branch
+        "research": "task_generate_brief",
+        "brief_generation": "task_review_brief",
+        "brief_review": "task_generate_draft",
+        "draft_generation": None,  # terminal
+    }
+
+    next_task_name = step_chain.get(step)
+    if next_task_name is None:
+        raise HTTPException(status_code=400, detail=f"No next step after: {step}")
+
+    # Dispatch the next task
+    from app.workers import tasks as task_module
+    task_fn = getattr(task_module, next_task_name, None)
+    if task_fn is None:
+        raise HTTPException(status_code=500, detail=f"Task function not found: {next_task_name}")
+
+    run.status = "running"
+    db.commit()
+
+    task_fn.delay(lead_id, pipeline_run_id=run_id, correlation_id=correlation_id)
+
+    return {
+        "ok": True,
+        "pipeline_run_id": str(run.id),
+        "resumed_from": step,
+        "next_task": next_task_name,
+    }
+
+
 @router.post("/batch")
 def start_batch_pipeline(request: Request, db: DbSession):
     """Start the batch pipeline that processes all 'new' leads."""
