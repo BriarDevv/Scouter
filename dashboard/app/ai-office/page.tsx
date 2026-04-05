@@ -25,6 +25,7 @@ import {
 } from "@/lib/api/client";
 import { BatchReviewsSection } from "@/components/ai-office/batch-reviews-section";
 import { PipelineRunsSection } from "@/components/ai-office/pipeline-runs-section";
+import { AttentionQueue } from "@/components/dashboard/attention-queue";
 import { MessageSquare, FileText } from "lucide-react";
 
 interface AgentInfo {
@@ -135,6 +136,9 @@ export default function AiOfficePage() {
         title="AI Office"
         description="Estado del equipo de inteligencia artificial de Scouter"
       />
+
+      {/* Attention Queue */}
+      <AttentionQueue />
 
       {/* Agent Status Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
