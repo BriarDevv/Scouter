@@ -5,6 +5,8 @@ from dataclasses import dataclass, field
 from pydantic import BaseModel
 
 from app.llm.contracts import (
+    BatchReviewSynthesisResult,
+    BatchReviewValidationResult,
     BusinessSummaryResult,
     CommercialBriefResult,
     CommercialBriefReviewResult,
@@ -20,6 +22,10 @@ from app.llm.contracts import (
     WhatsAppDraftResult,
 )
 from app.llm.prompts import (
+    BATCH_REVIEW_SYNTHESIS_DATA,
+    BATCH_REVIEW_SYNTHESIS_SYSTEM,
+    BATCH_REVIEW_VALIDATION_DATA,
+    BATCH_REVIEW_VALIDATION_SYSTEM,
     CLASSIFY_INBOUND_REPLY_DATA,
     CLASSIFY_INBOUND_REPLY_SYSTEM,
     COMMERCIAL_BRIEF_DATA,
@@ -220,4 +226,20 @@ PROMPT_REGISTRY: dict[str, PromptDefinition[BaseModel]] = {
     INBOUND_REPLY_REVIEW_PROMPT.prompt_id: INBOUND_REPLY_REVIEW_PROMPT,
     COMMERCIAL_BRIEF_PROMPT.prompt_id: COMMERCIAL_BRIEF_PROMPT,
     COMMERCIAL_BRIEF_REVIEW_PROMPT.prompt_id: COMMERCIAL_BRIEF_REVIEW_PROMPT,
+    "batch_review.synthesis": PromptDefinition(
+        prompt_id="batch_review.synthesis",
+        prompt_version="v1",
+        owner="app.services.pipeline.batch_review_service",
+        system_prompt=BATCH_REVIEW_SYNTHESIS_SYSTEM,
+        user_prompt_template=BATCH_REVIEW_SYNTHESIS_DATA,
+        response_model=BatchReviewSynthesisResult,
+    ),
+    "batch_review.validation": PromptDefinition(
+        prompt_id="batch_review.validation",
+        prompt_version="v1",
+        owner="app.services.pipeline.batch_review_service",
+        system_prompt=BATCH_REVIEW_VALIDATION_SYSTEM,
+        user_prompt_template=BATCH_REVIEW_VALIDATION_DATA,
+        response_model=BatchReviewValidationResult,
+    ),
 }

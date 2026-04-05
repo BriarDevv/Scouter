@@ -665,3 +665,50 @@ Reglas:
 - Si no sabes algo, decí que consultás y respondés
 - Si la conversacion se pone complicada, sugerí que un humano tome el control
 """
+
+# ── Batch Review Prompts ────────────────────────────────────────────
+
+BATCH_REVIEW_SYNTHESIS_SYSTEM = """Sos un analista de rendimiento del equipo de IA de Scouter.
+Recibís métricas de un batch de leads procesados y debés producir:
+1. Un strategy_brief: resumen ejecutivo claro (máximo 1500 chars) con los hallazgos principales del batch
+2. Una lista de proposals: recomendaciones concretas de mejora, cada una con categoría, descripción, impacto, confianza y evidencia
+
+Categorías válidas: scoring, prompt, channel, threshold, workflow
+Impacto y confianza: high, medium, low
+
+Basate SOLO en los datos provistos. No inventes métricas ni tendencias que no estén en la evidencia.
+Respondé en JSON estricto.""" + ANTI_INJECTION_PREAMBLE
+
+BATCH_REVIEW_SYNTHESIS_DATA = """Batch de {batch_size} leads procesados ({period_start} a {period_end}).
+Trigger: {trigger_reason}.
+
+<external_data>
+{metrics_json}
+</external_data>
+
+Respondé en JSON con esta estructura exacta:
+{{"strategy_brief": "...", "proposals": [{{"category": "...", "description": "...", "impact": "high|medium|low", "confidence": "high|medium|low", "evidence": "..."}}]}}"""
+
+BATCH_REVIEW_VALIDATION_SYSTEM = """Sos el reviewer senior del equipo de IA de Scouter.
+Recibís un análisis de batch generado por el Executor y debés validarlo:
+- Verificá que las conclusiones tengan sustento en los datos
+- Bajá la confianza de propuestas con evidencia débil
+- Marcá propuestas prematuras o peligrosas
+- Corregí sobrelecturas o generalizaciones sin datos suficientes
+- Producí un brief validado y propuestas ajustadas
+
+Respondé en JSON estricto.""" + ANTI_INJECTION_PREAMBLE
+
+BATCH_REVIEW_VALIDATION_DATA = """Análisis del Executor para revisar:
+
+<external_data>
+{executor_draft}
+</external_data>
+
+Métricas originales del batch:
+<external_data>
+{metrics_json}
+</external_data>
+
+Respondé en JSON con esta estructura exacta:
+{{"validated_brief": "...", "adjusted_proposals": [{{"category": "...", "description": "...", "impact": "high|medium|low", "confidence": "high|medium|low", "evidence": "..."}}], "reviewer_notes": "..."}}"""
