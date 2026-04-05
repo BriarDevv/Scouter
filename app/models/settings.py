@@ -93,3 +93,6 @@ class OperationalSettings(Base):
 
     # ── Pricing matrix (JSON string for budget estimation)
     pricing_matrix: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    # ── Scoring overrides from batch review proposals (JSON: {signal_key: weight})
+    scoring_overrides: Mapped[dict | None] = mapped_column(JSON, nullable=True)

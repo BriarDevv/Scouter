@@ -60,14 +60,34 @@ COMPLETENESS_BONUSES = {
 }
 
 
-def compute_score(lead: Lead) -> float:
-    """Compute a prospect score for a lead. Range: 0-100."""
-    score = 0.0
+def _get_scoring_overrides(db=None) -> dict[str, float]:
+    """Load scoring weight overrides from OperationalSettings if available."""
+    if db is None:
+        return {}
+    try:
+        from app.services.settings.operational_settings_service import get_cached_settings
+        ops = get_cached_settings(db)
+        return getattr(ops, "scoring_overrides", None) or {}
+    except Exception:
+        return {}
 
-    # Signal-based scoring
+
+def compute_score(lead: Lead, db=None) -> float:
+    """Compute a prospect score for a lead. Range: 0-100.
+
+    If db is provided, reads scoring weight overrides from OperationalSettings
+    (applied via batch review proposals).
+    """
+    score = 0.0
+    overrides = _get_scoring_overrides(db)
+
+    # Signal-based scoring (with optional overrides from proposals)
     for signal in lead.signals:
-        weight = SIGNAL_WEIGHTS.get(signal.signal_type, 0.0)
-        score += weight
+        signal_key = signal.signal_type.value if hasattr(signal.signal_type, 'value') else str(signal.signal_type)
+        if signal_key in overrides:
+            score += overrides[signal_key]
+        else:
+            score += SIGNAL_WEIGHTS.get(signal.signal_type, 0.0)
 
     # Industry bonus
     if lead.industry:
