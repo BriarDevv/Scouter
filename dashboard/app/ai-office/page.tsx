@@ -15,7 +15,15 @@ import {
   TrendingUp,
   AlertTriangle,
 } from "lucide-react";
-import { apiFetch } from "@/lib/api/client";
+import {
+  apiFetch,
+  getOutboundConversations,
+  getWeeklyReports,
+  generateWeeklyReport,
+  type OutboundConversation,
+  type WeeklyReportData,
+} from "@/lib/api/client";
+import { MessageSquare, FileText } from "lucide-react";
 
 interface AgentInfo {
   name: string;
@@ -88,19 +96,26 @@ export default function AiOfficePage() {
   const [status, setStatus] = useState<AiOfficeStatus | null>(null);
   const [decisions, setDecisions] = useState<DecisionRecord[]>([]);
   const [investigations, setInvestigations] = useState<InvestigationRecord[]>([]);
+  const [conversations, setConversations] = useState<OutboundConversation[]>([]);
+  const [weeklyReports, setWeeklyReports] = useState<WeeklyReportData[]>([]);
+  const [generatingReport, setGeneratingReport] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
-        const [statusRes, decisionsRes, investigationsRes] = await Promise.allSettled([
+        const [statusRes, decisionsRes, investigationsRes, convosRes, reportsRes] = await Promise.allSettled([
           apiFetch<AiOfficeStatus>("/ai-office/status"),
           apiFetch<DecisionRecord[]>("/ai-office/decisions?limit=15"),
           apiFetch<InvestigationRecord[]>("/ai-office/investigations?limit=5"),
+          getOutboundConversations(10),
+          getWeeklyReports(3),
         ]);
         if (statusRes.status === "fulfilled") setStatus(statusRes.value);
         if (decisionsRes.status === "fulfilled") setDecisions(decisionsRes.value);
         if (investigationsRes.status === "fulfilled") setInvestigations(investigationsRes.value);
+        if (convosRes.status === "fulfilled") setConversations(convosRes.value);
+        if (reportsRes.status === "fulfilled") setWeeklyReports(reportsRes.value);
       } catch {
         // API may not be running
       } finally {
@@ -205,6 +220,101 @@ export default function AiOfficePage() {
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">Sin investigaciones recientes.</p>
+        )}
+      </div>
+
+      {/* Mote Conversations */}
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          <h3 className="text-sm font-medium">Conversaciones Activas (Mote)</h3>
+        </div>
+        {conversations.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                  <th className="pb-2 pr-3">Lead</th>
+                  <th className="pb-2 pr-3">Canal</th>
+                  <th className="pb-2 pr-3">Estado</th>
+                  <th className="pb-2 pr-3">Mensajes</th>
+                  <th className="pb-2">Fecha</th>
+                </tr>
+              </thead>
+              <tbody>
+                {conversations.map((c) => (
+                  <tr key={c.id} className="border-b border-border/30 last:border-0">
+                    <td className="py-2 pr-3 font-medium truncate max-w-[200px]">{c.lead_name || c.lead_id.slice(0, 8)}</td>
+                    <td className="py-2 pr-3">
+                      <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                        {c.channel}
+                      </span>
+                    </td>
+                    <td className="py-2 pr-3">
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                        c.status === "active" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" :
+                        c.status === "closed" ? "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300" :
+                        "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300"
+                      }`}>
+                        {c.status}
+                      </span>
+                    </td>
+                    <td className="py-2 pr-3 text-xs text-muted-foreground">{c.message_count}</td>
+                    <td className="py-2 text-xs text-muted-foreground">
+                      {new Date(c.created_at).toLocaleDateString("es-AR")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Sin conversaciones de outreach activas.</p>
+        )}
+      </div>
+
+      {/* Weekly Reports */}
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <h3 className="text-sm font-medium">Reportes Semanales</h3>
+          </div>
+          <button
+            onClick={async () => {
+              setGeneratingReport(true);
+              try {
+                const report = await generateWeeklyReport();
+                setWeeklyReports((prev) => [report, ...prev]);
+              } catch { /* ignore */ }
+              setGeneratingReport(false);
+            }}
+            disabled={generatingReport}
+            className="text-xs px-3 py-1 rounded-md bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50 disabled:opacity-50"
+          >
+            {generatingReport ? "Generando..." : "Generar ahora"}
+          </button>
+        </div>
+        {weeklyReports.length > 0 ? (
+          <div className="space-y-3">
+            {weeklyReports.map((r) => (
+              <div key={r.id} className="rounded-lg border border-border/50 p-3">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-xs font-medium text-foreground">
+                    Semana del {new Date(r.week_start).toLocaleDateString("es-AR")}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(r.created_at).toLocaleDateString("es-AR")}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground whitespace-pre-line line-clamp-4">
+                  {r.synthesis_text || "Sin síntesis disponible."}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Sin reportes semanales. Genera uno manualmente o esperá al próximo domingo.</p>
         )}
       </div>
 
