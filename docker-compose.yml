@@ -62,7 +62,7 @@ services:
     build:
       context: .
       dockerfile: infra/docker/Dockerfile
-    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=2 -Q default,enrichment,scoring,llm,reviewer,research
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=3 -Q default,enrichment,scoring,research --hostname=worker-general@%h
     env_file:
       - .env
     environment:
@@ -83,6 +83,29 @@ services:
       timeout: 15s
       retries: 3
       start_period: 15s
+    volumes:
+      - .:/app
+    working_dir: /app
+
+  worker-llm:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=2 -Q llm,reviewer --hostname=worker-llm@%h
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - .:/app
     working_dir: /app
