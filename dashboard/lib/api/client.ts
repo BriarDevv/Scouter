@@ -749,3 +749,77 @@ export async function getOutcomeAnalytics(): Promise<OutcomeAnalytics> {
 export async function getSignalCorrelations(): Promise<SignalCorrelation[]> {
   return apiFetch<SignalCorrelation[]>("/performance/outcomes/signals");
 }
+
+// ─── Agent OS: AI Health & Performance ─────────────────────────────
+
+export interface AiHealthData {
+  approval_rate: number;
+  fallback_rate: number;
+  avg_latency_ms: number | null;
+  invocations_24h: number;
+}
+
+export async function getAiHealth(): Promise<AiHealthData> {
+  return apiFetch<AiHealthData>("/performance/ai-health");
+}
+
+export interface ScoringRecommendation {
+  type: string;
+  signal?: string;
+  category?: string;
+  message: string;
+  confidence: string;
+}
+
+export async function getScoringRecommendations(): Promise<ScoringRecommendation[]> {
+  return apiFetch<ScoringRecommendation[]>("/performance/recommendations");
+}
+
+export interface OutcomeAnalysisSummary {
+  total_outcomes: number;
+  win_rate: number;
+  top_signals: { signal: string; win_rate: number }[];
+  top_industries: { industry: string; won: number; lost: number }[];
+  recommendations: ScoringRecommendation[];
+}
+
+export async function getOutcomeAnalysisSummary(): Promise<OutcomeAnalysisSummary> {
+  return apiFetch<OutcomeAnalysisSummary>("/performance/analysis/summary");
+}
+
+// ─── Agent OS: Weekly Reports ──────────────────────────────────────
+
+export interface WeeklyReportData {
+  id: string;
+  week_start: string;
+  week_end: string;
+  metrics_json: Record<string, unknown>;
+  recommendations_json: unknown[];
+  synthesis_text: string;
+  created_at: string;
+}
+
+export async function getWeeklyReports(limit: number = 5): Promise<WeeklyReportData[]> {
+  return apiFetch<WeeklyReportData[]>(`/ai-office/weekly-reports?limit=${limit}`);
+}
+
+export async function generateWeeklyReport(): Promise<WeeklyReportData> {
+  return apiFetch<WeeklyReportData>("/ai-office/weekly-reports/generate", { method: "POST" });
+}
+
+// ─── Agent OS: Outbound Conversations ──────────────────────────────
+
+export interface OutboundConversation {
+  id: string;
+  lead_id: string;
+  lead_name?: string;
+  channel: string;
+  status: string;
+  message_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getOutboundConversations(limit: number = 20): Promise<OutboundConversation[]> {
+  return apiFetch<OutboundConversation[]>(`/ai-office/conversations?limit=${limit}`);
+}
