@@ -24,6 +24,7 @@ import {
   type WeeklyReportData,
 } from "@/lib/api/client";
 import { BatchReviewsSection } from "@/components/ai-office/batch-reviews-section";
+import { PipelineRunsSection } from "@/components/ai-office/pipeline-runs-section";
 import { MessageSquare, FileText } from "lucide-react";
 
 interface AgentInfo {
@@ -321,6 +322,9 @@ export default function AiOfficePage() {
 
       {/* Batch Reviews */}
       <BatchReviewsSection />
+
+      {/* Pipeline Runs */}
+      <PipelineRunsSection />
 
       {/* Decision Log */}
       <div className="rounded-xl border border-border bg-card p-4">
