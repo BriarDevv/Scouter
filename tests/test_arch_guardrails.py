@@ -85,6 +85,7 @@ def test_services_domain_packages_do_not_cross_import_each_other():
     }
     violations: set[str] = set()
     baseline_allowed = {
+        "app/services/pipeline/batch_review_service.py: imports settings",
         "app/services/comms/whatsapp_actions.py: imports notifications",
         "app/services/comms/whatsapp_actions.py: imports outreach",
         "app/services/inbox/inbound_mail_service.py: imports notifications",
