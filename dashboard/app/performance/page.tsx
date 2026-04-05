@@ -26,11 +26,12 @@ import {
   ResponsiveContainer, Cell,
 } from "recharts";
 import { cn } from "@/lib/utils";
+import { AiScorePanel } from "@/components/performance/ai-score-panel";
 import type { CityBreakdown, DashboardStats, IndustryBreakdown, PipelineStage, SourcePerformance, TimeSeriesPoint } from "@/types";
 
 const CONVERSION_COLORS = ["#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444"];
 
-type TabKey = "resumen" | "tendencias" | "desglose" | "insights";
+type TabKey = "resumen" | "tendencias" | "desglose" | "insights" | "ia";
 
 function MetricTable({
   title,
@@ -157,6 +158,7 @@ export default function PerformancePage() {
     { key: "tendencias", label: "Tendencias" },
     { key: "desglose", label: "Desglose" },
     { key: "insights", label: "Insights" },
+    { key: "ia", label: "IA" },
   ];
 
   if (loading) {
@@ -319,6 +321,10 @@ export default function PerformancePage() {
             />
           </section>
         </div>
+      )}
+
+      {activeTab === "ia" && (
+        <AiScorePanel />
       )}
 
       {activeTab === "insights" && (
