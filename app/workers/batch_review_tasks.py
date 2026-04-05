@@ -17,25 +17,29 @@ logger = get_logger(__name__)
 )
 def task_check_batch_review(self, correlation_id: str | None = None) -> dict:
     """Check if batch review thresholds are met and trigger if so."""
-    with SessionLocal() as db:
-        from app.services.pipeline.batch_review_service import check_review_threshold
+    try:
+        with SessionLocal() as db:
+            from app.services.pipeline.batch_review_service import check_review_threshold
 
-        trigger = check_review_threshold(db)
-        if not trigger:
-            return {"status": "skipped", "reason": "threshold_not_met"}
+            trigger = check_review_threshold(db)
+            if not trigger:
+                return {"status": "skipped", "reason": "threshold_not_met"}
 
-        logger.info("batch_review_threshold_met", trigger=trigger)
+            logger.info("batch_review_threshold_met", trigger=trigger)
 
-        from app.services.pipeline.batch_review_service import generate_batch_review
+            from app.services.pipeline.batch_review_service import generate_batch_review
 
-        review = generate_batch_review(db, trigger_reason=trigger)
-        return {
-            "status": review.status,
-            "review_id": str(review.id),
-            "trigger": trigger,
-            "batch_size": review.batch_size,
-            "proposals_count": len(review.proposals),
-        }
+            review = generate_batch_review(db, trigger_reason=trigger)
+            return {
+                "status": review.status,
+                "review_id": str(review.id),
+                "trigger": trigger,
+                "batch_size": review.batch_size,
+                "proposals_count": len(review.proposals),
+            }
+    except Exception as exc:
+        logger.error("batch_review_check_failed", error=str(exc))
+        return {"status": "error", "error": str(exc)[:500]}
 
 
 @celery_app.task(
@@ -46,13 +50,17 @@ def task_check_batch_review(self, correlation_id: str | None = None) -> dict:
 )
 def task_generate_batch_review_manual(self, correlation_id: str | None = None) -> dict:
     """Force-trigger a batch review regardless of thresholds."""
-    with SessionLocal() as db:
-        from app.services.pipeline.batch_review_service import generate_batch_review
+    try:
+        with SessionLocal() as db:
+            from app.services.pipeline.batch_review_service import generate_batch_review
 
-        review = generate_batch_review(db, trigger_reason="manual")
-        return {
-            "status": review.status,
-            "review_id": str(review.id),
-            "batch_size": review.batch_size,
-            "proposals_count": len(review.proposals),
-        }
+            review = generate_batch_review(db, trigger_reason="manual")
+            return {
+                "status": review.status,
+                "review_id": str(review.id),
+                "batch_size": review.batch_size,
+                "proposals_count": len(review.proposals),
+            }
+    except Exception as exc:
+        logger.error("batch_review_manual_failed", error=str(exc))
+        return {"status": "error", "error": str(exc)[:500]}
