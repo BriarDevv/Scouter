@@ -325,6 +325,23 @@ def reject_proposal(db: Session, proposal_id: uuid.UUID) -> ImprovementProposal 
     return proposal
 
 
+def apply_proposal(db: Session, proposal_id: uuid.UUID, result_notes: str = "") -> ImprovementProposal | None:
+    """Mark an approved proposal as applied."""
+    proposal = db.get(ImprovementProposal, proposal_id)
+    if not proposal or proposal.status != "approved":
+        return None
+    proposal.status = "applied"
+    proposal.applied_at = datetime.now(UTC)
+    proposal.result_notes = result_notes or f"Applied by operator at {datetime.now(UTC).isoformat()}"
+    db.commit()
+    logger.info(
+        "proposal_applied",
+        proposal_id=str(proposal_id),
+        category=proposal.category,
+    )
+    return proposal
+
+
 def get_latest_strategy_brief(db: Session) -> str | None:
     review = (
         db.query(BatchReview)

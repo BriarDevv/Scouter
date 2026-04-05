@@ -108,6 +108,21 @@ def approve_proposal(proposal_id: uuid.UUID, db: DbSession):
     }
 
 
+@router.post("/proposals/{proposal_id}/apply")
+def apply_proposal_endpoint(proposal_id: uuid.UUID, db: DbSession):
+    """Mark an approved proposal as applied."""
+    from app.services.pipeline.batch_review_service import apply_proposal as _apply
+
+    proposal = _apply(db, proposal_id)
+    if not proposal:
+        raise HTTPException(status_code=404, detail="Proposal not found or not approved")
+    return {
+        "id": str(proposal.id),
+        "status": proposal.status,
+        "applied_at": proposal.applied_at.isoformat() if proposal.applied_at else None,
+    }
+
+
 @router.post("/proposals/{proposal_id}/reject")
 def reject_proposal(proposal_id: uuid.UUID, db: DbSession):
     """Reject an improvement proposal."""
