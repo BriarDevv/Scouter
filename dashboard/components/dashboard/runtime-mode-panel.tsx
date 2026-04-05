@@ -23,23 +23,31 @@ export function RuntimeModePanel({ currentMode, saving, onChange }: RuntimeModeP
         </span>
       </div>
       <div className="flex items-center gap-1">
-        {(["safe", "assisted", "auto"] as const).map((mode) => (
-          <button
-            key={mode}
-            onClick={() => onChange(mode)}
-            disabled={saving}
-            className={cn(
-              "rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
-              currentMode === mode
-                ? mode === "safe" ? "bg-emerald-600 text-white"
-                  : mode === "assisted" ? "bg-amber-500 text-white"
-                  : "bg-red-600 text-white"
-                : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            {mode === "safe" ? "Seguro" : mode === "assisted" ? "Asistido" : "Auto"}
-          </button>
-        ))}
+        {(["safe", "assisted", "auto"] as const).map((mode) => {
+          const tooltips: Record<string, string> = {
+            safe: "Drafts requieren aprobacion manual. Envio manual. Maxima seguridad.",
+            assisted: "Pipeline automatico. Drafts auto-aprobados con alta confianza. Envio con aprobacion.",
+            auto: "Pipeline + envio automatico. Mote gestiona conversaciones. Minima intervencion.",
+          };
+          return (
+            <button
+              key={mode}
+              onClick={() => onChange(mode)}
+              disabled={saving}
+              title={tooltips[mode]}
+              className={cn(
+                "rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
+                currentMode === mode
+                  ? mode === "safe" ? "bg-emerald-600 text-white"
+                    : mode === "assisted" ? "bg-amber-500 text-white"
+                    : "bg-red-600 text-white"
+                  : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              {mode === "safe" ? "Seguro" : mode === "assisted" ? "Asistido" : "Auto"}
+            </button>
+          );
+        })}
         {saving && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground ml-1" />}
       </div>
     </div>
