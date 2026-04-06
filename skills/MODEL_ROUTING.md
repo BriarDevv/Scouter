@@ -13,7 +13,7 @@ Which model handles what. This is the authoritative reference for Scouter.
 ## Routing rules
 
 1. **Data queries** → No model. Tool-only via scouterctl.py.
-2. **Briefs / summaries** → leader (via opsctl.py, which runs tools first).
+2. **Briefs / summaries** → leader (via scouterctl.py, which runs tools first).
 3. **Draft generation** → executor (via API, async task).
 4. **Reply classification** → executor (via API).
 5. **Lead/draft/reply review** → reviewer (on-demand, async on this machine).
