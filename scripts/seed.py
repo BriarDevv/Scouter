@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.db.session import SessionLocal
 from app.models.lead_source import LeadSource, SourceType
 from app.schemas.lead import LeadCreate
-from app.services.lead_service import create_lead
+from app.services.leads.lead_service import create_lead
 from app.models.territory import Territory
 
 SAMPLE_LEADS = [
