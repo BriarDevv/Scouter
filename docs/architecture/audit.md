@@ -188,8 +188,7 @@ The problem is not absence of contexts. The problem is that the contexts do not 
 - Severity: Critical
 - Impact: async fragility, change fear, duplicated business rules, slow onboarding
 - Evidence:
-  - `app/workers/tasks.py` is 1819 LOC
-  - It mixes:
+  - `app/workers/tasks.py` (now a thin dispatcher after refactor) previously mixed:
     - workflow dispatch,
     - step execution,
     - tracking,
