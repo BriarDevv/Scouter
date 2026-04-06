@@ -230,11 +230,8 @@ export default function PerformancePage() {
           </section>
 
           <section>
-            <SectionHeader title="Velocidad del Pipeline" subtitle="Tiempo promedio entre etapas" className="mb-4" />
+            <SectionHeader title="Velocidad del Pipeline" subtitle="Tiempo promedio hasta cierre" className="mb-4" />
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              <StatCard label="Hasta Contacto" value={velocityValue(stats.pipeline_velocity * 0.11)} icon={Clock} colorScheme="blue" subtitle="promedio" />
-              <StatCard label="Hasta Respuesta" value={velocityValue(stats.pipeline_velocity * 0.26)} icon={Clock} colorScheme="indigo" subtitle="promedio" />
-              <StatCard label="Hasta Reunión" value={velocityValue(stats.pipeline_velocity * 0.45)} icon={Clock} colorScheme="violet" subtitle="promedio" />
               <StatCard label="Hasta Cierre" value={velocityValue(stats.pipeline_velocity)} icon={Clock} colorScheme="purple" subtitle="promedio" />
             </div>
           </section>
