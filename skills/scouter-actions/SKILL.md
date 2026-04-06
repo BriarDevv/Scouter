@@ -1,6 +1,6 @@
 ---
 name: scouter-actions
-description: "Mutating actions in Scouter. Exec: cd /home/mateo/Scouter && .venv/bin/python scripts/scouterctl.py --data-only --compact <cmd>. Commands: generate-draft --lead-id ID --wait | run-pipeline --lead-id ID --wait | review-lead --lead-id ID --wait | review-draft --draft-id ID --wait | review-reply --message-id ID | task-status --task-id ID. Only on explicit user request."
+description: "Mutating actions in Scouter. Exec: cd /home/briar/src/Scouter && .venv/bin/python scripts/scouterctl.py --data-only --compact <cmd>. Commands: generate-draft --lead-id ID --wait | run-pipeline --lead-id ID --wait | review-lead --lead-id ID --wait | review-draft --draft-id ID --wait | review-reply --message-id ID | task-status --task-id ID. Only on explicit user request."
 metadata: { "hermes": { "emoji": "⚡", "os": ["linux"], "requires": { "bins": ["python3"] } } }
 ---
 
@@ -32,7 +32,7 @@ Mutating operations that change state in Scouter. Only execute on explicit user 
 ## Commands
 
 ```bash
-cd /home/mateo/Scouter && .venv/bin/python scripts/scouterctl.py --data-only --compact <command> [args]
+cd /home/briar/src/Scouter && .venv/bin/python scripts/scouterctl.py --data-only --compact <command> [args]
 ```
 
 | Request | Command |

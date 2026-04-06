@@ -1,6 +1,6 @@
 ---
 name: scouter-notifications
-description: "Scouter notifications. Exec: cd /home/mateo/Scouter && .venv/bin/python scripts/scouterctl.py --data-only --compact <cmd>. Commands: notifications-list --limit N | notifications-list --category business|system|security | notifications-counts | notification-resolve --id UUID | notifications-mark-read. Return ONLY the JSON output."
+description: "Scouter notifications. Exec: cd /home/briar/src/Scouter && .venv/bin/python scripts/scouterctl.py --data-only --compact <cmd>. Commands: notifications-list --limit N | notifications-list --category business|system|security | notifications-counts | notification-resolve --id UUID | notifications-mark-read. Return ONLY the JSON output."
 metadata: { "hermes": { "emoji": "🔔", "os": ["linux"], "requires": { "bins": ["python3"] } } }
 ---
 
@@ -31,7 +31,7 @@ Manage the Scouter notification center — business alerts, system events, and s
 ## Commands
 
 ```bash
-cd /home/mateo/Scouter && .venv/bin/python scripts/scouterctl.py --data-only --compact <command> [args]
+cd /home/briar/src/Scouter && .venv/bin/python scripts/scouterctl.py --data-only --compact <command> [args]
 ```
 
 | Request | Command |

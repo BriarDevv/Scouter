@@ -1,6 +1,6 @@
 ---
 name: scouter-mail
-description: "Mail operations. Exec: cd /home/mateo/Scouter && .venv/bin/python scripts/mailctl.py --data-only --compact <cmd>. Commands: recent-drafts --limit N | draft-detail --draft-id ID | send-status --draft-id ID | send-draft --draft-id ID. Return ONLY the JSON output."
+description: "Mail operations. Exec: cd /home/briar/src/Scouter && .venv/bin/python scripts/mailctl.py --data-only --compact <cmd>. Commands: recent-drafts --limit N | draft-detail --draft-id ID | send-status --draft-id ID | send-draft --draft-id ID. Return ONLY the JSON output."
 metadata: { "hermes": { "emoji": "✉️", "os": ["linux"], "requires": { "bins": ["python3"] } } }
 ---
 
@@ -30,7 +30,7 @@ Send approved drafts and check delivery status. Uses mailctl.py for grounded mai
 ## Commands
 
 ```bash
-cd /home/mateo/Scouter && .venv/bin/python scripts/mailctl.py --data-only --compact <command> [args]
+cd /home/briar/src/Scouter && .venv/bin/python scripts/mailctl.py --data-only --compact <command> [args]
 ```
 
 | Request | Command |

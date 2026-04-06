@@ -33,7 +33,7 @@ Configuration is in Settings → Notifications & WhatsApp.
 ## Commands
 
 ```bash
-cd /home/mateo/Scouter && .venv/bin/python scripts/scouterctl.py --data-only --compact <command> [args]
+cd /home/briar/src/Scouter && .venv/bin/python scripts/scouterctl.py --data-only --compact <command> [args]
 ```
 
 | Request | Command |
