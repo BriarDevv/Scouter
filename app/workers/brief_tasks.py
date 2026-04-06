@@ -26,8 +26,8 @@ def _pipeline_uuid(pipeline_run_id: str | None) -> uuid.UUID | None:
     name="app.workers.brief_tasks.task_generate_brief",
     bind=True,
     max_retries=1,
-    soft_time_limit=120,
-    time_limit=150,
+    soft_time_limit=300,
+    time_limit=360,
 )
 def task_generate_brief(
     self, lead_id: str, pipeline_run_id: str | None = None,
