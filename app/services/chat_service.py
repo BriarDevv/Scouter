@@ -27,32 +27,42 @@ def get_conversation(db: Session, conversation_id: uuid.UUID) -> Conversation | 
 def list_conversations(
     db: Session, *, channel: str | None = None, limit: int = 20
 ) -> list[dict]:
-    stmt = select(Conversation).where(Conversation.is_active == True)  # noqa: E712
+    msg_count_sq = (
+        select(Message.conversation_id, func.count().label("msg_count"))
+        .group_by(Message.conversation_id)
+        .subquery()
+    )
+    last_msg_sq = (
+        select(Message.conversation_id, func.max(Message.created_at).label("last_message_at"))
+        .group_by(Message.conversation_id)
+        .subquery()
+    )
+
+    stmt = (
+        select(
+            Conversation,
+            func.coalesce(msg_count_sq.c.msg_count, 0).label("msg_count"),
+            last_msg_sq.c.last_message_at,
+        )
+        .outerjoin(msg_count_sq, Conversation.id == msg_count_sq.c.conversation_id)
+        .outerjoin(last_msg_sq, Conversation.id == last_msg_sq.c.conversation_id)
+        .where(Conversation.is_active == True)  # noqa: E712
+    )
     if channel:
         stmt = stmt.where(Conversation.channel == channel)
     stmt = stmt.order_by(Conversation.updated_at.desc()).limit(limit)
-    conversations = db.execute(stmt).scalars().all()
 
-    result = []
-    for conv in conversations:
-        msg_count = db.execute(
-            select(func.count())
-            .select_from(Message)
-            .where(Message.conversation_id == conv.id)
-        ).scalar_one()
-        last_msg = db.execute(
-            select(func.max(Message.created_at)).where(
-                Message.conversation_id == conv.id
-            )
-        ).scalar()
-        result.append({
+    rows = db.execute(stmt).all()
+    return [
+        {
             "id": conv.id,
             "title": conv.title,
             "message_count": msg_count,
-            "last_message_at": last_msg,
+            "last_message_at": last_message_at,
             "created_at": conv.created_at,
-        })
-    return result
+        }
+        for conv, msg_count, last_message_at in rows
+    ]
 
 
 def delete_conversation(db: Session, conversation_id: uuid.UUID) -> bool:
