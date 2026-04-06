@@ -207,7 +207,8 @@ def run_territory_crawl_workflow(
                             )
                             create_lead(db, lead_data)
                             total_created += 1
-                        except Exception:
+                        except Exception as exc:
+                            logger.debug("lead_create_skipped", error=str(exc), exc_info=True)
                             total_dup += 1
 
                 progress["leads_found"] = total_found

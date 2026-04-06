@@ -486,8 +486,8 @@ def task_generate_draft(
             try:
                 from app.workers.batch_review_tasks import task_check_batch_review
                 task_check_batch_review.delay(correlation_id=correlation_id)
-            except Exception:
-                pass  # Non-critical
+            except Exception as exc:
+                logger.debug("batch_review_check_failed", error=str(exc), exc_info=True)
 
             return result
     except SoftTimeLimitExceeded:

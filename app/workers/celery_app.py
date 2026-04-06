@@ -35,8 +35,9 @@ def _resolve_low_resource() -> bool:
             row = db.get(OperationalSettings, 1)
             if row and row.low_resource_mode is not None:
                 return row.low_resource_mode
-    except Exception:
-        pass  # DB not available at startup — use env
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).debug("low_resource_db_check_failed, using env default: %s", exc)
     return settings.LOW_RESOURCE_MODE
 
 

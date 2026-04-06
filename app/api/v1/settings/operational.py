@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.core.logging import get_logger
 from app.db.session import get_db
 from app.schemas.operational_settings import (
     OperationalSettingsResponse,
@@ -14,6 +15,8 @@ from app.services.settings.operational_settings_service import (
     to_response_dict,
     update_operational_settings,
 )
+
+logger = get_logger(__name__)
 
 router = APIRouter()
 DbSession = Annotated[Session, Depends(get_db)]
@@ -51,7 +54,8 @@ def get_resource_mode(db: DbSession):
     # What workers are actually running with (resolved at celery import)
     try:
         from app.workers.celery_app import _low_resource as runtime_value
-    except Exception:
+    except Exception as exc:
+        logger.debug("runtime_low_resource_check_failed", error=str(exc), exc_info=True)
         runtime_value = env_value
 
     return {
