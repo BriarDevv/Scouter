@@ -145,6 +145,28 @@ def run_research(db: Session, lead_id: uuid.UUID) -> LeadResearchReport | None:
             report.instagram_exists = False
             report.instagram_confidence = ConfidenceLevel.UNKNOWN
 
+        # WhatsApp verification: check Instagram page for wa.me links
+        if not report.whatsapp_detected and lead.instagram_url:
+            try:
+                import httpx as _httpx
+                with _httpx.Client(timeout=10, follow_redirects=True) as _client:
+                    ig_resp = _client.get(
+                        lead.instagram_url,
+                        headers={"User-Agent": "Mozilla/5.0 (compatible; Scouter/1.0)"},
+                    )
+                    if ig_resp.status_code < 400:
+                        ig_text = ig_resp.text[:100000].lower()
+                        if "wa.me" in ig_text or "api.whatsapp.com" in ig_text or "whatsapp" in ig_text:
+                            report.whatsapp_detected = True
+                            report.whatsapp_confidence = ConfidenceLevel.CONFIRMED
+                            signals.append({
+                                "type": "whatsapp_confirmed",
+                                "detail": "WhatsApp link/mention found on Instagram page",
+                                "confidence": 1.0,
+                            })
+            except Exception:
+                pass  # Non-critical: fall through to phone heuristic
+
         # WhatsApp heuristic: if lead has phone and WhatsApp not yet confirmed,
         # mark as probable (in Argentina ~90%+ businesses with phone have WhatsApp)
         if not report.whatsapp_detected and lead.phone:
