@@ -6,17 +6,16 @@ response string, and is wrapped in try/except (never crashes).
 
 from __future__ import annotations
 
-import time
 import uuid
-from collections import defaultdict
 from datetime import datetime, timezone
 
+from redis import Redis
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.logging import get_logger
 from app.models.lead import Lead
-from app.models.notification import Notification
 from app.models.outreach import DraftStatus, OutreachDraft
 
 logger = get_logger(__name__)
@@ -32,22 +31,36 @@ PERMISSION_TIERS: dict[str, int] = {
 }
 
 
-# -- Action rate limiting: max 10 actions per phone per hour --
+# -- Action rate limiting: max 10 actions per phone per hour (Redis-backed) --
 _ACTION_RATE_LIMIT = 10
 _ACTION_RATE_WINDOW = 3600  # 1 hour
-_action_rate: dict[str, list[float]] = defaultdict(list)
+
+
+_redis: Redis | None = None
+
+
+def _get_redis() -> Redis:
+    global _redis  # noqa: PLW0603
+    if _redis is None:
+        _redis = Redis.from_url(settings.REDIS_URL, decode_responses=True)
+    return _redis
 
 
 def check_action_rate_limit(phone: str) -> bool:
     """Return True if action is within rate limit, False if exceeded."""
-    now = time.time()
-    window = _action_rate[phone]
-    _action_rate[phone] = [t for t in window if now - t < _ACTION_RATE_WINDOW]
-    if len(_action_rate[phone]) >= _ACTION_RATE_LIMIT:
-        logger.warning("wa_action_rate_limited", phone=phone[:6] + "***")
-        return False
-    _action_rate[phone].append(now)
-    return True
+    key = f"wa_action_rate:{phone}"
+    try:
+        r = _get_redis()
+        count = r.incr(key)
+        if count == 1:
+            r.expire(key, _ACTION_RATE_WINDOW)
+        if count > _ACTION_RATE_LIMIT:
+            logger.warning("wa_action_rate_limited", phone=phone[:6] + "***")
+            return False
+        return True
+    except Exception as exc:
+        logger.warning("wa_action_rate_limit_redis_error", error=str(exc))
+        return True  # Fail open if Redis is unavailable
 
 
 def validate_uuid(value: str) -> uuid.UUID | None:
@@ -89,29 +102,40 @@ def execute_mark_read_all(db: Session) -> str:
         return "Error al marcar notificaciones. Intenta de nuevo."
 
 
+def _execute_draft_status_change(
+    db: Session,
+    draft_id: str,
+    target_status: DraftStatus,
+    action_log_name: str,
+) -> str:
+    """Shared helper: set a draft to target_status if currently PENDING_REVIEW."""
+    uid = validate_uuid(draft_id)
+    if uid is None:
+        return "ID de borrador invalido."
+
+    draft = db.get(OutreachDraft, uid)
+    if draft is None:
+        return "No se encontro el borrador con ese ID."
+
+    if draft.status != DraftStatus.PENDING_REVIEW:
+        status_val = draft.status.value if hasattr(draft.status, "value") else draft.status
+        return "El borrador no esta pendiente de revision (estado actual: " + status_val + ")."
+
+    draft.status = target_status
+    draft.reviewed_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(draft)
+
+    lead_name = draft.lead.business_name if draft.lead else "desconocido"
+    action_word = "aprobado" if target_status == DraftStatus.APPROVED else "rechazado"
+    logger.info(action_log_name, draft_id=draft_id, lead=lead_name)
+    return "Borrador " + action_word + " para " + lead_name + "."
+
+
 def execute_approve_draft(db: Session, draft_id: str) -> str:
     """Approve an outreach draft."""
     try:
-        uid = validate_uuid(draft_id)
-        if uid is None:
-            return "ID de borrador invalido."
-
-        draft = db.get(OutreachDraft, uid)
-        if draft is None:
-            return "No se encontro el borrador con ese ID."
-
-        if draft.status != DraftStatus.PENDING_REVIEW:
-            status_val = draft.status.value if hasattr(draft.status, "value") else draft.status
-            return "El borrador no esta pendiente de revision (estado actual: " + status_val + ")."
-
-        draft.status = DraftStatus.APPROVED
-        draft.reviewed_at = datetime.now(timezone.utc)
-        db.commit()
-        db.refresh(draft)
-
-        lead_name = draft.lead.business_name if draft.lead else "desconocido"
-        logger.info("wa_action_approve_draft", draft_id=draft_id, lead=lead_name)
-        return "Borrador aprobado para " + lead_name + "."
+        return _execute_draft_status_change(db, draft_id, DraftStatus.APPROVED, "wa_action_approve_draft")
     except Exception as exc:
         logger.error("wa_action_approve_draft_failed", error=str(exc))
         return "Error al aprobar el borrador. Intenta de nuevo."
@@ -120,26 +144,7 @@ def execute_approve_draft(db: Session, draft_id: str) -> str:
 def execute_reject_draft(db: Session, draft_id: str) -> str:
     """Reject an outreach draft."""
     try:
-        uid = validate_uuid(draft_id)
-        if uid is None:
-            return "ID de borrador invalido."
-
-        draft = db.get(OutreachDraft, uid)
-        if draft is None:
-            return "No se encontro el borrador con ese ID."
-
-        if draft.status != DraftStatus.PENDING_REVIEW:
-            status_val = draft.status.value if hasattr(draft.status, "value") else draft.status
-            return "El borrador no esta pendiente de revision (estado actual: " + status_val + ")."
-
-        draft.status = DraftStatus.REJECTED
-        draft.reviewed_at = datetime.now(timezone.utc)
-        db.commit()
-        db.refresh(draft)
-
-        lead_name = draft.lead.business_name if draft.lead else "desconocido"
-        logger.info("wa_action_reject_draft", draft_id=draft_id, lead=lead_name)
-        return "Borrador rechazado para " + lead_name + "."
+        return _execute_draft_status_change(db, draft_id, DraftStatus.REJECTED, "wa_action_reject_draft")
     except Exception as exc:
         logger.error("wa_action_reject_draft_failed", error=str(exc))
         return "Error al rechazar el borrador. Intenta de nuevo."
@@ -160,10 +165,10 @@ def execute_generate_draft(db: Session, lead_name: str) -> str:
             if draft:
                 logger.info("wa_action_generate_draft", lead_name=lead_name, draft_id=str(draft.id))
                 return "Draft generado para " + lead.business_name + ". Asunto: " + draft.subject
-        except ImportError:
-            pass
-        except Exception:
-            pass
+        except ImportError as exc:
+            logger.warning("wa_action_generate_draft_import_error", error=str(exc))
+        except Exception as exc:
+            logger.warning("wa_action_generate_draft_service_error", lead_name=lead_name, error=str(exc))
 
         # Fallback: queue placeholder
         logger.info("wa_action_generate_draft_queued", lead_name=lead_name)
@@ -178,4 +183,9 @@ def execute_generate_draft(db: Session, lead_name: str) -> str:
 
 def _reset_rate_limits() -> None:
     """Clear action rate limit state (for tests)."""
-    _action_rate.clear()
+    try:
+        r = _get_redis()
+        for key in r.scan_iter("wa_action_rate:*"):
+            r.delete(key)
+    except Exception:
+        pass
