@@ -131,6 +131,8 @@ export default function AiOfficePage() {
   }, []);
 
   return (
+    <div className="flex-1 overflow-y-auto">
+    <div className="mx-auto max-w-[1400px] px-8 py-8">
     <div className="space-y-6">
       <PageHeader
         title="AI Office"
@@ -373,6 +375,8 @@ export default function AiOfficePage() {
           <p className="text-sm text-muted-foreground">Sin decisiones registradas.</p>
         )}
       </div>
+    </div>
+    </div>
     </div>
   );
 }
