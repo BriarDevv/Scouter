@@ -13,7 +13,8 @@ def _make_signal(signal_type: SignalType, detail: str = "") -> MagicMock:
     return signal
 
 
-def _make_lead(signals=None, industry=None, phone=None, email=None, instagram_url=None, city=None):
+def _make_lead(signals=None, industry=None, phone=None, email=None, instagram_url=None, city=None,
+               rating=None, review_count=None):
     lead = MagicMock()
     lead.signals = signals or []
     lead.industry = industry
@@ -21,6 +22,8 @@ def _make_lead(signals=None, industry=None, phone=None, email=None, instagram_ur
     lead.email = email
     lead.instagram_url = instagram_url
     lead.city = city
+    lead.rating = rating
+    lead.review_count = review_count
     return lead
 
 

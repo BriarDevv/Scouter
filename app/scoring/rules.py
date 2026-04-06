@@ -7,8 +7,11 @@ Score breakdown (max 100):
   Google Maps:    up to 18  (low rating 8 + few reviews 10)
 """
 
+from app.core.logging import get_logger
 from app.models.lead import Lead
 from app.models.lead_signal import SignalType
+
+logger = get_logger(__name__)
 
 # Signal weights: positive = good prospect for web dev services
 SIGNAL_WEIGHTS: dict[SignalType, float] = {
@@ -68,7 +71,8 @@ def _get_scoring_overrides(db=None) -> dict[str, float]:
         from app.services.settings.operational_settings_service import get_cached_settings
         ops = get_cached_settings(db)
         return getattr(ops, "scoring_overrides", None) or {}
-    except Exception:
+    except Exception as exc:
+        logger.debug("scoring_overrides_unavailable", error=str(exc), exc_info=True)
         return {}
 
 
@@ -107,17 +111,13 @@ def compute_score(lead: Lead, db=None) -> float:
 
     # Google Maps data bonuses — businesses with few reviews or low rating
     # are more likely to be small/local and need web services
-    try:
-        if lead.rating is not None and isinstance(lead.rating, (int, float)):
-            if lead.rating < 4.0:
-                score += 8.0
-        if lead.review_count is not None and isinstance(lead.review_count, (int, float)):
-            if lead.review_count < 10:
-                score += 10.0
-            elif lead.review_count < 50:
-                score += 5.0
-    except TypeError:
-        pass  # Safety for mocked objects in tests
+    if lead.rating is not None and lead.rating < 4.0:
+        score += 8.0
+    if lead.review_count is not None:
+        if lead.review_count < 10:
+            score += 10.0
+        elif lead.review_count < 50:
+            score += 5.0
 
     # Clamp to 0-100
     return max(0.0, min(100.0, score))
