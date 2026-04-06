@@ -159,7 +159,7 @@ export interface ReplyAssistantDraft {
   lead_id: string | null;
   related_delivery_id: string | null;
   related_outbound_draft_id: string | null;
-  status: "generated" | string;
+  status: string;
   subject: string;
   body: string;
   summary: string | null;
