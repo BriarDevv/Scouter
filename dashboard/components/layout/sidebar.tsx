@@ -63,7 +63,11 @@ export function Sidebar() {
       } catch {}
     }
     fetchNotificationCounts();
-    return () => { active = false; };
+    const interval = setInterval(fetchNotificationCounts, 30_000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, []);
 
   const lbl = collapsed ? LABEL_HIDDEN : LABEL_VISIBLE;
