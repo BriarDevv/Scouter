@@ -70,7 +70,7 @@ def task_research_lead(
                     if lead_obj and lead_obj.industry:
                         past_outcomes = (
                             db.query(OutcomeSnapshot)
-                            .filter(OutcomeSnapshot.lead_industry == lead_obj.industry)
+                            .filter(OutcomeSnapshot.industry == lead_obj.industry)
                             .order_by(OutcomeSnapshot.created_at.desc())
                             .limit(5)
                             .all()
@@ -86,8 +86,13 @@ def task_research_lead(
                             if signals_won:
                                 hint += f" Winning signals: {', '.join(signals_won)}."
                             analysis_ctx += hint
-                except Exception:
-                    pass  # Non-critical: Scout proceeds without outcome feedback
+                except Exception as exc:
+                    logger.debug(
+                        "outcome_feedback_unavailable",
+                        lead_id=lead_id,
+                        error=str(exc),
+                        exc_info=True,
+                    )
 
                 lead = db.get(Lead, uuid.UUID(lead_id))
                 if lead:
@@ -111,9 +116,9 @@ def task_research_lead(
                     )
 
                     # Store investigation thread for dashboard
-                    from app.models.investigation_thread import InvestigationThread
                     from app.llm.resolver import resolve_model_for_role
                     from app.llm.roles import LLMRole
+                    from app.models.investigation_thread import InvestigationThread
 
                     thread = InvestigationThread(
                         lead_id=uuid.UUID(lead_id),
