@@ -11,9 +11,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db
 from app.core.config import settings
-from app.models.conversation import Conversation, Message
+from app.db.session import get_db
+from app.models.conversation import Conversation
 from app.models.investigation_thread import InvestigationThread
 from app.models.llm_invocation import LLMInvocation
 from app.models.outbound_conversation import OutboundConversation
@@ -322,10 +322,14 @@ def test_send_whatsapp(
         }
 
 
+class CloserReplyBody(BaseModel):
+    client_message: str = Field(..., description="Client's inbound message")
+
+
 @router.post("/conversations/{conversation_id}/reply")
 def closer_reply(
     conversation_id: uuid.UUID,
-    client_message: str = Query(..., description="Client's inbound message"),
+    body: CloserReplyBody,
     db: Session = Depends(get_db),
 ):
     """Mote generates a response to a client message (closer mode).
@@ -335,7 +339,7 @@ def closer_reply(
     """
     from app.services.outreach.closer_service import generate_closer_response
 
-    result = generate_closer_response(db, conversation_id, client_message)
+    result = generate_closer_response(db, conversation_id, body.client_message)
     if result.get("error"):
         raise HTTPException(status_code=400, detail=result["error"])
     return result
