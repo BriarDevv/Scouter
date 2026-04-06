@@ -145,6 +145,17 @@ def run_research(db: Session, lead_id: uuid.UUID) -> LeadResearchReport | None:
             report.instagram_exists = False
             report.instagram_confidence = ConfidenceLevel.UNKNOWN
 
+        # WhatsApp heuristic: if lead has phone and WhatsApp not yet confirmed,
+        # mark as probable (in Argentina ~90%+ businesses with phone have WhatsApp)
+        if not report.whatsapp_detected and lead.phone:
+            report.whatsapp_detected = True
+            report.whatsapp_confidence = ConfidenceLevel.PROBABLE
+            signals.append({
+                "type": "whatsapp_probable",
+                "detail": f"Phone detected ({lead.phone[:6]}...) — WhatsApp probable",
+                "confidence": 0.8,
+            })
+
         report.detected_signals_json = signals
         report.html_metadata_json = html_meta if html_meta else None
         report.research_duration_ms = int((time.monotonic() - start) * 1000)
