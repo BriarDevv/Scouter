@@ -61,7 +61,7 @@ export function StatsGrid({ stats }: { stats: DashboardStats }) {
           <StatCard
             label="Calificados"
             value={formatNumber(stats.qualified)}
-            subtitle={formatPercent(stats.qualified / stats.total_leads)}
+            subtitle={formatPercent(stats.total_leads > 0 ? stats.qualified / stats.total_leads : 0)}
             icon={UserCheck}
             colorScheme="violet"
           />

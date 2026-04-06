@@ -14,7 +14,7 @@ export function PipelineFunnel({ stages }: { stages: PipelineStage[] }) {
       <div className="mt-5 space-y-2">
         {stages.map((stage, i) => {
           const widthPercent = Math.max((stage.count / maxCount) * 100, 8);
-          const conversionFromPrev = i > 0
+          const conversionFromPrev = i > 0 && stages[i - 1].count > 0
             ? ((stage.count / stages[i - 1].count) * 100).toFixed(0) + "%"
             : null;
 
