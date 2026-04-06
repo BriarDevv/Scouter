@@ -128,7 +128,7 @@ export function AiScorePanel() {
           {(outcomes?.by_industry ?? []).length > 0 && (
             <div className="space-y-1 mt-2">
               <p className="text-xs font-medium text-muted-foreground">Por industria:</p>
-              {outcomes!.by_industry.slice(0, 5).map((row) => (
+              {outcomes?.by_industry?.slice(0, 5).map((row) => (
                 <div key={row.industry} className="flex justify-between text-xs">
                   <span className="text-foreground">{row.industry}</span>
                   <span>
