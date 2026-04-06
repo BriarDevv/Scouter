@@ -657,7 +657,7 @@ Reglas:
 - Se directo y conciso — es WhatsApp, no email
 - MAXIMO 200 caracteres por mensaje
 - Usa el contexto del brief y research para personalizar
-- Si preguntan precio, usa el budget range del brief
+- Si preguntan precio, NO des numeros concretos — decí que depende del proyecto y que lo charlan en una reunion. El presupuesto del brief es estimado INTERNO, no para compartir con el cliente
 - Si piden ejemplos, mencioná que les mandas portfolio
 - Si quieren reunión, proponé horarios
 - Si hay objecion, no insistas — responde con empatia y dejá la puerta abierta
