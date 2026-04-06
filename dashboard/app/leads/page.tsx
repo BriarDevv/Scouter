@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { LeadsTable } from "@/components/leads/leads-table";
 import { Button } from "@/components/ui/button";
@@ -11,10 +11,11 @@ import { getLeads, getExportUrl } from "@/lib/api/client";
 import type { Lead } from "@/types";
 import { Plus, Users, RefreshCw, Download, ChevronLeft, ChevronRight } from "lucide-react";
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 25;
 
 export default function LeadsPage() {
   const [exportOpen, setExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [total, setTotal] = useState(0);
@@ -41,6 +42,17 @@ export default function LeadsPage() {
     void loadLeads(currentPage);
   }, [loadLeads, currentPage]);
 
+  useEffect(() => {
+    if (!exportOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
+        setExportOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [exportOpen]);
+
   function handleRefresh() {
     void loadLeads(currentPage);
   }
@@ -54,7 +66,7 @@ export default function LeadsPage() {
         description="Gestión de leads y pipeline comercial"
       >
         <div className="flex items-center gap-2">
-          <div className="relative">
+          <div className="relative" ref={exportRef}>
             <Button
               variant="outline"
               size="sm"

@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { sileo } from "sileo";
+import { runFullPipeline, generateDraft } from "@/lib/api/client";
 import {
   Table,
   TableBody,
@@ -43,7 +45,7 @@ interface LeadsTableProps {
   leads: Lead[];
 }
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 25;
 
 const QUICK_FILTER_OPTIONS: (LeadStatus | "all")[] = [
   "all", "qualified", "contacted", "replied",
@@ -241,8 +243,20 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                       <DropdownMenuItem render={<Link href={`/leads/${lead.id}`} />}>
                         <ExternalLink className="mr-2 h-3.5 w-3.5" /> Ver detalle
                       </DropdownMenuItem>
-                      <DropdownMenuItem><RefreshCw className="mr-2 h-3.5 w-3.5" /> Ejecutar pipeline</DropdownMenuItem>
-                      <DropdownMenuItem><Mail className="mr-2 h-3.5 w-3.5" /> Generar draft</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => {
+                        void sileo.promise(runFullPipeline(lead.id), {
+                          loading: { title: "Ejecutando pipeline..." },
+                          success: { title: "Pipeline iniciado" },
+                          error: (err: unknown) => ({ title: "Error en pipeline", description: err instanceof Error ? err.message : "No se pudo ejecutar." }),
+                        });
+                      }}><RefreshCw className="mr-2 h-3.5 w-3.5" /> Ejecutar pipeline</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => {
+                        void sileo.promise(generateDraft(lead.id), {
+                          loading: { title: "Generando draft..." },
+                          success: { title: "Draft generado" },
+                          error: (err: unknown) => ({ title: "Error al generar draft", description: err instanceof Error ? err.message : "No se pudo generar." }),
+                        });
+                      }}><Mail className="mr-2 h-3.5 w-3.5" /> Generar draft</DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem className="text-red-600"><ShieldOff className="mr-2 h-3.5 w-3.5" /> Suprimir</DropdownMenuItem>
                     </DropdownMenuContent>
