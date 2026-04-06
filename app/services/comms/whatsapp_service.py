@@ -138,8 +138,12 @@ def send_message_to_phone(db: Session, phone: str, message: str) -> bool:
     if not creds.phone_number or not creds.api_key:
         logger.debug("whatsapp_send_skipped_no_credentials")
         return False
+    api_key = decrypt_safe(creds.api_key)
+    if not api_key:
+        logger.warning("whatsapp_send_skipped_decrypt_failed")
+        return False
     provider = _get_provider(creds.provider)
-    return provider.send_message(phone, message, decrypt_safe(creds.api_key))
+    return provider.send_message(phone, message, api_key)
 
 
 def send_alert(
@@ -163,8 +167,12 @@ def send_alert(
         logger.info("whatsapp_dry_run", message=text[:100])
         return True
 
+    api_key = decrypt_safe(creds.api_key)
+    if not api_key:
+        logger.warning("whatsapp_alert_skipped_decrypt_failed")
+        return False
     provider = _get_provider(creds.provider)
-    return provider.send_message(creds.phone_number, text, decrypt_safe(creds.api_key))
+    return provider.send_message(creds.phone_number, text, api_key)
 
 
 def test_whatsapp(db: Session) -> dict:
@@ -185,8 +193,16 @@ def test_whatsapp(db: Session) -> dict:
         db.commit()
         return result
 
+    api_key = decrypt_safe(creds.api_key)
+    if not api_key:
+        result = {"ok": False, "error": "No se pudo descifrar la API key."}
+        creds.last_test_at = datetime.now(timezone.utc)
+        creds.last_test_ok = False
+        creds.last_test_error = result["error"]
+        db.commit()
+        return result
     provider = _get_provider(creds.provider)
-    result = provider.test_connection(creds.phone_number, decrypt_safe(creds.api_key))
+    result = provider.test_connection(creds.phone_number, api_key)
     result["provider"] = creds.provider
 
     creds.last_test_at = datetime.now(timezone.utc)

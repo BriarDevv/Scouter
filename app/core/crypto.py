@@ -76,5 +76,5 @@ def decrypt_safe(value: str | None) -> str | None:
             logger.info("auto_migrating_encrypted_value_to_pbkdf2")
             return plaintext
         except InvalidToken:
-            logger.warning("decrypt_failed_both_keys")
-            return value  # Corrupted or wrong key — return as-is
+            logger.warning("decrypt_failed_both_keys", value_prefix=value[:10])
+            return None
