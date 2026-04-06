@@ -10,14 +10,14 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-import structlog
 from sqlalchemy.orm import Session
 
+from app.core.logging import get_logger
 from app.models.lead import Lead
 from app.models.outbound_conversation import ConversationStatus, OutboundConversation
 from app.models.outreach import DraftStatus, OutreachDraft
 
-logger = structlog.get_logger(__name__)
+logger = get_logger(__name__)
 
 
 def auto_send_draft(db: Session, draft_id: uuid.UUID) -> OutboundConversation | None:

@@ -9,12 +9,12 @@ from __future__ import annotations
 
 import uuid
 
-import structlog
 from sqlalchemy.orm import Session
 
+from app.core.logging import get_logger
 from app.models.task_tracking import PipelineRun
 
-logger = structlog.get_logger(__name__)
+logger = get_logger(__name__)
 
 
 _MAX_STEP_BYTES = 2048

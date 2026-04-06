@@ -9,15 +9,15 @@ from __future__ import annotations
 
 import uuid
 
-import structlog
 from sqlalchemy.orm import Session
 
+from app.core.logging import get_logger
 from app.models.lead import Lead
 from app.models.outcome_snapshot import OutcomeSnapshot
 from app.models.review_correction import ReviewCorrection
 from app.models.task_tracking import PipelineRun
 
-logger = structlog.get_logger(__name__)
+logger = get_logger(__name__)
 
 
 def capture_outcome_snapshot(

@@ -11,13 +11,13 @@ from __future__ import annotations
 
 from collections import Counter
 
-import structlog
 from sqlalchemy.orm import Session
 
+from app.core.logging import get_logger
 from app.models.outcome_snapshot import OutcomeSnapshot
 from app.models.review_correction import ReviewCorrection
 
-logger = structlog.get_logger(__name__)
+logger = get_logger(__name__)
 
 
 def get_outcome_summary(db: Session) -> dict:
