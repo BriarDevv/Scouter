@@ -267,3 +267,46 @@ def test_alembic_migrations_apply_cleanly():
         conn.commit()
     Base.metadata.create_all(bind=fresh_engine)
     fresh_engine.dispose()
+
+
+def test_services_prefer_flush_over_commit():
+    """Service-layer code should use db.flush() not db.commit().
+
+    Callers (endpoints, workers, agent loop) own the commit.
+    Allowed exceptions are documented in the baseline.
+    """
+    import ast
+
+    # Files with justified db.commit() calls
+    allowed = {
+        "app/services/outreach/outreach_service.py",  # explicit commit parameter
+        "app/services/inbox/inbound_mail_service.py",  # top-level orchestrator
+        "app/services/pipeline/operational_task_service.py",  # internal persistence
+        "app/services/pipeline/task_tracking_service.py",  # tracked_task_step auto-commit
+        "app/services/outreach/closer_service.py",  # standalone session block
+        "app/services/outreach/mail_service.py",  # optimistic locking + delivery orchestrator
+    }
+
+    violations = []
+    services_dir = Path("app/services")
+    for py_file in services_dir.rglob("*.py"):
+        rel = str(py_file)
+        if rel in allowed or py_file.name == "__init__.py":
+            continue
+        source = py_file.read_text()
+        try:
+            tree = ast.parse(source)
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "commit"
+            ):
+                violations.append(f"{rel}:{node.lineno}")
+
+    assert not violations, (
+        "Service files should use db.flush(), not db.commit(). "
+        "Violations:\n" + "\n".join(f"  {v}" for v in violations)
+    )

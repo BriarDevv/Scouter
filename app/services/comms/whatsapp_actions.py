@@ -125,7 +125,7 @@ def _execute_draft_status_change(
 
     draft.status = target_status
     draft.reviewed_at = datetime.now(timezone.utc)
-    db.commit()
+    db.flush()
     db.refresh(draft)
 
     lead_name = draft.lead.business_name if draft.lead else "desconocido"

@@ -20,7 +20,7 @@ def score_lead(db: Session, lead_id: uuid.UUID) -> Lead | None:
     lead.score = score
     lead.status = LeadStatus.SCORED
     lead.scored_at = datetime.now(timezone.utc)
-    db.commit()
+    db.flush()
     db.refresh(lead)
 
     logger.info("lead_scored", lead_id=str(lead_id), score=score)

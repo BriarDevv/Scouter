@@ -87,7 +87,7 @@ def capture_outcome_snapshot(
         corrections_count=corrections_count,
     )
     db.add(snapshot)
-    db.commit()
+    db.flush()
 
     logger.info(
         "outcome_snapshot_captured",

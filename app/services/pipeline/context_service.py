@@ -54,7 +54,7 @@ def append_step_context(
         return
 
     run.step_context_json = existing
-    db.commit()
+    db.flush()
 
     logger.debug(
         "step_context_appended",

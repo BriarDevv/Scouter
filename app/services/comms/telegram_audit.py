@@ -19,7 +19,7 @@ def log_inbound(db: Session, chat_id: str, message: str, intent: str | None) -> 
         intent=intent,
     )
     db.add(entry)
-    db.commit()
+    db.flush()
     logger.info("tg_audit_inbound", chat_id=chat_id[:6] + "***", intent=intent)
 
 
@@ -32,5 +32,5 @@ def log_outbound(db: Session, chat_id: str, response: str, latency_ms: int | Non
         latency_ms=latency_ms,
     )
     db.add(entry)
-    db.commit()
+    db.flush()
     logger.info("tg_audit_outbound", chat_id=chat_id[:6] + "***", latency_ms=latency_ms)

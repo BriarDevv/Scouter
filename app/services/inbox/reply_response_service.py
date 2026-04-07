@@ -160,7 +160,7 @@ def generate_reply_assistant_draft(
     )
 
     try:
-        db.commit()
+        db.flush()
     except IntegrityError:
         db.rollback()
         draft = get_reply_assistant_draft_for_message(db, message.id)
@@ -180,7 +180,7 @@ def generate_reply_assistant_draft(
             model=model,
             should_escalate_reviewer=should_escalate_reviewer,
         )
-        db.commit()
+        db.flush()
 
     db.refresh(draft)
     attach_reply_send_metadata(draft)

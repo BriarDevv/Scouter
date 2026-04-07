@@ -19,7 +19,7 @@ def log_inbound(db: Session, phone: str, message: str, intent: str | None) -> No
         intent=intent,
     )
     db.add(entry)
-    db.commit()
+    db.flush()
     logger.info("wa_audit_inbound", phone=phone[:6] + "***", intent=intent)
 
 
@@ -32,5 +32,5 @@ def log_outbound(db: Session, phone: str, response: str, latency_ms: int | None)
         latency_ms=latency_ms,
     )
     db.add(entry)
-    db.commit()
+    db.flush()
     logger.info("wa_audit_outbound", phone=phone[:6] + "***", latency_ms=latency_ms)

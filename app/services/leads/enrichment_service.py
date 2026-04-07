@@ -248,7 +248,7 @@ def enrich_lead(db: Session, lead_id: uuid.UUID) -> Lead | None:
 
     lead.status = LeadStatus.ENRICHED
     lead.enriched_at = datetime.now(timezone.utc)
-    db.commit()
+    db.flush()
     db.refresh(lead)
 
     logger.info(
