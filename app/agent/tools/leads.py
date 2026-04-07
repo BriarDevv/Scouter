@@ -58,8 +58,9 @@ def search_leads(
     total = db.execute(count_stmt).scalar() or 0
     leads = (
         db.execute(
-            stmt.order_by(Lead.score.desc().nulls_last(), Lead.created_at.desc())
-            .limit(min(limit, 50))
+            stmt.order_by(Lead.score.desc().nulls_last(), Lead.created_at.desc()).limit(
+                min(limit, 50)
+            )
         )
         .scalars()
         .all()
@@ -307,7 +308,7 @@ def create_lead(
         )
     except ValueError as exc:
         return {"error": str(exc)}
-    db.commit()
+    db.flush()
     return {
         "id": str(lead.id),
         "business_name": lead.business_name,
@@ -390,7 +391,7 @@ def update_lead_status(db: Session, *, lead_id: str, status: str) -> dict:
     updated = _update_lead_status(db, lid, LeadStatus(status))
     if not updated:
         return {"error": "No se pudo actualizar el estado"}
-    db.commit()
+    db.flush()
     return {
         "id": str(updated.id),
         "business_name": updated.business_name,

@@ -52,7 +52,7 @@ def create_territory(
     territory = _create(db, data)
     if not territory:
         return {"error": "No se pudo crear el territorio"}
-    db.commit()
+    db.flush()
     return {
         "id": str(territory.id),
         "name": territory.name,
@@ -94,7 +94,7 @@ def update_territory(
     territory = _update(db, tid, TerritoryUpdate(**kwargs))
     if territory is None:
         return {"error": f"Territorio {territory_id} no encontrado"}
-    db.commit()
+    db.flush()
     return {
         "id": str(territory.id),
         "name": territory.name,
@@ -111,7 +111,7 @@ def delete_territory(db: Session, *, territory_id: str) -> dict:
         return {"error": f"territory_id inválido: {territory_id}"}
 
     result = _delete(db, tid)
-    db.commit()
+    db.flush()
     return {"success": result}
 
 

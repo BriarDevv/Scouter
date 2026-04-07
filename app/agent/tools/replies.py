@@ -38,7 +38,7 @@ def send_reply_draft(db: Session, *, message_id: str) -> dict:
         from app.services.inbox.reply_send_service import send_reply_assistant_draft
 
         send_record = send_reply_assistant_draft(db, mid)
-        db.commit()
+        db.flush()
     except Exception as exc:
         return {"error": str(exc)}
     return {

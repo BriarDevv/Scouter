@@ -63,7 +63,7 @@ def start_territory_crawl(db: Session, *, territory_id: str, max_results: int = 
         scope_key=territory_id,
         current_step="crawl_dispatch",
     )
-    db.commit()
+    db.flush()
 
     return {
         "status": "started",

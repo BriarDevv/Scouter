@@ -57,7 +57,7 @@ def update_setting(db: Session, *, key: str, value: str) -> dict:
 
     if hasattr(settings_obj, key):
         setattr(settings_obj, key, typed_value)
-        db.commit()
+        db.flush()
         db.refresh(settings_obj)
         return {"key": key, "value": typed_value, "status": "updated"}
 
