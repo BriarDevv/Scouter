@@ -190,7 +190,7 @@ def enrich_lead(db: Session, lead_id: uuid.UUID) -> Lead | None:
     # If no website but has Instagram, try to extract website from Instagram bio
     if not lead.website_url and lead.instagram_url:
         try:
-            from app.services.instagram_scraper import scrape_instagram_bio_link
+            from app.crawlers.instagram_scraper import scrape_instagram_bio_link
             bio_website = scrape_instagram_bio_link(lead.instagram_url)
             if bio_website:
                 lead.website_url = bio_website
