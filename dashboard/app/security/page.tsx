@@ -32,8 +32,8 @@ export default function SecurityPage() {
     try {
       const data = await getNotificationCounts();
       setCounts(data);
-    } catch {
-      // non-critical
+    } catch (err) {
+      console.error("security_counts_fetch_failed", err);
     } finally {
       setCountsLoading(false);
     }
@@ -48,8 +48,8 @@ export default function SecurityPage() {
         status: "resolved",
       });
       setResolvedCount(data.total);
-    } catch {
-      // non-critical
+    } catch (err) {
+      console.error("security_resolved_count_fetch_failed", err);
     }
   }, []);
 

@@ -56,13 +56,13 @@ export default function SettingsPage() {
     try {
       setSetupData(await getSetupStatus());
       setReadiness(await getSetupReadiness());
-    } catch { /* non-critical */ }
+    } catch (err) { console.error("setup_refresh_failed", err); }
   }, []);
 
   const refreshMail = useCallback(async () => {
     try {
       setMailData(await getMailSettings());
-    } catch { /* non-critical */ }
+    } catch (err) { console.error("mail_refresh_failed", err); }
   }, []);
 
   useEffect(() => {

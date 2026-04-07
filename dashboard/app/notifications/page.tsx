@@ -47,8 +47,8 @@ export default function NotificationsPage() {
     try {
       const data = await getNotificationCounts();
       setCounts(data);
-    } catch {
-      // counts are non-critical; leave null
+    } catch (err) {
+      console.error("notification_counts_fetch_failed", err);
     } finally {
       setCountsLoading(false);
     }
