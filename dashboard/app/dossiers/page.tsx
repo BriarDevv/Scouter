@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
-import { getLeads, getLeadResearch } from "@/lib/api/client";
-import type { Lead, LeadResearchReport } from "@/types";
+import { getLeadResearch } from "@/lib/api/client";
+import { useApi } from "@/lib/hooks/use-swr-fetch";
+import type { Lead, LeadResearchReport, PaginatedResponse } from "@/types";
 import Link from "next/link";
 import { FileSearch, ExternalLink, CheckCircle, AlertCircle, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -48,41 +49,43 @@ async function fetchResearchBatched(leads: Lead[]): Promise<DossierEntry[]> {
 }
 
 export default function DossiersPage() {
-  const [entries, setEntries] = useState<DossierEntry[]>([]);
-  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [total, setTotal] = useState(0);
+  const { data: leadsResponse, isLoading: leadsLoading } = useApi<PaginatedResponse<Lead>>(
+    `/leads?page=${currentPage}&page_size=${LEADS_PAGE_SIZE}`
+  );
 
+  const [entries, setEntries] = useState<DossierEntry[]>([]);
+  const [researchLoading, setResearchLoading] = useState(false);
+
+  const total = leadsResponse?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / LEADS_PAGE_SIZE));
+  const loading = leadsLoading || researchLoading;
 
   useEffect(() => {
+    if (!leadsResponse) return;
     let active = true;
 
-    async function load() {
-      setLoading(true);
+    async function loadResearch() {
+      setResearchLoading(true);
       try {
-        const res = await getLeads({ page: currentPage, page_size: LEADS_PAGE_SIZE });
-        if (!active) return;
-        setTotal(res.total);
-        const highLeads = (res.items || []).filter(
+        const highLeads = (leadsResponse!.items || []).filter(
           (l: Lead) => l.quality === "high" || (l.score != null && l.score >= 60)
         );
-
         const withDossiers = await fetchResearchBatched(highLeads);
         if (!active) return;
         setEntries(withDossiers);
       } catch (err) {
         console.warn("Failed to load dossiers:", err);
       }
-      if (active) setLoading(false);
+      if (active) setResearchLoading(false);
     }
 
-    void load();
+    void loadResearch();
 
     return () => {
       active = false;
     };
-  }, [currentPage]);
+  }, [leadsResponse]);
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -156,7 +159,7 @@ export default function DossiersPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between border-t border-border pt-4">
               <span className="text-xs text-muted-foreground">
-                {total} lead{total !== 1 ? "s" : ""} · página {currentPage} / {totalPages}
+                {total} lead{total !== 1 ? "s" : ""} · pagina {currentPage} / {totalPages}
               </span>
               <div className="flex items-center gap-2">
                 <Button

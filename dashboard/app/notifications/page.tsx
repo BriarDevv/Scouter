@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { SkeletonStatCard } from "@/components/shared/skeleton";
@@ -9,13 +9,11 @@ import { cn } from "@/lib/utils";
 import {
   NotificationListView,
   type CategoryFilter,
-  type SeverityFilter,
-  type StatusFilter,
 } from "@/components/notifications/notification-list-view";
 import {
-  getNotificationCounts,
   bulkUpdateNotifications,
 } from "@/lib/api/client";
+import { useApi } from "@/lib/hooks/use-swr-fetch";
 import type { NotificationCounts } from "@/types";
 import {
   Bell,
@@ -36,27 +34,10 @@ const CATEGORY_TABS: { value: CategoryFilter; label: string }[] = [
 ];
 
 export default function NotificationsPage() {
-  const [counts, setCounts] = useState<NotificationCounts | null>(null);
-  const [countsLoading, setCountsLoading] = useState(true);
+  const { data: counts, isLoading: countsLoading, mutate: mutateCounts } = useApi<NotificationCounts>("/notifications/counts");
   const [category, setCategory] = useState<CategoryFilter>("");
   const [bulkLoading, setBulkLoading] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-
-  const loadCounts = useCallback(async () => {
-    setCountsLoading(true);
-    try {
-      const data = await getNotificationCounts();
-      setCounts(data);
-    } catch (err) {
-      console.error("notification_counts_fetch_failed", err);
-    } finally {
-      setCountsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadCounts();
-  }, [loadCounts]);
 
   async function handleBulkMarkRead() {
     setBulkLoading(true);
@@ -67,7 +48,7 @@ export default function NotificationsPage() {
             "mark_read",
             category || undefined
           );
-          await loadCounts();
+          await mutateCounts();
           setReloadKey((k) => k + 1);
           return result;
         })(),
@@ -168,7 +149,7 @@ export default function NotificationsPage() {
             emptyTitle="Sin notificaciones"
             emptyDescription="No hay notificaciones que coincidan con los filtros seleccionados."
             countLabel={(total) => `${total} notificacion${total !== 1 ? "es" : ""} en total`}
-            onMarkRead={loadCounts}
+            onMarkRead={() => void mutateCounts()}
             reloadKey={reloadKey}
           />
         </div>

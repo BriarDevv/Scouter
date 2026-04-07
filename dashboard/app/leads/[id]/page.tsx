@@ -1,20 +1,11 @@
 "use client";
 
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Skeleton, SkeletonCard } from "@/components/shared/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
-import {
-  getCommercialBrief,
-  getDrafts,
-  getInboundMessages,
-  getInboundThreads,
-  getLeadById,
-  getLeadResearch,
-  getOutreachLogs,
-  getPipelineRuns,
-} from "@/lib/api/client";
+import { useApi } from "@/lib/hooks/use-swr-fetch";
 import type {
   CommercialBrief,
   OutreachDraft,
@@ -32,6 +23,7 @@ import { LeadContactCard } from "@/components/leads/lead-contact-card";
 import { LeadDetailHeader } from "@/components/leads/lead-detail-header";
 import { LeadContextPanel } from "@/components/leads/lead-context-panel";
 import { useLeadActions } from "@/components/leads/lead-actions";
+import { useState } from "react";
 
 function LeadDetailSkeleton() {
   return (
@@ -71,78 +63,40 @@ function LeadDetailSkeleton() {
 
 export default function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const [lead, setLead] = useState<Lead | null>(null);
-  const [drafts, setDrafts] = useState<OutreachDraft[]>([]);
-  const [logs, setLogs] = useState<OutreachLog[]>([]);
-  const [pipelineRuns, setPipelineRuns] = useState<PipelineRunSummary[]>([]);
-  const [inboundMessages, setInboundMessages] = useState<InboundMessage[]>([]);
-  const [inboundThreads, setInboundThreads] = useState<EmailThreadSummary[]>([]);
+
+  const { data: lead, isLoading: leadLoading, error: leadError, mutate: mutateLead } = useApi<Lead>(`/leads/${id}`);
+  const { data: drafts, mutate: mutateDrafts } = useApi<OutreachDraft[]>(`/outreach/drafts?lead_id=${id}`);
+  const { data: logs, mutate: mutateLogs } = useApi<OutreachLog[]>(`/outreach/logs?lead_id=${id}&limit=20`);
+  const { data: pipelineRuns, mutate: mutatePipelineRuns } = useApi<PipelineRunSummary[]>(`/pipelines/runs?lead_id=${id}&limit=5`);
+  const { data: inboundMessages, mutate: mutateInboundMessages } = useApi<InboundMessage[]>(`/mail/inbound/messages?lead_id=${id}&limit=20`);
+  const { data: inboundThreads, mutate: mutateInboundThreads } = useApi<EmailThreadSummary[]>(`/mail/inbound/threads?lead_id=${id}&limit=10`);
+  const { data: research, mutate: mutateResearch } = useApi<LeadResearchReport | null>(`/leads/${id}/research`);
+  const { data: brief, mutate: mutateBrief } = useApi<CommercialBrief | null>(`/briefs/leads/${id}`);
+
   const [latestTask, setLatestTask] = useState<TaskStatusRecord | null>(null);
-  const [isMissing, setIsMissing] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [research, setResearch] = useState<LeadResearchReport | null>(null);
-  const [brief, setBrief] = useState<CommercialBrief | null>(null);
+
+  const isLoading = leadLoading;
+  const isMissing = !leadLoading && (leadError != null || !lead);
 
   const refreshLeadContext = useCallback(async () => {
-    const [nextLead, nextDrafts, nextLogs, nextPipelineRuns, nextInboundMessages, nextInboundThreads, nextResearch, nextBrief] = await Promise.all([
-      getLeadById(id),
-      getDrafts({ lead_id: id }),
-      getOutreachLogs({ lead_id: id, limit: 20 }),
-      getPipelineRuns({ lead_id: id, limit: 5 }),
-      getInboundMessages({ lead_id: id, limit: 20 }).catch(() => []),
-      getInboundThreads({ lead_id: id, limit: 10 }).catch(() => []),
-      getLeadResearch(id).catch(() => null),
-      getCommercialBrief(id).catch(() => null),
+    await Promise.all([
+      mutateLead(),
+      mutateDrafts(),
+      mutateLogs(),
+      mutatePipelineRuns(),
+      mutateInboundMessages(),
+      mutateInboundThreads(),
+      mutateResearch(),
+      mutateBrief(),
     ]);
-    setLead(nextLead);
-    setDrafts(nextDrafts);
-    setLogs(nextLogs);
-    setPipelineRuns(nextPipelineRuns);
-    setInboundMessages(nextInboundMessages);
-    setInboundThreads(nextInboundThreads);
-    setResearch(nextResearch);
-    setBrief(nextBrief);
-    setIsMissing(false);
-  }, [id]);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadLeadContext() {
-      try {
-        await refreshLeadContext();
-        if (!active) return;
-      } catch (err) {
-        console.warn("Failed to load lead context:", err);
-        if (!active) return;
-        setLead(null);
-        setDrafts([]);
-        setLogs([]);
-        setPipelineRuns([]);
-        setInboundMessages([]);
-        setInboundThreads([]);
-        setResearch(null);
-        setBrief(null);
-        setLatestTask(null);
-        setIsMissing(true);
-      } finally {
-        if (active) setIsLoading(false);
-      }
-    }
-
-    void loadLeadContext();
-
-    return () => {
-      active = false;
-    };
-  }, [refreshLeadContext]);
+  }, [mutateLead, mutateDrafts, mutateLogs, mutatePipelineRuns, mutateInboundMessages, mutateInboundThreads, mutateResearch, mutateBrief]);
 
   const actions = useLeadActions({
     leadId: lead?.id ?? null,
     onRefresh: refreshLeadContext,
     onLatestTask: setLatestTask,
-    onResearch: setResearch,
-    onBrief: setBrief,
+    onResearch: (r) => void mutateResearch(r, false),
+    onBrief: (b) => void mutateBrief(b, false),
   });
 
   if (isLoading && !lead) {
@@ -162,7 +116,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             <EmptyState
               icon={FileText}
               title="Lead no encontrado"
-              description="El lead que buscás no existe o fue eliminado."
+              description="El lead que buscas no existe o fue eliminado."
             />
           </div>
         </div>
@@ -201,14 +155,14 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
             <LeadContextPanel
               lead={lead}
-              research={research}
-              brief={brief}
-              drafts={drafts}
-              logs={logs}
-              pipelineRuns={pipelineRuns}
+              research={research ?? null}
+              brief={brief ?? null}
+              drafts={drafts ?? []}
+              logs={logs ?? []}
+              pipelineRuns={pipelineRuns ?? []}
               latestTask={latestTask}
-              inboundMessages={inboundMessages}
-              inboundThreads={inboundThreads}
+              inboundMessages={inboundMessages ?? []}
+              inboundThreads={inboundThreads ?? []}
               isRunningPipeline={actions.isRunningPipeline}
               isRunningResearch={actions.isRunningResearch}
               isGeneratingBrief={actions.isGeneratingBrief}

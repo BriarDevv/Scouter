@@ -1,14 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { LeadsTable } from "@/components/leads/leads-table";
 import { Button } from "@/components/ui/button";
 import { SkeletonTable } from "@/components/shared/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { getLeads, getExportUrl } from "@/lib/api/client";
-import type { Lead } from "@/types";
+import { getExportUrl } from "@/lib/api/client";
+import { useApi } from "@/lib/hooks/use-swr-fetch";
+import type { Lead, PaginatedResponse } from "@/types";
 import { Plus, Users, RefreshCw, Download, ChevronLeft, ChevronRight } from "lucide-react";
 
 const PAGE_SIZE = 25;
@@ -17,30 +18,14 @@ export default function LeadsPage() {
   const [exportOpen, setExportOpen] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
 
+  const { data: response, isLoading: loading, error, mutate } = useApi<PaginatedResponse<Lead>>(
+    `/leads?page=${currentPage}&page_size=${PAGE_SIZE}`
+  );
+
+  const leads = response?.items ?? [];
+  const total = response?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-
-  const loadLeads = useCallback(async (page: number) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await getLeads({ page, page_size: PAGE_SIZE });
-      setLeads(response.items);
-      setTotal(response.total);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error(String(err)));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadLeads(currentPage);
-  }, [loadLeads, currentPage]);
 
   useEffect(() => {
     if (!exportOpen) return;
@@ -54,7 +39,7 @@ export default function LeadsPage() {
   }, [exportOpen]);
 
   function handleRefresh() {
-    void loadLeads(currentPage);
+    void mutate();
   }
 
   return (
@@ -63,7 +48,7 @@ export default function LeadsPage() {
         <div className="space-y-6">
           <PageHeader
         title="Leads"
-        description="Gestión de leads y pipeline comercial"
+        description="Gestion de leads y pipeline comercial"
       >
         <div className="flex items-center gap-2">
           <div className="relative" ref={exportRef}>
@@ -102,14 +87,14 @@ export default function LeadsPage() {
               <Plus className="mr-2 h-4 w-4" />
               Nuevo Lead
             </TooltipTrigger>
-            <TooltipContent>Próximamente</TooltipContent>
+            <TooltipContent>Proximamente</TooltipContent>
           </Tooltip>
         </div>
       </PageHeader>
 
       {error && (
         <div className="flex items-center gap-3 rounded-xl border border-rose-200 dark:border-rose-900/30 bg-rose-50 dark:bg-rose-950/20 px-4 py-3">
-          <span className="text-sm text-rose-700 dark:text-rose-300">Error al cargar leads: {error.message}</span>
+          <span className="text-sm text-rose-700 dark:text-rose-300">Error al cargar leads: {error instanceof Error ? error.message : "Error desconocido"}</span>
           <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={handleRefresh}>
             <RefreshCw className="h-3.5 w-3.5" /> Reintentar
           </Button>
@@ -122,7 +107,7 @@ export default function LeadsPage() {
         <EmptyState
           icon={Users}
           title="Sin leads"
-          description="Todavía no hay leads en el sistema. Ejecutá un crawler para empezar a prospectar."
+          description="Todavia no hay leads en el sistema. Ejecuta un crawler para empezar a prospectar."
         />
       ) : (
         <>

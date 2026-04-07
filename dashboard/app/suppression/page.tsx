@@ -13,17 +13,16 @@ import {
 import { SkeletonTable } from "@/components/shared/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import { formatDate } from "@/lib/formatters";
-import { usePageData } from "@/lib/hooks/use-page-data";
-import { addToSuppression, getSuppressionList, removeFromSuppression } from "@/lib/api/client";
+import { useApi } from "@/lib/hooks/use-swr-fetch";
+import { addToSuppression, removeFromSuppression } from "@/lib/api/client";
+import type { SuppressionEntry } from "@/types";
 import { ShieldOff, Plus, Search, Trash2 } from "lucide-react";
 import { sileo } from "sileo";
 
 export default function SuppressionPage() {
   const [search, setSearch] = useState("");
-  const { data: items, loading, refresh } = usePageData(
-    () => getSuppressionList(),
-  );
-  const [localItems, setLocalItems] = useState<typeof items | null>(null);
+  const { data: items, isLoading: loading, mutate } = useApi<SuppressionEntry[]>("/suppression");
+  const [localItems, setLocalItems] = useState<SuppressionEntry[] | null>(null);
   const [email, setEmail] = useState("");
   const [domain, setDomain] = useState("");
   const [reason, setReason] = useState("");
@@ -51,8 +50,8 @@ export default function SuppressionPage() {
           setIsDialogOpen(false);
         })(),
         {
-          loading: { title: "Agregando a supresión..." },
-          success: { title: "Agregado a supresión" },
+          loading: { title: "Agregando a supresion..." },
+          success: { title: "Agregado a supresion" },
           error: (err: unknown) => ({
             title: "Error al agregar",
             description: err instanceof Error ? err.message : "No se pudo agregar.",
@@ -73,8 +72,8 @@ export default function SuppressionPage() {
           setLocalItems((current) => (current ?? items ?? []).filter((entry) => entry.id !== id));
         })(),
         {
-          loading: { title: "Removiendo de supresión..." },
-          success: { title: "Removido de supresión" },
+          loading: { title: "Removiendo de supresion..." },
+          success: { title: "Removido de supresion" },
           error: (err: unknown) => ({
             title: "Error al remover",
             description: err instanceof Error ? err.message : "No se pudo remover.",
@@ -101,8 +100,8 @@ export default function SuppressionPage() {
       <div className="mx-auto max-w-[1400px] px-8 py-8">
         <div className="space-y-6">
           <PageHeader
-            title="Lista de Supresión"
-        description="Emails, dominios y teléfonos que no deben ser contactados"
+            title="Lista de Supresion"
+        description="Emails, dominios y telefonos que no deben ser contactados"
       >
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger render={<Button className="rounded-xl bg-violet-600 text-white hover:bg-violet-700" />}>
@@ -111,7 +110,7 @@ export default function SuppressionPage() {
           </DialogTrigger>
           <DialogContent className="rounded-2xl sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Agregar a Supresión</DialogTitle>
+              <DialogTitle>Agregar a Supresion</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div>
@@ -135,7 +134,7 @@ export default function SuppressionPage() {
               <div>
                 <label className="text-sm font-medium text-foreground/80">Motivo</label>
                 <Input
-                  placeholder="Ej: pidió no ser contactado"
+                  placeholder="Ej: pidio no ser contactado"
                   className="mt-1 rounded-xl"
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
@@ -173,10 +172,10 @@ export default function SuppressionPage() {
       <Dialog open={!!confirmRemoveId} onOpenChange={(open) => !open && setConfirmRemoveId(null)}>
         <DialogContent className="rounded-2xl sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Confirmar eliminación</DialogTitle>
+            <DialogTitle>Confirmar eliminacion</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground py-2">
-            ¿Estás seguro de que querés remover esta entrada de la lista de supresión?
+            Estas seguro de que queres remover esta entrada de la lista de supresion?
           </p>
           <DialogFooter>
             <DialogClose render={<Button variant="outline" className="rounded-xl" />}>
@@ -212,10 +211,10 @@ export default function SuppressionPage() {
             <TableBody>
               {filtered.map((entry) => (
                 <TableRow key={entry.id} className="border-border/50 hover:bg-muted/50">
-                  <TableCell className="text-sm text-foreground font-data">{entry.email || "—"}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground font-data">{entry.domain || "—"}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{entry.business_name || "—"}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{entry.reason || "—"}</TableCell>
+                  <TableCell className="text-sm text-foreground font-data">{entry.email || "\u2014"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground font-data">{entry.domain || "\u2014"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{entry.business_name || "\u2014"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{entry.reason || "\u2014"}</TableCell>
                   <TableCell className="text-sm text-muted-foreground font-data">{formatDate(entry.added_at)}</TableCell>
                   <TableCell>
                     <Button
@@ -241,8 +240,8 @@ export default function SuppressionPage() {
       ) : (
         <EmptyState
           icon={ShieldOff}
-          title="Lista vacía"
-          description="No hay entradas en la lista de supresión que coincidan con tu búsqueda."
+          title="Lista vacia"
+          description="No hay entradas en la lista de supresion que coincidan con tu busqueda."
         />
       )}
         </div>

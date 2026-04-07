@@ -1,6 +1,5 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatsGrid } from "@/components/dashboard/stats-grid";
 import { PipelineFunnel } from "@/components/dashboard/pipeline-funnel";
@@ -11,62 +10,26 @@ import { ControlCenter } from "@/components/dashboard/control-center";
 import { CollapsibleSection } from "@/components/shared/collapsible-section";
 import { SkeletonStatCard, SkeletonCard } from "@/components/shared/skeleton";
 import { useSystemHealth } from "@/lib/hooks/use-system-health";
-import {
-  getDashboardStats,
-  getIndustryBreakdown,
-  getOutreachLogs,
-  getPipeline,
-  getTimeSeries,
-} from "@/lib/api/client";
+import { useApi } from "@/lib/hooks/use-swr-fetch";
 import type { DashboardStats, IndustryBreakdown, OutreachLog, PipelineStage, TimeSeriesPoint } from "@/types";
 import { AiHealthCard } from "@/components/dashboard/ai-health-card";
 import { TopCorrections } from "@/components/dashboard/top-corrections";
 import { TerritorySummary } from "@/components/dashboard/territory-summary";
-import { sileo } from "sileo";
 
 export default function PanelPage() {
   const { components, loading: healthLoading, refresh: refreshHealth } = useSystemHealth();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [pipeline, setPipeline] = useState<PipelineStage[]>([]);
-  const [timeSeries, setTimeSeries] = useState<TimeSeriesPoint[]>([]);
-  const [industryBreakdown, setIndustryBreakdown] = useState<IndustryBreakdown[]>([]);
-  const [logs, setLogs] = useState<OutreachLog[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: stats, isLoading: statsLoading, error: statsError, mutate: mutateStats } = useApi<DashboardStats>("/dashboard/stats");
+  const { data: pipeline, mutate: mutatePipeline } = useApi<PipelineStage[]>("/dashboard/pipeline");
+  const { data: timeSeries, mutate: mutateTimeSeries } = useApi<TimeSeriesPoint[]>("/dashboard/time-series?days=30");
+  const { data: industryBreakdown, mutate: mutateIndustry } = useApi<IndustryBreakdown[]>("/performance/industry");
+  const { data: logs, mutate: mutateLogs } = useApi<OutreachLog[]>("/outreach/logs?limit=8");
 
-  const loadOverview = useCallback(async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      const [nextStats, nextPipeline, nextTimeSeries, nextIndustryBreakdown, nextLogs] =
-        await Promise.all([
-          getDashboardStats(),
-          getPipeline(),
-          getTimeSeries(30),
-          getIndustryBreakdown(),
-          getOutreachLogs({ limit: 8 }),
-        ]);
+  const loading = statsLoading;
+  const error = statsError ? (statsError instanceof Error ? statsError.message : "Error desconocido") : null;
 
-      setStats(nextStats);
-      setPipeline(nextPipeline);
-      setTimeSeries(nextTimeSeries);
-      setIndustryBreakdown(nextIndustryBreakdown);
-      setLogs(nextLogs);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Error desconocido";
-      setError(message);
-      sileo.error({
-        title: "Error al cargar el panel",
-        description: message,
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadOverview();
-  }, [loadOverview]);
+  async function handleRetry() {
+    await Promise.all([mutateStats(), mutatePipeline(), mutateTimeSeries(), mutateIndustry(), mutateLogs()]);
+  }
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -74,7 +37,7 @@ export default function PanelPage() {
         <div className="space-y-6">
           <PageHeader
             title="Panel general"
-            description="Estado general del sistema de prospección"
+            description="Estado general del sistema de prospeccion"
           />
 
           <ControlCenter health={components} healthLoading={healthLoading} onRefreshHealth={refreshHealth} />
@@ -87,7 +50,7 @@ export default function PanelPage() {
               </p>
               <p className="text-xs text-muted-foreground">{error}</p>
               <button
-                onClick={() => void loadOverview()}
+                onClick={() => void handleRetry()}
                 className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 transition-colors"
               >
                 Reintentar
@@ -114,25 +77,25 @@ export default function PanelPage() {
               <CollapsibleSection title="Tendencias" defaultOpen>
                 <div className="grid gap-6 lg:grid-cols-3">
                   <AreaChartCard
-                    title="Leads por Día"
-                    subtitle="Últimos 30 días"
-                    data={timeSeries}
+                    title="Leads por Dia"
+                    subtitle="Ultimos 30 dias"
+                    data={timeSeries ?? []}
                     dataKey="leads"
                     color="#8b5cf6"
                     gradientId="leadsGrad"
                   />
                   <AreaChartCard
-                    title="Outreach por Día"
+                    title="Outreach por Dia"
                     subtitle="Emails enviados"
-                    data={timeSeries}
+                    data={timeSeries ?? []}
                     dataKey="outreach"
                     color="#06b6d4"
                     gradientId="outreachGrad"
                   />
                   <AreaChartCard
-                    title="Respuestas por Día"
+                    title="Respuestas por Dia"
                     subtitle="Replies recibidos"
-                    data={timeSeries}
+                    data={timeSeries ?? []}
                     dataKey="replies"
                     color="#10b981"
                     gradientId="repliesGrad"
@@ -140,15 +103,15 @@ export default function PanelPage() {
                 </div>
               </CollapsibleSection>
 
-              <CollapsibleSection title="Pipeline & Distribución" defaultOpen>
+              <CollapsibleSection title="Pipeline & Distribucion" defaultOpen>
                 <div className="grid gap-6 lg:grid-cols-2">
-                  <PipelineFunnel stages={pipeline} />
-                  <IndustryChart data={industryBreakdown} />
+                  <PipelineFunnel stages={pipeline ?? []} />
+                  <IndustryChart data={industryBreakdown ?? []} />
                 </div>
               </CollapsibleSection>
 
               <CollapsibleSection title="Actividad Reciente" defaultOpen={false}>
-                <RecentActivity logs={logs} />
+                <RecentActivity logs={logs ?? []} />
               </CollapsibleSection>
             </>
           )}

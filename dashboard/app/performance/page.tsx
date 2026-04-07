@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { SectionHeader } from "@/components/shared/section-header";
@@ -8,14 +8,7 @@ import { AreaChartCard } from "@/components/charts/area-chart-card";
 import { PipelineFunnel } from "@/components/dashboard/pipeline-funnel";
 import { SkeletonStatCard, SkeletonCard } from "@/components/shared/skeleton";
 import { formatPercent } from "@/lib/formatters";
-import {
-  getCityBreakdown,
-  getDashboardStats,
-  getIndustryBreakdown,
-  getPipeline,
-  getSourcePerformance,
-  getTimeSeries,
-} from "@/lib/api/client";
+import { useApi } from "@/lib/hooks/use-swr-fetch";
 import {
   Target, MessageSquare, CalendarCheck, Trophy, Clock, Zap,
   TrendingUp, AlertTriangle,
@@ -106,49 +99,19 @@ function computeInsights(
 }
 
 export default function PerformancePage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [timeSeries, setTimeSeries] = useState<TimeSeriesPoint[]>([]);
-  const [pipeline, setPipeline] = useState<PipelineStage[]>([]);
-  const [industryBreakdown, setIndustryBreakdown] = useState<IndustryBreakdown[]>([]);
-  const [cityBreakdown, setCityBreakdown] = useState<CityBreakdown[]>([]);
-  const [sourcePerformance, setSourcePerformance] = useState<SourcePerformance[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: stats, isLoading: statsLoading } = useApi<DashboardStats>("/dashboard/stats");
+  const { data: timeSeries } = useApi<TimeSeriesPoint[]>("/dashboard/time-series?days=30");
+  const { data: pipeline } = useApi<PipelineStage[]>("/dashboard/pipeline");
+  const { data: industryBreakdown } = useApi<IndustryBreakdown[]>("/performance/industry");
+  const { data: cityBreakdown } = useApi<CityBreakdown[]>("/performance/city");
+  const { data: sourcePerformance } = useApi<SourcePerformance[]>("/performance/source");
+
   const [activeTab, setActiveTab] = useState<TabKey>("resumen");
 
-  useEffect(() => {
-    let active = true;
-
-    async function loadPerformance() {
-      const [nextStats, nextTimeSeries, nextPipeline, nextIndustry, nextCity, nextSource] =
-        await Promise.all([
-          getDashboardStats(),
-          getTimeSeries(30),
-          getPipeline(),
-          getIndustryBreakdown(),
-          getCityBreakdown(),
-          getSourcePerformance(),
-        ]);
-
-      if (!active) return;
-
-      setStats(nextStats);
-      setTimeSeries(nextTimeSeries);
-      setPipeline(nextPipeline);
-      setIndustryBreakdown(nextIndustry);
-      setCityBreakdown(nextCity);
-      setSourcePerformance(nextSource);
-      setLoading(false);
-    }
-
-    void loadPerformance();
-
-    return () => {
-      active = false;
-    };
-  }, []);
+  const loading = statsLoading;
 
   const insights = useMemo(
-    () => computeInsights(pipeline, industryBreakdown, cityBreakdown, sourcePerformance),
+    () => computeInsights(pipeline ?? [], industryBreakdown ?? [], cityBreakdown ?? [], sourcePerformance ?? []),
     [pipeline, industryBreakdown, cityBreakdown, sourcePerformance]
   );
 
@@ -165,7 +128,7 @@ export default function PerformancePage() {
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-[1400px] px-8 py-8">
           <div className="space-y-8">
-            <PageHeader title="Rendimiento" description="Métricas clave para evaluar la efectividad del sistema" />
+            <PageHeader title="Rendimiento" description="Metricas clave para evaluar la efectividad del sistema" />
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
           {Array.from({ length: 5 }).map((_, i) => <SkeletonStatCard key={i} />)}
         </div>
@@ -187,7 +150,7 @@ export default function PerformancePage() {
         <div className="space-y-8">
           <PageHeader
             title="Rendimiento"
-            description="Métricas clave para evaluar la efectividad del sistema y tomar decisiones"
+            description="Metricas clave para evaluar la efectividad del sistema y tomar decisiones"
       />
 
       {/* Tabs */}
@@ -218,12 +181,12 @@ export default function PerformancePage() {
       {activeTab === "resumen" && stats && (
         <div className="space-y-8">
           <section>
-            <SectionHeader title="Tasas de Conversión" subtitle="Eficiencia en cada etapa del pipeline" className="mb-4" />
+            <SectionHeader title="Tasas de Conversion" subtitle="Eficiencia en cada etapa del pipeline" className="mb-4" />
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
               <StatCard label="Tasa de Contacto" value={formatPercent(stats.contacted / stats.total_leads)} icon={Target} colorScheme="amber" />
               <StatCard label="Tasa de Apertura" value={formatPercent(stats.open_rate)} icon={Zap} colorScheme="orange" />
               <StatCard label="Tasa de Respuesta" value={formatPercent(stats.reply_rate)} icon={MessageSquare} colorScheme="emerald" />
-              <StatCard label="Tasa de Reunión" value={formatPercent(stats.meeting_rate)} icon={CalendarCheck} colorScheme="teal" />
+              <StatCard label="Tasa de Reunion" value={formatPercent(stats.meeting_rate)} icon={CalendarCheck} colorScheme="teal" />
               <StatCard label="Tasa de Cierre" value={formatPercent(stats.conversion_rate)} icon={Trophy} colorScheme="green" />
             </div>
           </section>
@@ -236,18 +199,18 @@ export default function PerformancePage() {
           </section>
 
           <section>
-            <SectionHeader title="Embudo Comercial" subtitle="Dónde están los cuellos de botella" className="mb-4" />
-            <PipelineFunnel stages={pipeline} />
+            <SectionHeader title="Embudo Comercial" subtitle="Donde estan los cuellos de botella" className="mb-4" />
+            <PipelineFunnel stages={pipeline ?? []} />
           </section>
         </div>
       )}
 
       {activeTab === "tendencias" && (
         <div className="space-y-6">
-          <SectionHeader title="Tendencias" subtitle="Evolución últimos 30 días" className="mb-4" />
+          <SectionHeader title="Tendencias" subtitle="Evolucion ultimos 30 dias" className="mb-4" />
           <div className="grid gap-6 lg:grid-cols-2">
-            <AreaChartCard title="Leads Nuevos" data={timeSeries} dataKey="leads" color="#8b5cf6" gradientId="perfLeads" />
-            <AreaChartCard title="Conversiones" data={timeSeries} dataKey="conversions" color="#22c55e" gradientId="perfConv" />
+            <AreaChartCard title="Leads Nuevos" data={timeSeries ?? []} dataKey="leads" color="#8b5cf6" gradientId="perfLeads" />
+            <AreaChartCard title="Conversiones" data={timeSeries ?? []} dataKey="conversions" color="#22c55e" gradientId="perfConv" />
           </div>
         </div>
       )}
@@ -255,7 +218,7 @@ export default function PerformancePage() {
       {activeTab === "desglose" && (
         <div className="space-y-8">
           <section>
-            <SectionHeader title="Por Industria" subtitle="Qué rubros convierten mejor" className="mb-4" />
+            <SectionHeader title="Por Industria" subtitle="Que rubros convierten mejor" className="mb-4" />
             <div className="grid gap-6 lg:grid-cols-2">
               <MetricTable
                 title="Industrias"
@@ -265,14 +228,14 @@ export default function PerformancePage() {
                   { key: "avg_score", label: "Score Prom.", format: (v: number) => v.toFixed(1) },
                   { key: "conversion_rate", label: "Conv. Rate", format: (v: number) => formatPercent(v) },
                 ]}
-                data={[...industryBreakdown].sort((a, b) => b.conversion_rate - a.conversion_rate)}
+                data={[...(industryBreakdown ?? [])].sort((a, b) => b.conversion_rate - a.conversion_rate)}
               />
-              <IndustryConversionChart data={industryBreakdown} />
+              <IndustryConversionChart data={industryBreakdown ?? []} />
             </div>
           </section>
 
           <section>
-            <SectionHeader title="Por Ciudad" subtitle="Dónde responden mejor" className="mb-4" />
+            <SectionHeader title="Por Ciudad" subtitle="Donde responden mejor" className="mb-4" />
             <MetricTable
               title="Ciudades"
               columns={[
@@ -281,12 +244,12 @@ export default function PerformancePage() {
                 { key: "avg_score", label: "Score Prom.", format: (v: number) => v.toFixed(1) },
                 { key: "reply_rate", label: "Reply Rate", format: (v: number) => formatPercent(v) },
               ]}
-              data={[...cityBreakdown].sort((a, b) => b.reply_rate - a.reply_rate)}
+              data={[...(cityBreakdown ?? [])].sort((a, b) => b.reply_rate - a.reply_rate)}
             />
           </section>
 
           <section>
-            <SectionHeader title="Por Fuente" subtitle="Qué fuentes traen mejores leads" className="mb-4" />
+            <SectionHeader title="Por Fuente" subtitle="Que fuentes traen mejores leads" className="mb-4" />
             <MetricTable
               title="Fuentes"
               columns={[
@@ -296,7 +259,7 @@ export default function PerformancePage() {
                 { key: "reply_rate", label: "Reply Rate", format: (v: number) => formatPercent(v) },
                 { key: "conversion_rate", label: "Conv. Rate", format: (v: number) => formatPercent(v) },
               ]}
-              data={[...sourcePerformance].sort((a, b) => b.conversion_rate - a.conversion_rate)}
+              data={[...(sourcePerformance ?? [])].sort((a, b) => b.conversion_rate - a.conversion_rate)}
             />
           </section>
         </div>
@@ -313,11 +276,11 @@ export default function PerformancePage() {
             <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900/30 bg-emerald-50/30 dark:bg-emerald-950/10 p-5">
               <div className="flex items-center gap-2 mb-2">
                 <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                <h4 className="text-sm font-semibold text-emerald-800 dark:text-emerald-300 font-heading">Mayor conversión</h4>
+                <h4 className="text-sm font-semibold text-emerald-800 dark:text-emerald-300 font-heading">Mayor conversion</h4>
               </div>
               <p className="text-sm text-foreground/80">
                 {insights.bestIndustry ? (
-                  <>El rubro <strong>{insights.bestIndustry.industry}</strong> tiene la mejor tasa de conversión ({formatPercent(insights.bestIndustry.conversion_rate)}).</>
+                  <>El rubro <strong>{insights.bestIndustry.industry}</strong> tiene la mejor tasa de conversion ({formatPercent(insights.bestIndustry.conversion_rate)}).</>
                 ) : "Sin datos de industria."}
                 {insights.bestSource && (
                   <> La fuente <strong>{insights.bestSource.source}</strong> convierte a {formatPercent(insights.bestSource.conversion_rate)}.</>
@@ -332,7 +295,7 @@ export default function PerformancePage() {
               </div>
               <p className="text-sm text-foreground/80">
                 {insights.bottleneck.from ? (
-                  <>La mayor caída está entre <strong>{insights.bottleneck.from}</strong> → <strong>{insights.bottleneck.to}</strong> ({formatPercent(insights.bottleneck.dropoff)} drop-off). Revisar esa transición.</>
+                  <>La mayor caida esta entre <strong>{insights.bottleneck.from}</strong> → <strong>{insights.bottleneck.to}</strong> ({formatPercent(insights.bottleneck.dropoff)} drop-off). Revisar esa transicion.</>
                 ) : "Sin datos de pipeline para detectar cuellos de botella."}
               </p>
             </div>
@@ -344,7 +307,7 @@ export default function PerformancePage() {
               </div>
               <p className="text-sm text-foreground/80">
                 {insights.bestCity ? (
-                  <><strong>{insights.bestCity.city}</strong> tiene el reply rate más alto ({formatPercent(insights.bestCity.reply_rate)}). Considerar aumentar prospección en esa zona.</>
+                  <><strong>{insights.bestCity.city}</strong> tiene el reply rate mas alto ({formatPercent(insights.bestCity.reply_rate)}). Considerar aumentar prospeccion en esa zona.</>
                 ) : "Sin datos de ciudades."}
               </p>
             </div>

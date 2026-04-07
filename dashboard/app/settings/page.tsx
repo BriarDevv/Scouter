@@ -1,21 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { Loader2, Settings, TriangleAlert } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { RelativeTime } from "@/components/shared/relative-time";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import {
-  getMailCredentials,
-  getMailSettings,
-  getOperationalSettings,
-  getSetupReadiness,
-  getSetupStatus,
-  getWhatsAppCredentials,
-  getTelegramCredentials,
-} from "@/lib/api/client";
+import { useApi } from "@/lib/hooks/use-swr-fetch";
 import type {
   MailCredentials,
   MailSettings,
@@ -42,80 +34,45 @@ import type { TelegramCredentials } from "@/lib/api/client";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabId>("setup");
-  const [mailData, setMailData] = useState<MailSettings | null>(null);
-  const [opData, setOpData] = useState<OperationalSettings | null>(null);
-  const [credsData, setCredsData] = useState<MailCredentials | null>(null);
-  const [setupData, setSetupData] = useState<SetupStatus | null>(null);
-  const [readiness, setReadiness] = useState<SetupReadiness | null>(null);
-  const [waCredsData, setWaCredsData] = useState<WhatsAppCredentials | null>(null);
-  const [tgCredsData, setTgCredsData] = useState<TelegramCredentials | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const refreshSetup = useCallback(async () => {
-    try {
-      setSetupData(await getSetupStatus());
-      setReadiness(await getSetupReadiness());
-    } catch (err) { console.error("setup_refresh_failed", err); }
-  }, []);
+  const { data: mailData, isLoading: mailLoading, mutate: mutateMail } = useApi<MailSettings>("/settings/mail");
+  const { data: opData, isLoading: opLoading, mutate: mutateOp } = useApi<OperationalSettings>("/settings/operational");
+  const { data: credsData, mutate: mutateCreds } = useApi<MailCredentials>("/settings/mail-credentials");
+  const { data: setupData, mutate: mutateSetup } = useApi<SetupStatus>("/settings/setup-status");
+  const { data: readiness, mutate: mutateReadiness } = useApi<SetupReadiness>("/setup/readiness");
+  const { data: waCredsData, mutate: mutateWaCreds } = useApi<WhatsAppCredentials>("/settings/whatsapp-credentials");
+  const { data: tgCredsData, mutate: mutateTgCreds } = useApi<TelegramCredentials>("/settings/telegram-credentials");
 
-  const refreshMail = useCallback(async () => {
-    try {
-      setMailData(await getMailSettings());
-    } catch (err) { console.error("mail_refresh_failed", err); }
-  }, []);
+  const loading = mailLoading || opLoading;
+  const loadError = !loading && !mailData && !opData ? "No se pudo conectar con el backend." : null;
 
-  useEffect(() => {
-    let active = true;
+  const refreshSetup = async () => {
+    await Promise.all([mutateSetup(), mutateReadiness()]);
+  };
 
-    Promise.allSettled([
-      getMailSettings(),
-      getOperationalSettings(),
-      getMailCredentials(),
-      getSetupStatus(),
-      getSetupReadiness(),
-      getWhatsAppCredentials(),
-      getTelegramCredentials(),
-    ]).then(([mail, op, creds, setup, readinessRes, waCreds, tgCreds]) => {
-      if (!active) return;
-      if (mail.status === "fulfilled") setMailData(mail.value);
-      if (op.status === "fulfilled") setOpData(op.value);
-      if (creds.status === "fulfilled") setCredsData(creds.value);
-      if (setup.status === "fulfilled") setSetupData(setup.value);
-      if (readinessRes.status === "fulfilled") setReadiness(readinessRes.value);
-      if (waCreds.status === "fulfilled") setWaCredsData(waCreds.value);
-      if (tgCreds.status === "fulfilled") setTgCredsData(tgCreds.value);
-      if (
-        mail.status === "rejected" &&
-        op.status === "rejected"
-      ) {
-        setLoadError("No se pudo conectar con el backend.");
-      }
-      setLoading(false);
-    });
-
-    return () => { active = false; };
-  }, []);
+  const refreshMail = async () => {
+    await mutateMail();
+  };
 
   const handleSavedOps = (updated: OperationalSettings) => {
-    setOpData(updated);
+    void mutateOp(updated, false);
     void refreshSetup();
     void refreshMail();
   };
 
   const handleSavedCreds = (updated: MailCredentials) => {
-    setCredsData(updated);
+    void mutateCreds(updated, false);
     void refreshSetup();
     void refreshMail();
   };
 
   const handleSavedWACreds = (updated: WhatsAppCredentials) => {
-    setWaCredsData(updated);
+    void mutateWaCreds(updated, false);
     void refreshSetup();
   };
 
   const handleSavedTGCreds = (updated: TelegramCredentials) => {
-    setTgCredsData(updated);
+    void mutateTgCreds(updated, false);
     void refreshSetup();
   };
 
@@ -124,10 +81,10 @@ export default function SettingsPage() {
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-[1400px] px-8 py-8">
           <div className="space-y-6">
-            <PageHeader title="Configuración" description="Ajustes operativos del sistema." />
+            <PageHeader title="Configuracion" description="Ajustes operativos del sistema." />
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Cargando configuración…
+              Cargando configuracion...
             </div>
           </div>
         </div>
@@ -140,8 +97,8 @@ export default function SettingsPage() {
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-[1400px] px-8 py-8">
           <div className="space-y-6">
-            <PageHeader title="Configuración" description="Ajustes operativos del sistema." />
-            <EmptyState icon={Settings} title="Sin configuración disponible" description={loadError} />
+            <PageHeader title="Configuracion" description="Ajustes operativos del sistema." />
+            <EmptyState icon={Settings} title="Sin configuracion disponible" description={loadError} />
           </div>
         </div>
       </div>
@@ -152,7 +109,7 @@ export default function SettingsPage() {
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto max-w-[1400px] px-8 py-8">
         <div className="space-y-6">
-          <PageHeader title="Configuración" description="Ajustes operativos del sistema." />
+          <PageHeader title="Configuracion" description="Ajustes operativos del sistema." />
 
           {readiness && !readiness.dashboard_unlocked && (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200">
@@ -255,7 +212,7 @@ export default function SettingsPage() {
 
       {opData?.updated_at && (
         <p className="text-xs text-muted-foreground">
-          Última actualización: <RelativeTime date={opData.updated_at} />
+          Ultima actualizacion: <RelativeTime date={opData.updated_at} />
         </p>
       )}
         </div>
@@ -269,7 +226,7 @@ function NoDataNotice() {
     <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">
       <div className="flex items-center gap-2">
         <TriangleAlert className="h-4 w-4 text-amber-500" />
-        No se pudieron cargar los datos para esta sección.
+        No se pudieron cargar los datos para esta seccion.
       </div>
     </div>
   );

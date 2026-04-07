@@ -5,13 +5,10 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Skeleton, SkeletonStatCard, SkeletonCard } from "@/components/shared/skeleton";
 import {
   getDraftDeliveries,
-  getDrafts,
-  getInboundMessages,
-  getInboundThreads,
-  getLeads,
   reviewDraft,
   sendOutreachDraft,
 } from "@/lib/api/client";
+import { useApi } from "@/lib/hooks/use-swr-fetch";
 import type {
   Lead,
   DraftStatus,
@@ -19,6 +16,7 @@ import type {
   InboundMessage,
   OutreachDelivery,
   OutreachDraft,
+  PaginatedResponse,
 } from "@/types";
 import { sileo } from "sileo";
 
@@ -31,58 +29,42 @@ const LEADS_PAGE_SIZE = 50;
 export default function OutreachPage() {
   const [filter, setFilter] = useState<DraftStatus | "all">("all");
   const [selectedDraft, setSelectedDraft] = useState<OutreachDraft | null>(null);
-  const [drafts, setDrafts] = useState<OutreachDraft[]>([]);
-  const [leads, setLeads] = useState<Lead[]>([]);
   const [leadsPage, setLeadsPage] = useState(1);
-  const [leadsTotal, setLeadsTotal] = useState(0);
-  const [inboundMessages, setInboundMessages] = useState<InboundMessage[]>([]);
-  const [inboundThreads, setInboundThreads] = useState<EmailThreadSummary[]>([]);
   const [selectedDeliveries, setSelectedDeliveries] = useState<OutreachDelivery[]>([]);
   const [mailError, setMailError] = useState<string | null>(null);
   const [isReviewingDraftId, setIsReviewingDraftId] = useState<string | null>(null);
   const [isSendingDraftId, setIsSendingDraftId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
 
+  const { data: drafts, isLoading: draftsLoading, mutate: mutateDrafts } = useApi<OutreachDraft[]>("/outreach/drafts");
+  const { data: leadsResponse } = useApi<PaginatedResponse<Lead>>(
+    `/leads?page=${leadsPage}&page_size=${LEADS_PAGE_SIZE}`
+  );
+  const { data: inboundMessages, error: inboundError } = useApi<InboundMessage[]>("/mail/inbound/messages?limit=100");
+  const { data: inboundThreads } = useApi<EmailThreadSummary[]>("/mail/inbound/threads?limit=50");
+
+  const leads = leadsResponse?.items ?? [];
+  const leadsTotal = leadsResponse?.total ?? 0;
   const leadsTotalPages = Math.max(1, Math.ceil(leadsTotal / LEADS_PAGE_SIZE));
+  const loading = draftsLoading;
 
+  // Set mail error if inbound fetch failed
   useEffect(() => {
-    let active = true;
-
-    async function loadOutreachData() {
-      const [nextDrafts, nextLeads, nextInboundMessages, nextInboundThreads] = await Promise.all([
-        getDrafts(),
-        getLeads({ page: leadsPage, page_size: LEADS_PAGE_SIZE }),
-        getInboundMessages({ limit: 100 }).catch(() => null),
-        getInboundThreads({ limit: 50 }).catch(() => null),
-      ]);
-
-      if (!active) return;
-
-      setDrafts(nextDrafts);
-      setLeads(nextLeads.items);
-      setLeadsTotal(nextLeads.total);
-      if (nextInboundMessages && nextInboundThreads) {
-        setInboundMessages(nextInboundMessages);
-        setInboundThreads(nextInboundThreads);
-        setMailError(null);
-      } else {
-        setInboundMessages([]);
-        setInboundThreads([]);
-        setMailError("No se pudo cargar el contexto de replies inbound.");
-      }
-      setSelectedDraft((current) =>
-        current ? nextDrafts.find((draft) => draft.id === current.id) ?? null : nextDrafts[0] ?? null
-      );
-      setLoading(false);
+    if (inboundError) {
+      setMailError("No se pudo cargar el contexto de replies inbound.");
+    } else {
+      setMailError(null);
     }
+  }, [inboundError]);
 
-    void loadOutreachData();
+  // Auto-select first draft when drafts load
+  useEffect(() => {
+    if (!drafts) return;
+    setSelectedDraft((current) =>
+      current ? drafts.find((draft) => draft.id === current.id) ?? null : drafts[0] ?? null
+    );
+  }, [drafts]);
 
-    return () => {
-      active = false;
-    };
-  }, [leadsPage]);
-
+  // Load deliveries when selected draft changes
   useEffect(() => {
     let active = true;
 
@@ -110,13 +92,13 @@ export default function OutreachPage() {
   }, [selectedDraft]);
 
   const filteredDrafts = filter === "all"
-    ? drafts
-    : drafts.filter((d) => d.status === filter);
+    ? (drafts ?? [])
+    : (drafts ?? []).filter((d) => d.status === filter);
   const selectedReplies = selectedDraft
-    ? inboundMessages.filter((message) => message.draft_id === selectedDraft.id)
+    ? (inboundMessages ?? []).filter((message) => message.draft_id === selectedDraft.id)
     : [];
   const selectedThreads = selectedDraft
-    ? inboundThreads.filter((thread) => thread.draft_id === selectedDraft.id)
+    ? (inboundThreads ?? []).filter((thread) => thread.draft_id === selectedDraft.id)
     : [];
 
   async function handleReview(draftId: string, approved: boolean) {
@@ -125,8 +107,9 @@ export default function OutreachPage() {
       await sileo.promise(
         (async () => {
           const updated = await reviewDraft(draftId, approved);
-          setDrafts((current) =>
-            current.map((draft) => (draft.id === draftId ? { ...draft, ...updated } : draft))
+          await mutateDrafts(
+            (current) => current?.map((draft) => (draft.id === draftId ? { ...draft, ...updated } : draft)),
+            false
           );
         })(),
         {
@@ -149,8 +132,9 @@ export default function OutreachPage() {
       await sileo.promise(
         (async () => {
           await sendOutreachDraft(draftId);
-          setDrafts((current) =>
-            current.map((draft) => (draft.id === draftId ? { ...draft, status: "sent" as DraftStatus } : draft))
+          await mutateDrafts(
+            (current) => current?.map((draft) => (draft.id === draftId ? { ...draft, status: "sent" as DraftStatus } : draft)),
+            false
           );
         })(),
         {
@@ -172,7 +156,7 @@ export default function OutreachPage() {
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-[1400px] px-8 py-8">
           <div className="space-y-6">
-            <PageHeader title="Outreach" description="Gestión de borradores y actividad comercial" />
+            <PageHeader title="Outreach" description="Gestion de borradores y actividad comercial" />
             <div className="grid gap-6 lg:grid-cols-3">
               <div className="lg:col-span-2 space-y-4">
                 <Skeleton className="h-9 w-full max-w-md" />
@@ -194,12 +178,12 @@ export default function OutreachPage() {
         <div className="space-y-6">
           <PageHeader
             title="Outreach"
-            description="Gestión de borradores y actividad comercial"
+            description="Gestion de borradores y actividad comercial"
           />
 
           <div className="grid gap-6 lg:grid-cols-3">
             <DraftList
-              drafts={drafts}
+              drafts={drafts ?? []}
               filteredDrafts={filteredDrafts}
               leads={leads}
               filter={filter}

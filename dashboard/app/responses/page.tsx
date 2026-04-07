@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Inbox,
   LifeBuoy,
@@ -13,15 +13,11 @@ import { StatCard } from "@/components/shared/stat-card";
 import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
 import {
-  getDrafts,
-  getInboundMailStatus,
-  getInboundMessages,
-  getInboundThreads,
-  getLeads,
   classifyInboundMessage,
   classifyPendingInboundMessages,
   syncInboundMail,
 } from "@/lib/api/client";
+import { useApi } from "@/lib/hooks/use-swr-fetch";
 import { POSITIVE_REPLY_LABELS } from "@/lib/constants";
 import type {
   EmailThreadSummary,
@@ -29,6 +25,7 @@ import type {
   InboundMessage,
   Lead,
   OutreachDraft,
+  PaginatedResponse,
 } from "@/types";
 
 import { MessageList } from "@/components/responses/message-list";
@@ -38,96 +35,75 @@ import { LeadsPagination } from "@/components/responses/compose-area";
 const LEADS_PAGE_SIZE = 50;
 
 export default function ResponsesPage() {
-  const [messages, setMessages] = useState<InboundMessage[]>([]);
-  const [threads, setThreads] = useState<EmailThreadSummary[]>([]);
-  const [status, setStatus] = useState<InboundMailStatus | null>(null);
-  const [leads, setLeads] = useState<Lead[]>([]);
   const [leadsPage, setLeadsPage] = useState(1);
-  const [leadsTotal, setLeadsTotal] = useState(0);
-  const [drafts, setDrafts] = useState<OutreachDraft[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isClassifying, setIsClassifying] = useState(false);
   const [classifyingMessageId, setClassifyingMessageId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "pending" | "classified" | "failed">("all");
 
+  const { data: messages, isLoading: messagesLoading, mutate: mutateMessages } = useApi<InboundMessage[]>("/mail/inbound/messages?limit=100");
+  const { data: threads, mutate: mutateThreads } = useApi<EmailThreadSummary[]>("/mail/inbound/threads?limit=50");
+  const { data: status, mutate: mutateStatus } = useApi<InboundMailStatus>("/mail/inbound/status");
+  const { data: leadsResponse, mutate: mutateLeads } = useApi<PaginatedResponse<Lead>>(
+    `/leads?page=${leadsPage}&page_size=${LEADS_PAGE_SIZE}`
+  );
+  const { data: drafts, mutate: mutateDrafts } = useApi<OutreachDraft[]>("/outreach/drafts");
+
+  const loading = messagesLoading;
+  const leads = leadsResponse?.items ?? [];
+  const leadsTotal = leadsResponse?.total ?? 0;
   const leadsTotalPages = Math.max(1, Math.ceil(leadsTotal / LEADS_PAGE_SIZE));
 
-  async function loadInboxData() {
-    setLoading(true);
-    try {
-      const [nextMessages, nextThreads, nextStatus, nextLeads, nextDrafts] = await Promise.all([
-        getInboundMessages({ limit: 100 }),
-        getInboundThreads({ limit: 50 }),
-        getInboundMailStatus(),
-        getLeads({ page: leadsPage, page_size: LEADS_PAGE_SIZE }),
-        getDrafts(),
-      ]);
-      setMessages(nextMessages);
-      setThreads(nextThreads);
-      setStatus(nextStatus);
-      setLeads(nextLeads.items);
-      setLeadsTotal(nextLeads.total);
-      setDrafts(nextDrafts);
-    } catch (err) {
-      sileo.error({
-        title: "Error de carga",
-        description: err instanceof Error ? err.message : "No se pudo cargar el inbox.",
-      });
-    } finally {
-      setLoading(false);
-    }
+  async function reloadAll() {
+    await Promise.all([mutateMessages(), mutateThreads(), mutateStatus(), mutateLeads(), mutateDrafts()]);
   }
-
-  useEffect(() => {
-    void loadInboxData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leadsPage]);
 
   const leadById = useMemo(
     () => new Map(leads.map((lead) => [lead.id, lead])),
     [leads]
   );
   const draftById = useMemo(
-    () => new Map(drafts.map((draft) => [draft.id, draft])),
+    () => new Map((drafts ?? []).map((draft) => [draft.id, draft])),
     [drafts]
   );
   const threadById = useMemo(
-    () => new Map(threads.map((thread) => [thread.id, thread])),
+    () => new Map((threads ?? []).map((thread) => [thread.id, thread])),
     [threads]
   );
 
-  const filteredMessages = useMemo(() => {
-    if (filter === "all") return messages;
-    return messages.filter((message) => message.classification_status === filter);
-  }, [filter, messages]);
+  const messagesList = messages ?? [];
 
-  const recentRepliesCount = messages.length;
-  const repliedLeadsCount = new Set(messages.map((m) => m.lead_id).filter(Boolean)).size;
-  const positiveRepliesCount = messages.filter(
+  const filteredMessages = useMemo(() => {
+    if (filter === "all") return messagesList;
+    return messagesList.filter((message) => message.classification_status === filter);
+  }, [filter, messagesList]);
+
+  const recentRepliesCount = messagesList.length;
+  const repliedLeadsCount = new Set(messagesList.map((m) => m.lead_id).filter(Boolean)).size;
+  const positiveRepliesCount = messagesList.filter(
     (m) => m.classification_label && POSITIVE_REPLY_LABELS.includes(m.classification_label)
   ).length;
-  const quoteRepliesCount = messages.filter(
+  const quoteRepliesCount = messagesList.filter(
     (m) => m.classification_label === "asked_for_quote"
   ).length;
-  const meetingRepliesCount = messages.filter(
+  const meetingRepliesCount = messagesList.filter(
     (m) => m.classification_label === "asked_for_meeting"
   ).length;
-  const pendingCount = messages.filter((m) => m.classification_status === "pending").length;
-  const escalatedCount = messages.filter((m) => m.should_escalate_reviewer).length;
+  const pendingCount = messagesList.filter((m) => m.classification_status === "pending").length;
+  const escalatedCount = messagesList.filter((m) => m.should_escalate_reviewer).length;
 
   async function handleSync() {
     setIsSyncing(true);
     try {
       await sileo.promise(syncInboundMail(), {
-        loading: { title: "Sincronizando inbox…" },
+        loading: { title: "Sincronizando inbox..." },
         success: { title: "Inbox sincronizado" },
         error: (err: unknown) => ({
-          title: "Error de sincronización",
+          title: "Error de sincronizacion",
           description: err instanceof Error ? err.message : "No se pudo sincronizar el inbox.",
         }),
       });
-      await loadInboxData();
+      await reloadAll();
     } finally {
       setIsSyncing(false);
     }
@@ -137,14 +113,14 @@ export default function ResponsesPage() {
     setIsClassifying(true);
     try {
       await sileo.promise(classifyPendingInboundMessages(25), {
-        loading: { title: "Clasificando pendientes…" },
-        success: { title: "Clasificación completada" },
+        loading: { title: "Clasificando pendientes..." },
+        success: { title: "Clasificacion completada" },
         error: (err: unknown) => ({
-          title: "Error de clasificación",
+          title: "Error de clasificacion",
           description: err instanceof Error ? err.message : "No se pudieron clasificar los replies.",
         }),
       });
-      await loadInboxData();
+      await reloadAll();
     } finally {
       setIsClassifying(false);
     }
@@ -154,14 +130,14 @@ export default function ResponsesPage() {
     setClassifyingMessageId(messageId);
     try {
       await sileo.promise(classifyInboundMessage(messageId), {
-        loading: { title: "Clasificando reply…" },
+        loading: { title: "Clasificando reply..." },
         success: { title: "Reply clasificado" },
         error: (err: unknown) => ({
-          title: "Error de clasificación",
+          title: "Error de clasificacion",
           description: err instanceof Error ? err.message : "No se pudo clasificar el reply.",
         }),
       });
-      await loadInboxData();
+      await reloadAll();
     } finally {
       setClassifyingMessageId(null);
     }
@@ -173,7 +149,7 @@ export default function ResponsesPage() {
         <div className="space-y-6">
           <PageHeader
             title="Respuestas"
-            description="Inbox comercial grounded sobre inbound mail real, matching a deliveries y clasificación con executor."
+            description="Inbox comercial grounded sobre inbound mail real, matching a deliveries y clasificacion con executor."
           >
             <Button
               variant="outline"
@@ -203,7 +179,7 @@ export default function ResponsesPage() {
               value={positiveRepliesCount}
               icon={Sparkles}
               colorScheme="cyan"
-              subtitle={`${quoteRepliesCount} cotización · ${meetingRepliesCount} reunión`}
+              subtitle={`${quoteRepliesCount} cotizacion · ${meetingRepliesCount} reunion`}
             />
             <StatCard label="Sugeridas a reviewer" value={escalatedCount} icon={LifeBuoy} colorScheme="fuchsia" />
           </div>
@@ -219,13 +195,13 @@ export default function ResponsesPage() {
               threadById={threadById}
               classifyingMessageId={classifyingMessageId}
               onClassifyMessage={(id) => void handleClassifyMessage(id)}
-              onRefresh={() => void loadInboxData()}
+              onRefresh={() => void reloadAll()}
             />
 
             <div className="space-y-6">
               <ThreadDetail
-                threads={threads}
-                status={status}
+                threads={threads ?? []}
+                status={status ?? null}
                 leadById={leadById}
               />
 

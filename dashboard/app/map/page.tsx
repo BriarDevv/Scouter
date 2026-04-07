@@ -1,17 +1,14 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback } from "react";
 import dynamic from "next/dynamic";
 import { MapPin, RefreshCw } from "lucide-react";
-import { sileo } from "sileo";
 import {
-  getGeoSummary,
-  getLeadsWithCoords,
-  getTerritories,
   createTerritory,
   updateTerritory,
   deleteTerritory,
 } from "@/lib/api/client";
+import { useApi } from "@/lib/hooks/use-swr-fetch";
 import { TerritoryPanel } from "@/components/map/territory-panel";
 import type { Lead, GeoSummaryCity, TerritoryWithStats } from "@/types";
 
@@ -32,32 +29,15 @@ function MapSkeleton() {
 }
 
 export default function MapPage() {
-  const [cities, setCities] = useState<GeoSummaryCity[]>([]);
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [territories, setTerritories] = useState<TerritoryWithStats[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: cities, isLoading: citiesLoading, mutate: mutateCities } = useApi<GeoSummaryCity[]>("/dashboard/geo-summary");
+  const { data: leads, isLoading: leadsLoading, mutate: mutateLeads } = useApi<Lead[]>("/leads?page=1&page_size=200");
+  const { data: territories, isLoading: territoriesLoading, mutate: mutateTerritories } = useApi<TerritoryWithStats[]>("/territories");
+
+  const loading = citiesLoading || leadsLoading || territoriesLoading;
 
   const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [geoData, leadsData, territoryData] = await Promise.all([
-        getGeoSummary(),
-        getLeadsWithCoords(),
-        getTerritories(),
-      ]);
-      setCities(geoData);
-      setLeads(leadsData);
-      setTerritories(territoryData);
-    } catch (err) {
-      sileo.error({ title: "Error cargando datos del mapa" });
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+    await Promise.all([mutateCities(), mutateLeads(), mutateTerritories()]);
+  }, [mutateCities, mutateLeads, mutateTerritories]);
 
   async function handleCreateTerritory(data: {
     name: string;
@@ -91,12 +71,12 @@ export default function MapPage() {
           <div>
             <h1 className="font-heading text-lg font-bold text-foreground">Mapa de Leads</h1>
             <p className="text-xs text-muted-foreground">
-              {leads.length} negocios con ubicacion &middot; {cities.length} ciudades
+              {(leads ?? []).length} negocios con ubicacion &middot; {(cities ?? []).length} ciudades
             </p>
           </div>
         </div>
         <button
-          onClick={loadData}
+          onClick={() => void loadData()}
           disabled={loading}
           className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50 transition-colors"
         >
@@ -107,9 +87,9 @@ export default function MapPage() {
 
       {/* Map */}
       <div className="relative flex-1">
-        <LeadMap cities={cities} leads={leads} territories={territories} />
+        <LeadMap cities={cities ?? []} leads={leads ?? []} territories={territories ?? []} />
         <TerritoryPanel
-          territories={territories}
+          territories={territories ?? []}
           onSave={handleCreateTerritory}
           onUpdate={handleUpdateTerritory}
           onDelete={handleDeleteTerritory}

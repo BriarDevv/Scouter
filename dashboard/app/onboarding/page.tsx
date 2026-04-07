@@ -27,14 +27,9 @@ import { RulesSection } from "@/components/settings/rules-section";
 import { WhatsAppSection } from "@/components/settings/whatsapp-section";
 import { TelegramSection } from "@/components/settings/telegram-section";
 import {
-  getMailCredentials,
-  getMailSettings,
-  getOperationalSettings,
-  getSetupReadiness,
-  getWhatsAppCredentials,
-  getTelegramCredentials,
   runSetupAction,
 } from "@/lib/api/client";
+import { useApi } from "@/lib/hooks/use-swr-fetch";
 import type {
   MailCredentials,
   MailSettings,
@@ -66,46 +61,67 @@ export default function OnboardingPage() {
       ? rawNextPath
       : "/";
 
-  const [readiness, setReadiness] = useState<SetupReadiness | null>(null);
-  const [mailData, setMailData] = useState<MailSettings | null>(null);
-  const [opData, setOpData] = useState<OperationalSettings | null>(null);
-  const [credsData, setCredsData] = useState<MailCredentials | null>(null);
-  const [waData, setWaData] = useState<WhatsAppCredentials | null>(null);
-  const [tgData, setTgData] = useState<TelegramCredentials | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const { data: readiness, isLoading: readinessLoading, error: readinessError, mutate: mutateReadiness } = useApi<SetupReadiness>("/setup/readiness");
+  const { data: mailData, isLoading: mailLoading, mutate: mutateMail } = useApi<MailSettings>("/settings/mail");
+  const { data: opData, mutate: mutateOp } = useApi<OperationalSettings>("/settings/operational");
+  const { data: credsData, mutate: mutateCreds } = useApi<MailCredentials>("/settings/mail-credentials");
+  const { data: waData, mutate: mutateWa } = useApi<WhatsAppCredentials>("/settings/whatsapp-credentials");
+  const { data: tgData, mutate: mutateTg } = useApi<TelegramCredentials>("/settings/telegram-credentials");
+
+  const loading = readinessLoading || mailLoading;
+  const loadError = readinessError ? "No se pudo cargar el estado de onboarding." : null;
+
   const [activeStep, setActiveStep] = useState<string>("setup");
   const [runningAction, setRunningAction] = useState<string | null>(null);
   const [actionOutput, setActionOutput] = useState<Record<string, string | null>>({});
 
   const refresh = useCallback(async () => {
-    setLoading(true);
-    setLoadError(null);
-    const [readinessRes, mailRes, opRes, credsRes, waRes, tgRes] = await Promise.allSettled([
-      getSetupReadiness(),
-      getMailSettings(),
-      getOperationalSettings(),
-      getMailCredentials(),
-      getWhatsAppCredentials(),
-      getTelegramCredentials(),
-    ]);
+    await Promise.all([mutateReadiness(), mutateMail(), mutateOp(), mutateCreds(), mutateWa(), mutateTg()]);
+  }, [mutateReadiness, mutateMail, mutateOp, mutateCreds, mutateWa, mutateTg]);
 
-    if (readinessRes.status === "fulfilled") setReadiness(readinessRes.value);
-    if (mailRes.status === "fulfilled") setMailData(mailRes.value);
-    if (opRes.status === "fulfilled") setOpData(opRes.value);
-    if (credsRes.status === "fulfilled") setCredsData(credsRes.value);
-    if (waRes.status === "fulfilled") setWaData(waRes.value);
-    if (tgRes.status === "fulfilled") setTgData(tgRes.value);
-
-    if (readinessRes.status === "rejected") {
-      setLoadError("No se pudo cargar el estado de onboarding.");
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
+  const handleSavedOps = (updated: OperationalSettings) => {
+    void mutateOp(updated, false);
     void refresh();
-  }, [refresh]);
+  };
+
+  const handleSavedCreds = (updated: MailCredentials) => {
+    void mutateCreds(updated, false);
+    void refresh();
+  };
+
+  const handleSavedWa = (updated: WhatsAppCredentials) => {
+    void mutateWa(updated, false);
+    void refresh();
+  };
+
+  const handleSavedTg = (updated: TelegramCredentials) => {
+    void mutateTg(updated, false);
+    void refresh();
+  };
+
+  const handleAction = async (action: SetupAction) => {
+    if (action.kind === "manual") return;
+    setRunningAction(action.id);
+    try {
+      const result = await sileo.promise(runSetupAction(action.id).then((value) => {
+        if (value.status !== "completed") {
+          throw new Error(value.detail || value.summary);
+        }
+        return value;
+      }), {
+        loading: { title: `Ejecutando ${action.label}...` },
+        success: { title: resultTitle(action.label, true) },
+        error: (err: unknown) => ({
+          title: resultTitle(action.label, false),
+          description: err instanceof Error ? err.message : "Accion fallida.",
+        }),
+      });
+      setActionOutput((prev) => ({ ...prev, [action.id]: result.stdout_tail ?? result.detail }));
+      await refresh();
+    } finally {
+      setRunningAction(null);
+    }
+  };
 
   const flowSteps = useMemo(() => {
     const wizard = readiness?.wizard_steps ?? [];
@@ -122,50 +138,6 @@ export default function OnboardingPage() {
     }
   }, [activeStep, flowSteps]);
 
-  const handleSavedOps = (updated: OperationalSettings) => {
-    setOpData(updated);
-    void refresh();
-  };
-
-  const handleSavedCreds = (updated: MailCredentials) => {
-    setCredsData(updated);
-    void refresh();
-  };
-
-  const handleSavedWa = (updated: WhatsAppCredentials) => {
-    setWaData(updated);
-    void refresh();
-  };
-
-  const handleSavedTg = (updated: TelegramCredentials) => {
-    setTgData(updated);
-    void refresh();
-  };
-
-  const handleAction = async (action: SetupAction) => {
-    if (action.kind === "manual") return;
-    setRunningAction(action.id);
-    try {
-      const result = await sileo.promise(runSetupAction(action.id).then((value) => {
-        if (value.status !== "completed") {
-          throw new Error(value.detail || value.summary);
-        }
-        return value;
-      }), {
-        loading: { title: `Ejecutando ${action.label}…` },
-        success: { title: resultTitle(action.label, true) },
-        error: (err: unknown) => ({
-          title: resultTitle(action.label, false),
-          description: err instanceof Error ? err.message : "Acción fallida.",
-        }),
-      });
-      setActionOutput((prev) => ({ ...prev, [action.id]: result.stdout_tail ?? result.detail }));
-      await refresh();
-    } finally {
-      setRunningAction(null);
-    }
-  };
-
   const activeIndex = flowSteps.indexOf(activeStep);
   const canGoBack = activeIndex > 0;
   const canGoNext = activeIndex >= 0 && activeIndex < flowSteps.length - 1;
@@ -175,7 +147,7 @@ export default function OnboardingPage() {
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-8 py-12 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Preparando onboarding profesional…
+          Preparando onboarding profesional...
         </div>
       </div>
     );
@@ -187,7 +159,7 @@ export default function OnboardingPage() {
         <div className="mx-auto max-w-6xl px-8 py-10">
           <PageHeader
             title="Onboarding de Scouter"
-            description="Dejá el sistema listo antes de desbloquear el dashboard."
+            description="Deja el sistema listo antes de desbloquear el dashboard."
           />
           <div className="mt-6">
             <EmptyState
@@ -206,7 +178,7 @@ export default function OnboardingPage() {
       <div className="mx-auto max-w-6xl px-8 py-10">
         <PageHeader
           title="Onboarding profesional"
-          description="Primero dejá Scouter listo. Después desbloqueás dashboard + Hermes."
+          description="Primero deja Scouter listo. Despues desbloqueas dashboard + Hermes."
         />
 
         <div className="mt-6 grid gap-6 xl:grid-cols-[280px,1fr]">
@@ -299,7 +271,7 @@ export default function OnboardingPage() {
 }
 
 function resultTitle(label: string, ok: boolean) {
-  return ok ? `${label} terminado` : `${label} falló`;
+  return ok ? `${label} terminado` : `${label} fallo`;
 }
 
 function StatusCard({ readiness }: { readiness: SetupReadiness }) {
@@ -371,7 +343,7 @@ function SetupStage({
         <div className="grid gap-4 lg:grid-cols-3">
           <ReadinessGroup title="Plataforma" steps={readiness.platform_steps} />
           <ReadinessGroup title="Runtime" steps={readiness.runtime_steps} />
-          <ReadinessGroup title="Configuración" steps={readiness.config_steps} />
+          <ReadinessGroup title="Configuracion" steps={readiness.config_steps} />
         </div>
       </div>
 
@@ -400,12 +372,12 @@ function SetupStage({
                     ) : (
                       <Play className="h-4 w-4" />
                     )}
-                    {runningAction === action.id ? "Ejecutando…" : "Ejecutar"}
+                    {runningAction === action.id ? "Ejecutando..." : "Ejecutar"}
                   </button>
                 ) : (
                   <span className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground">
                     <ExternalLink className="h-3.5 w-3.5" />
-                    Acción manual guiada
+                    Accion manual guiada
                   </span>
                 )}
               </div>
@@ -459,9 +431,9 @@ function ReadyStage({ nextPath }: { nextPath: string }) {
           <CheckCircle2 className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Scouter quedó listo</h2>
+          <h2 className="text-lg font-semibold text-foreground">Scouter quedo listo</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            El dashboard ya está desbloqueado y Hermes puede usarse sin pelearte con setup manual.
+            El dashboard ya esta desbloqueado y Hermes puede usarse sin pelearte con setup manual.
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
             <Link
@@ -475,7 +447,7 @@ function ReadyStage({ nextPath }: { nextPath: string }) {
               href="/settings"
               className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground transition hover:text-foreground"
             >
-              Abrir configuración
+              Abrir configuracion
             </Link>
           </div>
         </div>

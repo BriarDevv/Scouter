@@ -1,17 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { SkeletonStatCard } from "@/components/shared/skeleton";
 import { Button } from "@/components/ui/button";
 import { NotificationListView } from "@/components/notifications/notification-list-view";
 import {
-  getNotifications,
-  getNotificationCounts,
   bulkUpdateNotifications,
 } from "@/lib/api/client";
-import type { NotificationCounts } from "@/types";
+import { useApi } from "@/lib/hooks/use-swr-fetch";
+import type { NotificationCounts, NotificationListResponse } from "@/types";
 import {
   ShieldAlert,
   ShieldCheck,
@@ -21,42 +20,14 @@ import {
 import { sileo } from "sileo";
 
 export default function SecurityPage() {
-  const [counts, setCounts] = useState<NotificationCounts | null>(null);
-  const [countsLoading, setCountsLoading] = useState(true);
-  const [resolvedCount, setResolvedCount] = useState(0);
+  const { data: counts, isLoading: countsLoading, mutate: mutateCounts } = useApi<NotificationCounts>("/notifications/counts");
+  const { data: resolvedData, mutate: mutateResolved } = useApi<NotificationListResponse>(
+    "/notifications?page=1&page_size=1&category=security&status=resolved"
+  );
   const [bulkLoading, setBulkLoading] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
-  const loadCounts = useCallback(async () => {
-    setCountsLoading(true);
-    try {
-      const data = await getNotificationCounts();
-      setCounts(data);
-    } catch (err) {
-      console.error("security_counts_fetch_failed", err);
-    } finally {
-      setCountsLoading(false);
-    }
-  }, []);
-
-  const loadResolvedCount = useCallback(async () => {
-    try {
-      const data = await getNotifications({
-        page: 1,
-        page_size: 1,
-        category: "security",
-        status: "resolved",
-      });
-      setResolvedCount(data.total);
-    } catch (err) {
-      console.error("security_resolved_count_fetch_failed", err);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadCounts();
-    void loadResolvedCount();
-  }, [loadCounts, loadResolvedCount]);
+  const resolvedCount = resolvedData?.total ?? 0;
 
   async function handleBulkResolve() {
     setBulkLoading(true);
@@ -64,8 +35,8 @@ export default function SecurityPage() {
       await sileo.promise(
         (async () => {
           const result = await bulkUpdateNotifications("mark_resolved", "security");
-          await loadCounts();
-          await loadResolvedCount();
+          await mutateCounts();
+          await mutateResolved();
           setReloadKey((k) => k + 1);
           return result;
         })(),
@@ -148,7 +119,7 @@ export default function SecurityPage() {
             emptyTitle="Sin alertas de seguridad"
             emptyDescription="No hay alertas de seguridad que coincidan con los filtros seleccionados. Todo esta limpio."
             countLabel={(total) => `${total} alerta${total !== 1 ? "s" : ""} de seguridad`}
-            onMarkResolved={() => setResolvedCount((c) => c + 1)}
+            onMarkResolved={() => void mutateResolved()}
             reloadKey={reloadKey}
           />
         </div>
