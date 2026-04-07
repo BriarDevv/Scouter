@@ -157,7 +157,7 @@ def test_export_csv(db):
     db.commit()
     db.refresh(lead)
 
-    data = export_leads_csv(db, [lead])
+    data = export_leads_csv([lead])
     text = data.decode("utf-8")
     reader = csv.reader(io.StringIO(text))
     rows = list(reader)
@@ -181,7 +181,7 @@ def test_export_json(db):
     db.commit()
     db.refresh(lead)
 
-    data = export_leads_json(db, [lead])
+    data = export_leads_json([lead])
     parsed = json.loads(data.decode("utf-8"))
 
     assert isinstance(parsed, list)

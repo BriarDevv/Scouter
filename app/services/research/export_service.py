@@ -4,15 +4,13 @@ import csv
 import io
 import json
 
-from sqlalchemy.orm import Session
-
 from app.core.logging import get_logger
 from app.models.lead import Lead
 
 logger = get_logger(__name__)
 
 
-def export_leads_csv(db: Session, leads: list[Lead]) -> bytes:
+def export_leads_csv(leads: list[Lead]) -> bytes:
     """Export leads as CSV bytes."""
     output = io.StringIO()
     writer = csv.writer(output)
@@ -52,7 +50,7 @@ def export_leads_csv(db: Session, leads: list[Lead]) -> bytes:
     return output.getvalue().encode("utf-8")
 
 
-def export_leads_json(db: Session, leads: list[Lead]) -> bytes:
+def export_leads_json(leads: list[Lead]) -> bytes:
     """Export leads as JSON bytes."""
     data = []
     for lead in leads:
@@ -77,7 +75,7 @@ def export_leads_json(db: Session, leads: list[Lead]) -> bytes:
     return json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
 
 
-def export_leads_xlsx(db: Session, leads: list[Lead]) -> bytes:
+def export_leads_xlsx(leads: list[Lead]) -> bytes:
     """Export leads as XLSX bytes."""
     from openpyxl import Workbook
 

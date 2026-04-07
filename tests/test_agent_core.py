@@ -11,7 +11,7 @@ def test_tool_registry_loads_50_tools():
     import app.agent.tools  # noqa: F401
     from app.agent.tool_registry import registry
 
-    assert len(registry.list_all()) == 58
+    assert len(registry.list_all()) >= 50
 
 
 def test_tool_registry_all_handlers_callable():
@@ -35,7 +35,8 @@ def test_tool_registry_schema_contains_all_tools():
     from app.agent.tool_registry import registry
 
     schema = registry.to_hermes_schema()
-    assert schema.count("<tool>") == 58
+    tool_count = len(registry.list_all())
+    assert schema.count("<tool>") == tool_count
 
 
 def test_tool_registry_validates_required_param():

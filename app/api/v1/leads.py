@@ -70,21 +70,21 @@ def export_leads(
     leads = query.order_by(Lead.created_at.desc()).yield_per(100)
 
     if format == "json":
-        data = export_leads_json(db, leads)
+        data = export_leads_json(leads)
         return StreamingResponse(
             io.BytesIO(data),
             media_type="application/json",
             headers={"Content-Disposition": "attachment; filename=leads.json"},
         )
     elif format == "xlsx":
-        data = export_leads_xlsx(db, leads)
+        data = export_leads_xlsx(leads)
         return StreamingResponse(
             io.BytesIO(data),
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={"Content-Disposition": "attachment; filename=leads.xlsx"},
         )
     else:
-        data = export_leads_csv(db, leads)
+        data = export_leads_csv(leads)
         return StreamingResponse(
             io.BytesIO(data),
             media_type="text/csv",
