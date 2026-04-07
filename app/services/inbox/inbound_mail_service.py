@@ -170,7 +170,7 @@ def sync_inbound_messages(db: Session, *, limit: int | None = None) -> InboundMa
         status=InboundMailSyncStatus.RUNNING.value,
     )
     db.add(sync_run)
-    db.commit()
+    db.flush()
     db.refresh(sync_run)
 
     sync_limit = limit or settings.MAIL_INBOUND_SYNC_LIMIT
@@ -200,7 +200,7 @@ def sync_inbound_messages(db: Session, *, limit: int | None = None) -> InboundMa
         sync_run.status = InboundMailSyncStatus.COMPLETED.value
         sync_run.error = None
         sync_run.completed_at = datetime.now(UTC)
-        db.commit()
+        db.flush()
         db.refresh(sync_run)
         logger.info(
             "inbound_mail_sync_completed",
@@ -216,7 +216,7 @@ def sync_inbound_messages(db: Session, *, limit: int | None = None) -> InboundMa
         sync_run.status = InboundMailSyncStatus.FAILED.value
         sync_run.error = str(exc)
         sync_run.completed_at = datetime.now(UTC)
-        db.commit()
+        db.flush()
         db.refresh(sync_run)
         try:
             from app.services.notifications.notification_emitter import on_sync_failed

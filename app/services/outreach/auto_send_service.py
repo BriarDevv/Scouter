@@ -132,7 +132,7 @@ def _send_whatsapp(db: Session, draft: OutreachDraft, lead: Lead) -> OutboundCon
 
         draft.status = DraftStatus.SENT
         draft.sent_at = datetime.now(UTC)
-        db.commit()
+        db.flush()
 
         logger.info(
             "auto_send_wa_template_success",
@@ -160,7 +160,7 @@ def _send_whatsapp(db: Session, draft: OutreachDraft, lead: Lead) -> OutboundCon
     except Exception as exc:
         conversation.status = ConversationStatus.CLOSED
         conversation.error = str(exc)[:500]
-        db.commit()
+        db.flush()
         logger.error(
             "auto_send_wa_failed",
             lead_id=str(lead.id),
@@ -196,7 +196,7 @@ def _send_email(db: Session, draft: OutreachDraft, lead: Lead) -> OutboundConver
             "content": f"Subject: {draft.subject}\n\n{draft.body}",
             "timestamp": datetime.now(UTC).isoformat(),
         }]
-        db.commit()
+        db.flush()
 
         logger.info(
             "auto_send_email_success",
@@ -208,7 +208,7 @@ def _send_email(db: Session, draft: OutreachDraft, lead: Lead) -> OutboundConver
     except Exception as exc:
         conversation.status = ConversationStatus.CLOSED
         conversation.error = str(exc)[:500]
-        db.commit()
+        db.flush()
         logger.error("auto_send_email_failed", lead_id=str(lead.id), error=str(exc))
         return conversation
 
@@ -221,7 +221,7 @@ def operator_takeover(db: Session, conversation_id: uuid.UUID) -> OutboundConver
 
     convo.operator_took_over = True
     convo.status = ConversationStatus.OPERATOR_TOOK_OVER
-    db.commit()
+    db.flush()
 
     logger.info("operator_takeover", conversation_id=str(conversation_id), lead_id=str(convo.lead_id))
     return convo

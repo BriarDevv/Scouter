@@ -88,7 +88,7 @@ def _get_or_create_credentials(db: Session) -> WhatsAppCredentials:
     if not row:
         row = WhatsAppCredentials(id=1)
         db.add(row)
-        db.commit()
+        db.flush()
         db.refresh(row)
     return row
 
@@ -112,7 +112,7 @@ def update_credentials(db: Session, updates: dict) -> WhatsAppCredentials:
             if key in _SECRET_FIELDS and value:
                 value = encrypt_if_needed(value)
             setattr(row, key, value)
-    db.commit()
+    db.flush()
     db.refresh(row)
     return row
 
@@ -183,14 +183,14 @@ def test_whatsapp(db: Session) -> dict:
         creds.last_test_at = datetime.now(timezone.utc)
         creds.last_test_ok = False
         creds.last_test_error = result["error"]
-        db.commit()
+        db.flush()
         return result
     if not creds.api_key:
         result = {"ok": False, "error": "No hay API key configurada.", "provider": creds.provider}
         creds.last_test_at = datetime.now(timezone.utc)
         creds.last_test_ok = False
         creds.last_test_error = result["error"]
-        db.commit()
+        db.flush()
         return result
 
     api_key = decrypt_safe(creds.api_key)
@@ -199,7 +199,7 @@ def test_whatsapp(db: Session) -> dict:
         creds.last_test_at = datetime.now(timezone.utc)
         creds.last_test_ok = False
         creds.last_test_error = result["error"]
-        db.commit()
+        db.flush()
         return result
     provider = _get_provider(creds.provider)
     result = provider.test_connection(creds.phone_number, api_key)
@@ -208,5 +208,5 @@ def test_whatsapp(db: Session) -> dict:
     creds.last_test_at = datetime.now(timezone.utc)
     creds.last_test_ok = result["ok"]
     creds.last_test_error = result.get("error")
-    db.commit()
+    db.flush()
     return result

@@ -132,6 +132,7 @@ def tracked_task_step(
             current_step=current_step,
             pipeline_run_id=pipeline_run_id,
         )
+        db.commit()
     finally:
         clear_tracking_context()
 
@@ -150,7 +151,7 @@ def create_pipeline_run(
         current_step=current_step,
     )
     db.add(pipeline_run)
-    db.commit()
+    db.flush()
     db.refresh(pipeline_run)
     logger.info(
         "pipeline_run_created",
@@ -171,7 +172,7 @@ def attach_pipeline_root_task(
     if not pipeline_run:
         return None
     pipeline_run.root_task_id = root_task_id
-    db.commit()
+    db.flush()
     db.refresh(pipeline_run)
     return pipeline_run
 
@@ -213,7 +214,7 @@ def queue_task_run(
     _apply_metadata(task_run, preserve_progress=not is_new)
 
     try:
-        db.commit()
+        db.flush()
     except IntegrityError:
         # A fast worker may persist the task before the API finishes writing
         # its own queued row. Reload and keep the most advanced state.
@@ -222,7 +223,7 @@ def queue_task_run(
         if not task_run:
             raise
         _apply_metadata(task_run, preserve_progress=True)
-        db.commit()
+        db.flush()
 
     db.refresh(task_run)
     logger.info(
@@ -275,7 +276,7 @@ def mark_task_running(
             commit=False,
         )
 
-    db.commit()
+    db.flush()
     db.refresh(task_run)
 
     logger.info(
@@ -318,7 +319,7 @@ def mark_task_succeeded(
             commit=False,
         )
 
-    db.commit()
+    db.flush()
     db.refresh(task_run)
 
     logger.info("task_run_succeeded", task_id=task_id, current_step=current_step, result=result)
@@ -350,7 +351,7 @@ def mark_task_retrying(
             commit=False,
         )
 
-    db.commit()
+    db.flush()
     db.refresh(task_run)
 
     logger.warning("task_run_retrying", task_id=task_id, current_step=current_step, error=error)
@@ -384,7 +385,7 @@ def mark_task_failed(
             commit=False,
         )
 
-    db.commit()
+    db.flush()
     db.refresh(task_run)
 
     logger.error("task_run_failed", task_id=task_id, current_step=current_step, error=error)
@@ -430,7 +431,7 @@ def update_task_run(
     elif stop_requested is False:
         task_run.stop_requested_at = None
     if commit:
-        db.commit()
+        db.flush()
         db.refresh(task_run)
     logger.info(
         "task_run_updated",
@@ -473,7 +474,7 @@ def update_pipeline_run(
     if finished:
         pipeline_run.finished_at = utcnow()
     if commit:
-        db.commit()
+        db.flush()
         db.refresh(pipeline_run)
     logger.info(
         "pipeline_run_updated",
@@ -523,7 +524,7 @@ def request_task_stop(
         return None
     task_run.status = "stopping"
     task_run.stop_requested_at = task_run.stop_requested_at or utcnow()
-    db.commit()
+    db.flush()
     db.refresh(task_run)
     logger.info(
         "task_run_stop_requested",

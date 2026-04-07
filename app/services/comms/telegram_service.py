@@ -27,7 +27,7 @@ def _get_or_create_credentials(db: Session) -> TelegramCredentials:
     if not row:
         row = TelegramCredentials(id=1)
         db.add(row)
-        db.commit()
+        db.flush()
         db.refresh(row)
     return row
 
@@ -51,7 +51,7 @@ def update_credentials(db: Session, updates: dict) -> TelegramCredentials:
             if key in _SECRET_FIELDS and value:
                 value = encrypt_if_needed(value)
             setattr(row, key, value)
-    db.commit()
+    db.flush()
     db.refresh(row)
     return row
 
@@ -153,7 +153,7 @@ def test_telegram(db: Session) -> dict:
         creds.last_test_at = datetime.now(timezone.utc)
         creds.last_test_ok = False
         creds.last_test_error = result["error"]
-        db.commit()
+        db.flush()
         return result
 
     try:
@@ -181,14 +181,14 @@ def test_telegram(db: Session) -> dict:
                 creds.last_test_at = datetime.now(timezone.utc)
                 creds.last_test_ok = False
                 creds.last_test_error = result["error"]
-                db.commit()
+                db.flush()
                 return result
 
         result = {"ok": True, "error": None, "bot_username": bot_username}
         creds.last_test_at = datetime.now(timezone.utc)
         creds.last_test_ok = True
         creds.last_test_error = None
-        db.commit()
+        db.flush()
         return result
 
     except Exception as exc:
@@ -199,5 +199,5 @@ def test_telegram(db: Session) -> dict:
         creds.last_test_at = datetime.now(timezone.utc)
         creds.last_test_ok = False
         creds.last_test_error = error_msg
-        db.commit()
+        db.flush()
         return result

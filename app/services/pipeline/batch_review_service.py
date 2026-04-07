@@ -196,7 +196,7 @@ def generate_batch_review(db: Session, trigger_reason: str = "manual") -> BatchR
         status="generating",
     )
     db.add(review)
-    db.commit()
+    db.flush()
 
     metrics_text = json.dumps(metrics, indent=2, default=str)
 
@@ -219,19 +219,19 @@ def generate_batch_review(db: Session, trigger_reason: str = "manual") -> BatchR
         else:
             review.executor_draft = synthesis_result.raw_text or "Synthesis failed"
             review.status = "failed"
-            db.commit()
+            db.flush()
             return review
 
     except Exception as exc:
         logger.error("batch_review_executor_failed", error=str(exc))
         review.status = "failed"
         review.executor_draft = f"Executor error: {str(exc)[:500]}"
-        db.commit()
+        db.flush()
         return review
 
     # Step 2: Reviewer validation
     review.status = "reviewing"
-    db.commit()
+    db.flush()
 
     try:
         from app.llm.invocations.batch_review import validate_batch_review_structured
@@ -295,7 +295,7 @@ def generate_batch_review(db: Session, trigger_reason: str = "manual") -> BatchR
                 db.add(proposal)
 
     review.status = "completed"
-    db.commit()
+    db.flush()
     logger.info(
         "batch_review_completed",
         review_id=str(review.id),
@@ -312,7 +312,7 @@ def approve_proposal(db: Session, proposal_id: uuid.UUID, approved_by: str = "op
         return None
     proposal.status = "approved"
     proposal.approved_by = approved_by
-    db.commit()
+    db.flush()
     return proposal
 
 
@@ -321,7 +321,7 @@ def reject_proposal(db: Session, proposal_id: uuid.UUID) -> ImprovementProposal 
     if not proposal or proposal.status != "pending":
         return None
     proposal.status = "rejected"
-    db.commit()
+    db.flush()
     return proposal
 
 
@@ -333,7 +333,7 @@ def apply_proposal(db: Session, proposal_id: uuid.UUID, result_notes: str = "") 
     proposal.status = "applied"
     proposal.applied_at = datetime.now(UTC)
     proposal.result_notes = result_notes or f"Applied by operator at {datetime.now(UTC).isoformat()}"
-    db.commit()
+    db.flush()
     logger.info(
         "proposal_applied",
         proposal_id=str(proposal_id),

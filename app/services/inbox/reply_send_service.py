@@ -88,7 +88,7 @@ def update_reply_assistant_draft(
     if did_edit:
         draft.edited_at = datetime.now(UTC)
         draft.edited_by = (edited_by or "user").strip() or "user"
-        db.commit()
+        db.flush()
         db.refresh(draft)
 
     _attach_send_metadata(draft)
@@ -132,7 +132,7 @@ def send_reply_assistant_draft(db: Session, message_id: uuid.UUID) -> ReplyAssis
         if latest_send.created_at and (datetime.now(UTC) - latest_send.created_at) > timedelta(minutes=5):
             latest_send.status = ReplyAssistantSendStatus.FAILED
             latest_send.error = "Send timed out after 5 minutes."
-            db.commit()
+            db.flush()
             db.refresh(latest_send)
         else:
             raise ReplyDraftAlreadySendingError(blocked_reason or "Reply draft is already being sent.")
@@ -167,7 +167,7 @@ def send_reply_assistant_draft(db: Session, message_id: uuid.UUID) -> ReplyAssis
     )
     db.add(send_record)
     try:
-        db.commit()
+        db.flush()
     except IntegrityError as exc:
         db.rollback()
         refreshed = get_reply_assistant_draft_for_message(db, message_id)
@@ -193,7 +193,7 @@ def send_reply_assistant_draft(db: Session, message_id: uuid.UUID) -> ReplyAssis
     except MailProviderError as exc:
         send_record.status = ReplyAssistantSendStatus.FAILED
         send_record.error = str(exc)
-        db.commit()
+        db.flush()
         db.refresh(send_record)
         try:
             from app.services.notifications.notification_emitter import on_send_failed
@@ -224,7 +224,7 @@ def send_reply_assistant_draft(db: Session, message_id: uuid.UUID) -> ReplyAssis
                 detail=f"Reply manual enviada a {send_record.recipient_email}",
             )
         )
-    db.commit()
+    db.flush()
     db.refresh(send_record)
     logger.info(
         "reply_assistant_send_sent",
