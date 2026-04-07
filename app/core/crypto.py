@@ -16,7 +16,7 @@ from app.core.logging import get_logger
 logger = get_logger(__name__)
 
 
-def _derive_key() -> bytes:
+def _derive_key_impl() -> bytes:
     """Derive a 32-byte Fernet key from SECRET_KEY using PBKDF2HMAC."""
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
@@ -25,6 +25,17 @@ def _derive_key() -> bytes:
         iterations=480_000,
     )
     return base64.urlsafe_b64encode(kdf.derive(settings.SECRET_KEY.encode()))
+
+
+# Cache the derived key at module load to avoid 480K PBKDF2 iterations per call
+_CACHED_KEY: bytes | None = None
+
+
+def _derive_key() -> bytes:
+    global _CACHED_KEY
+    if _CACHED_KEY is None:
+        _CACHED_KEY = _derive_key_impl()
+    return _CACHED_KEY
 
 
 def encrypt(plaintext: str) -> str:

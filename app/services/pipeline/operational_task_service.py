@@ -4,9 +4,19 @@ from __future__ import annotations
 
 import json as _json
 
-from redis import Redis
+from redis import ConnectionPool, Redis
 
 from app.core.config import settings as env
+
+# Module-level connection pool to avoid creating a new TCP connection per call
+_redis_pool: ConnectionPool | None = None
+
+
+def _get_redis() -> Redis:
+    global _redis_pool
+    if _redis_pool is None:
+        _redis_pool = ConnectionPool.from_url(env.REDIS_URL)
+    return Redis(connection_pool=_redis_pool)
 from app.db.session import SessionLocal
 from app.models.task_tracking import TaskRun
 from app.services.pipeline.task_tracking_service import (
@@ -256,7 +266,7 @@ def _read_legacy_operational_state(
     suppress_errors: bool,
 ) -> dict | None:
     try:
-        redis = Redis.from_url(env.REDIS_URL)
+        redis = _get_redis()
         payload = redis.get(redis_key)
     except Exception:
         if suppress_errors:
@@ -282,7 +292,7 @@ def mirror_legacy_operational_state(
     ttl_seconds: int = DEFAULT_LEGACY_MIRROR_TTL_SECONDS,
 ) -> None:
     try:
-        redis = Redis.from_url(env.REDIS_URL)
+        redis = _get_redis()
         redis.set(redis_key, _json.dumps(payload), ex=ttl_seconds)
     except Exception:
         return
@@ -290,7 +300,7 @@ def mirror_legacy_operational_state(
 
 def delete_legacy_operational_state(redis_key: str) -> None:
     try:
-        redis = Redis.from_url(env.REDIS_URL)
+        redis = _get_redis()
         redis.delete(redis_key)
     except Exception:
         return
