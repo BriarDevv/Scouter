@@ -4,7 +4,6 @@ import httpx
 import pytest
 
 from app.llm.client import (
-    LLMError,
     LLMParseError,
     _call_ollama_chat,
     _ChatCompletion,
@@ -297,32 +296,35 @@ def test_generate_dossier_uses_structured_path(monkeypatch):
     assert payload["business_description"] == "Negocio claro"
 
 
-def test_classify_inbound_reply_raises_with_prompt_metadata(monkeypatch):
+def test_classify_inbound_reply_falls_back_on_llm_failure(monkeypatch):
     clear_last_invocation()
 
     def broken_chat(system_prompt, user_prompt, role=LLMRole.EXECUTOR, format_schema=None):
         raise RuntimeError("classifier unavailable")
 
     monkeypatch.setattr("app.llm.client._chat_completion", broken_chat)
+    monkeypatch.setattr("app.llm.client.resolve_model_for_role", lambda role: "qwen3.5:9b")
 
-    with pytest.raises(LLMError):
-        classify_inbound_reply(
-            business_name="Test Corp",
-            industry="Tech",
-            city="CABA",
-            lead_email="lead@example.com",
-            outbound_subject="Hola",
-            outbound_message_id="msg-1",
-            from_email="lead@example.com",
-            to_email="ops@example.com",
-            subject="Re: Hola",
-            body_text="Me interesa",
-        )
+    result = classify_inbound_reply(
+        business_name="Test Corp",
+        industry="Tech",
+        city="CABA",
+        lead_email="lead@example.com",
+        outbound_subject="Hola",
+        outbound_message_id="msg-1",
+        from_email="lead@example.com",
+        to_email="ops@example.com",
+        subject="Re: Hola",
+        body_text="Me interesa",
+    )
+
+    assert result["label"] == "needs_human_review"
+    assert result["should_escalate_reviewer"] is True
 
     metadata = pop_last_invocation()
     assert metadata is not None
     assert metadata.prompt_id == "inbound_reply.classify"
-    assert metadata.status.value in {"failed", "parse_failed"}
+    assert metadata.status.value == "fallback"
 
 
 def test_review_outreach_draft_uses_structured_path(monkeypatch):

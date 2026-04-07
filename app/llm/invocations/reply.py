@@ -4,6 +4,7 @@ from app.llm.contracts import (
     InboundReplyReviewResult,
     ReplyAssistantDraftResult,
     ReplyAssistantDraftReviewResult,
+    ReplyClassificationResult,
 )
 from app.llm.invocations.support import get_client_module
 from app.llm.prompt_registry import (
@@ -51,9 +52,20 @@ def classify_inbound_reply_structured(
         prompt=INBOUND_REPLY_CLASSIFICATION_PROMPT,
         prompt_args=prompt_args,
         role=role,
+        fallback_factory=_classify_inbound_reply_fallback,
         target_type=target_type,
         target_id=target_id,
         tags=tags,
+    )
+
+
+def _classify_inbound_reply_fallback() -> ReplyClassificationResult:
+    return ReplyClassificationResult(
+        label="needs_human_review",
+        summary="Classification unavailable — LLM fallback",
+        confidence=0.0,
+        next_action_suggestion="Manual review required",
+        should_escalate_reviewer=True,
     )
 
 
