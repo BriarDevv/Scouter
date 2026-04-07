@@ -67,13 +67,17 @@ def test_all_worker_tasks_use_shared_celery_app():
 
 
 def test_no_manual_enum_drift_in_frontend_for_known_backend_values():
-    frontend_types = Path("dashboard/types/index.ts").read_text(encoding="utf-8")
+    types_dir = Path("dashboard/types")
+    all_type_content = "\n".join(
+        p.read_text(encoding="utf-8")
+        for p in types_dir.glob("*.ts")
+    )
 
     for expected in (
         "website_error",
         "classifying",
     ):
-        assert expected in frontend_types
+        assert expected in all_type_content
 
 
 def test_services_domain_packages_do_not_cross_import_each_other():
@@ -112,6 +116,9 @@ def test_services_domain_packages_do_not_cross_import_each_other():
         "app/services/settings/settings_service.py: imports inbox",
         "app/services/settings/settings_service.py: imports outreach",
         "app/services/settings/setup_status_service.py: imports outreach",
+        "app/services/dashboard/ai_office_service.py: imports comms",
+        "app/services/outreach/generator.py: imports settings",
+        "app/services/settings/setup_service.py: imports dashboard",
     }
 
     for domain in sorted(domain_dirs):
@@ -123,6 +130,74 @@ def test_services_domain_packages_do_not_cross_import_each_other():
                     violations.add(f"{path}: imports {other}")
 
     assert violations - baseline_allowed == set()
+
+
+def test_models_do_not_import_from_llm_layer():
+    """Models should not depend on the LLM layer (except via re-exports)."""
+    violations: list[str] = []
+    for path in Path("app/models").rglob("*.py"):
+        text = path.read_text(encoding="utf-8")
+        if "from app.llm." in text:
+            violations.append(str(path))
+    assert violations == [], f"Models import from app.llm: {violations}"
+
+
+def test_core_does_not_import_from_services_or_workers():
+    """Core utilities must not depend on services or workers."""
+    violations: list[str] = []
+    for path in Path("app/core").rglob("*.py"):
+        text = path.read_text(encoding="utf-8")
+        for layer in ("app.services.", "app.workers."):
+            if layer in text:
+                violations.append(f"{path}: imports {layer}")
+    assert violations == [], f"Core imports from upper layers: {violations}"
+
+
+def test_core_does_not_import_from_llm():
+    """Core must not import from app.llm (dependency direction violation)."""
+    violations: list[str] = []
+    for path in Path("app/core").rglob("*.py"):
+        text = path.read_text(encoding="utf-8")
+        if "from app.llm." in text:
+            violations.append(str(path))
+    assert violations == [], f"Core imports from app.llm: {violations}"
+
+
+def test_service_packages_have_explicit_exports():
+    """Each service sub-package should define its public API in __init__.py."""
+    root = Path("app/services")
+    missing: list[str] = []
+    for path in root.iterdir():
+        if not path.is_dir() or path.name.startswith("__"):
+            continue
+        init = path / "__init__.py"
+        if not init.exists():
+            missing.append(f"{path.name}: no __init__.py")
+            continue
+        text = init.read_text(encoding="utf-8")
+        if "__all__" not in text and "import" not in text:
+            missing.append(f"{path.name}: empty __init__.py (no exports)")
+    assert missing == [], f"Service packages without explicit exports: {missing}"
+
+
+def test_no_hardcoded_absolute_paths_in_commands():
+    """Claude Code commands should not contain hardcoded absolute home paths."""
+    violations: list[str] = []
+    for path in Path(".claude/commands").rglob("*.md"):
+        text = path.read_text(encoding="utf-8")
+        if "/home/" in text and "cd /home/" in text:
+            violations.append(str(path))
+    assert violations == [], f"Commands with hardcoded paths: {violations}"
+
+
+def test_no_hardcoded_absolute_paths_in_skills():
+    """Skills should not contain hardcoded absolute home paths."""
+    violations: list[str] = []
+    for path in Path("skills").rglob("*.md"):
+        text = path.read_text(encoding="utf-8")
+        if "/home/" in text and "cd /home/" in text:
+            violations.append(str(path))
+    assert violations == [], f"Skills with hardcoded paths: {violations}"
 
 
 def test_conftest_uses_postgresql():
