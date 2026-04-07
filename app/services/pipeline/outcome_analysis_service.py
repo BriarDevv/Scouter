@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections import Counter
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
@@ -22,7 +23,7 @@ logger = get_logger(__name__)
 
 def get_outcome_summary(db: Session) -> dict:
     """High-level outcome summary for dashboard and reports."""
-    snapshots = db.query(OutcomeSnapshot).all()
+    snapshots = db.execute(select(OutcomeSnapshot)).scalars().all()
     if not snapshots:
         return {"total": 0, "won": 0, "lost": 0, "win_rate": 0, "sufficient_data": False}
 
@@ -44,7 +45,7 @@ def analyze_signal_correlations(db: Session) -> list[dict]:
 
     Returns a list sorted by win_rate descending.
     """
-    snapshots = db.query(OutcomeSnapshot).all()
+    snapshots = db.execute(select(OutcomeSnapshot)).scalars().all()
     if not snapshots:
         return []
 
@@ -67,7 +68,7 @@ def analyze_signal_correlations(db: Session) -> list[dict]:
 
 def analyze_quality_accuracy(db: Session) -> list[dict]:
     """How accurate were quality ratings — did HIGH leads actually convert?"""
-    snapshots = db.query(OutcomeSnapshot).all()
+    snapshots = db.execute(select(OutcomeSnapshot)).scalars().all()
     if not snapshots:
         return []
 
@@ -90,7 +91,7 @@ def analyze_quality_accuracy(db: Session) -> list[dict]:
 
 def analyze_industry_performance(db: Session) -> list[dict]:
     """Which industries convert best?"""
-    snapshots = db.query(OutcomeSnapshot).all()
+    snapshots = db.execute(select(OutcomeSnapshot)).scalars().all()
     if not snapshots:
         return []
 
@@ -175,12 +176,11 @@ def generate_scoring_recommendations(db: Session) -> list[dict]:
             )
 
     # Correction pattern recommendations
-    corrections = (
-        db.query(ReviewCorrection.category, ReviewCorrection.issue)
+    corrections = db.execute(
+        select(ReviewCorrection.category, ReviewCorrection.issue)
         .order_by(ReviewCorrection.created_at.desc())
         .limit(100)
-        .all()
-    )
+    ).all()
     if corrections:
         category_counts = Counter(
             c[0].value if hasattr(c[0], "value") else c[0] for c in corrections

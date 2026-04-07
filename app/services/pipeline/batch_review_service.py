@@ -10,7 +10,7 @@ import json
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
@@ -36,24 +36,24 @@ def check_review_threshold(db: Session) -> str | None:
     outcome_threshold = getattr(ops, "batch_review_outcome_threshold", 5)
 
     # Find the last batch review timestamp
-    last_review = (
-        db.query(BatchReview.created_at)
-        .filter(BatchReview.status == "completed")
+    last_review = db.execute(
+        select(BatchReview.created_at)
+        .where(BatchReview.status == "completed")
         .order_by(BatchReview.created_at.desc())
-        .first()
-    )
+        .limit(1)
+    ).first()
     since = last_review[0] if last_review else datetime(2020, 1, 1, tzinfo=UTC)
 
     # Count leads processed since last review
     from app.models.task_tracking import PipelineRun
 
     total_leads = (
-        db.query(func.count(PipelineRun.id))
-        .filter(
-            PipelineRun.created_at >= since,
-            PipelineRun.status == "succeeded",
-        )
-        .scalar()
+        db.execute(
+            select(func.count(PipelineRun.id)).where(
+                PipelineRun.created_at >= since,
+                PipelineRun.status == "succeeded",
+            )
+        ).scalar()
         or 0
     )
 
@@ -62,12 +62,12 @@ def check_review_threshold(db: Session) -> str | None:
 
     # Count HIGH leads
     high_leads = (
-        db.query(func.count(Lead.id))
-        .filter(
-            Lead.updated_at >= since,
-            Lead.llm_quality == "high",
-        )
-        .scalar()
+        db.execute(
+            select(func.count(Lead.id)).where(
+                Lead.updated_at >= since,
+                Lead.llm_quality == "high",
+            )
+        ).scalar()
         or 0
     )
 
@@ -78,9 +78,9 @@ def check_review_threshold(db: Session) -> str | None:
     from app.models.outcome_snapshot import OutcomeSnapshot
 
     new_outcomes = (
-        db.query(func.count(OutcomeSnapshot.id))
-        .filter(OutcomeSnapshot.created_at >= since)
-        .scalar()
+        db.execute(
+            select(func.count(OutcomeSnapshot.id)).where(OutcomeSnapshot.created_at >= since)
+        ).scalar()
         or 0
     )
 
@@ -96,42 +96,45 @@ def collect_batch_data(db: Session, since: datetime) -> dict:
 
     # Lead quality distribution
     quality_counts = dict(
-        db.query(Lead.llm_quality, func.count())
-        .filter(Lead.updated_at >= since)
-        .group_by(Lead.llm_quality)
-        .all()
+        db.execute(
+            select(Lead.llm_quality, func.count())
+            .where(Lead.updated_at >= since)
+            .group_by(Lead.llm_quality)
+        ).all()
     )
 
     # Correction patterns
     from app.models.review_correction import ReviewCorrection
 
-    correction_rows = (
-        db.query(ReviewCorrection.category, func.count().label("cnt"))
-        .filter(ReviewCorrection.created_at >= since)
+    correction_rows = db.execute(
+        select(ReviewCorrection.category, func.count().label("cnt"))
+        .where(ReviewCorrection.created_at >= since)
         .group_by(ReviewCorrection.category)
         .order_by(func.count().desc())
         .limit(10)
-        .all()
-    )
+    ).all()
     corrections = {cat: cnt for cat, cnt in correction_rows}
 
     # Signal frequencies
     from app.models.lead_signal import LeadSignal
 
-    signal_rows = (
-        db.query(LeadSignal.signal_type, func.count().label("cnt"))
-        .filter(LeadSignal.detected_at >= since)
+    signal_rows = db.execute(
+        select(LeadSignal.signal_type, func.count().label("cnt"))
+        .where(LeadSignal.detected_at >= since)
         .group_by(LeadSignal.signal_type)
         .order_by(func.count().desc())
         .limit(15)
-        .all()
-    )
+    ).all()
     signals = {sig: cnt for sig, cnt in signal_rows}
 
     # Outcome summary
     from app.models.outcome_snapshot import OutcomeSnapshot
 
-    outcomes = db.query(OutcomeSnapshot).filter(OutcomeSnapshot.created_at >= since).all()
+    outcomes = (
+        db.execute(select(OutcomeSnapshot).where(OutcomeSnapshot.created_at >= since))
+        .scalars()
+        .all()
+    )
     won = sum(1 for o in outcomes if o.outcome == "won")
     lost = len(outcomes) - won
 
@@ -139,16 +142,18 @@ def collect_batch_data(db: Session, since: datetime) -> dict:
     from app.models.llm_invocation import LLMInvocation
 
     invocation_count = (
-        db.query(func.count(LLMInvocation.id)).filter(LLMInvocation.created_at >= since).scalar()
+        db.execute(
+            select(func.count(LLMInvocation.id)).where(LLMInvocation.created_at >= since)
+        ).scalar()
         or 0
     )
     fallback_count = (
-        db.query(func.count(LLMInvocation.id))
-        .filter(
-            LLMInvocation.created_at >= since,
-            LLMInvocation.fallback_used.is_(True),
-        )
-        .scalar()
+        db.execute(
+            select(func.count(LLMInvocation.id)).where(
+                LLMInvocation.created_at >= since,
+                LLMInvocation.fallback_used.is_(True),
+            )
+        ).scalar()
         or 0
     )
 
@@ -169,12 +174,12 @@ def collect_batch_data(db: Session, since: datetime) -> dict:
 def generate_batch_review(db: Session, trigger_reason: str = "manual") -> BatchReview:
     """Run the full batch review: collect data → Executor synthesis → Reviewer validation."""
     # Find period start
-    last_review = (
-        db.query(BatchReview.created_at)
-        .filter(BatchReview.status == "completed")
+    last_review = db.execute(
+        select(BatchReview.created_at)
+        .where(BatchReview.status == "completed")
         .order_by(BatchReview.created_at.desc())
-        .first()
-    )
+        .limit(1)
+    ).first()
     since = last_review[0] if last_review else datetime(2020, 1, 1, tzinfo=UTC)
 
     # Collect batch data
@@ -343,10 +348,10 @@ def apply_proposal(
 
 
 def get_latest_strategy_brief(db: Session) -> str | None:
-    review = (
-        db.query(BatchReview)
-        .filter(BatchReview.status == "completed")
+    review = db.execute(
+        select(BatchReview)
+        .where(BatchReview.status == "completed")
         .order_by(BatchReview.created_at.desc())
-        .first()
-    )
+        .limit(1)
+    ).scalar_one_or_none()
     return review.strategy_brief if review else None

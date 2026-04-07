@@ -4,7 +4,7 @@ import re
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -23,79 +23,99 @@ def get_agent_status(db: Session) -> dict:
     last_24h = now - timedelta(hours=24)
 
     # Mote status
-    latest_conversation = db.query(Conversation).order_by(Conversation.updated_at.desc()).first()
+    latest_conversation = db.execute(
+        select(Conversation).order_by(Conversation.updated_at.desc()).limit(1)
+    ).scalar_one_or_none()
     mote_last_active = latest_conversation.updated_at if latest_conversation else None
     active_conversations = (
-        db.query(func.count(Conversation.id)).filter(Conversation.is_active.is_(True)).scalar()
-    ) or 0
+        db.execute(
+            select(func.count(Conversation.id)).where(Conversation.is_active.is_(True))
+        ).scalar()
+        or 0
+    )
 
     # Scout status (investigation threads in last 24h)
     scout_investigations_24h = (
-        db.query(func.count(InvestigationThread.id))
-        .filter(InvestigationThread.created_at >= last_24h)
-        .scalar()
-    ) or 0
+        db.execute(
+            select(func.count(InvestigationThread.id)).where(
+                InvestigationThread.created_at >= last_24h
+            )
+        ).scalar()
+        or 0
+    )
     active_research_tasks = (
-        db.query(func.count(TaskRun.task_id))
-        .filter(
-            TaskRun.task_name == "task_research_lead",
-            TaskRun.status.in_(["running", "queued"]),
-        )
-        .scalar()
-    ) or 0
+        db.execute(
+            select(func.count(TaskRun.task_id)).where(
+                TaskRun.task_name == "task_research_lead",
+                TaskRun.status.in_(["running", "queued"]),
+            )
+        ).scalar()
+        or 0
+    )
 
     # Executor status (LLM invocations in last 24h)
     executor_invocations_24h = (
-        db.query(func.count(LLMInvocation.id))
-        .filter(
-            LLMInvocation.created_at >= last_24h,
-            LLMInvocation.role == "executor",
-        )
-        .scalar()
-    ) or 0
+        db.execute(
+            select(func.count(LLMInvocation.id)).where(
+                LLMInvocation.created_at >= last_24h,
+                LLMInvocation.role == "executor",
+            )
+        ).scalar()
+        or 0
+    )
     executor_fallback_count = (
-        db.query(func.count(LLMInvocation.id))
-        .filter(
-            LLMInvocation.created_at >= last_24h,
-            LLMInvocation.role == "executor",
-            LLMInvocation.fallback_used.is_(True),
-        )
-        .scalar()
-    ) or 0
+        db.execute(
+            select(func.count(LLMInvocation.id)).where(
+                LLMInvocation.created_at >= last_24h,
+                LLMInvocation.role == "executor",
+                LLMInvocation.fallback_used.is_(True),
+            )
+        ).scalar()
+        or 0
+    )
 
     # Reviewer status
     reviewer_invocations_24h = (
-        db.query(func.count(LLMInvocation.id))
-        .filter(
-            LLMInvocation.created_at >= last_24h,
-            LLMInvocation.role == "reviewer",
-        )
-        .scalar()
-    ) or 0
+        db.execute(
+            select(func.count(LLMInvocation.id)).where(
+                LLMInvocation.created_at >= last_24h,
+                LLMInvocation.role == "reviewer",
+            )
+        ).scalar()
+        or 0
+    )
     corrections_7d = (
-        db.query(func.count(ReviewCorrection.id))
-        .filter(ReviewCorrection.created_at >= now - timedelta(days=7))
-        .scalar()
-    ) or 0
+        db.execute(
+            select(func.count(ReviewCorrection.id)).where(
+                ReviewCorrection.created_at >= now - timedelta(days=7)
+            )
+        ).scalar()
+        or 0
+    )
 
     reviewer_total = max(reviewer_invocations_24h, 1)
     reviewer_succeeded = (
-        db.query(func.count(LLMInvocation.id))
-        .filter(
-            LLMInvocation.created_at >= last_24h,
-            LLMInvocation.role == "reviewer",
-            LLMInvocation.status == "succeeded",
-        )
-        .scalar()
-    ) or 0
+        db.execute(
+            select(func.count(LLMInvocation.id)).where(
+                LLMInvocation.created_at >= last_24h,
+                LLMInvocation.role == "reviewer",
+                LLMInvocation.status == "succeeded",
+            )
+        ).scalar()
+        or 0
+    )
 
     # Outcomes
     total_won = (
-        db.query(func.count(OutcomeSnapshot.id)).filter(OutcomeSnapshot.outcome == "won").scalar()
+        db.execute(
+            select(func.count(OutcomeSnapshot.id)).where(OutcomeSnapshot.outcome == "won")
+        ).scalar()
         or 0
     )
     total_lost = (
-        db.query(func.count(OutcomeSnapshot.id)).filter(OutcomeSnapshot.outcome == "lost").scalar()
+        db.execute(
+            select(func.count(OutcomeSnapshot.id)).where(OutcomeSnapshot.outcome == "lost")
+        ).scalar()
         or 0
     )
 
@@ -151,7 +171,9 @@ def get_agent_status(db: Session) -> dict:
 def get_recent_decisions(db: Session, limit: int) -> list[dict]:
     """Return recent AI decisions across all agents."""
     invocations = (
-        db.query(LLMInvocation).order_by(LLMInvocation.created_at.desc()).limit(limit).all()
+        db.execute(select(LLMInvocation).order_by(LLMInvocation.created_at.desc()).limit(limit))
+        .scalars()
+        .all()
     )
     return [
         {
@@ -175,9 +197,10 @@ def get_recent_decisions(db: Session, limit: int) -> list[dict]:
 def get_recent_investigations(db: Session, limit: int) -> list[dict]:
     """Return recent Scout investigations."""
     threads = (
-        db.query(InvestigationThread)
-        .order_by(InvestigationThread.created_at.desc())
-        .limit(limit)
+        db.execute(
+            select(InvestigationThread).order_by(InvestigationThread.created_at.desc()).limit(limit)
+        )
+        .scalars()
         .all()
     )
     return [
@@ -199,9 +222,12 @@ def get_recent_investigations(db: Session, limit: int) -> list[dict]:
 def get_outbound_conversations(db: Session, limit: int) -> list[dict]:
     """Return recent Mote outbound conversations."""
     convos = (
-        db.query(OutboundConversation)
-        .order_by(OutboundConversation.created_at.desc())
-        .limit(limit)
+        db.execute(
+            select(OutboundConversation)
+            .order_by(OutboundConversation.created_at.desc())
+            .limit(limit)
+        )
+        .scalars()
         .all()
     )
     return [
@@ -310,7 +336,11 @@ def get_weekly_reports(db: Session, limit: int) -> list[dict]:
     """Return recent weekly AI team reports."""
     from app.models.weekly_report import WeeklyReport
 
-    reports = db.query(WeeklyReport).order_by(WeeklyReport.created_at.desc()).limit(limit).all()
+    reports = (
+        db.execute(select(WeeklyReport).order_by(WeeklyReport.created_at.desc()).limit(limit))
+        .scalars()
+        .all()
+    )
     return [
         {
             "id": str(r.id),

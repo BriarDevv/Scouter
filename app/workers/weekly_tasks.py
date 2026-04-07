@@ -84,7 +84,7 @@ def task_weekly_report():
 
 def _collect_metrics(db, week_start: datetime, week_end: datetime) -> dict:
     """Collect all metrics for the weekly report."""
-    from sqlalchemy import func
+    from sqlalchemy import func, select
 
     from app.models.investigation_thread import InvestigationThread
     from app.models.lead import Lead
@@ -95,77 +95,93 @@ def _collect_metrics(db, week_start: datetime, week_end: datetime) -> dict:
 
     # Leads
     leads_processed = (
-        db.query(func.count(Lead.id))
-        .filter(Lead.created_at >= week_start, Lead.created_at < week_end)
-        .scalar()
+        db.execute(
+            select(func.count(Lead.id)).where(
+                Lead.created_at >= week_start, Lead.created_at < week_end
+            )
+        ).scalar()
         or 0
     )
 
     high_leads = (
-        db.query(func.count(Lead.id))
-        .filter(Lead.created_at >= week_start, Lead.llm_quality == "high")
-        .scalar()
+        db.execute(
+            select(func.count(Lead.id)).where(
+                Lead.created_at >= week_start, Lead.llm_quality == "high"
+            )
+        ).scalar()
         or 0
     )
 
     # Outcomes
     won = (
-        db.query(func.count(OutcomeSnapshot.id))
-        .filter(OutcomeSnapshot.created_at >= week_start, OutcomeSnapshot.outcome == "won")
-        .scalar()
+        db.execute(
+            select(func.count(OutcomeSnapshot.id)).where(
+                OutcomeSnapshot.created_at >= week_start, OutcomeSnapshot.outcome == "won"
+            )
+        ).scalar()
         or 0
     )
 
     lost = (
-        db.query(func.count(OutcomeSnapshot.id))
-        .filter(OutcomeSnapshot.created_at >= week_start, OutcomeSnapshot.outcome == "lost")
-        .scalar()
+        db.execute(
+            select(func.count(OutcomeSnapshot.id)).where(
+                OutcomeSnapshot.created_at >= week_start, OutcomeSnapshot.outcome == "lost"
+            )
+        ).scalar()
         or 0
     )
 
     # Drafts
     drafts_generated = (
-        db.query(func.count(OutreachDraft.id))
-        .filter(OutreachDraft.generated_at >= week_start)
-        .scalar()
+        db.execute(
+            select(func.count(OutreachDraft.id)).where(OutreachDraft.generated_at >= week_start)
+        ).scalar()
         or 0
     )
 
     # Invocations
     executor_calls = (
-        db.query(func.count(LLMInvocation.id))
-        .filter(LLMInvocation.created_at >= week_start, LLMInvocation.role == "executor")
-        .scalar()
+        db.execute(
+            select(func.count(LLMInvocation.id)).where(
+                LLMInvocation.created_at >= week_start, LLMInvocation.role == "executor"
+            )
+        ).scalar()
         or 0
     )
 
     reviewer_calls = (
-        db.query(func.count(LLMInvocation.id))
-        .filter(LLMInvocation.created_at >= week_start, LLMInvocation.role == "reviewer")
-        .scalar()
+        db.execute(
+            select(func.count(LLMInvocation.id)).where(
+                LLMInvocation.created_at >= week_start, LLMInvocation.role == "reviewer"
+            )
+        ).scalar()
         or 0
     )
 
     fallback_count = (
-        db.query(func.count(LLMInvocation.id))
-        .filter(LLMInvocation.created_at >= week_start, LLMInvocation.fallback_used.is_(True))
-        .scalar()
+        db.execute(
+            select(func.count(LLMInvocation.id)).where(
+                LLMInvocation.created_at >= week_start, LLMInvocation.fallback_used.is_(True)
+            )
+        ).scalar()
         or 0
     )
 
     # Corrections
     corrections_count = (
-        db.query(func.count(ReviewCorrection.id))
-        .filter(ReviewCorrection.created_at >= week_start)
-        .scalar()
+        db.execute(
+            select(func.count(ReviewCorrection.id)).where(ReviewCorrection.created_at >= week_start)
+        ).scalar()
         or 0
     )
 
     # Scout investigations
     investigations = (
-        db.query(func.count(InvestigationThread.id))
-        .filter(InvestigationThread.created_at >= week_start)
-        .scalar()
+        db.execute(
+            select(func.count(InvestigationThread.id)).where(
+                InvestigationThread.created_at >= week_start
+            )
+        ).scalar()
         or 0
     )
 
