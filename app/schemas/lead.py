@@ -13,13 +13,13 @@ class LeadCreate(BaseModel):
     industry: str | None = Field(None, max_length=255)
     city: str | None = Field(None, max_length=255)
     zone: str | None = Field(None, max_length=255)
-    website_url: str | None = None
-    instagram_url: str | None = None
+    website_url: str | None = Field(None, max_length=2048)
+    instagram_url: str | None = Field(None, max_length=2048)
     email: str | None = Field(None, max_length=320)
     phone: str | None = Field(None, max_length=50)
     source_id: uuid.UUID | None = None
     address: str | None = None
-    google_maps_url: str | None = None
+    google_maps_url: str | None = Field(None, max_length=2048)
     rating: float | None = None
     review_count: int | None = None
     business_status: str | None = Field(None, max_length=50)

@@ -147,5 +147,5 @@ def register_telegram_webhook(
     return {
         "ok": True,
         "message": f"Webhook registrado en {body.webhook_url}",
-        "webhook_secret": webhook_secret,
+        "webhook_secret_preview": webhook_secret[:8] + "..." if webhook_secret else None,
     }
