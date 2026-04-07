@@ -1,8 +1,5 @@
-from enum import StrEnum
+"""LLM role definitions — re-exported from app.core.config (canonical source)."""
 
+from app.core.config import LLMRole
 
-class LLMRole(StrEnum):
-    LEADER = "leader"
-    EXECUTOR = "executor"
-    REVIEWER = "reviewer"
-    AGENT = "agent"
+__all__ = ["LLMRole"]

@@ -1,8 +1,32 @@
+from enum import StrEnum
+
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from app.llm.catalog import DEFAULT_ROLE_MODEL_MAP, DEFAULT_SUPPORTED_MODELS, parse_supported_models
-from app.llm.roles import LLMRole
+
+class LLMRole(StrEnum):
+    """LLM role definitions — canonical source, re-exported by app.llm.roles."""
+
+    LEADER = "leader"
+    EXECUTOR = "executor"
+    REVIEWER = "reviewer"
+    AGENT = "agent"
+
+
+# Default model assignments — keep in sync with app/llm/catalog.py
+_DEFAULT_EXECUTOR = "qwen3.5:9b"
+_DEFAULT_REVIEWER = "qwen3.5:27b"
+_DEFAULT_AGENT = "hermes3:8b"
+_DEFAULT_SUPPORTED = f"{_DEFAULT_EXECUTOR},{_DEFAULT_REVIEWER},{_DEFAULT_AGENT}"
+
+
+def parse_supported_models(raw_models: str) -> tuple[str, ...]:
+    unique_models: list[str] = []
+    for model_name in raw_models.split(","):
+        normalized = model_name.strip()
+        if normalized and normalized not in unique_models:
+            unique_models.append(normalized)
+    return tuple(unique_models)
 
 
 class Settings(BaseSettings):
@@ -28,13 +52,13 @@ class Settings(BaseSettings):
     # Ollama / LLM
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     # Legacy default runtime model, kept as executor fallback for backward compatibility.
-    OLLAMA_MODEL: str = DEFAULT_ROLE_MODEL_MAP[LLMRole.EXECUTOR]
+    OLLAMA_MODEL: str = _DEFAULT_EXECUTOR
     # Supported local models available for role assignment.
-    OLLAMA_SUPPORTED_MODELS: str = ",".join(DEFAULT_SUPPORTED_MODELS)
-    OLLAMA_LEADER_MODEL: str | None = DEFAULT_ROLE_MODEL_MAP[LLMRole.LEADER]
+    OLLAMA_SUPPORTED_MODELS: str = _DEFAULT_SUPPORTED
+    OLLAMA_LEADER_MODEL: str | None = None
     OLLAMA_EXECUTOR_MODEL: str | None = None
-    OLLAMA_REVIEWER_MODEL: str | None = DEFAULT_ROLE_MODEL_MAP[LLMRole.REVIEWER]
-    OLLAMA_AGENT_MODEL: str | None = DEFAULT_ROLE_MODEL_MAP[LLMRole.AGENT]
+    OLLAMA_REVIEWER_MODEL: str | None = _DEFAULT_REVIEWER
+    OLLAMA_AGENT_MODEL: str | None = _DEFAULT_AGENT
     OLLAMA_TIMEOUT: int = 120
     OLLAMA_REVIEWER_TIMEOUT: int = 360
     OLLAMA_AGENT_TIMEOUT: int = 180
