@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.request_context import get_correlation_id
 from app.db.session import get_db
 from app.schemas.lead import LeadResponse
+from app.schemas.operational import RescoreAllStatusResponse, TaskQueuedResponse, TaskStopResponse
 from app.schemas.task_tracking import TaskEnqueueResponse
 from app.services.leads.scoring_service import score_lead
 from app.services.pipeline.operational_task_service import (
@@ -28,7 +29,7 @@ router = APIRouter(prefix="/scoring", tags=["scoring"])
 DbSession = Annotated[Session, Depends(get_db)]
 
 
-@router.post("/rescore-all")
+@router.post("/rescore-all", response_model=TaskQueuedResponse)
 def rescore_all_leads(request: Request, db: DbSession):
     """Re-score all leads. Useful after scoring weight changes."""
     from app.workers.tasks import task_rescore_all
@@ -69,7 +70,7 @@ def rescore_all_leads(request: Request, db: DbSession):
     }
 
 
-@router.get("/rescore-all/status")
+@router.get("/rescore-all/status", response_model=RescoreAllStatusResponse)
 def get_rescore_all_status(db: DbSession):
     """Return canonical operational state for the latest rescore-all run."""
     task_run = get_rescore_all_task_run(db)
@@ -82,7 +83,7 @@ def get_rescore_all_status(db: DbSession):
     return {"status": "idle"}
 
 
-@router.post("/rescore-all/stop")
+@router.post("/rescore-all/stop", response_model=TaskStopResponse)
 def stop_rescore_all(db: DbSession):
     """Signal the active rescore-all task to stop after the current lead."""
     task_run = request_task_stop(

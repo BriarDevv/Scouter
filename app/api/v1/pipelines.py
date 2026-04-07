@@ -6,6 +6,11 @@ from sqlalchemy.orm import Session
 
 from app.api.request_context import get_correlation_id
 from app.db.session import get_db
+from app.schemas.operational import (
+    BatchPipelineStartResponse,
+    BatchPipelineStatusResponse,
+    TaskStopResponse,
+)
 from app.schemas.task_tracking import (
     PipelineRunDetailResponse,
     PipelineRunSummaryResponse,
@@ -158,7 +163,7 @@ def resume_pipeline_run(pipeline_run_id: uuid.UUID, db: DbSession):
     }
 
 
-@router.post("/batch")
+@router.post("/batch", response_model=BatchPipelineStartResponse)
 def start_batch_pipeline(request: Request, db: DbSession):
     """Start the batch pipeline that processes all 'new' leads."""
     existing = get_batch_pipeline_task_run(db)
@@ -204,13 +209,13 @@ def start_batch_pipeline(request: Request, db: DbSession):
     }
 
 
-@router.get("/batch/status")
+@router.get("/batch/status", response_model=BatchPipelineStatusResponse)
 def get_batch_pipeline_status(db: DbSession):
     """Poll batch pipeline progress."""
     return get_batch_pipeline_status_snapshot(db)
 
 
-@router.post("/batch/stop")
+@router.post("/batch/stop", response_model=TaskStopResponse)
 def stop_batch_pipeline(db: DbSession):
     """Signal the batch pipeline to stop after the current lead."""
     task_run = request_task_stop(

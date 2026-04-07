@@ -9,12 +9,18 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.schemas.batch_review import (
+    BatchReviewDetailResponse,
+    BatchReviewSummaryItem,
+    ProposalActionResponse,
+    TriggerBatchReviewResponse,
+)
 
 router = APIRouter(prefix="/batch-reviews", tags=["batch-reviews"])
 DbSession = Annotated[Session, Depends(get_db)]
 
 
-@router.get("")
+@router.get("", response_model=list[BatchReviewSummaryItem])
 def list_batch_reviews(db: DbSession, limit: int = 10):
     """List batch reviews, newest first."""
     from sqlalchemy.orm import joinedload
@@ -44,7 +50,7 @@ def list_batch_reviews(db: DbSession, limit: int = 10):
     ]
 
 
-@router.get("/{review_id}")
+@router.get("/{review_id}", response_model=BatchReviewDetailResponse)
 def get_batch_review(review_id: uuid.UUID, db: DbSession):
     """Get batch review detail with proposals."""
     from app.models.batch_review import BatchReview
@@ -83,7 +89,7 @@ def get_batch_review(review_id: uuid.UUID, db: DbSession):
     }
 
 
-@router.post("/generate")
+@router.post("/generate", response_model=TriggerBatchReviewResponse)
 def trigger_batch_review(db: DbSession):
     """Manually trigger a batch review."""
     from app.workers.batch_review_tasks import task_generate_batch_review_manual
@@ -96,7 +102,7 @@ def trigger_batch_review(db: DbSession):
     }
 
 
-@router.post("/proposals/{proposal_id}/approve")
+@router.post("/proposals/{proposal_id}/approve", response_model=ProposalActionResponse)
 def approve_proposal(proposal_id: uuid.UUID, db: DbSession):
     """Approve an improvement proposal."""
     from app.services.pipeline.batch_review_service import approve_proposal as _approve
@@ -112,7 +118,7 @@ def approve_proposal(proposal_id: uuid.UUID, db: DbSession):
     }
 
 
-@router.post("/proposals/{proposal_id}/apply")
+@router.post("/proposals/{proposal_id}/apply", response_model=ProposalActionResponse)
 def apply_proposal_endpoint(proposal_id: uuid.UUID, db: DbSession):
     """Mark an approved proposal as applied."""
     from app.services.pipeline.batch_review_service import apply_proposal as _apply
@@ -128,7 +134,7 @@ def apply_proposal_endpoint(proposal_id: uuid.UUID, db: DbSession):
     }
 
 
-@router.post("/proposals/{proposal_id}/reject")
+@router.post("/proposals/{proposal_id}/reject", response_model=ProposalActionResponse)
 def reject_proposal(proposal_id: uuid.UUID, db: DbSession):
     """Reject an improvement proposal."""
     from app.services.pipeline.batch_review_service import reject_proposal as _reject

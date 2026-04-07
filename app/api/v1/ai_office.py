@@ -9,19 +9,27 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.schemas.ai_office import CloserReplyBody, TestWhatsAppBody
+from app.schemas.ai_office import (
+    AgentStatusResponse,
+    CloserReplyBody,
+    ConversationDetailResponse,
+    DecisionItem,
+    InvestigationItem,
+    OutboundConversationItem,
+    TestWhatsAppBody,
+)
 from app.services.dashboard import ai_office_service
 
 router = APIRouter(prefix="/ai-office", tags=["ai-office"])
 
 
-@router.get("/status")
+@router.get("/status", response_model=AgentStatusResponse)
 def get_agent_status(db: Session = Depends(get_db)):  # noqa: B008
     """Return status overview for all agents in the AI team."""
     return ai_office_service.get_agent_status(db)
 
 
-@router.get("/decisions")
+@router.get("/decisions", response_model=list[DecisionItem])
 def get_recent_decisions(
     limit: int = Query(default=20, ge=1, le=100),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
@@ -30,7 +38,7 @@ def get_recent_decisions(
     return ai_office_service.get_recent_decisions(db, limit)
 
 
-@router.get("/investigations")
+@router.get("/investigations", response_model=list[InvestigationItem])
 def get_recent_investigations(
     limit: int = Query(default=10, ge=1, le=50),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
@@ -39,7 +47,7 @@ def get_recent_investigations(
     return ai_office_service.get_recent_investigations(db, limit)
 
 
-@router.get("/conversations")
+@router.get("/conversations", response_model=list[OutboundConversationItem])
 def get_outbound_conversations(
     limit: int = Query(default=20, ge=1, le=100),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
@@ -48,7 +56,7 @@ def get_outbound_conversations(
     return ai_office_service.get_outbound_conversations(db, limit)
 
 
-@router.get("/conversations/{conversation_id}")
+@router.get("/conversations/{conversation_id}", response_model=ConversationDetailResponse)
 def get_conversation_detail(
     conversation_id: uuid.UUID,
     db: Session = Depends(get_db),  # noqa: B008

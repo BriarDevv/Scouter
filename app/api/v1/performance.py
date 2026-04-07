@@ -11,6 +11,14 @@ from app.schemas.dashboard import (
     IndustryBreakdownResponse,
     SourcePerformanceResponse,
 )
+from app.schemas.performance import (
+    AIHealthResponse,
+    AnalysisSummaryResponse,
+    InvestigationDetailResponse,
+    OutcomeAnalyticsResponse,
+    ScoringRecommendationItem,
+    SignalCorrelationItem,
+)
 from app.services.dashboard.dashboard_service import (
     get_city_breakdown,
     get_industry_breakdown,
@@ -38,7 +46,7 @@ def source(db: Session = Depends(get_db)):
     return get_source_performance(db)
 
 
-@router.get("/ai-health")
+@router.get("/ai-health", response_model=AIHealthResponse)
 def get_ai_health(db: Session = Depends(get_db)):
     """AI health metrics: approval rate, fallback rate, avg latency, invocation count (24h)."""
     from datetime import UTC, datetime, timedelta
@@ -77,7 +85,7 @@ def get_ai_health(db: Session = Depends(get_db)):
     }
 
 
-@router.get("/outcomes")
+@router.get("/outcomes", response_model=OutcomeAnalyticsResponse)
 def get_outcome_analytics(db: Session = Depends(get_db)):
     """Outcome analytics: WON/LOST breakdown by quality, industry, signals. Delegates to analysis service."""
     from app.services.pipeline.outcome_analysis_service import (
@@ -98,7 +106,7 @@ def get_outcome_analytics(db: Session = Depends(get_db)):
     }
 
 
-@router.get("/outcomes/signals")
+@router.get("/outcomes/signals", response_model=list[SignalCorrelationItem])
 def get_signal_correlation(db: Session = Depends(get_db)):
     """Which signals correlate with WON vs LOST outcomes. Delegates to analysis service."""
     from app.services.pipeline.outcome_analysis_service import analyze_signal_correlations
@@ -106,7 +114,7 @@ def get_signal_correlation(db: Session = Depends(get_db)):
     return analyze_signal_correlations(db)
 
 
-@router.get("/recommendations")
+@router.get("/recommendations", response_model=list[ScoringRecommendationItem])
 def get_scoring_recommendations(db: Session = Depends(get_db)):
     """Scoring and prompt improvement recommendations from outcome data."""
     from app.services.pipeline.outcome_analysis_service import generate_scoring_recommendations
@@ -114,7 +122,7 @@ def get_scoring_recommendations(db: Session = Depends(get_db)):
     return generate_scoring_recommendations(db)
 
 
-@router.get("/analysis/summary")
+@router.get("/analysis/summary", response_model=AnalysisSummaryResponse)
 def get_analysis_summary(db: Session = Depends(get_db)):
     """Full outcome analysis: summary, signals, quality accuracy, industry performance."""
     from app.services.pipeline.outcome_analysis_service import (
@@ -132,7 +140,7 @@ def get_analysis_summary(db: Session = Depends(get_db)):
     }
 
 
-@router.get("/investigations/{lead_id}")
+@router.get("/investigations/{lead_id}", response_model=InvestigationDetailResponse)
 def get_investigation(lead_id: uuid.UUID, db: Session = Depends(get_db)):
     """Return Scout investigation thread for a lead."""
     thread = (
