@@ -42,7 +42,7 @@ def get_or_create(db: Session) -> MailCredentials:
     if row is None:
         row = MailCredentials(id=_SINGLETON_ID)
         db.add(row)
-        db.commit()
+        db.flush()
         db.refresh(row)
         logger.info("mail_credentials_created")
     return row
@@ -63,7 +63,7 @@ def update_credentials(db: Session, updates: dict) -> MailCredentials:
                 value = encrypt_if_needed(value)
             setattr(row, key, value)
     row.updated_at = datetime.now(timezone.utc)
-    db.commit()
+    db.flush()
     db.refresh(row)
     logger.info("mail_credentials_updated", fields=[k for k in updates if "password" not in k])
     return row
@@ -176,7 +176,7 @@ def test_smtp(db: Session) -> dict:
     row.smtp_last_test_at = datetime.now(timezone.utc)
     row.smtp_last_test_ok = ok
     row.smtp_last_test_error = error
-    db.commit()
+    db.flush()
     logger.info("smtp_test", ok=ok, error=error)
     return {"ok": ok, "error": error}
 
@@ -216,6 +216,6 @@ def test_imap(db: Session) -> dict:
     row.imap_last_test_at = datetime.now(timezone.utc)
     row.imap_last_test_ok = ok
     row.imap_last_test_error = error
-    db.commit()
+    db.flush()
     logger.info("imap_test", ok=ok, error=error)
     return {"ok": ok, "error": error, "sample_count": sample_count}

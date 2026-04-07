@@ -20,7 +20,7 @@ def create_or_get_report(db: Session, lead_id: uuid.UUID) -> LeadResearchReport:
         try:
             report = LeadResearchReport(lead_id=lead_id, status=ResearchStatus.PENDING)
             db.add(report)
-            db.commit()
+            db.flush()
             db.refresh(report)
         except Exception:
             db.rollback()
@@ -44,7 +44,7 @@ def run_research(db: Session, lead_id: uuid.UUID) -> LeadResearchReport | None:
         return report
 
     report.status = ResearchStatus.RUNNING
-    db.commit()
+    db.flush()
 
     start = time.monotonic()
     try:
@@ -183,7 +183,7 @@ def run_research(db: Session, lead_id: uuid.UUID) -> LeadResearchReport | None:
         report.research_duration_ms = int((time.monotonic() - start) * 1000)
         report.status = ResearchStatus.COMPLETED
         report.updated_at = datetime.now(timezone.utc)
-        db.commit()
+        db.flush()
         db.refresh(report)
 
         logger.info(
@@ -198,6 +198,6 @@ def run_research(db: Session, lead_id: uuid.UUID) -> LeadResearchReport | None:
         report.status = ResearchStatus.FAILED
         report.error = str(exc)[:500]
         report.research_duration_ms = int((time.monotonic() - start) * 1000)
-        db.commit()
+        db.flush()
         logger.error("research_failed", lead_id=str(lead_id), error=str(exc))
         return report

@@ -14,7 +14,7 @@ def create_conversation(
 ) -> Conversation:
     conv = Conversation(channel=channel, channel_id=channel_id)
     db.add(conv)
-    db.commit()
+    db.flush()
     db.refresh(conv)
     logger.info("conversation_created", conversation_id=str(conv.id), channel=channel)
     return conv
@@ -70,7 +70,7 @@ def delete_conversation(db: Session, conversation_id: uuid.UUID) -> bool:
     if not conv:
         return False
     conv.is_active = False
-    db.commit()
+    db.flush()
     return True
 
 
@@ -100,4 +100,4 @@ def update_conversation_title(
     conv = db.get(Conversation, conversation_id)
     if conv and not conv.title:
         conv.title = title
-        db.commit()
+        db.flush()

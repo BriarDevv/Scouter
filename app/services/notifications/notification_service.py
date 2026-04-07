@@ -102,7 +102,7 @@ def create_notification(
     _maybe_dispatch_whatsapp(db, notif)
     _maybe_dispatch_telegram(db, notif)
 
-    db.commit()
+    db.flush()
     db.refresh(notif)
     logger.info(
         "notification_created",
@@ -199,7 +199,7 @@ def update_notification_status(
         notif.read_at = notif.read_at or now
         notif.resolved_at = notif.resolved_at or now
 
-    db.commit()
+    db.flush()
     db.refresh(notif)
     return notif
 
@@ -233,7 +233,7 @@ def bulk_update_notifications(
         return 0
 
     result = db.execute(stmt)
-    db.commit()
+    db.flush()
     return result.rowcount
 
 

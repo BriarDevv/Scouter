@@ -58,7 +58,7 @@ def create_or_get_brief(
                 lead_id=lead_id, status=BriefStatus.PENDING
             )
             db.add(brief)
-            db.commit()
+            db.flush()
             db.refresh(brief)
         except Exception:
             db.rollback()
@@ -190,7 +190,7 @@ def generate_brief(
         brief.is_fallback = llm_result.fallback_used
         brief.status = BriefStatus.GENERATED
         brief.updated_at = datetime.now(UTC)
-        db.commit()
+        db.flush()
         db.refresh(brief)
 
         # Emit notification
@@ -218,7 +218,7 @@ def generate_brief(
     except Exception as exc:
         brief.status = BriefStatus.FAILED
         brief.error = str(exc)[:500]
-        db.commit()
+        db.flush()
         logger.error(
             "brief_generation_failed",
             lead_id=str(lead_id),

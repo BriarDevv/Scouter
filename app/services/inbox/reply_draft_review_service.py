@@ -90,7 +90,7 @@ def ensure_reply_assistant_review_pending(
     review.error = None
     review.reviewed_at = None
 
-    db.commit()
+    db.flush()
     db.refresh(review)
     return review
 
@@ -154,7 +154,7 @@ def review_reply_assistant_draft_with_reviewer(
     review.error = None
     review.reviewed_at = datetime.now(UTC)
 
-    db.commit()
+    db.flush()
     db.refresh(review)
     attach_reply_send_metadata(draft)
 
@@ -209,7 +209,7 @@ def mark_reply_assistant_review_failed(
     review.error = error
     review.task_id = task_id or review.task_id
     review.reviewed_at = None
-    db.commit()
+    db.flush()
     db.refresh(review)
     return review
 

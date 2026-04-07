@@ -69,7 +69,7 @@ def create_territory(db: Session, data: TerritoryCreate) -> Territory:
         is_active=data.is_active,
     )
     db.add(territory)
-    db.commit()
+    db.flush()
     db.refresh(territory)
     return territory
 
@@ -90,7 +90,7 @@ def update_territory(db: Session, territory_id: UUID, data: TerritoryUpdate) -> 
     update_data = data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(territory, field, value)
-    db.commit()
+    db.flush()
     db.refresh(territory)
     return territory
 
@@ -100,7 +100,7 @@ def delete_territory(db: Session, territory_id: UUID) -> bool:
     if territory is None:
         return False
     db.delete(territory)
-    db.commit()
+    db.flush()
     return True
 
 

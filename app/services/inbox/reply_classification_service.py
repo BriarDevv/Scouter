@@ -92,7 +92,7 @@ def classify_inbound_message(db: Session, message_id: uuid.UUID) -> InboundMessa
         )
         .values(classification_status=InboundMailClassificationStatus.CLASSIFYING.value)
     )
-    db.commit()
+    db.flush()
     if rows_updated.rowcount == 0:
         # Another worker got there first
         db.refresh(message)
@@ -137,7 +137,7 @@ def classify_inbound_message(db: Session, message_id: uuid.UUID) -> InboundMessa
         message.classification_role = invocation.role if invocation else role.value
         message.classification_model = invocation.model if invocation else model
         message.classified_at = datetime.now(UTC)
-        db.commit()
+        db.flush()
         db.refresh(message)
        # Emit notification for actionable classification results
         try:
@@ -175,7 +175,7 @@ def classify_inbound_message(db: Session, message_id: uuid.UUID) -> InboundMessa
         message.classification_error = str(exc)
         message.classification_role = invocation.role if invocation else role.value
         message.classification_model = invocation.model if invocation else model
-        db.commit()
+        db.flush()
         db.refresh(message)
 
         logger.warning(
