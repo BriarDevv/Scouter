@@ -35,8 +35,6 @@ import {
   Mail,
   MailX,
   ShieldOff,
-  ChevronLeft,
-  ChevronRight,
   ArrowUpDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -44,8 +42,6 @@ import { cn } from "@/lib/utils";
 interface LeadsTableProps {
   leads: Lead[];
 }
-
-const PAGE_SIZE = 25;
 
 const QUICK_FILTER_OPTIONS: (LeadStatus | "all")[] = [
   "all", "qualified", "contacted", "replied",
@@ -62,7 +58,6 @@ export function LeadsTable({ leads }: LeadsTableProps) {
   const [sortBy, setSortBy] = useState<"score" | "created_at" | "business_name">("score");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [minScore, setMinScore] = useState<number | null>(null);
-  const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => {
     let result = leads;
@@ -97,9 +92,6 @@ export function LeadsTable({ leads }: LeadsTableProps) {
     return result;
   }, [leads, search, statusFilter, sortBy, sortDir, minScore]);
 
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
   function toggleSort(field: typeof sortBy) {
     if (sortBy === field) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else { setSortBy(field); setSortDir("desc"); }
@@ -114,7 +106,7 @@ export function LeadsTable({ leads }: LeadsTableProps) {
           <Input
             placeholder="Buscar por nombre, rubro, ciudad, email..."
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            onChange={(e) => { setSearch(e.target.value);}}
             className="pl-9 h-9 rounded-xl border-border bg-card text-sm"
           />
         </div>
@@ -123,7 +115,7 @@ export function LeadsTable({ leads }: LeadsTableProps) {
           {QUICK_FILTER_OPTIONS.map((s) => (
             <button
               key={s}
-              onClick={() => { setStatusFilter(s); setPage(1); }}
+              onClick={() => { setStatusFilter(s);}}
               className={cn(
                 "shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors",
                 statusFilter === s
@@ -138,7 +130,7 @@ export function LeadsTable({ leads }: LeadsTableProps) {
             value={MORE_FILTER_OPTIONS.includes(statusFilter as LeadStatus) ? statusFilter : ""}
             onChange={(e) => {
               const val = e.target.value as LeadStatus;
-              if (val) { setStatusFilter(val); setPage(1); }
+              if (val) { setStatusFilter(val);}
             }}
             className={cn(
               "rounded-lg px-2.5 py-1.5 text-xs font-medium border transition-colors bg-card text-muted-foreground cursor-pointer",
@@ -162,7 +154,7 @@ export function LeadsTable({ leads }: LeadsTableProps) {
           ].map((opt) => (
             <button
               key={opt.value}
-              onClick={() => { setMinScore(minScore === opt.value ? null : opt.value); setPage(1); }}
+              onClick={() => { setMinScore(minScore === opt.value ? null : opt.value);}}
               className={cn(
                 "shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors",
                 minScore === opt.value
@@ -205,7 +197,7 @@ export function LeadsTable({ leads }: LeadsTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginated.map((lead) => (
+            {filtered.map((lead) => (
               <TableRow key={lead.id} className="border-border/50 hover:bg-muted/50 transition-colors">
                 <TableCell>
                   <Link href={`/leads/${lead.id}`} className="group flex items-center gap-2">
@@ -267,34 +259,10 @@ export function LeadsTable({ leads }: LeadsTableProps) {
           </TableBody>
         </Table>
 
-        {/* Pagination */}
-        <div className="flex items-center justify-between border-t border-border px-4 py-3">
+        <div className="flex items-center border-t border-border px-4 py-3">
           <span className="text-xs text-muted-foreground">
             <span className="font-data">{filtered.length}</span> leads{statusFilter !== "all" && ` (${STATUS_CONFIG[statusFilter].label})`}{minScore !== null && ` · score ≥ ${minScore}`}
           </span>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="px-2 text-xs text-muted-foreground font-data">
-              {page} / {totalPages || 1}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
         </div>
       </div>
     </div>
