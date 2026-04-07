@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/tooltip";
 import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
-import { ReplyDraftPanel } from "@/components/shared/reply-draft-panel";
+import { ReplyDraftPanel } from "@/components/leads/reply-draft-panel";
 import {
   getDrafts,
   getInboundMailStatus,

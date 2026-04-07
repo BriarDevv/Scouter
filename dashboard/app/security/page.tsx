@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { SkeletonStatCard } from "@/components/shared/skeleton";
 import { Button } from "@/components/ui/button";
-import { NotificationListView } from "@/components/shared/notification-list-view";
+import { NotificationListView } from "@/components/notifications/notification-list-view";
 import {
   getNotifications,
   getNotificationCounts,

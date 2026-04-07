@@ -8,7 +8,7 @@ import {
 } from "@/components/shared/status-badge";
 import { INBOUND_MATCH_VIA_LABELS } from "@/lib/constants";
 import { RelativeTime } from "@/components/shared/relative-time";
-import { ReplyDraftPanel } from "@/components/shared/reply-draft-panel";
+import { ReplyDraftPanel } from "@/components/leads/reply-draft-panel";
 import { formatDateTime } from "@/lib/formatters";
 import { MessageSquare } from "lucide-react";
 import type { InboundMessage, EmailThreadSummary } from "@/types";

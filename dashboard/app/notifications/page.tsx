@@ -11,7 +11,7 @@ import {
   type CategoryFilter,
   type SeverityFilter,
   type StatusFilter,
-} from "@/components/shared/notification-list-view";
+} from "@/components/notifications/notification-list-view";
 import {
   getNotificationCounts,
   bulkUpdateNotifications,

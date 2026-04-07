@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import { NotificationListView } from "@/components/shared/notification-list-view";
+import { NotificationListView } from "@/components/notifications/notification-list-view";
 import type { NotificationItem, NotificationListResponse } from "@/types";
 
 vi.mock("@/lib/api/client", () => ({
