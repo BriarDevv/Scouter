@@ -298,12 +298,16 @@ def _maybe_dispatch_telegram(db: Session, notif: Notification) -> None:
     if not getattr(settings, "telegram_alerts_enabled", False):
         return
 
-    # Reuse the same severity/category logic as WhatsApp
-    min_sev = getattr(settings, "whatsapp_min_severity", "high")
+    # Shared alert thresholds (whatsapp_* settings control both channels)
+    min_sev = getattr(settings, "telegram_min_severity", None) or getattr(
+        settings, "whatsapp_min_severity", "high"
+    )
     if _SEV_ORDER.get(notif.severity.value, 0) < _SEV_ORDER.get(min_sev, 2):
         return
 
-    allowed_cats = getattr(settings, "whatsapp_categories", None) or ["business", "security"]
+    allowed_cats = getattr(settings, "telegram_categories", None) or getattr(
+        settings, "whatsapp_categories", None
+    ) or ["business", "security"]
     if notif.category.value not in allowed_cats:
         return
 
