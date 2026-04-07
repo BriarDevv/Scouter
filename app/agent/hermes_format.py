@@ -21,6 +21,7 @@ import re
 from typing import Any, NamedTuple
 
 from app.core.logging import get_logger
+from app.llm.sanitizer import sanitize_data_block
 
 logger = get_logger(__name__)
 
@@ -41,7 +42,7 @@ class ToolCallRequest(NamedTuple):
 # ---------------------------------------------------------------------------
 
 _TOOL_CALL_RE = re.compile(
-    r"<tool_call>\s*(\{.*?\})\s*</tool_call>",
+    r"<tool_call>\s*(\{[^<]*\})\s*</tool_call>",
     re.DOTALL,
 )
 
@@ -110,9 +111,12 @@ def format_tool_result(
             "error": error,
         }
     else:
+        # Sanitize tool result content to prevent prompt injection
+        # from external data (crawled listings, emails, etc.)
+        sanitized = sanitize_data_block(str(result)) if isinstance(result, str) else result
         payload = {
             "name": name,
-            "content": result,
+            "content": sanitized,
         }
 
     return (
