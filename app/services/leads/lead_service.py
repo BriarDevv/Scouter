@@ -58,7 +58,7 @@ def create_lead(db: Session, data: LeadCreate) -> Lead:
         status=LeadStatus.NEW,
     )
     db.add(lead)
-    db.commit()
+    db.flush()
     db.refresh(lead)
     logger.info("lead_created", lead_id=str(lead.id), business=lead.business_name)
     return lead
@@ -105,7 +105,7 @@ def update_lead(db: Session, lead_id: uuid.UUID, data: LeadUpdate) -> Lead | Non
         return None
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(lead, field, value)
-    db.commit()
+    db.flush()
     db.refresh(lead)
     return lead
 
@@ -139,7 +139,7 @@ def update_lead_status(db: Session, lead_id: uuid.UUID, status: LeadStatus) -> L
             )
         )
 
-    db.commit()
+    db.flush()
     db.refresh(lead)
     logger.info(
         "lead_status_updated",

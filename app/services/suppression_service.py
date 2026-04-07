@@ -31,7 +31,7 @@ def add_to_suppression_list(db: Session, data: SuppressionCreate) -> Suppression
             lead.status = LeadStatus.SUPPRESSED
             suppressed_count += 1
 
-    db.commit()
+    db.flush()
     db.refresh(entry)
 
     logger.info(
@@ -58,6 +58,6 @@ def remove_from_suppression(db: Session, entry_id: uuid.UUID) -> bool:
     if not entry:
         return False
     db.delete(entry)
-    db.commit()
+    db.flush()
     logger.info("suppression_removed", entry_id=str(entry_id))
     return True

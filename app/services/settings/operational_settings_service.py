@@ -19,7 +19,7 @@ def get_or_create(db: Session) -> OperationalSettings:
     if row is None:
         row = OperationalSettings(id=_SINGLETON_ID)
         db.add(row)
-        db.commit()
+        db.flush()
         db.refresh(row)
         logger.info("operational_settings_created")
     return row
@@ -66,7 +66,7 @@ def update_operational_settings(db: Session, updates: dict) -> OperationalSettin
         if key in _ALLOWED_SETTINGS_FIELDS:
             setattr(row, key, value)
     row.updated_at = datetime.now(timezone.utc)
-    db.commit()
+    db.flush()
     db.refresh(row)
     logger.info("operational_settings_updated", fields=list(updates.keys()))
     return row

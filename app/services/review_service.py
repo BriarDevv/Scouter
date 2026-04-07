@@ -57,7 +57,7 @@ def _persist_corrections(
         count += 1
 
     if count:
-        db.commit()
+        db.flush()
         logger.info(
             "review_corrections_persisted",
             review_type=review_type,
@@ -179,7 +179,7 @@ def review_draft_with_reviewer(db: Session, draft_id: uuid.UUID) -> dict | None:
         draft.body = revised_body
         if revised_subject:
             draft.subject = revised_subject
-        db.commit()
+        db.flush()
         logger.info(
             "review_draft_auto_applied",
             draft_id=str(draft.id),
