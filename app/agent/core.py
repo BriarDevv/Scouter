@@ -44,6 +44,52 @@ logger = get_logger(__name__)
 
 MAX_TOOL_LOOPS = 5
 MAX_HISTORY_MESSAGES = 50
+# Ollama context window and budget allocation
+_CONTEXT_WINDOW = 16384
+_RESERVED_FOR_RESPONSE = 2048  # tokens reserved for model output
+_CHARS_PER_TOKEN = 4  # conservative estimate for Spanish text
+
+
+def _estimate_tokens(text: str) -> int:
+    """Rough token estimate: ~4 chars per token for Spanish/mixed text."""
+    return len(text) // _CHARS_PER_TOKEN
+
+
+def _trim_history_to_budget(
+    system_prompt: str, history: list[dict[str, str]]
+) -> list[dict[str, str]]:
+    """Trim history from the oldest end to fit within the context window.
+
+    Always preserves the system prompt. Removes oldest messages first.
+    """
+    budget = _CONTEXT_WINDOW - _RESERVED_FOR_RESPONSE
+    system_tokens = _estimate_tokens(system_prompt)
+    available = budget - system_tokens
+
+    if available <= 0:
+        logger.warning("system_prompt_exceeds_budget", system_tokens=system_tokens)
+        return history[-5:]  # keep at least last 5 messages
+
+    # Walk from newest to oldest, accumulating token cost
+    kept: list[dict[str, str]] = []
+    used = 0
+    for msg in reversed(history):
+        msg_tokens = _estimate_tokens(msg.get("content", ""))
+        if used + msg_tokens > available:
+            break
+        kept.append(msg)
+        used += msg_tokens
+
+    kept.reverse()
+    if len(kept) < len(history):
+        logger.info(
+            "history_trimmed",
+            original=len(history),
+            kept=len(kept),
+            tokens_used=used,
+            budget=available,
+        )
+    return kept
 
 
 @functools.lru_cache(maxsize=1)
@@ -276,8 +322,9 @@ async def run_agent_turn(
     system_context = _build_system_context(db)
     system_prompt = build_agent_system_prompt(tools_schema, system_context=system_context)
 
-    # Load conversation history
+    # Load conversation history and trim to fit context window
     history = _load_history(db, conversation_id)
+    history = _trim_history_to_budget(system_prompt, history)
 
     # Ollama messages: system + history
     ollama_messages = [
