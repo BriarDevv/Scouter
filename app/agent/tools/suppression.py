@@ -75,6 +75,7 @@ def add_to_suppression(
         db,
         SuppressionCreate(email=email, domain=domain, reason=reason),
     )
+    db.commit()
     return {
         "id": str(entry.id),
         "email": entry.email,
@@ -121,6 +122,7 @@ def remove_from_suppression(db: Session, *, entry_id: str) -> dict:
     except ValueError:
         return {"error": "ID de entrada inválido (debe ser UUID)"}
     success = _remove_from_suppression(db, eid)
+    db.commit()
     return {"success": success}
 
 

@@ -3,7 +3,7 @@
 from sqlalchemy.orm import Session
 
 from app.agent.tool_registry import ToolDefinition, ToolParameter, registry
-from app.services.dashboard_svc.leader_service import (
+from app.services.dashboard.leader_service import (
     get_reply_summary as _reply_summary,
     get_system_overview as _overview,
     list_recent_activity_items as _recent_activity,

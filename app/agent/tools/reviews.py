@@ -21,6 +21,7 @@ def review_lead(db: Session, *, lead_id: str) -> dict:
     result = _review_lead(db, lid)
     if result is None:
         return {"error": "No se pudo revisar el lead (reviewer desactivado o lead no encontrado)"}
+    db.commit()
     return {
         "verdict": result["verdict"],
         "confidence": result["confidence"],
@@ -39,6 +40,7 @@ def review_draft(db: Session, *, draft_id: str) -> dict:
     result = _review_draft(db, did)
     if result is None:
         return {"error": "No se pudo revisar el draft (reviewer desactivado o draft no encontrado)"}
+    db.commit()
     return {
         "verdict": result["verdict"],
         "confidence": result["confidence"],

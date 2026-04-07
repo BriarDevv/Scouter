@@ -33,6 +33,7 @@ def run_full_pipeline(db: Session, *, lead_id: str) -> dict:
         pipeline_run_id=pipeline_run.id,
         correlation_id=pipeline_run.correlation_id,
     )
+    db.commit()
     return {
         "pipeline_run_id": str(pipeline_run.id),
         "correlation_id": pipeline_run.correlation_id,
@@ -73,6 +74,7 @@ def run_batch_pipeline(db: Session) -> dict:
         )
         started += 1
 
+    db.commit()
     return {"message": f"Pipeline batch iniciado para {started} leads", "count": started}
 
 

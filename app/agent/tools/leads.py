@@ -279,6 +279,7 @@ def create_lead(
         )
     except ValueError as exc:
         return {"error": str(exc)}
+    db.commit()
     return {
         "id": str(lead.id),
         "business_name": lead.business_name,
@@ -350,6 +351,7 @@ def update_lead_status(
     updated = _update_lead_status(db, lid, LeadStatus(status))
     if not updated:
         return {"error": "No se pudo actualizar el estado"}
+    db.commit()
     return {
         "id": str(updated.id),
         "business_name": updated.business_name,

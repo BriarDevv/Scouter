@@ -65,6 +65,7 @@ def start_territory_crawl(
         scope_key=territory_id,
         current_step="crawl_dispatch",
     )
+    db.commit()
 
     return {
         "status": "started",

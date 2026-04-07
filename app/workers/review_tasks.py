@@ -71,6 +71,7 @@ def task_review_lead(self, lead_id: str) -> dict:
             }
             result = jsonable_encoder(result)
             tracker.succeed(result)
+            db.commit()
             logger.info(
                 "task_step_completed", task_name="task_review_lead", result=result
             )
@@ -142,6 +143,7 @@ def task_review_draft(self, draft_id: str) -> dict:
                 }
                 result = jsonable_encoder(result)
                 tracker.succeed(result)
+                db.commit()
                 logger.info(
                     "task_step_completed", task_name="task_review_draft", result=result
                 )
@@ -213,6 +215,7 @@ def task_review_inbound_message(self, message_id: str) -> dict:
                 }
                 result = jsonable_encoder(result)
                 tracker.succeed(result)
+                db.commit()
                 logger.info(
                     "task_step_completed",
                     task_name="task_review_inbound_message",

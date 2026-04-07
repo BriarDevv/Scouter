@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from app.agent.tool_registry import ToolDefinition, ToolParameter, registry
-from app.services.dashboard_svc.health_service import get_system_health
+from app.services.dashboard.health_service import get_system_health
 
 
 def health_check(db: Session) -> dict:
