@@ -88,6 +88,7 @@ def start_territory_crawl(
         scope_key=body.territory_id,
         current_step="crawl_dispatch",
     )
+    db.commit()
 
     return {
         "ok": True,
@@ -115,6 +116,7 @@ def stop_territory_crawl(territory_id: str, db: DbSession):
         scope_key=territory_id,
     )
     if task_run:
+        db.commit()
         return {"ok": True, "message": "Crawl deteniéndose tras la ciudad actual."}
 
     if mark_territory_crawl_legacy_stop_requested(territory_id):

@@ -29,6 +29,7 @@ def review_lead(lead_id: uuid.UUID, db: Session = Depends(get_db)):
     payload = review_lead_with_reviewer(db, lead_id)
     if not payload:
         raise HTTPException(status_code=404, detail="Lead not found")
+    db.commit()
     return payload
 
 
@@ -47,6 +48,7 @@ def review_lead_async(lead_id: uuid.UUID, db: Session = Depends(get_db)):
         lead_id=lead_id,
         current_step="lead_review",
     )
+    db.commit()
     return {
         "task_id": task.id,
         "status": "queued",
@@ -62,6 +64,7 @@ def review_draft(draft_id: uuid.UUID, db: Session = Depends(get_db)):
     payload = review_draft_with_reviewer(db, draft_id)
     if not payload:
         raise HTTPException(status_code=404, detail="Draft not found")
+    db.commit()
     return payload
 
 
@@ -81,6 +84,7 @@ def review_draft_async(draft_id: uuid.UUID, db: Session = Depends(get_db)):
         lead_id=draft.lead_id,
         current_step="draft_review",
     )
+    db.commit()
     return {
         "task_id": task.id,
         "status": "queued",
@@ -96,6 +100,7 @@ def review_inbound_message(message_id: uuid.UUID, db: Session = Depends(get_db))
     payload = review_inbound_message_with_reviewer(db, message_id)
     if not payload:
         raise HTTPException(status_code=404, detail="Inbound message not found")
+    db.commit()
     return payload
 
 
@@ -115,6 +120,7 @@ def review_inbound_message_async(message_id: uuid.UUID, db: Session = Depends(ge
         lead_id=message.lead_id,
         current_step="inbound_reply_review",
     )
+    db.commit()
     return {
         "task_id": task.id,
         "status": "queued",

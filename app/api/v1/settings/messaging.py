@@ -50,6 +50,7 @@ DbSession = Annotated[object, Depends(get_db)]
 @router.get("/whatsapp-credentials", response_model=WhatsAppCredentialsResponse)
 def get_whatsapp_credentials(db: DbSession):
     row = get_wa_creds(db)
+    db.commit()
     return wa_to_dict(row)
 
 
@@ -59,17 +60,21 @@ def patch_whatsapp_credentials(body: WhatsAppCredentialsUpdate, db: DbSession):
     if not updates:
         raise HTTPException(status_code=422, detail="No fields to update provided.")
     row = update_wa_creds(db, updates)
+    db.commit()
     return wa_to_dict(row)
 
 
 @router.post("/test/whatsapp", response_model=WhatsAppTestResult)
 def test_whatsapp_connection(db: DbSession):
-    return test_whatsapp(db)
+    result = test_whatsapp(db)
+    db.commit()
+    return result
 
 
 @router.get("/telegram-credentials", response_model=TelegramCredentialsResponse)
 def get_telegram_credentials(db: DbSession):
     row = get_tg_creds(db)
+    db.commit()
     return tg_to_dict(row)
 
 
@@ -79,12 +84,15 @@ def patch_telegram_credentials(body: TelegramCredentialsUpdate, db: DbSession):
     if not updates:
         raise HTTPException(status_code=422, detail="No fields to update provided.")
     row = update_tg_creds(db, updates)
+    db.commit()
     return tg_to_dict(row)
 
 
 @router.post("/test/telegram", response_model=TelegramTestResult)
 def test_telegram_connection(db: DbSession):
-    return test_telegram(db)
+    result = test_telegram(db)
+    db.commit()
+    return result
 
 
 class TelegramRegisterWebhookBody(BaseModel):
@@ -134,6 +142,7 @@ def register_telegram_webhook(
             "webhook_secret": webhook_secret,
         },
     )
+    db.commit()
 
     return {
         "ok": True,

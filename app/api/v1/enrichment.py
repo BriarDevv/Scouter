@@ -41,6 +41,7 @@ def enrich_async(
         correlation_id=correlation_id,
         current_step="enrichment",
     )
+    db.commit()
     return {
         "task_id": task.id,
         "status": "queued",

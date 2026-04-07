@@ -101,6 +101,7 @@ def approve_proposal(proposal_id: uuid.UUID, db: DbSession):
     proposal = _approve(db, proposal_id, approved_by="operator")
     if not proposal:
         raise HTTPException(status_code=404, detail="Proposal not found or not pending")
+    db.commit()
     return {
         "id": str(proposal.id),
         "status": proposal.status,
@@ -116,6 +117,7 @@ def apply_proposal_endpoint(proposal_id: uuid.UUID, db: DbSession):
     proposal = _apply(db, proposal_id)
     if not proposal:
         raise HTTPException(status_code=404, detail="Proposal not found or not approved")
+    db.commit()
     return {
         "id": str(proposal.id),
         "status": proposal.status,
@@ -131,6 +133,7 @@ def reject_proposal(proposal_id: uuid.UUID, db: DbSession):
     proposal = _reject(db, proposal_id)
     if not proposal:
         raise HTTPException(status_code=404, detail="Proposal not found or not pending")
+    db.commit()
     return {
         "id": str(proposal.id),
         "status": proposal.status,

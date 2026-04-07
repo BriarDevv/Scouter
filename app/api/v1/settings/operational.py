@@ -36,6 +36,7 @@ def patch_operational(body: OperationalSettingsUpdate, db: DbSession):
     if not updates:
         raise HTTPException(status_code=422, detail="No fields to update provided.")
     row = update_operational_settings(db, updates)
+    db.commit()
     return to_response_dict(row)
 
 
@@ -72,6 +73,7 @@ def set_runtime_mode(mode: str, db: DbSession):
     """Apply a runtime mode preset (safe | assisted | auto)."""
     try:
         row = apply_runtime_mode(db, mode)
+        db.commit()
         return to_response_dict(row)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

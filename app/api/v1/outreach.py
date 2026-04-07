@@ -65,6 +65,7 @@ def generate_draft_async(
         correlation_id=correlation_id,
         current_step="draft_generation",
     )
+    db.commit()
     return {
         "task_id": task.id,
         "status": "queued",

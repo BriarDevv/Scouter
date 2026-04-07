@@ -44,7 +44,9 @@ router = APIRouter(prefix="/chat", tags=["chat"])
     "/conversations", response_model=ConversationResponse, status_code=201
 )
 def create(db: Session = Depends(get_db)):
-    return create_conversation(db)
+    conv = create_conversation(db)
+    db.commit()
+    return conv
 
 
 @router.get("/conversations")
@@ -108,6 +110,7 @@ def delete(
 ):
     if not delete_conversation(db, conversation_id):
         raise HTTPException(404, "Conversación no encontrada")
+    db.commit()
 
 
 @router.post("/conversations/{conversation_id}/messages")
@@ -125,6 +128,7 @@ async def send_message(
         update_conversation_title(
             db, conversation_id, generate_title(body.content)
         )
+        db.commit()
 
     async def event_stream():
         try:

@@ -188,6 +188,7 @@ def start_batch_pipeline(request: Request, db: DbSession):
         scope_key=BATCH_PIPELINE_SCOPE_KEY,
         current_step="batch_dispatch",
     )
+    db.commit()
 
     return {
         "ok": True,
@@ -212,6 +213,7 @@ def stop_batch_pipeline(db: DbSession):
         scope_key=BATCH_PIPELINE_SCOPE_KEY,
     )
     if task_run:
+        db.commit()
         return {"ok": True, "message": "Pipeline batch deteniéndose tras el lead actual."}
 
     if mark_batch_pipeline_legacy_stop_requested():

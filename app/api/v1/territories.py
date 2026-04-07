@@ -36,7 +36,9 @@ def list_all(db: Session = Depends(get_db)):
 @router.post("", response_model=TerritoryResponse, status_code=201)
 def create(data: TerritoryCreate, db: Session = Depends(get_db)):
     """Crear un nuevo territorio."""
-    return create_territory(db, data)
+    territory = create_territory(db, data)
+    db.commit()
+    return territory
 
 
 @router.get("/{territory_id}", response_model=TerritoryWithStats)
@@ -54,6 +56,7 @@ def patch(territory_id: UUID, data: TerritoryUpdate, db: Session = Depends(get_d
     territory = update_territory(db, territory_id, data)
     if territory is None:
         raise HTTPException(status_code=404, detail="Territorio no encontrado")
+    db.commit()
     return territory
 
 
@@ -62,6 +65,7 @@ def remove(territory_id: UUID, db: Session = Depends(get_db)):
     """Eliminar un territorio."""
     if not delete_territory(db, territory_id):
         raise HTTPException(status_code=404, detail="Territorio no encontrado")
+    db.commit()
 
 
 @router.get("/{territory_id}/leads", response_model=list[LeadResponse])

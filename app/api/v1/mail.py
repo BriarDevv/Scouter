@@ -36,7 +36,9 @@ def sync_inbound_mail(
     db: Session = Depends(get_db),
 ):
     try:
-        return sync_inbound_messages(db, limit=limit)
+        result = sync_inbound_messages(db, limit=limit)
+        db.commit()
+        return result
     except InboundMailDisabledError:
         raise HTTPException(status_code=503, detail="Sincronización de mail inbound deshabilitada.")
     except InboundMailProviderError:

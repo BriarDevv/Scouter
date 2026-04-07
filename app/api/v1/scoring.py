@@ -61,6 +61,7 @@ def rescore_all_leads(request: Request, db: DbSession):
         scope_key=RESCORE_ALL_SCOPE_KEY,
         current_step="rescore_dispatch",
     )
+    db.commit()
     return {
         "task_id": str(task.id),
         "status": "queued",
@@ -90,6 +91,7 @@ def stop_rescore_all(db: DbSession):
         scope_key=RESCORE_ALL_SCOPE_KEY,
     )
     if task_run:
+        db.commit()
         return {"ok": True, "message": "Rescore-all deteniéndose tras el lead actual."}
     return {"ok": True, "message": "No habia rescore-all corriendo."}
 
@@ -121,6 +123,7 @@ def analyze_with_llm(
         correlation_id=correlation_id,
         current_step="analysis",
     )
+    db.commit()
     return {
         "task_id": task.id,
         "status": "queued",
@@ -160,6 +163,7 @@ def run_full_pipeline(
         correlation_id=pipeline_run.correlation_id,
         current_step="pipeline_dispatch",
     )
+    db.commit()
     return {
         "task_id": task.id,
         "status": "queued",

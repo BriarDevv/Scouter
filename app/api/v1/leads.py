@@ -27,6 +27,7 @@ def create(data: LeadCreate, db: Session = Depends(get_db)):
     """Create a new lead. Deduplicates automatically."""
     try:
         lead = create_lead(db, data)
+        db.commit()
         return lead
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
@@ -121,6 +122,7 @@ def patch_status(
     lead = update_lead_status(db, lead_id, data.status)
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
+    db.commit()
     return lead
 
 

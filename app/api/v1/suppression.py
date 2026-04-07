@@ -20,6 +20,7 @@ def add(data: SuppressionCreate, db: Session = Depends(get_db)):
     if not data.email and not data.domain and not data.phone:
         raise HTTPException(status_code=422, detail="At least one of email, domain, or phone is required")
     entry = add_to_suppression_list(db, data)
+    db.commit()
     return entry
 
 
@@ -38,3 +39,4 @@ def remove(entry_id: uuid.UUID, db: Session = Depends(get_db)):
     """Remove an entry from the suppression list."""
     if not remove_from_suppression(db, entry_id):
         raise HTTPException(status_code=404, detail="Entry not found")
+    db.commit()

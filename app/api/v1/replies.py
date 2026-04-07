@@ -66,13 +66,15 @@ def patch_reply_draft(
     db: Session = Depends(get_db),
 ):
     try:
-        return update_reply_assistant_draft(
+        draft = update_reply_assistant_draft(
             db,
             message_id,
             subject=payload.subject,
             body=payload.body,
             edited_by=payload.edited_by,
         )
+        db.commit()
+        return draft
     except ReplyDraftNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
@@ -80,7 +82,9 @@ def patch_reply_draft(
 @router.post("/{message_id}/draft-response/send", response_model=ReplyAssistantSendResponse)
 def send_reply_draft(message_id: uuid.UUID, db: Session = Depends(get_db)):
     try:
-        return send_reply_assistant_draft(db, message_id)
+        result = send_reply_assistant_draft(db, message_id)
+        db.commit()
+        return result
     except ReplyDraftNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except ReplyDraftAlreadySentError as exc:
@@ -121,6 +125,7 @@ def review_reply_draft(message_id: uuid.UUID, db: Session = Depends(get_db)):
         current_step="reply_draft_review",
     )
     ensure_reply_assistant_review_pending(db, message_id, task_id=task.id)
+    db.commit()
     return {
         "task_id": task.id,
         "status": "queued",
