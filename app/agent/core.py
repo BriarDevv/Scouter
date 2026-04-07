@@ -132,12 +132,14 @@ def _get_model() -> str:
 
 def _load_history(db: Session, conversation_id: uuid.UUID) -> list[dict[str, str]]:
     """Load conversation history as Ollama message dicts."""
-    messages = (
-        db.query(Message)
-        .filter(Message.conversation_id == conversation_id)
-        .order_by(Message.created_at.asc())
-        .limit(MAX_HISTORY_MESSAGES)
-        .all()
+    messages = list(
+        reversed(
+            db.query(Message)
+            .filter(Message.conversation_id == conversation_id)
+            .order_by(Message.created_at.desc())
+            .limit(MAX_HISTORY_MESSAGES)
+            .all()
+        )
     )
 
     history: list[dict[str, str]] = []
