@@ -8,9 +8,6 @@ from app.models.lead import Lead, LeadStatus
 from app.models.outreach import DraftStatus, OutreachDraft, OutreachLog
 from app.models.task_tracking import PipelineRun, TaskRun
 from app.services.dashboard.dashboard_service import (
-    _load_leads as _dashboard_load_leads,
-)
-from app.services.dashboard.dashboard_service import (
     get_city_breakdown,
     get_dashboard_stats,
     get_industry_breakdown,
@@ -242,12 +239,11 @@ def _serialize_reply(message: InboundMessage) -> dict:
 
 
 def get_system_overview(db: Session) -> dict:
-    all_leads = _dashboard_load_leads(db)
-    stats = get_dashboard_stats(db, leads=all_leads)
+    stats = get_dashboard_stats(db)
     recent_window = _since(24)
-    top_industry = next(iter(get_industry_breakdown(db, leads=all_leads)), None)
-    top_city = next(iter(get_city_breakdown(db, leads=all_leads)), None)
-    top_source = next(iter(get_source_performance(db, leads=all_leads)), None)
+    top_industry = next(iter(get_industry_breakdown(db)), None)
+    top_city = next(iter(get_city_breakdown(db)), None)
+    top_source = next(iter(get_source_performance(db)), None)
 
     return {
         "total_leads": stats["total_leads"],

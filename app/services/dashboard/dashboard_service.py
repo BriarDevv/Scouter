@@ -1,11 +1,11 @@
-from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import case, select
 from sqlalchemy import func as sa_func
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 
 from app.models.lead import Lead, LeadStatus
+from app.models.lead_source import LeadSource
 from app.models.outreach import LogAction, OutreachDraft, OutreachLog
 
 PIPELINE_STAGE_META = (
@@ -68,11 +68,6 @@ def _reached_stage(status: LeadStatus, stage: LeadStatus) -> bool:
     current_rank = _stage_rank(status)
     target_rank = PIPELINE_STAGE_ORDER[stage]
     return current_rank is not None and current_rank >= target_rank
-
-
-def _load_leads(db: Session) -> list[Lead]:
-    stmt = select(Lead).options(joinedload(Lead.source))
-    return list(db.execute(stmt).scalars().unique().all())
 
 
 def _load_logs(db: Session, since: datetime | None = None) -> list[OutreachLog]:
@@ -220,10 +215,14 @@ def _get_dashboard_stats_python(db: Session, leads: list[Lead]) -> dict:
 
 
 def get_pipeline_breakdown(db: Session) -> list[dict]:
-    leads = _load_leads(db)
     stage_counts = []
     for stage, label, color in PIPELINE_STAGE_META:
-        count = sum(1 for lead in leads if _reached_stage(lead.status, stage))
+        count = (
+            db.execute(
+                select(sa_func.count(Lead.id)).where(_status_at_or_beyond_filter(stage))
+            ).scalar()
+            or 0
+        )
         stage_counts.append({"stage": stage, "label": label, "count": count, "color": color})
 
     first_count = stage_counts[0]["count"] if stage_counts else 0
@@ -232,6 +231,15 @@ def get_pipeline_breakdown(db: Session) -> list[dict]:
             round(_safe_rate(stage["count"], first_count), 4) if first_count else 0.0
         )
     return stage_counts
+
+
+def _status_at_or_beyond_filter(stage: LeadStatus):
+    """Return a SQL WHERE clause: lead has reached this pipeline stage."""
+    target_rank = PIPELINE_STAGE_ORDER[stage]
+    matching = [s for s, rank in PIPELINE_STAGE_ORDER.items() if rank >= target_rank]
+    if target_rank <= PIPELINE_STAGE_ORDER.get(LeadStatus.CONTACTED, 99):
+        matching.append(LeadStatus.LOST)
+    return Lead.status.in_(matching)
 
 
 def get_time_series(db: Session, days: int = 30) -> list[dict]:
@@ -250,10 +258,17 @@ def get_time_series(db: Session, days: int = 30) -> list[dict]:
         for offset in range(days)
     }
 
-    for lead in _load_leads(db):
-        key = _date_key(lead.created_at)
+    # Leads per day via SQL GROUP BY
+    lead_date = sa_func.date(Lead.created_at).label("d")
+    lead_rows = db.execute(
+        select(lead_date, sa_func.count(Lead.id))
+        .where(Lead.created_at >= start_datetime)
+        .group_by(lead_date)
+    ).all()
+    for d, cnt in lead_rows:
+        key = str(d)
         if key in timeline:
-            timeline[key]["leads"] += 1
+            timeline[key]["leads"] = cnt
 
     for draft in _load_sent_drafts(db, since=start_datetime):
         key = _date_key(draft.sent_at)
@@ -273,20 +288,58 @@ def get_time_series(db: Session, days: int = 30) -> list[dict]:
 
 
 def get_industry_breakdown(db: Session, *, leads: list[Lead] | None = None) -> list[dict]:
-    leads = leads if leads is not None else _load_leads(db)
+    if leads is not None:
+        return _industry_breakdown_python(leads)
+
+    contacted_statuses = [
+        s
+        for s, rank in PIPELINE_STAGE_ORDER.items()
+        if rank >= PIPELINE_STAGE_ORDER[LeadStatus.CONTACTED]
+    ] + [LeadStatus.LOST]
+
+    industry_col = sa_func.coalesce(Lead.industry, "Sin rubro").label("industry")
+    rows = db.execute(
+        select(
+            industry_col,
+            sa_func.count(Lead.id).label("count"),
+            sa_func.avg(Lead.score).label("avg_score"),
+            sa_func.sum(case((Lead.status.in_(contacted_statuses), 1), else_=0)).label("contacted"),
+            sa_func.sum(case((Lead.status == LeadStatus.WON, 1), else_=0)).label("won"),
+        ).group_by(industry_col)
+    ).all()
+
+    result = []
+    for row in rows:
+        contacted = row.contacted or 0
+        won = row.won or 0
+        result.append(
+            {
+                "industry": row.industry,
+                "count": row.count,
+                "avg_score": round(float(row.avg_score or 0), 1),
+                "conversion_rate": round(_safe_rate(won, contacted), 4),
+            }
+        )
+    return sorted(
+        result, key=lambda item: (-item["conversion_rate"], -item["count"], item["industry"])
+    )
+
+
+def _industry_breakdown_python(leads: list[Lead]) -> list[dict]:
+    from collections import defaultdict
+
     buckets: dict[str, list[Lead]] = defaultdict(list)
     for lead in leads:
         buckets[lead.industry or "Sin rubro"].append(lead)
-
     result = []
-    for industry, leads in buckets.items():
-        scored = [lead.score for lead in leads if lead.score is not None]
-        contacted = sum(1 for lead in leads if _reached_stage(lead.status, LeadStatus.CONTACTED))
-        won = sum(1 for lead in leads if lead.status == LeadStatus.WON)
+    for industry, bucket in buckets.items():
+        scored = [lead.score for lead in bucket if lead.score is not None]
+        contacted = sum(1 for lead in bucket if _reached_stage(lead.status, LeadStatus.CONTACTED))
+        won = sum(1 for lead in bucket if lead.status == LeadStatus.WON)
         result.append(
             {
                 "industry": industry,
-                "count": len(leads),
+                "count": len(bucket),
                 "avg_score": round(_safe_average(scored), 1),
                 "conversion_rate": round(_safe_rate(won, contacted), 4),
             }
@@ -297,20 +350,61 @@ def get_industry_breakdown(db: Session, *, leads: list[Lead] | None = None) -> l
 
 
 def get_city_breakdown(db: Session, *, leads: list[Lead] | None = None) -> list[dict]:
-    leads = leads if leads is not None else _load_leads(db)
+    if leads is not None:
+        return _city_breakdown_python(leads)
+
+    contacted_statuses = [
+        s
+        for s, rank in PIPELINE_STAGE_ORDER.items()
+        if rank >= PIPELINE_STAGE_ORDER[LeadStatus.CONTACTED]
+    ] + [LeadStatus.LOST]
+    replied_statuses = [
+        s
+        for s, rank in PIPELINE_STAGE_ORDER.items()
+        if rank >= PIPELINE_STAGE_ORDER[LeadStatus.REPLIED]
+    ]
+
+    city_col = sa_func.coalesce(Lead.city, "Sin ciudad").label("city")
+    rows = db.execute(
+        select(
+            city_col,
+            sa_func.count(Lead.id).label("count"),
+            sa_func.avg(Lead.score).label("avg_score"),
+            sa_func.sum(case((Lead.status.in_(contacted_statuses), 1), else_=0)).label("contacted"),
+            sa_func.sum(case((Lead.status.in_(replied_statuses), 1), else_=0)).label("replied"),
+        ).group_by(city_col)
+    ).all()
+
+    result = []
+    for row in rows:
+        contacted = row.contacted or 0
+        replied = row.replied or 0
+        result.append(
+            {
+                "city": row.city,
+                "count": row.count,
+                "avg_score": round(float(row.avg_score or 0), 1),
+                "reply_rate": round(_safe_rate(replied, contacted), 4),
+            }
+        )
+    return sorted(result, key=lambda item: (-item["reply_rate"], -item["count"], item["city"]))
+
+
+def _city_breakdown_python(leads: list[Lead]) -> list[dict]:
+    from collections import defaultdict
+
     buckets: dict[str, list[Lead]] = defaultdict(list)
     for lead in leads:
         buckets[lead.city or "Sin ciudad"].append(lead)
-
     result = []
-    for city, leads in buckets.items():
-        scored = [lead.score for lead in leads if lead.score is not None]
-        contacted = sum(1 for lead in leads if _reached_stage(lead.status, LeadStatus.CONTACTED))
-        replied = sum(1 for lead in leads if _reached_stage(lead.status, LeadStatus.REPLIED))
+    for city, bucket in buckets.items():
+        scored = [lead.score for lead in bucket if lead.score is not None]
+        contacted = sum(1 for lead in bucket if _reached_stage(lead.status, LeadStatus.CONTACTED))
+        replied = sum(1 for lead in bucket if _reached_stage(lead.status, LeadStatus.REPLIED))
         result.append(
             {
                 "city": city,
-                "count": len(leads),
+                "count": len(bucket),
                 "avg_score": round(_safe_average(scored), 1),
                 "reply_rate": round(_safe_rate(replied, contacted), 4),
             }
@@ -319,22 +413,70 @@ def get_city_breakdown(db: Session, *, leads: list[Lead] | None = None) -> list[
 
 
 def get_source_performance(db: Session, *, leads: list[Lead] | None = None) -> list[dict]:
-    leads = leads if leads is not None else _load_leads(db)
+    if leads is not None:
+        return _source_performance_python(leads)
+
+    contacted_statuses = [
+        s
+        for s, rank in PIPELINE_STAGE_ORDER.items()
+        if rank >= PIPELINE_STAGE_ORDER[LeadStatus.CONTACTED]
+    ] + [LeadStatus.LOST]
+    replied_statuses = [
+        s
+        for s, rank in PIPELINE_STAGE_ORDER.items()
+        if rank >= PIPELINE_STAGE_ORDER[LeadStatus.REPLIED]
+    ]
+
+    source_col = sa_func.coalesce(LeadSource.name, "Unattributed").label("source_name")
+    rows = db.execute(
+        select(
+            source_col,
+            sa_func.count(Lead.id).label("leads"),
+            sa_func.avg(Lead.score).label("avg_score"),
+            sa_func.sum(case((Lead.status.in_(contacted_statuses), 1), else_=0)).label("contacted"),
+            sa_func.sum(case((Lead.status.in_(replied_statuses), 1), else_=0)).label("replied"),
+            sa_func.sum(case((Lead.status == LeadStatus.WON, 1), else_=0)).label("won"),
+        )
+        .outerjoin(LeadSource, Lead.source_id == LeadSource.id)
+        .group_by(source_col)
+    ).all()
+
+    result = []
+    for row in rows:
+        contacted = row.contacted or 0
+        replied = row.replied or 0
+        won = row.won or 0
+        result.append(
+            {
+                "source": row.source_name,
+                "leads": row.leads,
+                "avg_score": round(float(row.avg_score or 0), 1),
+                "reply_rate": round(_safe_rate(replied, contacted), 4),
+                "conversion_rate": round(_safe_rate(won, contacted), 4),
+            }
+        )
+    return sorted(
+        result, key=lambda item: (-item["conversion_rate"], -item["leads"], item["source"])
+    )
+
+
+def _source_performance_python(leads: list[Lead]) -> list[dict]:
+    from collections import defaultdict
+
     buckets: dict[str, list[Lead]] = defaultdict(list)
     for lead in leads:
         source_name = lead.source.name if lead.source else "Unattributed"
         buckets[source_name].append(lead)
-
     result = []
-    for source_name, leads in buckets.items():
-        scored = [lead.score for lead in leads if lead.score is not None]
-        contacted = sum(1 for lead in leads if _reached_stage(lead.status, LeadStatus.CONTACTED))
-        replied = sum(1 for lead in leads if _reached_stage(lead.status, LeadStatus.REPLIED))
-        won = sum(1 for lead in leads if lead.status == LeadStatus.WON)
+    for source_name, bucket in buckets.items():
+        scored = [lead.score for lead in bucket if lead.score is not None]
+        contacted = sum(1 for lead in bucket if _reached_stage(lead.status, LeadStatus.CONTACTED))
+        replied = sum(1 for lead in bucket if _reached_stage(lead.status, LeadStatus.REPLIED))
+        won = sum(1 for lead in bucket if lead.status == LeadStatus.WON)
         result.append(
             {
                 "source": source_name,
-                "leads": len(leads),
+                "leads": len(bucket),
                 "avg_score": round(_safe_average(scored), 1),
                 "reply_rate": round(_safe_rate(replied, contacted), 4),
                 "conversion_rate": round(_safe_rate(won, contacted), 4),
