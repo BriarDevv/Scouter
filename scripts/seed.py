@@ -54,11 +54,16 @@ SAMPLE_LEADS = [
 def main():
     db = SessionLocal()
     try:
-        # Create a manual source
-        source = LeadSource(name="seed_data", source_type=SourceType.MANUAL, description="Initial seed data")
-        db.add(source)
-        db.commit()
-        db.refresh(source)
+        # Create a manual source (idempotent)
+        source = db.query(LeadSource).filter(LeadSource.name == "seed_data").first()
+        if source is None:
+            source = LeadSource(name="seed_data", source_type=SourceType.MANUAL, description="Initial seed data")
+            db.add(source)
+            db.commit()
+            db.refresh(source)
+            print("Created lead source: seed_data")
+        else:
+            print("Lead source 'seed_data' already exists, skipping.")
 
         for lead_data in SAMPLE_LEADS:
             lead_data["source_id"] = source.id
@@ -87,11 +92,17 @@ def main():
                 "cities": ["Cordoba", "Rio Cuarto"],
             },
         ]
+        created_count = 0
         for tdata in territories_data:
-            t = Territory(**tdata)
-            db.add(t)
+            existing = db.query(Territory).filter(Territory.name == tdata["name"]).first()
+            if existing is None:
+                t = Territory(**tdata)
+                db.add(t)
+                created_count += 1
+            else:
+                print(f"Territory '{tdata['name']}' already exists, skipping.")
         db.commit()
-        print(f"Seeded {len(territories_data)} territories.")
+        print(f"Seeded {created_count} new territories (of {len(territories_data)} total).")
 
         print(f"\nSeeded {len(SAMPLE_LEADS)} leads.")
     finally:
