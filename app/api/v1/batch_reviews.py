@@ -17,10 +17,16 @@ DbSession = Annotated[Session, Depends(get_db)]
 @router.get("")
 def list_batch_reviews(db: DbSession, limit: int = 10):
     """List batch reviews, newest first."""
+    from sqlalchemy.orm import joinedload
+
     from app.models.batch_review import BatchReview
 
     reviews = (
-        db.query(BatchReview).order_by(BatchReview.created_at.desc()).limit(min(limit, 50)).all()
+        db.query(BatchReview)
+        .options(joinedload(BatchReview.proposals))
+        .order_by(BatchReview.created_at.desc())
+        .limit(min(limit, 50))
+        .all()
     )
     return [
         {

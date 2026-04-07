@@ -107,10 +107,14 @@ def delete_territory(db: Session, territory_id: UUID) -> bool:
 # ── Stats ───────────────────────────────────────────────
 
 
-def _get_leads_in_cities(db: Session, cities: list[str]) -> list[Lead]:
+def _get_leads_in_cities(
+    db: Session, cities: list[str], *, limit: int | None = None
+) -> list[Lead]:
     if not cities:
         return []
     stmt = select(Lead).where(Lead.city.in_(cities))
+    if limit is not None:
+        stmt = stmt.limit(limit)
     return list(db.execute(stmt).scalars().all())
 
 

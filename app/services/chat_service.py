@@ -1,7 +1,7 @@
 import uuid
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.logging import get_logger
 from app.models.conversation import Conversation, Message
@@ -75,6 +75,7 @@ def delete_conversation(db: Session, conversation_id: uuid.UUID) -> bool:
 def get_messages(db: Session, conversation_id: uuid.UUID, *, limit: int = 100) -> list[Message]:
     stmt = (
         select(Message)
+        .options(selectinload(Message.tool_calls))
         .where(Message.conversation_id == conversation_id)
         .order_by(Message.created_at.asc())
         .limit(limit)

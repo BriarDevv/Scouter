@@ -77,5 +77,5 @@ def territory_leads(
     territory = get_territory(db, territory_id)
     if territory is None:
         raise HTTPException(status_code=404, detail="Territorio no encontrado")
-    leads = _get_leads_in_cities(db, territory.cities)
-    return leads[:limit]
+    leads = _get_leads_in_cities(db, territory.cities, limit=limit)
+    return leads
