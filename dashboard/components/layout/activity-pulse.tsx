@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { getTasks, getLLMSettings, getBatchPipelineStatus } from "@/lib/api/client";
+import { useVisibleInterval } from "@/lib/hooks/use-visible-interval";
 import type { BatchPipelineProgress } from "@/lib/api/client";
 import type { TaskStatusRecord, LLMSettings } from "@/types";
 import { STEP_CONFIG, getStepConfig, getModelForStep, isActive } from "@/lib/task-utils";
@@ -105,11 +106,10 @@ export function ActivityPulse() {
   }, []);
 
   useEffect(() => {
-    poll();
     getLLMSettings().then(setLlm).catch(() => {});
-    const id = setInterval(poll, POLL_INTERVAL);
-    return () => clearInterval(id);
-  }, [poll]);
+  }, []);
+
+  useVisibleInterval(poll, POLL_INTERVAL);
 
   const activeTasksRaw = tasks.filter((t) => isActive(t.status));
   // Dedup: keep only the most recent task per lead_id + current_step

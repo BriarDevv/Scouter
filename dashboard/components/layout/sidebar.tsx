@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { ActivityPulse } from "@/components/layout/activity-pulse";
 import { getNotificationCounts } from "@/lib/api/client";
 import { useChatPanel } from "@/lib/hooks/use-chat-panel";
+import { useVisibleInterval } from "@/lib/hooks/use-visible-interval";
 import {
   Bell,
   Brain,
@@ -54,21 +55,14 @@ export function Sidebar() {
   const [unreadCount, setUnreadCount] = useState(0);
   const { sidebarCollapsed: collapsed, toggleSidebar } = useChatPanel();
 
-  useEffect(() => {
-    let active = true;
-    async function fetchNotificationCounts() {
-      try {
-        const data = await getNotificationCounts();
-        if (active) setUnreadCount(data.total_unread ?? 0);
-      } catch {}
+  useVisibleInterval(async () => {
+    try {
+      const data = await getNotificationCounts();
+      setUnreadCount(data.total_unread ?? 0);
+    } catch (err) {
+      console.error("notification_counts_fetch_failed", err);
     }
-    fetchNotificationCounts();
-    const interval = setInterval(fetchNotificationCounts, 30_000);
-    return () => {
-      active = false;
-      clearInterval(interval);
-    };
-  }, []);
+  }, 30_000);
 
   const lbl = collapsed ? LABEL_HIDDEN : LABEL_VISIBLE;
 
