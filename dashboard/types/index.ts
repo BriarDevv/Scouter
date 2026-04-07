@@ -12,3 +12,4 @@ export * from "./dashboard";
 export * from "./pipeline";
 export * from "./research";
 export * from "./reviews";
+export * from "./ai-office";
