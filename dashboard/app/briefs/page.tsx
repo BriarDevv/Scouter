@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
-import { listBriefs } from "@/lib/api/client";
+import { useApi } from "@/lib/hooks/use-swr-fetch";
 import type { CommercialBrief } from "@/types";
 import Link from "next/link";
 import { Briefcase, ExternalLink, Phone, PhoneOff } from "lucide-react";
@@ -23,15 +22,7 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 export default function BriefsPage() {
-  const [briefs, setBriefs] = useState<CommercialBrief[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    listBriefs({ limit: 100 })
-      .then(setBriefs)
-      .catch((err) => console.warn("Failed to load briefs:", err))
-      .finally(() => setLoading(false));
-  }, []);
+  const { data: briefs, isLoading: loading } = useApi<CommercialBrief[]>("/briefs/?limit=100");
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -46,12 +37,12 @@ export default function BriefsPage() {
               <div className="text-muted-foreground text-sm py-8 text-center">
                 Cargando...
               </div>
-            ) : briefs.length === 0 ? (
+            ) : (briefs ?? []).length === 0 ? (
               <div className="text-muted-foreground text-sm py-8 text-center">
                 No hay briefs generados todavia
               </div>
             ) : (
-              briefs.map((brief) => (
+              (briefs ?? []).map((brief) => (
                 <Link
                   key={brief.id}
                   href={`/leads/${brief.lead_id}`}

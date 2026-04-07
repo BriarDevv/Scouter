@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { AiHealthCard } from "@/components/dashboard/ai-health-card";
 import { TopCorrections } from "@/components/dashboard/top-corrections";
@@ -16,13 +16,11 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import {
-  apiFetch,
-  getOutboundConversations,
-  getWeeklyReports,
   generateWeeklyReport,
   type OutboundConversation,
   type WeeklyReportData,
 } from "@/lib/api/client";
+import { useApi } from "@/lib/hooks/use-swr-fetch";
 import { BatchReviewsSection } from "@/components/ai-office/batch-reviews-section";
 import { PipelineRunsSection } from "@/components/ai-office/pipeline-runs-section";
 import { AttentionQueue } from "@/components/dashboard/attention-queue";
@@ -50,39 +48,14 @@ const STATUS_DOT: Record<string, string> = {
 };
 
 export default function AiOfficePage() {
-  const [status, setStatus] = useState<AiOfficeStatus | null>(null);
-  const [decisions, setDecisions] = useState<DecisionRecord[]>([]);
-  const [investigations, setInvestigations] = useState<InvestigationRecord[]>([]);
-  const [conversations, setConversations] = useState<OutboundConversation[]>([]);
-  const [weeklyReports, setWeeklyReports] = useState<WeeklyReportData[]>([]);
+  const swrOpts = { refreshInterval: 10_000 };
+  const { data: status, isLoading: statusLoading } = useApi<AiOfficeStatus>("/ai-office/status", swrOpts);
+  const { data: decisions } = useApi<DecisionRecord[]>("/ai-office/decisions?limit=15", swrOpts);
+  const { data: investigations } = useApi<InvestigationRecord[]>("/ai-office/investigations?limit=5", swrOpts);
+  const { data: conversations } = useApi<OutboundConversation[]>("/ai-office/conversations?limit=10", swrOpts);
+  const { data: weeklyReports, mutate: mutateReports } = useApi<WeeklyReportData[]>("/ai-office/weekly-reports?limit=3", swrOpts);
   const [generatingReport, setGeneratingReport] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const [statusRes, decisionsRes, investigationsRes, convosRes, reportsRes] = await Promise.allSettled([
-          apiFetch<AiOfficeStatus>("/ai-office/status"),
-          apiFetch<DecisionRecord[]>("/ai-office/decisions?limit=15"),
-          apiFetch<InvestigationRecord[]>("/ai-office/investigations?limit=5"),
-          getOutboundConversations(10),
-          getWeeklyReports(3),
-        ]);
-        if (statusRes.status === "fulfilled") setStatus(statusRes.value);
-        if (decisionsRes.status === "fulfilled") setDecisions(decisionsRes.value);
-        if (investigationsRes.status === "fulfilled") setInvestigations(investigationsRes.value);
-        if (convosRes.status === "fulfilled") setConversations(convosRes.value);
-        if (reportsRes.status === "fulfilled") setWeeklyReports(reportsRes.value);
-      } catch {
-        // API may not be running
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-    const interval = setInterval(load, 10_000);
-    return () => clearInterval(interval);
-  }, []);
+  const loading = statusLoading;
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -155,9 +128,9 @@ export default function AiOfficePage() {
           <Search className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
           <h3 className="text-sm font-medium">Investigaciones recientes de Scout</h3>
         </div>
-        {investigations.length > 0 ? (
+        {(investigations ?? []).length > 0 ? (
           <div className="space-y-2">
-            {investigations.map((inv) => (
+            {(investigations ?? []).map((inv) => (
               <div key={inv.id} className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/20 p-3">
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">
@@ -191,7 +164,7 @@ export default function AiOfficePage() {
           <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           <h3 className="text-sm font-medium">Conversaciones Activas (Mote)</h3>
         </div>
-        {conversations.length > 0 ? (
+        {(conversations ?? []).length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -204,7 +177,7 @@ export default function AiOfficePage() {
                 </tr>
               </thead>
               <tbody>
-                {conversations.map((c) => (
+                {(conversations ?? []).map((c) => (
                   <tr key={c.id} className="border-b border-border/30 last:border-0">
                     <td className="py-2 pr-3 font-medium truncate max-w-[200px]">{c.lead_name || c.lead_id.slice(0, 8)}</td>
                     <td className="py-2 pr-3">
@@ -247,8 +220,8 @@ export default function AiOfficePage() {
               setGeneratingReport(true);
               try {
                 const report = await generateWeeklyReport();
-                setWeeklyReports((prev) => [report, ...prev]);
-              } catch { /* ignore */ }
+                mutateReports((prev) => prev ? [report, ...prev] : [report], false);
+              } catch (err) { console.error("weekly_report_generation_failed", err); }
               setGeneratingReport(false);
             }}
             disabled={generatingReport}
@@ -257,9 +230,9 @@ export default function AiOfficePage() {
             {generatingReport ? "Generando..." : "Generar ahora"}
           </button>
         </div>
-        {weeklyReports.length > 0 ? (
+        {(weeklyReports ?? []).length > 0 ? (
           <div className="space-y-3">
-            {weeklyReports.map((r) => (
+            {(weeklyReports ?? []).map((r) => (
               <div key={r.id} className="rounded-lg border border-border/50 p-3">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-xs font-medium text-foreground">
@@ -292,7 +265,7 @@ export default function AiOfficePage() {
           <Zap className="h-4 w-4 text-violet-600 dark:text-violet-400" />
           <h3 className="text-sm font-medium">Decisiones recientes</h3>
         </div>
-        {decisions.length > 0 ? (
+        {(decisions ?? []).length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -306,7 +279,7 @@ export default function AiOfficePage() {
                 </tr>
               </thead>
               <tbody>
-                {decisions.map((d) => (
+                {(decisions ?? []).map((d) => (
                   <tr key={d.id} className="border-b border-border/30 last:border-0">
                     <td className="py-2 pr-3 font-medium truncate max-w-[200px]">{d.function_name}</td>
                     <td className="py-2 pr-3">

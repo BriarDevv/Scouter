@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/layout/page-header";
@@ -9,7 +9,8 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton, SkeletonCard } from "@/components/shared/skeleton";
 import { RelativeTime } from "@/components/shared/relative-time";
 import { Button } from "@/components/ui/button";
-import { getTasks, getLeadNames, getLLMSettings } from "@/lib/api/client";
+import { getLeadNames, getLLMSettings } from "@/lib/api/client";
+import { useApi } from "@/lib/hooks/use-swr-fetch";
 import type { TaskStatusRecord, LLMSettings } from "@/types";
 import { getStepConfig, getModelForStep, isActive } from "@/lib/task-utils";
 import { ModelBadge } from "@/components/shared/model-badge";
@@ -207,52 +208,35 @@ function TaskHistoryRow({
 }
 
 export default function ActivityPage() {
-  const [tasks, setTasks] = useState<TaskStatusRecord[]>([]);
+  const { data: tasks, isLoading: tasksLoading, mutate: refreshTasks } = useApi<TaskStatusRecord[]>(
+    "/tasks?limit=50",
+    { refreshInterval: POLL_INTERVAL },
+  );
   const [leadMap, setLeadMap] = useState<Record<string, string>>({});
   const [llm, setLlm] = useState<LLMSettings | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadData = useCallback(async () => {
-    try {
-      const [taskData, leadNames, llmData] = await Promise.all([
-        getTasks({ limit: 50 }),
-        getLeadNames(),
-        getLLMSettings(),
-      ]);
-      setTasks(taskData);
-      setLlm(llmData);
-
-      const map: Record<string, string> = {};
-      for (const lead of leadNames) {
-        map[lead.id] = lead.business_name;
-      }
-      setLeadMap(map);
-    } catch (err) {
-      console.warn("Failed to load activity data:", err);
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    Promise.all([getLeadNames(), getLLMSettings()])
+      .then(([leadNames, llmData]) => {
+        setLlm(llmData);
+        const map: Record<string, string> = {};
+        for (const lead of leadNames) {
+          map[lead.id] = lead.business_name;
+        }
+        setLeadMap(map);
+      })
+      .catch((err) => console.warn("Failed to load activity data:", err))
+      .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    loadData();
-    const id = setInterval(async () => {
-      try {
-        const taskData = await getTasks({ limit: 50 });
-        setTasks(taskData);
-      } catch {
-        // silent
-      }
-    }, POLL_INTERVAL);
-    return () => clearInterval(id);
-  }, [loadData]);
+  const taskList = tasks ?? [];
+  const activeTasks = taskList.filter((t) => isActive(t.status));
+  const failedTasks = taskList.filter((t) => isFailed(t.status));
+  const doneTasks = taskList.filter((t) => isDone(t.status));
+  const historyTasks = taskList.filter((t) => !isActive(t.status));
 
-  const activeTasks = tasks.filter((t) => isActive(t.status));
-  const failedTasks = tasks.filter((t) => isFailed(t.status));
-  const doneTasks = tasks.filter((t) => isDone(t.status));
-  const historyTasks = tasks.filter((t) => !isActive(t.status));
-
-  if (loading) {
+  if (loading || tasksLoading) {
     return (
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-[1400px] px-8 py-8">
@@ -275,7 +259,7 @@ export default function ActivityPage() {
       <div className="mx-auto max-w-[1400px] px-8 py-8">
         <div className="space-y-8">
           <PageHeader title="Actividad IA" description="Monitor en tiempo real de tareas y pipelines">
-        <Button variant="outline" size="sm" onClick={loadData} className="gap-2">
+        <Button variant="outline" size="sm" onClick={() => refreshTasks()} className="gap-2">
           <RefreshCw className="h-3.5 w-3.5" />
           Actualizar
         </Button>
@@ -432,7 +416,7 @@ export default function ActivityPage() {
         </div>
       )}
 
-      {tasks.length === 0 && (
+      {taskList.length === 0 && (
         <EmptyState
           icon={BrainCircuit}
           title="Sin actividad"
