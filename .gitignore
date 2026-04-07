@@ -70,10 +70,9 @@ out/
 # Local runtime helpers
 .dev-runtime/
 
-# Claude Code
-.claude/
-!.claude/settings.json
-!.claude/commands/
+# Claude Code (track settings + commands, ignore transient state)
+.claude/todos/
+.claude/logs/
 
 # Celery Beat
 celerybeat-schedule
