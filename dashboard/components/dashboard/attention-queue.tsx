@@ -33,7 +33,7 @@ export function AttentionQueue() {
             count: pending,
           });
         }
-      } catch { /* */ }
+      } catch (err) { console.error("attention_queue_proposals_fetch_failed", err); }
 
       // Stuck pipelines
       try {
@@ -60,7 +60,7 @@ export function AttentionQueue() {
             count: failed,
           });
         }
-      } catch { /* */ }
+      } catch (err) { console.error("attention_queue_pipelines_fetch_failed", err); }
 
       // Active conversations needing attention
       try {
@@ -76,7 +76,7 @@ export function AttentionQueue() {
             count: active,
           });
         }
-      } catch { /* */ }
+      } catch (err) { console.error("attention_queue_conversations_fetch_failed", err); }
 
       setItems(attention);
       setLoading(false);

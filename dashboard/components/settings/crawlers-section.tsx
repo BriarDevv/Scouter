@@ -89,7 +89,7 @@ export function CrawlersSection() {
         if (data.status === "error") {
           sileo.error({ title: data.error ?? "Error en el crawl" });
         }
-      } catch { /* ignore */ }
+      } catch (err) { console.error("crawl_status_poll_failed", err); }
     }, 2000);
 
     return () => clearInterval(interval);
@@ -122,7 +122,8 @@ export function CrawlersSection() {
         sileo.error({ title: (data.message as string) ?? "Error al iniciar crawl" });
         if (data.progress) setProgress(data.progress as CrawlProgress);
       }
-    } catch {
+    } catch (err) {
+      console.error("crawl_start_failed", err);
       sileo.error({ title: "Error de conexion" });
     } finally {
       setStarting(false);

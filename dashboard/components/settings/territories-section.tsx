@@ -57,8 +57,8 @@ export function TerritoriesSection() {
     try {
       const data = await getTerritories();
       setTerritories(data);
-    } catch {
-      // silent
+    } catch (err) {
+      console.error("territories_fetch_failed", err);
     } finally {
       setLoading(false);
     }

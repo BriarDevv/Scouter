@@ -67,7 +67,8 @@ export async function getOutboundConversations(limit: number = 20): Promise<Outb
 export async function getInvestigation(leadId: string): Promise<InvestigationThread | null> {
   try {
     return await apiFetch<InvestigationThread>(`/performance/investigations/${leadId}`);
-  } catch {
+  } catch (err) {
+    console.error("investigation_fetch_failed", err);
     return null;
   }
 }

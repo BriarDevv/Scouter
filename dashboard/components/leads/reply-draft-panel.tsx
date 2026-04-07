@@ -163,7 +163,8 @@ export function ReplyDraftPanel({
       setSaveResult("ok");
       setIsEditing(false);
       await onRefresh();
-    } catch {
+    } catch (err) {
+      console.error("reply_draft_save_failed", err);
       setSaveResult("error");
     } finally {
       setSaving(false);
@@ -204,7 +205,8 @@ export function ReplyDraftPanel({
         setPollingSendStatus(false);
         await onRefresh();
       }
-    } catch {
+    } catch (err) {
+      console.error("reply_draft_send_status_poll_failed", err);
       setPollingSendStatus(false);
     }
   }, [messageId, onRefresh]);
@@ -214,8 +216,8 @@ export function ReplyDraftPanel({
     try {
       await generateReplyAssistantDraft(messageId);
       await onRefresh();
-    } catch {
-      // parent handles error display
+    } catch (err) {
+      console.error("reply_draft_generate_failed", err);
     } finally {
       setGenerating(false);
     }
@@ -226,8 +228,8 @@ export function ReplyDraftPanel({
     try {
       await requestReplyAssistantDraftReview(messageId);
       await onRefresh();
-    } catch {
-      // parent handles error display
+    } catch (err) {
+      console.error("reply_draft_review_request_failed", err);
     } finally {
       setReviewing(false);
     }

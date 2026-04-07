@@ -48,7 +48,7 @@ export function BatchReviewsSection() {
     try {
       const data = await getBatchReviews(10);
       setReviews(data);
-    } catch { /* API may not be running */ }
+    } catch (err) { console.error("batch_reviews_fetch_failed", err); }
     setLoading(false);
   };
 
@@ -64,7 +64,7 @@ export function BatchReviewsSection() {
     try {
       const d = await getBatchReviewDetail(id);
       setDetail(d);
-    } catch { setDetail(null); }
+    } catch (err) { console.error("batch_review_detail_fetch_failed", err); setDetail(null); }
   };
 
   const handleAction = async (proposalId: string, action: "approve" | "reject" | "apply") => {
@@ -79,7 +79,7 @@ export function BatchReviewsSection() {
         setDetail(d);
       }
       await loadReviews();
-    } catch { /* ignore */ }
+    } catch (err) { console.error("batch_review_action_failed", err); }
     setActionLoading(null);
   };
 
@@ -93,7 +93,7 @@ export function BatchReviewsSection() {
         <button
           onClick={async () => {
             setGenerating(true);
-            try { await triggerBatchReview(); await loadReviews(); } catch { /* */ }
+            try { await triggerBatchReview(); await loadReviews(); } catch (err) { console.error("batch_review_trigger_failed", err); }
             setGenerating(false);
           }}
           disabled={generating}

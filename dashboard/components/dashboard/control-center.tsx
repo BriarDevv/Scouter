@@ -138,8 +138,8 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
       const data = await getOperationalSettings();
       setSettings(data);
       setRuntimeModeState((data.runtime_mode as RuntimeMode) ?? "safe");
-    } catch {
-      // Settings not available
+    } catch (err) {
+      console.error("settings_fetch_failed", err);
     } finally {
       setLoadingSettings(false);
       isInitialSettings.current = false;
@@ -162,7 +162,7 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
           setPipelineStatus("done");
           setPipelineProgress(`Listo — ${data.processed ?? 0} leads procesados`);
         }
-      } catch { /* ignore */ }
+      } catch (err) { console.error("pipeline_status_check_failed", err); }
     }
     checkPipeline();
     return () => { active = false; };
@@ -197,7 +197,7 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
             setPipelineProgress("Iniciando...");
           }
         }
-      } catch { /* ignore */ }
+      } catch (err) { console.error("pipeline_status_poll_failed", err); }
     }, 2000);
     return () => clearInterval(interval);
   }, [pipelineStatus]);
@@ -246,7 +246,7 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
         } else if (data.status === "running") {
           setCrawlProgress(`${data.current_city ?? "..."} (${data.current_city_idx ?? 0}/${data.total_cities ?? 0})`);
         }
-      } catch { /* ignore */ }
+      } catch (err) { console.error("crawl_status_poll_failed", err); }
     }, 2000);
     return () => clearInterval(interval);
   }, [crawlStatus, selectedTerritoryId]);
@@ -281,7 +281,8 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
       } else {
         sileo.error({ title: data.message ?? "Error al iniciar pipeline" });
       }
-    } catch {
+    } catch (err) {
+      console.error("pipeline_run_start_failed", err);
       sileo.error({ title: "Error de conexion al iniciar pipeline" });
     }
   }
@@ -291,7 +292,8 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
       await apiFetch("/pipelines/batch/stop", { method: "POST" });
       setPipelineStatus("stopping");
       setPipelineProgress("Deteniendo...");
-    } catch {
+    } catch (err) {
+      console.error("pipeline_run_stop_failed", err);
       sileo.error({ title: "Error al detener pipeline" });
     }
   }
@@ -312,7 +314,8 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
       } else {
         sileo.error({ title: data.message ?? "Error al iniciar crawl" });
       }
-    } catch {
+    } catch (err) {
+      console.error("crawl_start_failed", err);
       sileo.error({ title: "Error de conexion al iniciar crawl" });
     }
   }
@@ -329,7 +332,8 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
       setCrawlTaskId(null);
       localStorage.removeItem(LS_CRAWL_TERRITORY_KEY);
       sileo.success({ title: "Crawl detenido" });
-    } catch {
+    } catch (err) {
+      console.error("crawl_stop_failed", err);
       sileo.error({ title: "Error al detener crawl" });
     }
   }

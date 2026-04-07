@@ -29,7 +29,8 @@ export function ReadinessGate({ children }: { children: React.ReactNode }) {
           setReadiness(data);
           setFailed(false);
         }
-      } catch {
+      } catch (err) {
+        console.error("readiness_fetch_failed", err);
         if (!cancelled) setFailed(true);
       } finally {
         if (!cancelled) setLoading(false);

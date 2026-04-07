@@ -364,7 +364,8 @@ export function TestButton({
         error: { title: "Error de red al probar conexión" },
       });
       setResult(r);
-    } catch {
+    } catch (err) {
+      console.error("connection_test_failed", err);
       setResult({ ok: false, error: "Error de red al probar conexión.", sample_count: null });
     } finally {
       setTesting(false);

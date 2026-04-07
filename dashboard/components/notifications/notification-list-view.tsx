@@ -216,8 +216,8 @@ export function NotificationListView({
         status: status || undefined,
       });
       setResponse(data);
-    } catch {
-      // keep previous data on failure
+    } catch (err) {
+      console.error("notifications_fetch_failed", err);
     } finally {
       setLoading(false);
     }

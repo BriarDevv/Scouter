@@ -18,8 +18,8 @@ export function AiHealthCard() {
     async function load() {
       try {
         setData(await apiFetch<AiHealthData>("/performance/ai-health"));
-      } catch {
-        // silent — endpoint may not exist yet
+      } catch (err) {
+        console.error("ai_health_fetch_failed", err);
       }
     }
     load();

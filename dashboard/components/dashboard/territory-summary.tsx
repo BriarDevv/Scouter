@@ -23,8 +23,8 @@ export function TerritorySummary() {
               .slice(0, 5)
           );
         }
-      } catch {
-        // silent
+      } catch (err) {
+        console.error("territory_summary_fetch_failed", err);
       } finally {
         if (active) setLoading(false);
       }

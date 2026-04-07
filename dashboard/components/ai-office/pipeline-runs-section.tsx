@@ -42,7 +42,7 @@ export function PipelineRunsSection() {
     try {
       const data = await apiFetch<PipelineRunItem[]>("/pipelines/runs?page_size=30");
       setRuns(Array.isArray(data) ? data : []);
-    } catch { /* */ }
+    } catch (err) { console.error("pipeline_runs_fetch_failed", err); }
     setLoading(false);
   };
 
@@ -53,7 +53,7 @@ export function PipelineRunsSection() {
     try {
       await apiFetch(`/pipelines/runs/${runId}/resume`, { method: "POST" });
       await loadRuns();
-    } catch { /* */ }
+    } catch (err) { console.error("pipeline_run_resume_failed", err); }
     setResuming(null);
   };
 

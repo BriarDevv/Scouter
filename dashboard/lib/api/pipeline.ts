@@ -25,7 +25,8 @@ export async function getPipelineRuns(params?: {
 export async function getBatchPipelineStatus(): Promise<BatchPipelineProgress | null> {
   try {
     return await apiFetch<BatchPipelineProgress>("/pipelines/batch/status");
-  } catch {
+  } catch (err) {
+    console.error("batch_pipeline_status_fetch_failed", err);
     return null;
   }
 }

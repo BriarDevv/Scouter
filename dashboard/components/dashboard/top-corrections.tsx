@@ -36,8 +36,8 @@ export function TopCorrections() {
       try {
         const data = await getCorrectionsSummary(7);
         setCorrections(data.slice(0, 5));
-      } catch {
-        // Endpoint may not have data yet
+      } catch (err) {
+        console.error("top_corrections_fetch_failed", err);
       } finally {
         setLoading(false);
       }

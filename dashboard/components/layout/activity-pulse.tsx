@@ -100,8 +100,8 @@ export function ActivityPulse() {
       ]);
       setTasks(result);
       setBatch(batchStatus);
-    } catch {
-      // silent — sidebar shouldn't break on API errors
+    } catch (err) {
+      console.error("activity_pulse_poll_failed", err);
     }
   }, []);
 
