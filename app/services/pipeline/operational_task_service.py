@@ -17,6 +17,8 @@ def _get_redis() -> Redis:
     if _redis_pool is None:
         _redis_pool = ConnectionPool.from_url(env.REDIS_URL)
     return Redis(connection_pool=_redis_pool)
+
+
 from app.db.session import SessionLocal
 from app.models.task_tracking import TaskRun
 from app.services.pipeline.task_tracking_service import (

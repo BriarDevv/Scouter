@@ -305,9 +305,11 @@ def _maybe_dispatch_telegram(db: Session, notif: Notification) -> None:
     if _SEV_ORDER.get(notif.severity.value, 0) < _SEV_ORDER.get(min_sev, 2):
         return
 
-    allowed_cats = getattr(settings, "telegram_categories", None) or getattr(
-        settings, "whatsapp_categories", None
-    ) or ["business", "security"]
+    allowed_cats = (
+        getattr(settings, "telegram_categories", None)
+        or getattr(settings, "whatsapp_categories", None)
+        or ["business", "security"]
+    )
     if notif.category.value not in allowed_cats:
         return
 

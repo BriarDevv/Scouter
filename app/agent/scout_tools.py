@@ -86,7 +86,9 @@ def _validate_url(url: str) -> str | None:
     # Pin resolved IP into URL to prevent DNS rebinding
     if resolved:
         pinned_ip = resolved[0][4][0]
-        pinned = parsed._replace(netloc=f"{pinned_ip}:{parsed.port or (443 if parsed.scheme == 'https' else 80)}")
+        pinned = parsed._replace(
+            netloc=f"{pinned_ip}:{parsed.port or (443 if parsed.scheme == 'https' else 80)}"
+        )
         return urlunparse(pinned)
     return None
 

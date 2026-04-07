@@ -319,7 +319,9 @@ def _record_public_invocation(
 @retry(
     stop=stop_after_attempt(settings.OLLAMA_MAX_RETRIES),
     wait=wait_exponential(multiplier=1, min=2, max=30),
-    retry=retry_if_exception_type((httpx.TimeoutException, httpx.ConnectError, ConnectionError, OSError)),
+    retry=retry_if_exception_type(
+        (httpx.TimeoutException, httpx.ConnectError, ConnectionError, OSError)
+    ),
     reraise=True,
 )
 def _chat_completion(
