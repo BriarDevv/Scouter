@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { getSystemHealth } from "@/lib/api/client";
+import { useVisibleInterval } from "@/lib/hooks/use-visible-interval";
 import type { HealthComponent, SystemHealth } from "@/types";
 
 interface UseSystemHealthResult {
@@ -33,11 +34,7 @@ export function useSystemHealth(pollMs = 30_000): UseSystemHealthResult {
     }
   }, []);
 
-  useEffect(() => {
-    void fetchHealth();
-    const interval = setInterval(() => void fetchHealth(), pollMs);
-    return () => clearInterval(interval);
-  }, [fetchHealth, pollMs]);
+  useVisibleInterval(() => void fetchHealth(), pollMs);
 
   return {
     health,

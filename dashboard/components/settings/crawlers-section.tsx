@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
+import { useVisibleInterval } from "@/lib/hooks/use-visible-interval";
 import {
   Key, Search, Loader2, CheckCircle2, XCircle,
   Power, PowerOff, ChevronDown,
@@ -74,26 +75,23 @@ export function CrawlersSection() {
   }, []);
 
   // Poll progress when running
-  useEffect(() => {
+  const pollCrawlStatus = useCallback(async () => {
     if (progress.status !== "running" || !selectedTerritoryId) return;
-
-    const interval = setInterval(async () => {
-      try {
-        const data = await apiFetch<CrawlProgress>(`/crawl/territory/${selectedTerritoryId}/status`);
-        setProgress(data);
-        if (data.status === "done") {
-          sileo.success({
-            title: `Crawl completado: ${data.leads_created ?? 0} leads nuevos`,
-          });
-        }
-        if (data.status === "error") {
-          sileo.error({ title: data.error ?? "Error en el crawl" });
-        }
-      } catch (err) { console.error("crawl_status_poll_failed", err); }
-    }, 2000);
-
-    return () => clearInterval(interval);
+    try {
+      const data = await apiFetch<CrawlProgress>(`/crawl/territory/${selectedTerritoryId}/status`);
+      setProgress(data);
+      if (data.status === "done") {
+        sileo.success({
+          title: `Crawl completado: ${data.leads_created ?? 0} leads nuevos`,
+        });
+      }
+      if (data.status === "error") {
+        sileo.error({ title: data.error ?? "Error en el crawl" });
+      }
+    } catch (err) { console.error("crawl_status_poll_failed", err); }
   }, [progress.status, selectedTerritoryId]);
+
+  useVisibleInterval(pollCrawlStatus, 2000);
 
   // Also check on territory change if there's a running crawl
   useEffect(() => {

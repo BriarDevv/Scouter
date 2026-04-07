@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { apiFetch, getBatchReviews, type BatchReviewSummary } from "@/lib/api/client";
+import { useVisibleInterval } from "@/lib/hooks/use-visible-interval";
 import { AlertTriangle, FileWarning, MessageSquare, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,74 +18,71 @@ export function AttentionQueue() {
   const [items, setItems] = useState<AttentionItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function load() {
-      const attention: AttentionItem[] = [];
+  const load = useCallback(async () => {
+    const attention: AttentionItem[] = [];
 
-      // Pending proposals
-      try {
-        const reviews = await getBatchReviews(20);
-        const pending = reviews.reduce((sum, r) => sum + r.proposals_pending, 0);
-        if (pending > 0) {
-          attention.push({
-            type: "proposal",
-            label: "Proposals pendientes",
-            detail: "Batch review proposals esperando aprobacion",
-            count: pending,
-          });
-        }
-      } catch (err) { console.error("attention_queue_proposals_fetch_failed", err); }
+    // Pending proposals
+    try {
+      const reviews = await getBatchReviews(20);
+      const pending = reviews.reduce((sum, r) => sum + r.proposals_pending, 0);
+      if (pending > 0) {
+        attention.push({
+          type: "proposal",
+          label: "Proposals pendientes",
+          detail: "Batch review proposals esperando aprobacion",
+          count: pending,
+        });
+      }
+    } catch (err) { console.error("attention_queue_proposals_fetch_failed", err); }
 
-      // Stuck pipelines
-      try {
-        const runs = await apiFetch<Array<{ status: string; finished_at: string | null }>>("/pipelines/runs?page_size=50");
-        const stuck = (Array.isArray(runs) ? runs : []).filter(
-          (r) => r.status === "running" && !r.finished_at
-        ).length;
-        const failed = (Array.isArray(runs) ? runs : []).filter(
-          (r) => r.status === "failed"
-        ).length;
-        if (stuck > 0) {
-          attention.push({
-            type: "stuck_pipeline",
-            label: "Pipelines trabados",
-            detail: "Pipeline runs stuck — necesitan resume",
-            count: stuck,
-          });
-        }
-        if (failed > 0) {
-          attention.push({
-            type: "failed_pipeline",
-            label: "Pipelines fallidos",
-            detail: "Pipeline runs que terminaron con error",
-            count: failed,
-          });
-        }
-      } catch (err) { console.error("attention_queue_pipelines_fetch_failed", err); }
+    // Stuck pipelines
+    try {
+      const runs = await apiFetch<Array<{ status: string; finished_at: string | null }>>("/pipelines/runs?page_size=50");
+      const stuck = (Array.isArray(runs) ? runs : []).filter(
+        (r) => r.status === "running" && !r.finished_at
+      ).length;
+      const failed = (Array.isArray(runs) ? runs : []).filter(
+        (r) => r.status === "failed"
+      ).length;
+      if (stuck > 0) {
+        attention.push({
+          type: "stuck_pipeline",
+          label: "Pipelines trabados",
+          detail: "Pipeline runs stuck — necesitan resume",
+          count: stuck,
+        });
+      }
+      if (failed > 0) {
+        attention.push({
+          type: "failed_pipeline",
+          label: "Pipelines fallidos",
+          detail: "Pipeline runs que terminaron con error",
+          count: failed,
+        });
+      }
+    } catch (err) { console.error("attention_queue_pipelines_fetch_failed", err); }
 
-      // Active conversations needing attention
-      try {
-        const convos = await apiFetch<Array<{ status: string }>>("/ai-office/conversations?limit=50");
-        const active = (Array.isArray(convos) ? convos : []).filter(
-          (c) => c.status === "active"
-        ).length;
-        if (active > 0) {
-          attention.push({
-            type: "conversation",
-            label: "Conversaciones activas",
-            detail: "Mote conversations que podrian necesitar takeover",
-            count: active,
-          });
-        }
-      } catch (err) { console.error("attention_queue_conversations_fetch_failed", err); }
+    // Active conversations needing attention
+    try {
+      const convos = await apiFetch<Array<{ status: string }>>("/ai-office/conversations?limit=50");
+      const active = (Array.isArray(convos) ? convos : []).filter(
+        (c) => c.status === "active"
+      ).length;
+      if (active > 0) {
+        attention.push({
+          type: "conversation",
+          label: "Conversaciones activas",
+          detail: "Mote conversations que podrian necesitar takeover",
+          count: active,
+        });
+      }
+    } catch (err) { console.error("attention_queue_conversations_fetch_failed", err); }
 
-      setItems(attention);
-      setLoading(false);
-    }
-    load();
-    const interval = setInterval(load, 30_000);
-    return () => clearInterval(interval);
+    setItems(attention);
+    setLoading(false);
   }, []);
+
+  useVisibleInterval(load, 30_000);
 
   if (loading || items.length === 0) return null;
 

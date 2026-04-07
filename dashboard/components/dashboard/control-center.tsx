@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useVisibleInterval } from "@/lib/hooks/use-visible-interval";
 import {
   Brain,
   Mail,
@@ -168,39 +169,38 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
     return () => { active = false; };
   }, []);
 
-  useEffect(() => {
+  const pollPipelineStatus = useCallback(async () => {
     if (pipelineStatus !== "running") return;
-    const interval = setInterval(async () => {
-      try {
-        const data = await apiFetch<PipelineBatchStatus>("/pipelines/batch/status");
-        if (data.status === "done") {
-          setPipelineStatus("done");
-          const crawlNote = data.crawl_rounds ? ` (${data.crawl_rounds} crawls, ${data.leads_from_crawl ?? 0} encontrados)` : "";
-          setPipelineProgress(`Listo — ${data.processed ?? 0} leads procesados${crawlNote}`);
-          sileo.success({ title: `Pipeline completado: ${data.processed ?? 0} leads` });
-        } else if (data.status === "error") {
-          setPipelineStatus("error");
-          setPipelineProgress(data.error ?? "Error");
-          sileo.error({ title: data.error ?? "Error en pipeline" });
-        } else if (data.status === "stopped") {
-          setPipelineStatus("idle");
-          setPipelineProgress(null);
-          sileo.success({ title: "Pipeline detenido" });
-        } else if (data.status === "running") {
-          const step = data.current_step ?? "";
-          const crawlInfo = data.crawl_rounds ? ` | crawl #${data.crawl_rounds}` : "";
-          if (step === "crawling") {
-            setPipelineProgress(`Buscando leads — ${data.current_lead ?? "crawling..."}${crawlInfo}`);
-          } else if (data.current_lead) {
-            setPipelineProgress(`${data.current_lead} (${data.processed ?? 0}/${data.total ?? 0}) — ${step}${crawlInfo}`);
-          } else {
-            setPipelineProgress("Iniciando...");
-          }
+    try {
+      const data = await apiFetch<PipelineBatchStatus>("/pipelines/batch/status");
+      if (data.status === "done") {
+        setPipelineStatus("done");
+        const crawlNote = data.crawl_rounds ? ` (${data.crawl_rounds} crawls, ${data.leads_from_crawl ?? 0} encontrados)` : "";
+        setPipelineProgress(`Listo — ${data.processed ?? 0} leads procesados${crawlNote}`);
+        sileo.success({ title: `Pipeline completado: ${data.processed ?? 0} leads` });
+      } else if (data.status === "error") {
+        setPipelineStatus("error");
+        setPipelineProgress(data.error ?? "Error");
+        sileo.error({ title: data.error ?? "Error en pipeline" });
+      } else if (data.status === "stopped") {
+        setPipelineStatus("idle");
+        setPipelineProgress(null);
+        sileo.success({ title: "Pipeline detenido" });
+      } else if (data.status === "running") {
+        const step = data.current_step ?? "";
+        const crawlInfo = data.crawl_rounds ? ` | crawl #${data.crawl_rounds}` : "";
+        if (step === "crawling") {
+          setPipelineProgress(`Buscando leads — ${data.current_lead ?? "crawling..."}${crawlInfo}`);
+        } else if (data.current_lead) {
+          setPipelineProgress(`${data.current_lead} (${data.processed ?? 0}/${data.total ?? 0}) — ${step}${crawlInfo}`);
+        } else {
+          setPipelineProgress("Iniciando...");
         }
-      } catch (err) { console.error("pipeline_status_poll_failed", err); }
-    }, 2000);
-    return () => clearInterval(interval);
+      }
+    } catch (err) { console.error("pipeline_status_poll_failed", err); }
   }, [pipelineStatus]);
+
+  useVisibleInterval(pollPipelineStatus, 2000);
 
   useEffect(() => {
     loadSettings();
@@ -227,29 +227,28 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
   }, [loadSettings]);
 
   // Poll crawl status when running
-  useEffect(() => {
+  const pollCrawlStatus = useCallback(async () => {
     if (crawlStatus !== "running" || !selectedTerritoryId) return;
-    const interval = setInterval(async () => {
-      try {
-        const data = await apiFetch<CrawlTerritoryStatus>(`/crawl/territory/${selectedTerritoryId}/status`);
-        if (data.task_id) setCrawlTaskId(data.task_id);
-        if (data.status === "done") {
-          setCrawlStatus("done");
-          setCrawlProgress(`Listo — ${data.leads_created ?? 0} leads nuevos`);
-          localStorage.removeItem(LS_CRAWL_TERRITORY_KEY);
-          sileo.success({ title: `Crawl completado: ${data.leads_created ?? 0} leads nuevos` });
-        } else if (data.status === "error") {
-          setCrawlStatus("error");
-          setCrawlProgress(data.error ?? "Error");
-          localStorage.removeItem(LS_CRAWL_TERRITORY_KEY);
-          sileo.error({ title: data.error ?? "Error en el crawl" });
-        } else if (data.status === "running") {
-          setCrawlProgress(`${data.current_city ?? "..."} (${data.current_city_idx ?? 0}/${data.total_cities ?? 0})`);
-        }
-      } catch (err) { console.error("crawl_status_poll_failed", err); }
-    }, 2000);
-    return () => clearInterval(interval);
+    try {
+      const data = await apiFetch<CrawlTerritoryStatus>(`/crawl/territory/${selectedTerritoryId}/status`);
+      if (data.task_id) setCrawlTaskId(data.task_id);
+      if (data.status === "done") {
+        setCrawlStatus("done");
+        setCrawlProgress(`Listo — ${data.leads_created ?? 0} leads nuevos`);
+        localStorage.removeItem(LS_CRAWL_TERRITORY_KEY);
+        sileo.success({ title: `Crawl completado: ${data.leads_created ?? 0} leads nuevos` });
+      } else if (data.status === "error") {
+        setCrawlStatus("error");
+        setCrawlProgress(data.error ?? "Error");
+        localStorage.removeItem(LS_CRAWL_TERRITORY_KEY);
+        sileo.error({ title: data.error ?? "Error en el crawl" });
+      } else if (data.status === "running") {
+        setCrawlProgress(`${data.current_city ?? "..."} (${data.current_city_idx ?? 0}/${data.total_cities ?? 0})`);
+      }
+    } catch (err) { console.error("crawl_status_poll_failed", err); }
   }, [crawlStatus, selectedTerritoryId]);
+
+  useVisibleInterval(pollCrawlStatus, 2000);
 
   async function toggleFeature(key: keyof OperationalSettings, value: boolean) {
     if (!settings) return;
