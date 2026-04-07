@@ -135,7 +135,7 @@ class GoogleMapsCrawler(BaseCrawler):
                 opening_hours = " | ".join(weekday_descriptions) if weekday_descriptions else None
 
                 # Location coordinates
-                location = place.get("location", {})
+                coords = place.get("location", {})
 
                 lead = RawLead(
                     business_name=name,
@@ -152,8 +152,8 @@ class GoogleMapsCrawler(BaseCrawler):
                     review_count=place.get("userRatingCount"),
                     business_status=place.get("businessStatus"),
                     opening_hours=opening_hours,
-                    latitude=location.get("latitude"),
-                    longitude=location.get("longitude"),
+                    latitude=coords.get("latitude"),
+                    longitude=coords.get("longitude"),
                 )
 
                 all_leads.append(lead)
