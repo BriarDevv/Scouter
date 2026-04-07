@@ -8,7 +8,8 @@ from app.core.logging import get_logger
 from app.llm.invocation_metadata import clear_last_invocation, pop_last_invocation
 from app.models.lead import Lead, LeadStatus
 from app.models.outreach import DraftStatus, LogAction, OutreachDraft, OutreachLog
-from app.outreach.generator import generate_draft_content
+from app.models.outreach_delivery import OutreachDelivery
+from app.services.outreach.generator import generate_draft_content
 from app.services.leads.lead_service import is_suppressed
 
 logger = get_logger(__name__)
@@ -183,7 +184,7 @@ def update_draft(
             elif status == DraftStatus.SENT:
                 lead.status = LeadStatus.CONTACTED
 
-    db.commit()
+    db.flush()
     db.refresh(draft)
     logger.info(
         "outreach_draft_updated",
@@ -211,7 +212,7 @@ def generate_whatsapp_draft(
         )
         return None
 
-    from app.outreach.generator import generate_whatsapp_draft_content
+    from app.services.outreach.generator import generate_whatsapp_draft_content
 
     clear_last_invocation()
     body = generate_whatsapp_draft_content(lead, db=db)
@@ -302,7 +303,7 @@ def send_whatsapp_draft(db: Session, draft_id: uuid.UUID) -> "OutreachDelivery":
     ):
         lead.status = LeadStatus.CONTACTED
 
-    db.commit()
+    db.flush()
     db.refresh(delivery)
     logger.info("wa_draft_sent", draft_id=str(draft_id), phone=lead.phone[:6] + "***")
     return delivery
