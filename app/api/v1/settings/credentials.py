@@ -40,6 +40,7 @@ def patch_mail_credentials(body: MailCredentialsUpdate, db: DbSession):
     if not updates:
         raise HTTPException(status_code=422, detail="No fields to update provided.")
     row = update_credentials(db, updates)
+    db.commit()
     return creds_to_dict(row)
 
 
