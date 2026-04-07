@@ -1,6 +1,6 @@
 ---
 name: scouter-data
-description: "Exact grounded data from Scouter. Exec: cd /home/briar/src/Scouter && .venv/bin/python scripts/scouterctl.py --data-only --compact <cmd>. Commands: ops-overview | ops-top-leads --limit N | ops-replies-summary --hours N | ops-important-replies --limit N | positive-replies | quote-replies | meeting-replies | ops-recent-drafts --limit N | drafts-ready | recent-pipelines | task-health | running-tasks | failed-tasks | activity --limit N | ops-settings-llm | performance-summary. Return ONLY the JSON output."
+description: "Exact grounded data from Scouter. Exec: source .venv/bin/activate && python scripts/scouterctl.py --data-only --compact <cmd>. Commands: ops-overview | ops-top-leads --limit N | ops-replies-summary --hours N | ops-important-replies --limit N | positive-replies | quote-replies | meeting-replies | ops-recent-drafts --limit N | drafts-ready | recent-pipelines | task-health | running-tasks | failed-tasks | activity --limit N | ops-settings-llm | performance-summary. Return ONLY the JSON output."
 metadata: { "hermes": { "emoji": "📊", "os": ["linux"], "requires": { "bins": ["python3"] } } }
 ---
 
@@ -33,7 +33,7 @@ Scouter is the source of truth. This skill returns exact data via grounded wrapp
 ## Commands
 
 ```bash
-cd /home/briar/src/Scouter && .venv/bin/python scripts/scouterctl.py --data-only --compact <command> [args]
+source .venv/bin/activate && python scripts/scouterctl.py --data-only --compact <command> [args]
 ```
 
 | Request | Command |
