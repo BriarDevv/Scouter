@@ -30,7 +30,7 @@ jobs:
       - name: Format check (ruff format)
         run: ruff format --check app/ tests/
       - name: Test (pytest)
-        run: pytest -x -q --tb=short --cov=app --cov-report=term-missing --cov-fail-under=55
+        run: pytest -x -q --tb=short --cov=app --cov-report=term-missing --cov-fail-under=65
 
   frontend:
     name: Frontend (typecheck + test)
