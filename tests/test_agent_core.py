@@ -248,3 +248,39 @@ def test_tool_without_db_has_takes_db_false():
     tool = registry.get("get_current_time")
     assert tool is not None, "get_current_time not found in registry"
     assert tool.takes_db is False
+
+
+def test_trim_history_to_budget_preserves_newest():
+    from app.agent.core import _trim_history_to_budget
+
+    system_prompt = "x" * 20000  # ~5000 tokens — large system prompt
+    # Create 30 messages, each ~2500 tokens (10000 chars) — exceeds 16384 budget
+    history = [{"role": "user", "content": f"msg_{i} " + "y" * 10000} for i in range(30)]
+
+    trimmed = _trim_history_to_budget(system_prompt, history)
+
+    # Should keep fewer than 30 messages (budget limited)
+    assert len(trimmed) < 30
+    assert len(trimmed) > 0
+    # Most recent messages should be kept (last items in the list)
+    assert trimmed[-1]["content"].startswith("msg_29")
+
+
+def test_trim_history_to_budget_keeps_all_if_fits():
+    from app.agent.core import _trim_history_to_budget
+
+    system_prompt = "short system prompt"
+    history = [
+        {"role": "user", "content": "hello"},
+        {"role": "assistant", "content": "hi there"},
+    ]
+
+    trimmed = _trim_history_to_budget(system_prompt, history)
+    assert len(trimmed) == 2
+
+
+def test_trim_history_to_budget_handles_empty():
+    from app.agent.core import _trim_history_to_budget
+
+    trimmed = _trim_history_to_budget("system", [])
+    assert trimmed == []
