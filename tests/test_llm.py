@@ -104,6 +104,7 @@ def test_summarize_business_forwards_explicit_role(monkeypatch):
         )
 
     monkeypatch.setattr("app.llm.client._chat_completion", fake_chat)
+    monkeypatch.setattr("app.llm.client.resolve_model_for_role", lambda role: "qwen3.5:9b")
 
     summary = summarize_business(
         business_name="Cafe Test",
@@ -142,6 +143,7 @@ def test_public_helpers_default_to_executor_role(monkeypatch):
         return next(structured_responses)
 
     monkeypatch.setattr("app.llm.client._chat_completion", fake_structured)
+    monkeypatch.setattr("app.llm.client.resolve_model_for_role", lambda role: "qwen3.5:9b")
 
     evaluation = evaluate_lead_quality(
         business_name="Cafe Test",
