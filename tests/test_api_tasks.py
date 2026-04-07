@@ -78,12 +78,12 @@ def test_pipeline_run_is_tracked_for_full_pipeline(client):
 
 def test_queue_task_run_handles_worker_race(db, monkeypatch):
     task_id = "race-task-id"
-    real_commit = db.commit
-    commit_calls = {"count": 0}
+    real_flush = db.flush
+    flush_calls = {"count": 0}
 
-    def fake_commit():
-        commit_calls["count"] += 1
-        if commit_calls["count"] == 1:
+    def fake_flush():
+        flush_calls["count"] += 1
+        if flush_calls["count"] == 1:
             db.rollback()
             other = TestSessionLocal()
             try:
@@ -100,9 +100,9 @@ def test_queue_task_run_handles_worker_race(db, monkeypatch):
             finally:
                 other.close()
             raise IntegrityError("insert", {}, Exception("duplicate task_id"))
-        return real_commit()
+        return real_flush()
 
-    monkeypatch.setattr(db, "commit", fake_commit)
+    monkeypatch.setattr(db, "flush", fake_flush)
 
     task_run = queue_task_run(
         db,

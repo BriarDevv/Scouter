@@ -301,6 +301,7 @@ def test_should_stop_operational_task_checks_canonical_and_legacy(db, monkeypatc
         task_name="task_batch_pipeline",
         scope_key=BATCH_PIPELINE_SCOPE_KEY,
     )
+    db.commit()
 
     monkeypatch.setattr(
         "app.services.pipeline.operational_task_service._read_legacy_operational_state",

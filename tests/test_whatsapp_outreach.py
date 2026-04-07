@@ -32,7 +32,7 @@ def test_whatsapp_data_prompt_uses_external_data_tags():
 
 
 def test_whatsapp_generator_truncates_at_char_limit():
-    from app.outreach.generator import WA_CHAR_LIMIT
+    from app.services.outreach.generator import WA_CHAR_LIMIT
 
     assert WA_CHAR_LIMIT == 300
 
