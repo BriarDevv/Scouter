@@ -9,7 +9,7 @@ from app.schemas.dashboard import (
     TimeSeriesPointResponse,
 )
 from app.schemas.outreach import OutreachLogResponse
-from app.services.dashboard_svc.dashboard_service import (
+from app.services.dashboard.dashboard_service import (
     get_city_breakdown,
     get_dashboard_stats,
     get_pipeline_breakdown,

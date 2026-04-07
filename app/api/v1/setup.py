@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.db.session import get_db
 from app.schemas.setup import SetupActionResultResponse, SetupReadinessResponse
-from app.services.setup_service import get_setup_readiness, run_setup_action
+from app.services.settings.setup_service import get_setup_readiness, run_setup_action
 
 router = APIRouter(prefix="/setup", tags=["setup"])
 DbSession = Annotated[object, Depends(get_db)]
