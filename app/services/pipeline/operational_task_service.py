@@ -353,6 +353,7 @@ def persist_operational_task_state(
             finished=finished,
             stop_requested=stop_requested,
         )
+        db.commit()
 
 
 def mirror_batch_pipeline_state(payload: dict) -> None:

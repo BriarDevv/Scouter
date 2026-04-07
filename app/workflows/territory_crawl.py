@@ -86,6 +86,7 @@ def run_territory_crawl_workflow(
                 scope_key=territory_id,
                 current_step="crawl_init",
             )
+            db.commit()
 
         try:
             with SessionLocal() as db:
@@ -206,6 +207,7 @@ def run_territory_crawl_workflow(
                                 longitude=raw.longitude,
                             )
                             create_lead(db, lead_data)
+                            db.commit()
                             total_created += 1
                         except Exception as exc:
                             logger.debug("lead_create_skipped", error=str(exc), exc_info=True)

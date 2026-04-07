@@ -70,5 +70,6 @@ def _track_failure(
                 current_step=current_step,
                 pipeline_run_id=pipeline_run_id,
             )
+        db.commit()
         logger.error("task_step_failed", task_name=task_name, error=error)
         clear_tracking_context()
