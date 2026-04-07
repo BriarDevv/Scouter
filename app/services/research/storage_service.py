@@ -28,14 +28,22 @@ def save_file(lead_id: uuid.UUID, category: str, filename: str, data: bytes) -> 
     return rel_path
 
 
+def _safe_resolve(rel_path: str) -> Path:
+    """Resolve a relative path, guarding against traversal attacks."""
+    full = (STORAGE_ROOT / rel_path).resolve()
+    if not full.is_relative_to(STORAGE_ROOT.resolve()):
+        raise ValueError(f"Path traversal blocked: {rel_path}")
+    return full
+
+
 def get_file(rel_path: str) -> bytes:
     """Read a file by relative path."""
-    return (STORAGE_ROOT / rel_path).read_bytes()
+    return _safe_resolve(rel_path).read_bytes()
 
 
 def delete_file(rel_path: str) -> bool:
     """Delete a file. Returns True if deleted."""
-    full = STORAGE_ROOT / rel_path
+    full = _safe_resolve(rel_path)
     if full.exists():
         full.unlink()
         return True
@@ -44,4 +52,4 @@ def delete_file(rel_path: str) -> bool:
 
 def get_absolute_path(rel_path: str) -> Path:
     """Get absolute path for a relative storage path."""
-    return STORAGE_ROOT / rel_path
+    return _safe_resolve(rel_path)
