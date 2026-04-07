@@ -9,6 +9,7 @@ from sqlalchemy import (
     Enum,
     Float,
     ForeignKey,
+    Index,
     String,
     Text,
     Uuid,
@@ -66,6 +67,7 @@ class BriefStatus(str, enum.Enum):
 
 class CommercialBrief(Base):
     __tablename__ = "commercial_briefs"
+    __table_args__ = (Index("ix_commercial_briefs_research_report_id", "research_report_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     lead_id: Mapped[uuid.UUID] = mapped_column(

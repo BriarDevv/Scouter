@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, String, Text, Uuid, func
+from sqlalchemy import DateTime, Enum, Float, ForeignKey, Index, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -25,6 +25,7 @@ class SignalType(str, enum.Enum):
 
 class LeadSignal(Base):
     __tablename__ = "lead_signals"
+    __table_args__ = (Index("ix_lead_signals_lead_id", "lead_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     lead_id: Mapped[uuid.UUID] = mapped_column(

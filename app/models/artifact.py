@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Integer, Text, Uuid, func
+from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Index, Integer, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -17,6 +17,7 @@ class ArtifactType(str, enum.Enum):
 
 class Artifact(Base):
     __tablename__ = "artifacts"
+    __table_args__ = (Index("ix_artifacts_lead_id", "lead_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     lead_id: Mapped[uuid.UUID] = mapped_column(
