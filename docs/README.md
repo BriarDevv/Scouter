@@ -29,8 +29,10 @@ If you are a human operator or developer, start with [../README.md](../README.md
 | Product | [product/proposal.md](product/proposal.md) | Product and positioning context |
 | Audits | [audits/scouter-ai-environment-audit.md](audits/scouter-ai-environment-audit.md) | AI environment audit and scorecard |
 | Audits | [audits/scouter-full-repo-deep-audit.md](audits/scouter-full-repo-deep-audit.md) | Full repo deep audit (code, architecture, correctness, AI slop) |
+| Audits | [audits/repo-architecture-deep-audit.md](audits/repo-architecture-deep-audit.md) | Repository architecture deep audit (structure, naming, boundaries, AI navigation) |
 | Roadmaps | [roadmaps/scouter-ai-environment-improvement-plan.md](roadmaps/scouter-ai-environment-improvement-plan.md) | AI environment improvement plan |
 | Roadmaps | [roadmaps/scouter-full-repo-hardening-plan.md](roadmaps/scouter-full-repo-hardening-plan.md) | Full repo hardening plan (5 phases) |
+| Roadmaps | [roadmaps/repo-architecture-refactor-plan.md](roadmaps/repo-architecture-refactor-plan.md) | Architecture refactor plan (5 phases, 7.5 -> 9.5) |
 
 ## Start Here By Goal
 
