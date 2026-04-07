@@ -9,8 +9,9 @@ import { apiFetch } from "./client";
 export async function getLeadResearch(leadId: string): Promise<LeadResearchReport | null> {
   try {
     return await apiFetch<LeadResearchReport>(`/leads/${leadId}/research`);
-  } catch {
-    return null;
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("404")) return null;
+    throw err;
   }
 }
 
@@ -23,8 +24,9 @@ export async function runResearch(leadId: string): Promise<LeadResearchReport> {
 export async function getCommercialBrief(leadId: string): Promise<CommercialBrief | null> {
   try {
     return await apiFetch<CommercialBrief>(`/briefs/leads/${leadId}`);
-  } catch {
-    return null;
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("404")) return null;
+    throw err;
   }
 }
 
