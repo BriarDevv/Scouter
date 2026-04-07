@@ -13,7 +13,6 @@ from app.services.leads.lead_service import (
 )
 from app.services.leads.lead_service import (
     get_lead,
-    list_leads,
 )
 from app.services.leads.lead_service import (
     update_lead_status as _update_lead_status,
@@ -32,30 +31,39 @@ def search_leads(
 ) -> dict:
     """Search leads with filters."""
     lead_status = LeadStatus(status) if status else None
-    leads, total = list_leads(
-        db,
-        page=1,
-        page_size=min(limit, 50),
-        status=lead_status,
-        min_score=min_score,
-    )
+    # Build DB query with all filters pushed down
+    stmt = select(Lead)
+    count_stmt = select(func.count(Lead.id))
 
-    # Apply text/city/industry filters in-memory (simple for now)
+    if lead_status:
+        stmt = stmt.where(Lead.status == lead_status)
+        count_stmt = count_stmt.where(Lead.status == lead_status)
+    if min_score is not None:
+        stmt = stmt.where(Lead.score >= min_score)
+        count_stmt = count_stmt.where(Lead.score >= min_score)
     if query:
-        q = query.lower()
-        leads = [
-            l
-            for l in leads
-            if q in (l.business_name or "").lower()
-            or q in (l.industry or "").lower()
-            or q in (l.city or "").lower()
-        ]
+        q_pattern = f"%{query}%"
+        name_match = Lead.business_name.ilike(q_pattern)
+        industry_match = Lead.industry.ilike(q_pattern)
+        city_match = Lead.city.ilike(q_pattern)
+        stmt = stmt.where(name_match | industry_match | city_match)
+        count_stmt = count_stmt.where(name_match | industry_match | city_match)
     if city:
-        c = city.lower()
-        leads = [l for l in leads if c in (l.city or "").lower()]
+        stmt = stmt.where(Lead.city.ilike(f"%{city}%"))
+        count_stmt = count_stmt.where(Lead.city.ilike(f"%{city}%"))
     if industry:
-        ind = industry.lower()
-        leads = [l for l in leads if ind in (l.industry or "").lower()]
+        stmt = stmt.where(Lead.industry.ilike(f"%{industry}%"))
+        count_stmt = count_stmt.where(Lead.industry.ilike(f"%{industry}%"))
+
+    total = db.execute(count_stmt).scalar() or 0
+    leads = (
+        db.execute(
+            stmt.order_by(Lead.score.desc().nulls_last(), Lead.created_at.desc())
+            .limit(min(limit, 50))
+        )
+        .scalars()
+        .all()
+    )
 
     return {
         "total": total,
@@ -88,7 +96,8 @@ def get_lead_detail(
         except ValueError:
             return {"error": "ID de lead inválido (debe ser UUID)"}
     elif business_name:
-        stmt = select(Lead).where(Lead.business_name.ilike(f"%{business_name}%")).limit(1)
+        safe_name = business_name.replace("%", r"\%").replace("_", r"\_")
+        stmt = select(Lead).where(Lead.business_name.ilike(f"%{safe_name}%")).limit(1)
         lead = db.execute(stmt).scalar_one_or_none()
 
     if not lead:
