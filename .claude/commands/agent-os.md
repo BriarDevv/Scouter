@@ -34,7 +34,7 @@ Report: whether generation succeeded, report ID.
 
 ### Run pipeline on a lead
 ```bash
-cd /home/mateo/Scouter && .venv/bin/python scripts/scouterctl.py run-pipeline --lead-id <LEAD_ID>
+source .venv/bin/activate && python scripts/scouterctl.py run-pipeline --lead-id <LEAD_ID>
 ```
 Replace `<LEAD_ID>` with the actual UUID. Report pipeline status.
 

@@ -5,13 +5,13 @@ If no argument is given, show status.
 Commands:
 ```bash
 # Start everything
-wsl.exe -d Ubuntu -- bash -c "cd /home/mateo/src/Scouter && make up"
+make up
 
 # Stop everything
-wsl.exe -d Ubuntu -- bash -c "cd /home/mateo/src/Scouter && make down"
+make down
 
 # Check status
-wsl.exe -d Ubuntu -- bash -c "cd /home/mateo/src/Scouter && make status"
+make status
 ```
 
 After running, report which services are up and on which ports:

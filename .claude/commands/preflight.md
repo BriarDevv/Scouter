@@ -1,8 +1,8 @@
 Run the Scouter preflight check to verify all system components are ready.
 
-Execute from WSL:
+Execute from the project root:
 ```bash
-wsl.exe -d Ubuntu -- bash -c "cd /home/mateo/src/Scouter && source .venv/bin/activate && python scripts/preflight.py"
+source .venv/bin/activate && python scripts/preflight.py
 ```
 
 If any check fails, diagnose and report what's wrong. Common issues:
