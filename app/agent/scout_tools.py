@@ -44,10 +44,14 @@ _BLOCKED_SCHEMES = {"file", "ftp", "gopher", "dict", "data", "javascript"}
 
 
 def _validate_url(url: str) -> str | None:
-    """Validate URL is safe for external fetching. Returns None if blocked (SSRF protection)."""
+    """Validate URL is safe for external fetching. Returns None if blocked (SSRF protection).
+
+    Resolves the hostname and pins the first safe IP to prevent DNS rebinding
+    (TOCTOU between validation and fetch).
+    """
     import ipaddress
     import socket
-    from urllib.parse import urlparse
+    from urllib.parse import urlparse, urlunparse
 
     parsed = urlparse(url)
     if parsed.scheme.lower() in _BLOCKED_SCHEMES:
@@ -56,22 +60,35 @@ def _validate_url(url: str) -> str | None:
     if not hostname:
         return None
 
+    def _is_safe_ip(ip_str: str) -> bool:
+        ip = ipaddress.ip_address(ip_str)
+        return not (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved)
+
     # Check if hostname is a direct IP
     try:
-        ip = ipaddress.ip_address(hostname)
-        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+        ipaddress.ip_address(hostname)
+        if not _is_safe_ip(hostname):
             return None
+        return url
     except ValueError:
-        # Hostname is a domain — resolve and check
-        try:
-            resolved = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
-            for _, _, _, _, addr in resolved:
-                ip = ipaddress.ip_address(addr[0])
-                if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
-                    return None
-        except socket.gaierror:
+        pass
+
+    # Hostname is a domain — resolve, check all IPs, pin the first safe one
+    try:
+        resolved = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
+    except socket.gaierror:
+        return None
+
+    for _, _, _, _, addr in resolved:
+        if not _is_safe_ip(addr[0]):
             return None
-    return url
+
+    # Pin resolved IP into URL to prevent DNS rebinding
+    if resolved:
+        pinned_ip = resolved[0][4][0]
+        pinned = parsed._replace(netloc=f"{pinned_ip}:{parsed.port or (443 if parsed.scheme == 'https' else 80)}")
+        return urlunparse(pinned)
+    return None
 
 
 def _is_junk_email(email: str) -> bool:
