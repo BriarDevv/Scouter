@@ -1,13 +1,13 @@
-from app.services.setup_service import REPO_ROOT
+from app.services.settings.setup_service import REPO_ROOT
 
 
 def test_setup_readiness_endpoint_aggregates_runtime_and_config(client, db, monkeypatch):
     monkeypatch.setattr(
-        "app.services.setup_service._current_platform",
+        "app.services.settings.setup_service._current_platform",
         lambda: "windows-wsl",
     )
     monkeypatch.setattr(
-        "app.services.setup_service.get_system_health",
+        "app.services.settings.setup_service.get_system_health",
         lambda db: {
             "status": "healthy",
             "components": [
@@ -19,7 +19,7 @@ def test_setup_readiness_endpoint_aggregates_runtime_and_config(client, db, monk
         },
     )
     monkeypatch.setattr(
-        "app.services.setup_service.get_setup_status",
+        "app.services.settings.setup_service.get_setup_status",
         lambda db: {
             "steps": [
                 {"id": "brand", "label": "Marca", "status": "complete", "detail": None, "action": None},
@@ -36,7 +36,7 @@ def test_setup_readiness_endpoint_aggregates_runtime_and_config(client, db, monk
         },
     )
     monkeypatch.setattr(
-        "app.services.setup_service._update_status",
+        "app.services.settings.setup_service._update_status",
         lambda: {
             "supported": True,
             "current_branch": "main",
@@ -68,11 +68,11 @@ def test_setup_readiness_endpoint_blocks_unsupported_platform_and_derives_wizard
     client, db, monkeypatch
 ):
     monkeypatch.setattr(
-        "app.services.setup_service._current_platform",
+        "app.services.settings.setup_service._current_platform",
         lambda: "linux",
     )
     monkeypatch.setattr(
-        "app.services.setup_service.get_system_health",
+        "app.services.settings.setup_service.get_system_health",
         lambda db: {
             "status": "degraded",
             "components": [
@@ -84,7 +84,7 @@ def test_setup_readiness_endpoint_blocks_unsupported_platform_and_derives_wizard
         },
     )
     monkeypatch.setattr(
-        "app.services.setup_service.get_setup_status",
+        "app.services.settings.setup_service.get_setup_status",
         lambda db: {
             "steps": [
                 {"id": "brand", "label": "Marca", "status": "incomplete", "detail": "Falta", "action": "Completar"},
@@ -101,7 +101,7 @@ def test_setup_readiness_endpoint_blocks_unsupported_platform_and_derives_wizard
         },
     )
     monkeypatch.setattr(
-        "app.services.setup_service._update_status",
+        "app.services.settings.setup_service._update_status",
         lambda: {
             "supported": True,
             "current_branch": "main",
@@ -144,7 +144,7 @@ def test_setup_action_preflight_runs_whitelisted_command(client, monkeypatch):
         captured["timeout"] = timeout
         return "completed", "preflight ok"
 
-    monkeypatch.setattr("app.services.setup_service._run_command", fake_run_command)
+    monkeypatch.setattr("app.services.settings.setup_service._run_command", fake_run_command)
 
     response = client.post("/api/v1/setup/actions/preflight")
     assert response.status_code == 200
@@ -159,9 +159,9 @@ def test_setup_action_preflight_runs_whitelisted_command(client, monkeypatch):
 def test_setup_readiness_exposes_update_action_only_when_autopull_is_possible(
     client, db, monkeypatch
 ):
-    monkeypatch.setattr("app.services.setup_service._current_platform", lambda: "windows-wsl")
+    monkeypatch.setattr("app.services.settings.setup_service._current_platform", lambda: "windows-wsl")
     monkeypatch.setattr(
-        "app.services.setup_service.get_system_health",
+        "app.services.settings.setup_service.get_system_health",
         lambda db: {
             "status": "healthy",
             "components": [
@@ -173,7 +173,7 @@ def test_setup_readiness_exposes_update_action_only_when_autopull_is_possible(
         },
     )
     monkeypatch.setattr(
-        "app.services.setup_service.get_setup_status",
+        "app.services.settings.setup_service.get_setup_status",
         lambda db: {
             "steps": [
                 {
@@ -211,7 +211,7 @@ def test_setup_readiness_exposes_update_action_only_when_autopull_is_possible(
         },
     )
     monkeypatch.setattr(
-        "app.services.setup_service._update_status",
+        "app.services.settings.setup_service._update_status",
         lambda: {
             "supported": True,
             "current_branch": "main",
