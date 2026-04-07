@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from enum import StrEnum
 
 from sqlalchemy import (
     JSON,
@@ -16,7 +17,14 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
-from app.llm.types import LLMInvocationStatus
+
+
+class LLMInvocationStatus(StrEnum):
+    SUCCEEDED = "succeeded"
+    DEGRADED = "degraded"
+    FALLBACK = "fallback"
+    PARSE_FAILED = "parse_failed"
+    FAILED = "failed"
 
 
 class LLMInvocation(Base):

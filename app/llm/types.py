@@ -1,9 +1,5 @@
-from enum import StrEnum
+"""LLM shared types — re-exported from canonical definitions."""
 
+from app.models.llm_invocation import LLMInvocationStatus
 
-class LLMInvocationStatus(StrEnum):
-    SUCCEEDED = "succeeded"
-    DEGRADED = "degraded"
-    FALLBACK = "fallback"
-    PARSE_FAILED = "parse_failed"
-    FAILED = "failed"
+__all__ = ["LLMInvocationStatus"]
