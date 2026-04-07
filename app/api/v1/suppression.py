@@ -18,7 +18,9 @@ router = APIRouter(prefix="/suppression", tags=["suppression"])
 def add(data: SuppressionCreate, db: Session = Depends(get_db)):
     """Add an email/domain/phone to the suppression list."""
     if not data.email and not data.domain and not data.phone:
-        raise HTTPException(status_code=422, detail="At least one of email, domain, or phone is required")
+        raise HTTPException(
+            status_code=422, detail="At least one of email, domain, or phone is required"
+        )
     entry = add_to_suppression_list(db, data)
     db.commit()
     return entry

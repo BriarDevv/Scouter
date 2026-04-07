@@ -36,6 +36,7 @@ def _request_task_id(request) -> str:
 
 # ── Batch pipeline task ──────────────────────────────────────────────
 
+
 @celery_app.task(
     name="app.workers.tasks.task_batch_pipeline",
     bind=True,
@@ -43,21 +44,22 @@ def _request_task_id(request) -> str:
     soft_time_limit=7200,
     time_limit=7500,
 )
-def task_batch_pipeline(
-    self, status_filter: str = "new", correlation_id: str | None = None
-):
+def task_batch_pipeline(self, status_filter: str = "new", correlation_id: str | None = None):
     """Thin Celery wrapper around the batch pipeline workflow."""
     task_id = _request_task_id(self.request)
     queue = _queue_name(self.request, "default")
 
-    with SessionLocal() as db, tracked_task_step(
-        db,
-        task_id=task_id,
-        task_name="task_batch_pipeline",
-        queue=queue,
-        correlation_id=correlation_id,
-        scope_key=BATCH_PIPELINE_SCOPE_KEY,
-        current_step="batch_dispatch",
+    with (
+        SessionLocal() as db,
+        tracked_task_step(
+            db,
+            task_id=task_id,
+            task_name="task_batch_pipeline",
+            queue=queue,
+            correlation_id=correlation_id,
+            scope_key=BATCH_PIPELINE_SCOPE_KEY,
+            current_step="batch_dispatch",
+        ),
     ):
         pass
     return run_batch_pipeline_workflow(
@@ -68,6 +70,7 @@ def task_batch_pipeline(
 
 
 # ── Re-score task ─────────────────────────────────────────────────────
+
 
 @celery_app.task(
     name="app.workers.tasks.task_rescore_all",
@@ -86,19 +89,19 @@ def task_rescore_all(self, correlation_id: str | None = None):
     errors = 0
 
     try:
-        with SessionLocal() as db, tracked_task_step(
-            db,
-            task_id=task_id,
-            task_name="task_rescore_all",
-            queue=queue,
-            correlation_id=correlation_id,
-            scope_key=RESCORE_ALL_SCOPE_KEY,
-            current_step=current_step,
+        with (
+            SessionLocal() as db,
+            tracked_task_step(
+                db,
+                task_id=task_id,
+                task_name="task_rescore_all",
+                queue=queue,
+                correlation_id=correlation_id,
+                scope_key=RESCORE_ALL_SCOPE_KEY,
+                current_step=current_step,
+            ),
         ):
-            lead_ids = [
-                row
-                for (row,) in db.query(Lead.id).filter(Lead.score.isnot(None)).all()
-            ]
+            lead_ids = [row for (row,) in db.query(Lead.id).filter(Lead.score.isnot(None)).all()]
 
         total = len(lead_ids)
         persist_rescore_all_state(
@@ -164,9 +167,7 @@ def task_rescore_all(self, correlation_id: str | None = None):
                 rescored += 1
             except Exception as exc:
                 errors += 1
-                logger.error(
-                    "rescore_lead_error", lead_id=str(lead_id), error=str(exc)
-                )
+                logger.error("rescore_lead_error", lead_id=str(lead_id), error=str(exc))
             persist_rescore_all_state(
                 task_id,
                 current_step=current_step,
@@ -218,9 +219,7 @@ def task_rescore_all(self, correlation_id: str | None = None):
                 current_step=current_step,
             )
         )
-        logger.info(
-            "rescore_all_done", total=total, rescored=rescored, errors=errors
-        )
+        logger.info("rescore_all_done", total=total, rescored=rescored, errors=errors)
         return result
     except Exception as exc:
         persist_rescore_all_state(

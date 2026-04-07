@@ -30,5 +30,4 @@ class InboundMailProviderError(RuntimeError):
 class InboundMailProvider(Protocol):
     name: str
 
-    def list_messages(self, *, limit: int) -> list[InboundMailMessage]:
-        ...
+    def list_messages(self, *, limit: int) -> list[InboundMailMessage]: ...

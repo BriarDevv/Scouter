@@ -24,9 +24,7 @@ def get_conversation(db: Session, conversation_id: uuid.UUID) -> Conversation | 
     return db.get(Conversation, conversation_id)
 
 
-def list_conversations(
-    db: Session, *, channel: str | None = None, limit: int = 20
-) -> list[dict]:
+def list_conversations(db: Session, *, channel: str | None = None, limit: int = 20) -> list[dict]:
     msg_count_sq = (
         select(Message.conversation_id, func.count().label("msg_count"))
         .group_by(Message.conversation_id)
@@ -74,9 +72,7 @@ def delete_conversation(db: Session, conversation_id: uuid.UUID) -> bool:
     return True
 
 
-def get_messages(
-    db: Session, conversation_id: uuid.UUID, *, limit: int = 100
-) -> list[Message]:
+def get_messages(db: Session, conversation_id: uuid.UUID, *, limit: int = 100) -> list[Message]:
     stmt = (
         select(Message)
         .where(Message.conversation_id == conversation_id)
@@ -94,9 +90,7 @@ def generate_title(first_message: str) -> str:
     return clean[:37] + "..."
 
 
-def update_conversation_title(
-    db: Session, conversation_id: uuid.UUID, title: str
-) -> None:
+def update_conversation_title(db: Session, conversation_id: uuid.UUID, title: str) -> None:
     conv = db.get(Conversation, conversation_id)
     if conv and not conv.title:
         conv.title = title

@@ -12,12 +12,12 @@ from app.models.outreach import OutreachDraft
 from app.models.review_correction import ReviewCorrection
 from app.schemas.review import DraftReviewResponse, InboundReplyReviewResponse, LeadReviewResponse
 from app.schemas.task_tracking import TaskEnqueueResponse
+from app.services.pipeline.task_tracking_service import queue_task_run
 from app.services.review_service import (
     review_draft_with_reviewer,
     review_inbound_message_with_reviewer,
     review_lead_with_reviewer,
 )
-from app.services.pipeline.task_tracking_service import queue_task_run
 from app.workers.tasks import task_review_draft, task_review_inbound_message, task_review_lead
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
@@ -165,10 +165,12 @@ def get_corrections_summary(
             .limit(3)
             .all()
         )
-        result.append({
-            "category": category.value if hasattr(category, "value") else category,
-            "count": count,
-            "recent_examples": [r[0] for r in recent],
-        })
+        result.append(
+            {
+                "category": category.value if hasattr(category, "value") else category,
+                "count": count,
+                "recent_examples": [r[0] for r in recent],
+            }
+        )
 
     return result

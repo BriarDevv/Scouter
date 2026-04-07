@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
+from app.data.cities_ar import get_coords
 from app.db.session import get_db
 from app.schemas.dashboard import (
     DashboardStatsResponse,
@@ -16,7 +17,6 @@ from app.services.dashboard.dashboard_service import (
     get_recent_activity,
     get_time_series,
 )
-from app.data.cities_ar import get_coords
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 

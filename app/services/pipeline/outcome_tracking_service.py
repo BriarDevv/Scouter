@@ -62,6 +62,7 @@ def capture_outcome_snapshot(
     draft_channel = None
     try:
         from app.models.outreach import OutreachDraft
+
         latest_draft = (
             db.query(OutreachDraft)
             .filter_by(lead_id=lead_id)

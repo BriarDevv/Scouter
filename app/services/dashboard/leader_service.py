@@ -9,6 +9,8 @@ from app.models.outreach import DraftStatus, OutreachDraft, OutreachLog
 from app.models.task_tracking import PipelineRun, TaskRun
 from app.services.dashboard.dashboard_service import (
     _load_leads as _dashboard_load_leads,
+)
+from app.services.dashboard.dashboard_service import (
     get_city_breakdown,
     get_dashboard_stats,
     get_industry_breakdown,
@@ -36,7 +38,9 @@ def _count_drafts_since(db: Session, since: datetime) -> int:
     return db.execute(stmt).scalar() or 0
 
 
-def _count_pipeline_runs(db: Session, *, status: str | None = None, since: datetime | None = None) -> int:
+def _count_pipeline_runs(
+    db: Session, *, status: str | None = None, since: datetime | None = None
+) -> int:
     stmt = select(func.count(PipelineRun.id))
     if status:
         stmt = stmt.where(PipelineRun.status == status)
@@ -45,7 +49,9 @@ def _count_pipeline_runs(db: Session, *, status: str | None = None, since: datet
     return db.execute(stmt).scalar() or 0
 
 
-def _count_task_runs(db: Session, *, status: str | None = None, since: datetime | None = None) -> int:
+def _count_task_runs(
+    db: Session, *, status: str | None = None, since: datetime | None = None
+) -> int:
     stmt = select(func.count(TaskRun.task_id))
     if status:
         stmt = stmt.where(TaskRun.status == status)
@@ -169,7 +175,9 @@ def _count_inbound_messages(
 
 
 def _count_replied_leads(db: Session, *, since: datetime | None = None) -> int:
-    stmt = select(func.count(func.distinct(InboundMessage.lead_id))).where(InboundMessage.lead_id.is_not(None))
+    stmt = select(func.count(func.distinct(InboundMessage.lead_id))).where(
+        InboundMessage.lead_id.is_not(None)
+    )
     if since:
         stmt = stmt.where(InboundMessage.received_at >= since)
     return db.execute(stmt).scalar() or 0
@@ -391,8 +399,12 @@ def get_reply_summary(db: Session, *, hours: int = 24) -> dict:
         "positive_replies": sum(
             1 for message in messages if message.classification_label in POSITIVE_REPLY_LABELS
         ),
-        "interested_replies": sum(1 for message in messages if message.classification_label == "interested"),
-        "quote_replies": sum(1 for message in messages if message.classification_label == "asked_for_quote"),
+        "interested_replies": sum(
+            1 for message in messages if message.classification_label == "interested"
+        ),
+        "quote_replies": sum(
+            1 for message in messages if message.classification_label == "asked_for_quote"
+        ),
         "meeting_replies": sum(
             1 for message in messages if message.classification_label == "asked_for_meeting"
         ),
@@ -474,10 +486,14 @@ def list_leader_replies(
     if important_only:
         stmt = stmt.where(
             (InboundMessage.should_escalate_reviewer.is_(True))
-            | (InboundMessage.classification_status.in_([
-                InboundMailClassificationStatus.PENDING.value,
-                InboundMailClassificationStatus.FAILED.value,
-            ]))
+            | (
+                InboundMessage.classification_status.in_(
+                    [
+                        InboundMailClassificationStatus.PENDING.value,
+                        InboundMailClassificationStatus.FAILED.value,
+                    ]
+                )
+            )
             | (InboundMessage.classification_label.in_(sorted(ACTIONABLE_REPLY_LABELS)))
         )
         stmt = stmt.order_by(

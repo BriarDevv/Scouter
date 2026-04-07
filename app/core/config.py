@@ -124,10 +124,7 @@ class Settings(BaseSettings):
     # Rate limiting (API)
     API_RATE_LIMIT: str = "60/minute"
     API_CORS_ORIGINS: str = (
-        "http://localhost:3000,"
-        "http://127.0.0.1:3000,"
-        "http://localhost:3001,"
-        "http://127.0.0.1:3001"
+        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001"
     )
 
     @model_validator(mode="after")
@@ -155,6 +152,7 @@ class Settings(BaseSettings):
     def validate_api_key(self):
         if not self.API_KEY and self.APP_ENV != "development":
             import warnings
+
             warnings.warn(
                 "API_KEY is not set. The API is open without authentication. "
                 "Set API_KEY in .env to enable API key auth.",
@@ -171,6 +169,7 @@ class Settings(BaseSettings):
                     'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(64))"'
                 )
             import warnings
+
             warnings.warn(
                 "SECRET_KEY is still set to the default placeholder. "
                 'Generate a secure key with: python -c "import secrets; print(secrets.token_urlsafe(64))"',
@@ -214,17 +213,13 @@ class Settings(BaseSettings):
     @property
     def api_cors_origins(self) -> tuple[str, ...]:
         return tuple(
-            origin.strip()
-            for origin in self.API_CORS_ORIGINS.split(",")
-            if origin.strip()
+            origin.strip() for origin in self.API_CORS_ORIGINS.split(",") if origin.strip()
         )
 
     @property
     def mail_use_reviewer_for_labels(self) -> tuple[str, ...]:
         return tuple(
-            label.strip()
-            for label in self.MAIL_USE_REVIEWER_FOR_LABELS.split(",")
-            if label.strip()
+            label.strip() for label in self.MAIL_USE_REVIEWER_FOR_LABELS.split(",") if label.strip()
         )
 
 

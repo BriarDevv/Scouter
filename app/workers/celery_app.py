@@ -25,19 +25,25 @@ _TASK_ROUTES_FULL = {
     "app.workers.brief_tasks.task_review_brief": {"queue": "reviewer"},
 }
 
+
 # Low resource mode: DB setting overrides env var
 def _resolve_low_resource() -> bool:
     """Check DB for low_resource_mode override, fall back to env var."""
     try:
         from app.db.session import SessionLocal
+
         with SessionLocal() as db:
             from app.models.settings import OperationalSettings
+
             row = db.get(OperationalSettings, 1)
             if row and row.low_resource_mode is not None:
                 return row.low_resource_mode
     except Exception as exc:
         import logging
-        logging.getLogger(__name__).debug("low_resource_db_check_failed, using env default: %s", exc)
+
+        logging.getLogger(__name__).debug(
+            "low_resource_db_check_failed, using env default: %s", exc
+        )
     return settings.LOW_RESOURCE_MODE
 
 
@@ -55,8 +61,8 @@ celery_app.conf.update(
     task_acks_late=True,
     task_reject_on_worker_lost=True,
     # Timeouts — prevent tasks from hanging indefinitely
-    task_soft_time_limit=300,   # 5 min soft limit (raises SoftTimeLimitExceeded)
-    task_time_limit=360,        # 6 min hard kill
+    task_soft_time_limit=300,  # 5 min soft limit (raises SoftTimeLimitExceeded)
+    task_time_limit=360,  # 6 min hard kill
     # Routing: merge all queues in low resource mode
     task_routes={} if _low_resource else _TASK_ROUTES_FULL,
     # Default queue for unmatched tasks

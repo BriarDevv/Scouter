@@ -7,15 +7,15 @@ import os
 import time
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.agent.channel_router import handle_channel_message
-from app.db.session import get_db
 from app.core.logging import get_logger
-from app.services.settings.operational_settings_service import get_or_create as get_settings
+from app.db.session import get_db
 from app.services.comms.telegram_audit import log_inbound, log_outbound
 from app.services.comms.telegram_service import send_message as tg_send_message
+from app.services.settings.operational_settings_service import get_or_create as get_settings
 
 logger = get_logger(__name__)
 
@@ -59,12 +59,14 @@ def webhook_inbound(
 
     # Validate webhook secret
     from app.models.telegram_credentials import TelegramCredentials
+
     tg_creds = db.get(TelegramCredentials, 1)
     webhook_secret = (
-        (tg_creds.webhook_secret if tg_creds and tg_creds.webhook_secret else None)
-        or os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
-    )
-    if not webhook_secret or not hmac.compare_digest(x_telegram_bot_api_secret_token, webhook_secret):
+        tg_creds.webhook_secret if tg_creds and tg_creds.webhook_secret else None
+    ) or os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
+    if not webhook_secret or not hmac.compare_digest(
+        x_telegram_bot_api_secret_token, webhook_secret
+    ):
         logger.warning("tg_webhook_auth_failed", chat_id=chat_id[:6] + "***")
         raise HTTPException(status_code=403, detail="Webhook secret invalido.")
 
@@ -77,7 +79,10 @@ def webhook_inbound(
     # Process via Hermes 3 agent
     start = time.monotonic()
     response_text = handle_channel_message(
-        db=db, channel="telegram", channel_id=chat_id, message=text,
+        db=db,
+        channel="telegram",
+        channel_id=chat_id,
+        message=text,
     )
     elapsed_ms = int((time.monotonic() - start) * 1000)
 

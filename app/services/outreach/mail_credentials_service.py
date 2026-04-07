@@ -96,6 +96,7 @@ def to_response_dict(row: MailCredentials) -> dict:
 # ── Effective config helpers ──────────────────────────────────────────
 # DB value wins over env fallback when set.
 
+
 @dataclass
 class EffectiveSMTPConfig:
     host: str | None
@@ -147,6 +148,7 @@ def get_effective_imap(db: Session) -> EffectiveIMAPConfig:
 
 
 # ── Connection tests ──────────────────────────────────────────────────
+
 
 def test_smtp(db: Session) -> dict:
     """Test SMTP connectivity. Persists result. Returns {ok, error}."""

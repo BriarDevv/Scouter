@@ -3,12 +3,12 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     DateTime,
     Enum,
     Float,
     ForeignKey,
-    JSON,
     String,
     Text,
     Uuid,
@@ -67,9 +67,7 @@ class BriefStatus(str, enum.Enum):
 class CommercialBrief(Base):
     __tablename__ = "commercial_briefs"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     lead_id: Mapped[uuid.UUID] = mapped_column(
         Uuid,
         ForeignKey("leads.id", ondelete="CASCADE"),
@@ -83,20 +81,16 @@ class CommercialBrief(Base):
     )
 
     status: Mapped[BriefStatus] = mapped_column(
-        Enum(BriefStatus, values_callable=lambda x: [e.value for e in x]), nullable=False, default=BriefStatus.PENDING
+        Enum(BriefStatus, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+        default=BriefStatus.PENDING,
     )
-    opportunity_score: Mapped[float | None] = mapped_column(
-        Float, nullable=True
-    )
+    opportunity_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     budget_tier: Mapped[BudgetTier | None] = mapped_column(
         Enum(BudgetTier, values_callable=lambda x: [e.value for e in x]), nullable=True
     )
-    estimated_budget_min: Mapped[float | None] = mapped_column(
-        Float, nullable=True
-    )
-    estimated_budget_max: Mapped[float | None] = mapped_column(
-        Float, nullable=True
-    )
+    estimated_budget_min: Mapped[float | None] = mapped_column(Float, nullable=True)
+    estimated_budget_max: Mapped[float | None] = mapped_column(Float, nullable=True)
     estimated_scope: Mapped[EstimatedScope | None] = mapped_column(
         Enum(EstimatedScope, values_callable=lambda x: [e.value for e in x]), nullable=True
     )
@@ -107,40 +101,22 @@ class CommercialBrief(Base):
         Enum(CallDecision, values_callable=lambda x: [e.value for e in x]), nullable=True
     )
     call_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
-    why_this_lead_matters: Mapped[str | None] = mapped_column(
-        Text, nullable=True
-    )
-    main_business_signals: Mapped[list | None] = mapped_column(
-        JSON, nullable=True
-    )
-    main_digital_gaps: Mapped[list | None] = mapped_column(
-        JSON, nullable=True
-    )
+    why_this_lead_matters: Mapped[str | None] = mapped_column(Text, nullable=True)
+    main_business_signals: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    main_digital_gaps: Mapped[list | None] = mapped_column(JSON, nullable=True)
     recommended_angle: Mapped[str | None] = mapped_column(Text, nullable=True)
-    demo_recommended: Mapped[bool | None] = mapped_column(
-        Boolean, nullable=True
-    )
+    demo_recommended: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     contact_priority: Mapped[ContactPriority | None] = mapped_column(
         Enum(ContactPriority, values_callable=lambda x: [e.value for e in x]), nullable=True
     )
 
-    generator_model: Mapped[str | None] = mapped_column(
-        String(100), nullable=True
-    )
-    reviewer_model: Mapped[str | None] = mapped_column(
-        String(100), nullable=True
-    )
-    reviewed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    generator_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    reviewer_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    is_fallback: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
-    )
+    is_fallback: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

@@ -34,11 +34,15 @@ class MailCredentials(Base):
     imap_ssl: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # ── Last test results ─────────────────────────────────────────────
-    smtp_last_test_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    smtp_last_test_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     smtp_last_test_ok: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     smtp_last_test_error: Mapped[str | None] = mapped_column(String, nullable=True)
 
-    imap_last_test_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    imap_last_test_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     imap_last_test_ok: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     imap_last_test_error: Mapped[str | None] = mapped_column(String, nullable=True)
 

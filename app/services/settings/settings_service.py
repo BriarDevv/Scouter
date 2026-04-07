@@ -9,6 +9,8 @@ from app.services.outreach.mail_credentials_service import (
 from app.services.settings.operational_settings_service import (
     get_effective_mail_inbound,
     get_effective_mail_outbound,
+)
+from app.services.settings.operational_settings_service import (
     get_or_create as get_operational_settings,
 )
 
@@ -74,7 +76,9 @@ def get_mail_settings(db) -> dict:
     if last_sync:
         last_sync_payload = {
             "status": last_sync.status,
-            "at": last_sync.completed_at.isoformat() if last_sync.completed_at else last_sync.started_at.isoformat(),
+            "at": last_sync.completed_at.isoformat()
+            if last_sync.completed_at
+            else last_sync.started_at.isoformat(),
             "counts": {
                 "fetched": last_sync.fetched_count,
                 "new": last_sync.new_count,

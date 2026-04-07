@@ -202,7 +202,9 @@ def review_draft_with_reviewer(db: Session, draft_id: uuid.UUID) -> dict | None:
 def review_inbound_message_with_reviewer(db: Session, message_id: uuid.UUID) -> dict | None:
     ops = get_cached_settings(db)
     if not ops.reviewer_enabled:
-        logger.info("reviewer_disabled_by_settings", action="review_inbound", message_id=str(message_id))
+        logger.info(
+            "reviewer_disabled_by_settings", action="review_inbound", message_id=str(message_id)
+        )
         return None
 
     message = db.get(InboundMessage, message_id)

@@ -11,7 +11,9 @@ from tests.conftest import TestSessionLocal
 
 
 def test_async_enrichment_status_endpoint(client):
-    created = client.post("/api/v1/leads", json={"business_name": "Async Enrich", "city": "Cordoba"})
+    created = client.post(
+        "/api/v1/leads", json={"business_name": "Async Enrich", "city": "Cordoba"}
+    )
     lead_id = created.json()["id"]
 
     queued = client.post(f"/api/v1/enrichment/{lead_id}/async")
@@ -34,7 +36,9 @@ def test_async_enrichment_status_endpoint(client):
 
 
 def test_pipeline_run_is_tracked_for_full_pipeline(client):
-    created = client.post("/api/v1/leads", json={"business_name": "Pipeline Task", "city": "Mendoza"})
+    created = client.post(
+        "/api/v1/leads", json={"business_name": "Pipeline Task", "city": "Mendoza"}
+    )
     lead_id = created.json()["id"]
 
     queued = client.post(f"/api/v1/scoring/{lead_id}/pipeline")
@@ -162,7 +166,9 @@ def test_draft_skipped_when_no_email(db):
 def test_orphan_pipeline_detected(db):
     """Janitor should mark PipelineRun stuck in 'running' for 45 min as failed."""
     import uuid as _uuid
+
     from sqlalchemy import text
+
     from app.models.lead import Lead
     from app.models.task_tracking import PipelineRun
     from app.workers.janitor import sweep_stale_tasks
@@ -205,7 +211,9 @@ def test_orphan_pipeline_detected(db):
 def test_recent_pipeline_not_orphaned(db):
     """Janitor should NOT touch a PipelineRun updated only 5 minutes ago."""
     import uuid as _uuid
+
     from sqlalchemy import text
+
     from app.models.lead import Lead
     from app.models.task_tracking import PipelineRun
     from app.workers.janitor import sweep_stale_tasks
@@ -263,6 +271,7 @@ def test_janitor_marks_stale_tasks_as_failed(db):
     db.commit()
 
     from app.workers.janitor import sweep_stale_tasks
+
     result = sweep_stale_tasks(session_factory=TestSessionLocal)
 
     db.expire_all()

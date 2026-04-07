@@ -4,8 +4,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.db.session import get_db
 from app.core.logging import get_logger
+from app.db.session import get_db
 from app.schemas.telegram import (
     TelegramCredentialsResponse,
     TelegramCredentialsUpdate,

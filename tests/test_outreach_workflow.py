@@ -8,9 +8,7 @@ from app.workflows.outreach_draft_generation import (
 )
 
 
-def test_run_outreach_draft_generation_workflow_persists_degraded_ai_metadata(
-    db, monkeypatch
-):
+def test_run_outreach_draft_generation_workflow_persists_degraded_ai_metadata(db, monkeypatch):
     lead = Lead(
         business_name="Fallback Draft Lead",
         city="Cordoba",

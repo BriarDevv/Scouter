@@ -24,9 +24,15 @@ def add_to_suppression_list(db: Session, data: SuppressionCreate) -> Suppression
     # Suppress any matching active leads
     suppressed_count = 0
     if data.email:
-        leads = db.execute(
-            select(Lead).where(Lead.email == data.email.lower(), Lead.status != LeadStatus.SUPPRESSED)
-        ).scalars().all()
+        leads = (
+            db.execute(
+                select(Lead).where(
+                    Lead.email == data.email.lower(), Lead.status != LeadStatus.SUPPRESSED
+                )
+            )
+            .scalars()
+            .all()
+        )
         for lead in leads:
             lead.status = LeadStatus.SUPPRESSED
             suppressed_count += 1

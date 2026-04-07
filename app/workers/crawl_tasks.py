@@ -59,11 +59,7 @@ def task_scheduled_crawl(self):
     from app.models.territory import Territory
 
     with SessionLocal() as db:
-        territories = (
-            db.query(Territory)
-            .filter(Territory.is_active.is_(True))
-            .all()
-        )
+        territories = db.query(Territory).filter(Territory.is_active.is_(True)).all()
         if not territories:
             logger.info("scheduled_crawl_no_active_territories")
             return {"status": "skipped", "reason": "no_active_territories"}

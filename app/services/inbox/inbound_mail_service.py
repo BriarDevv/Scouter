@@ -21,7 +21,7 @@ from app.models.inbound_mail import (
     InboundMailSyncStatus,
     InboundMessage,
 )
-from app.models.outreach import LogAction, OutreachDraft, OutreachLog
+from app.models.outreach import LogAction, OutreachLog
 from app.models.outreach_delivery import OutreachDelivery, OutreachDeliveryStatus
 from app.models.reply_assistant import ReplyAssistantDraft
 from app.models.reply_assistant_send import ReplyAssistantSend, ReplyAssistantSendStatus
@@ -87,8 +87,12 @@ def list_inbound_messages(
         select(InboundMessage)
         .options(
             selectinload(InboundMessage.thread),
-            selectinload(InboundMessage.reply_assistant_draft).selectinload(ReplyAssistantDraft.review),
-            selectinload(InboundMessage.reply_assistant_draft).selectinload(ReplyAssistantDraft.sends),
+            selectinload(InboundMessage.reply_assistant_draft).selectinload(
+                ReplyAssistantDraft.review
+            ),
+            selectinload(InboundMessage.reply_assistant_draft).selectinload(
+                ReplyAssistantDraft.sends
+            ),
         )
         .order_by(InboundMessage.received_at.desc(), InboundMessage.created_at.desc())
         .limit(limit)
@@ -107,8 +111,12 @@ def get_inbound_message(db: Session, message_id: uuid.UUID) -> InboundMessage | 
         select(InboundMessage)
         .options(
             selectinload(InboundMessage.thread),
-            selectinload(InboundMessage.reply_assistant_draft).selectinload(ReplyAssistantDraft.review),
-            selectinload(InboundMessage.reply_assistant_draft).selectinload(ReplyAssistantDraft.sends),
+            selectinload(InboundMessage.reply_assistant_draft).selectinload(
+                ReplyAssistantDraft.review
+            ),
+            selectinload(InboundMessage.reply_assistant_draft).selectinload(
+                ReplyAssistantDraft.sends
+            ),
         )
         .where(InboundMessage.id == message_id)
     )
@@ -191,6 +199,7 @@ def sync_inbound_messages(db: Session, *, limit: int | None = None) -> InboundMa
                 sync_run.unmatched_count += 1
 
             from app.services.settings.operational_settings_service import get_cached_settings
+
             ops = get_cached_settings(db)
             if persisted_message and ops.auto_classify_inbound:
                 from app.services.inbox.reply_classification_service import classify_inbound_message
@@ -220,6 +229,7 @@ def sync_inbound_messages(db: Session, *, limit: int | None = None) -> InboundMa
         db.refresh(sync_run)
         try:
             from app.services.notifications.notification_emitter import on_sync_failed
+
             on_sync_failed(db, sync_run_id=sync_run.id, error=sync_run.error)
         except Exception:
             logger.debug("inbound_sync_failed_notification_failed", exc_info=True)
@@ -235,9 +245,11 @@ def _persist_inbound_message(
     db: Session, payload: InboundMailMessage
 ) -> tuple[InboundMessage | None, str]:
     dedupe_key = _build_dedupe_key(payload)
-    existing = db.execute(
-        select(InboundMessage).where(InboundMessage.dedupe_key == dedupe_key)
-    ).scalars().first()
+    existing = (
+        db.execute(select(InboundMessage).where(InboundMessage.dedupe_key == dedupe_key))
+        .scalars()
+        .first()
+    )
     if existing:
         return None, "deduplicated"
 
@@ -363,7 +375,9 @@ def _merge_thread_match(
 ) -> None:
     if external_thread_id and not thread.external_thread_id:
         thread.external_thread_id = external_thread_id
-    if payload.received_at and (thread.last_message_at is None or payload.received_at > thread.last_message_at):
+    if payload.received_at and (
+        thread.last_message_at is None or payload.received_at > thread.last_message_at
+    ):
         thread.last_message_at = payload.received_at
     if match.delivery and (
         thread.match_confidence is None or match.match_confidence >= thread.match_confidence
@@ -420,12 +434,12 @@ def _match_delivery(db: Session, payload: InboundMailMessage) -> DeliveryMatch:
             match_confidence=0.3,
         )
 
-    return DeliveryMatch(delivery=None, reply_send=None, matched_via="unmatched", match_confidence=0.0)
+    return DeliveryMatch(
+        delivery=None, reply_send=None, matched_via="unmatched", match_confidence=0.0
+    )
 
 
-def _find_delivery_by_message_ids(
-    db: Session, message_ids: list[str]
-) -> OutreachDelivery | None:
+def _find_delivery_by_message_ids(db: Session, message_ids: list[str]) -> OutreachDelivery | None:
     normalized_ids = [message_id for message_id in message_ids if message_id]
     if not normalized_ids:
         return None
@@ -468,9 +482,7 @@ def _find_reply_send_by_message_ids(
     sends = list(db.execute(stmt).scalars().all())
     if not sends:
         return None
-    by_message_id = {
-        _normalize_message_id(send.provider_message_id): send for send in sends
-    }
+    by_message_id = {_normalize_message_id(send.provider_message_id): send for send in sends}
     for candidate in normalized_ids:
         reply_send = by_message_id.get(candidate)
         if reply_send:
@@ -536,7 +548,11 @@ def _build_thread_key(
 def _resolve_external_thread_id(payload: InboundMailMessage) -> str | None:
     return (
         _normalize_message_id(payload.in_reply_to)
-        or (_extract_reference_ids(payload.references_raw)[0] if _extract_reference_ids(payload.references_raw) else None)
+        or (
+            _extract_reference_ids(payload.references_raw)[0]
+            if _extract_reference_ids(payload.references_raw)
+            else None
+        )
         or _normalize_message_id(payload.message_id)
         or payload.provider_message_id
     )

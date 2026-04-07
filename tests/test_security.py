@@ -1,6 +1,5 @@
 """Security-focused tests for prompt injection defense and concurrency guards."""
 
-
 from app.llm.client import (
     _call_ollama_chat,
     _ChatCompletion,
@@ -82,8 +81,12 @@ class TestPromptInjectionBoundaries:
 
         # Call summarize_business
         summarize_business(
-            business_name="Test", industry=None, city=None,
-            website_url=None, instagram_url=None, signals=[],
+            business_name="Test",
+            industry=None,
+            city=None,
+            website_url=None,
+            instagram_url=None,
+            signals=[],
         )
 
         assert len(calls) >= 1
@@ -191,8 +194,10 @@ class TestPromptInjectionBoundaries:
         )
 
         # Reviewer must be warned about executor contamination
-        assert "influenced by email content" in captured["system"].lower() or \
-               "verify" in captured["system"].lower()
+        assert (
+            "influenced by email content" in captured["system"].lower()
+            or "verify" in captured["system"].lower()
+        )
 
     def test_reply_draft_generation_isolates_body(self, monkeypatch):
         """Reply draft generation must isolate inbound email body from instructions."""
@@ -253,22 +258,27 @@ class TestChatAPIEndpoint:
         class FakeResponse:
             def raise_for_status(self):
                 pass
+
             def json(self):
                 return {"message": {"role": "assistant", "content": '{"summary": "ok"}'}}
 
         class FakeClient:
             def __init__(self, timeout):
                 pass
+
             def __enter__(self):
                 return self
+
             def __exit__(self, *a):
                 return False
+
             def post(self, url, json):
                 captured["url"] = url
                 captured["payload"] = json
                 return FakeResponse()
 
         import httpx
+
         monkeypatch.setattr("app.llm.client.resolve_model_for_role", lambda role: "test:model")
         monkeypatch.setattr(httpx, "Client", FakeClient)
 

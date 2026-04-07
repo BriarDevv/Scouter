@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-
 from app.llm.contracts import BatchReviewSynthesisResult, BatchReviewValidationResult
 from app.llm.invocations.support import get_client_module
 from app.llm.prompt_registry import PROMPT_REGISTRY

@@ -26,7 +26,9 @@ def task_weekly_report():
     week_end = now
     week_start = now - timedelta(days=7)
 
-    logger.info("weekly_report_starting", week_start=week_start.isoformat(), week_end=week_end.isoformat())
+    logger.info(
+        "weekly_report_starting", week_start=week_start.isoformat(), week_end=week_end.isoformat()
+    )
 
     try:
         with SessionLocal() as db:
@@ -58,6 +60,7 @@ def task_weekly_report():
             # Notify operator
             try:
                 from app.services.notifications.notification_emitter import emit_notification
+
                 emit_notification(
                     db,
                     category="system",
@@ -83,58 +86,88 @@ def _collect_metrics(db, week_start: datetime, week_end: datetime) -> dict:
     """Collect all metrics for the weekly report."""
     from sqlalchemy import func
 
+    from app.models.investigation_thread import InvestigationThread
     from app.models.lead import Lead
     from app.models.llm_invocation import LLMInvocation
-    from app.models.outreach import OutreachDraft
     from app.models.outcome_snapshot import OutcomeSnapshot
+    from app.models.outreach import OutreachDraft
     from app.models.review_correction import ReviewCorrection
-    from app.models.investigation_thread import InvestigationThread
 
     # Leads
-    leads_processed = db.query(func.count(Lead.id)).filter(
-        Lead.created_at >= week_start, Lead.created_at < week_end
-    ).scalar() or 0
+    leads_processed = (
+        db.query(func.count(Lead.id))
+        .filter(Lead.created_at >= week_start, Lead.created_at < week_end)
+        .scalar()
+        or 0
+    )
 
-    high_leads = db.query(func.count(Lead.id)).filter(
-        Lead.created_at >= week_start, Lead.llm_quality == "high"
-    ).scalar() or 0
+    high_leads = (
+        db.query(func.count(Lead.id))
+        .filter(Lead.created_at >= week_start, Lead.llm_quality == "high")
+        .scalar()
+        or 0
+    )
 
     # Outcomes
-    won = db.query(func.count(OutcomeSnapshot.id)).filter(
-        OutcomeSnapshot.created_at >= week_start, OutcomeSnapshot.outcome == "won"
-    ).scalar() or 0
+    won = (
+        db.query(func.count(OutcomeSnapshot.id))
+        .filter(OutcomeSnapshot.created_at >= week_start, OutcomeSnapshot.outcome == "won")
+        .scalar()
+        or 0
+    )
 
-    lost = db.query(func.count(OutcomeSnapshot.id)).filter(
-        OutcomeSnapshot.created_at >= week_start, OutcomeSnapshot.outcome == "lost"
-    ).scalar() or 0
+    lost = (
+        db.query(func.count(OutcomeSnapshot.id))
+        .filter(OutcomeSnapshot.created_at >= week_start, OutcomeSnapshot.outcome == "lost")
+        .scalar()
+        or 0
+    )
 
     # Drafts
-    drafts_generated = db.query(func.count(OutreachDraft.id)).filter(
-        OutreachDraft.generated_at >= week_start
-    ).scalar() or 0
+    drafts_generated = (
+        db.query(func.count(OutreachDraft.id))
+        .filter(OutreachDraft.generated_at >= week_start)
+        .scalar()
+        or 0
+    )
 
     # Invocations
-    executor_calls = db.query(func.count(LLMInvocation.id)).filter(
-        LLMInvocation.created_at >= week_start, LLMInvocation.role == "executor"
-    ).scalar() or 0
+    executor_calls = (
+        db.query(func.count(LLMInvocation.id))
+        .filter(LLMInvocation.created_at >= week_start, LLMInvocation.role == "executor")
+        .scalar()
+        or 0
+    )
 
-    reviewer_calls = db.query(func.count(LLMInvocation.id)).filter(
-        LLMInvocation.created_at >= week_start, LLMInvocation.role == "reviewer"
-    ).scalar() or 0
+    reviewer_calls = (
+        db.query(func.count(LLMInvocation.id))
+        .filter(LLMInvocation.created_at >= week_start, LLMInvocation.role == "reviewer")
+        .scalar()
+        or 0
+    )
 
-    fallback_count = db.query(func.count(LLMInvocation.id)).filter(
-        LLMInvocation.created_at >= week_start, LLMInvocation.fallback_used.is_(True)
-    ).scalar() or 0
+    fallback_count = (
+        db.query(func.count(LLMInvocation.id))
+        .filter(LLMInvocation.created_at >= week_start, LLMInvocation.fallback_used.is_(True))
+        .scalar()
+        or 0
+    )
 
     # Corrections
-    corrections_count = db.query(func.count(ReviewCorrection.id)).filter(
-        ReviewCorrection.created_at >= week_start
-    ).scalar() or 0
+    corrections_count = (
+        db.query(func.count(ReviewCorrection.id))
+        .filter(ReviewCorrection.created_at >= week_start)
+        .scalar()
+        or 0
+    )
 
     # Scout investigations
-    investigations = db.query(func.count(InvestigationThread.id)).filter(
-        InvestigationThread.created_at >= week_start
-    ).scalar() or 0
+    investigations = (
+        db.query(func.count(InvestigationThread.id))
+        .filter(InvestigationThread.created_at >= week_start)
+        .scalar()
+        or 0
+    )
 
     total_invocations = executor_calls + reviewer_calls
     return {
@@ -156,6 +189,7 @@ def _collect_recommendations(db) -> list[dict]:
     """Collect recommendations from outcome analysis."""
     try:
         from app.services.pipeline.outcome_analysis_service import generate_scoring_recommendations
+
         return generate_scoring_recommendations(db)
     except Exception as exc:
         logger.warning("recommendations_collection_failed", error=str(exc))
@@ -201,17 +235,17 @@ def _build_synthesis_prompt(metrics: dict, recommendations: list[dict]) -> str:
         for r in recommendations[:5]
     )
     return f"""Datos de la semana:
-- Leads procesados: {metrics['leads_processed']}
-- Leads HIGH: {metrics['high_leads']}
-- WON: {metrics['won']}, LOST: {metrics['lost']}
-- Drafts generados: {metrics['drafts_generated']}
-- Executor calls: {metrics['executor_calls']}, Reviewer calls: {metrics['reviewer_calls']}
-- Fallback rate: {metrics['fallback_rate']:.0%}
-- Correcciones del reviewer: {metrics['corrections_count']}
-- Investigaciones de Scout: {metrics['scout_investigations']}
+- Leads procesados: {metrics["leads_processed"]}
+- Leads HIGH: {metrics["high_leads"]}
+- WON: {metrics["won"]}, LOST: {metrics["lost"]}
+- Drafts generados: {metrics["drafts_generated"]}
+- Executor calls: {metrics["executor_calls"]}, Reviewer calls: {metrics["reviewer_calls"]}
+- Fallback rate: {metrics["fallback_rate"]:.0%}
+- Correcciones del reviewer: {metrics["corrections_count"]}
+- Investigaciones de Scout: {metrics["scout_investigations"]}
 
 Recomendaciones del sistema:
-{rec_text or 'Sin recomendaciones esta semana.'}
+{rec_text or "Sin recomendaciones esta semana."}
 
 Generá el resumen semanal."""
 

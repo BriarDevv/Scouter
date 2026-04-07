@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
-from app.models.inbound_mail import EmailThread, InboundMessage
 from app.llm.roles import LLMRole
+from app.models.inbound_mail import EmailThread, InboundMessage
 from app.models.lead import Lead
 from app.models.outreach import DraftStatus, OutreachDraft
 from app.models.outreach_delivery import OutreachDelivery, OutreachDeliveryStatus
@@ -29,7 +29,9 @@ def test_review_lead_endpoint_uses_reviewer_payload(client, db, monkeypatch):
             "watchouts": ["Confirm owner availability"],
         },
     )
-    monkeypatch.setattr("app.services.review_service.resolve_model_for_role", lambda role: "qwen3.5:27b")
+    monkeypatch.setattr(
+        "app.services.review_service.resolve_model_for_role", lambda role: "qwen3.5:27b"
+    )
 
     resp = client.post(f"/api/v1/reviews/leads/{lead.id}")
     assert resp.status_code == 200
@@ -73,7 +75,9 @@ def test_review_draft_endpoint_uses_reviewer_payload(client, db, monkeypatch):
             "revised_body": "Hola, vi una mejora concreta para tu sitio...",
         },
     )
-    monkeypatch.setattr("app.services.review_service.resolve_model_for_role", lambda role: "qwen3.5:27b")
+    monkeypatch.setattr(
+        "app.services.review_service.resolve_model_for_role", lambda role: "qwen3.5:27b"
+    )
 
     resp = client.post(f"/api/v1/reviews/drafts/{draft.id}")
     assert resp.status_code == 200
@@ -222,7 +226,9 @@ def test_review_inbound_message_endpoint_uses_reviewer_payload(client, db, monke
             "watchouts": ["Confirmar disponibilidad"],
         },
     )
-    monkeypatch.setattr("app.services.review_service.resolve_model_for_role", lambda role: "qwen3.5:27b")
+    monkeypatch.setattr(
+        "app.services.review_service.resolve_model_for_role", lambda role: "qwen3.5:27b"
+    )
 
     resp = client.post(f"/api/v1/reviews/inbound/messages/{message.id}")
     assert resp.status_code == 200
@@ -275,7 +281,9 @@ def test_review_inbound_message_async_endpoint_queues_task(client, db, monkeypat
     class DummyTask:
         id = "review-inbound-task-789"
 
-    monkeypatch.setattr("app.api.v1.reviews.task_review_inbound_message.delay", lambda message_id: DummyTask())
+    monkeypatch.setattr(
+        "app.api.v1.reviews.task_review_inbound_message.delay", lambda message_id: DummyTask()
+    )
 
     resp = client.post(f"/api/v1/reviews/inbound/messages/{message.id}/async")
     assert resp.status_code == 200

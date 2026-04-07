@@ -1,11 +1,11 @@
 from datetime import UTC, datetime
 
+from helpers import create_sent_delivery, message_payload
+
 from app.core.config import settings
 from app.models.inbound_mail import EmailThread, InboundMailClassificationStatus, InboundMessage
 from app.models.reply_assistant import ReplyAssistantDraft
 from app.models.reply_assistant_send import ReplyAssistantSend, ReplyAssistantSendStatus
-
-from helpers import create_sent_delivery, message_payload
 
 
 def _create_sent_reply_send(db, *, recipient_email: str = "owner@example.com"):
@@ -90,7 +90,6 @@ def _create_sent_reply_send(db, *, recipient_email: str = "owner@example.com"):
     return lead, draft, delivery, thread, inbound, reply_draft, reply_send
 
 
-
 def test_inbound_sync_blocked_when_disabled(client, monkeypatch):
     monkeypatch.setattr(settings, "MAIL_INBOUND_ENABLED", False)
 
@@ -115,7 +114,9 @@ def test_inbound_sync_deduplicates_and_matches_by_message_id(client, db, monkeyp
             return [payload]
 
     monkeypatch.setattr(settings, "MAIL_INBOUND_ENABLED", True)
-    monkeypatch.setattr("app.services.inbox.inbound_mail_service.get_inbound_provider", lambda: FakeProvider())
+    monkeypatch.setattr(
+        "app.services.inbox.inbound_mail_service.get_inbound_provider", lambda: FakeProvider()
+    )
 
     resp = client.post("/api/v1/mail/inbound/sync")
     assert resp.status_code == 200
@@ -171,7 +172,9 @@ def test_inbound_sync_matches_by_references(client, db, monkeypatch):
             return [payload]
 
     monkeypatch.setattr(settings, "MAIL_INBOUND_ENABLED", True)
-    monkeypatch.setattr("app.services.inbox.inbound_mail_service.get_inbound_provider", lambda: FakeProvider())
+    monkeypatch.setattr(
+        "app.services.inbox.inbound_mail_service.get_inbound_provider", lambda: FakeProvider()
+    )
 
     resp = client.post("/api/v1/mail/inbound/sync")
     assert resp.status_code == 200
@@ -203,7 +206,9 @@ def test_inbound_sync_falls_back_to_subject_and_email(client, db, monkeypatch):
             return [payload]
 
     monkeypatch.setattr(settings, "MAIL_INBOUND_ENABLED", True)
-    monkeypatch.setattr("app.services.inbox.inbound_mail_service.get_inbound_provider", lambda: FakeProvider())
+    monkeypatch.setattr(
+        "app.services.inbox.inbound_mail_service.get_inbound_provider", lambda: FakeProvider()
+    )
 
     resp = client.post("/api/v1/mail/inbound/sync")
     assert resp.status_code == 200
@@ -233,8 +238,12 @@ def test_inbound_status_and_detail_endpoints(client, db, monkeypatch):
 
     monkeypatch.setattr(settings, "MAIL_INBOUND_ENABLED", True)
     monkeypatch.setattr(settings, "MAIL_AUTO_CLASSIFY_INBOUND", False)
-    monkeypatch.setattr(settings, "MAIL_USE_REVIEWER_FOR_LABELS", "asked_for_quote,needs_human_review")
-    monkeypatch.setattr("app.services.inbox.inbound_mail_service.get_inbound_provider", lambda: FakeProvider())
+    monkeypatch.setattr(
+        settings, "MAIL_USE_REVIEWER_FOR_LABELS", "asked_for_quote,needs_human_review"
+    )
+    monkeypatch.setattr(
+        "app.services.inbox.inbound_mail_service.get_inbound_provider", lambda: FakeProvider()
+    )
 
     sync_resp = client.post("/api/v1/mail/inbound/sync")
     assert sync_resp.status_code == 200
@@ -276,14 +285,18 @@ def test_inbound_sync_matches_reply_assistant_send_message_ids(client, db, monke
             return [payload]
 
     monkeypatch.setattr(settings, "MAIL_INBOUND_ENABLED", True)
-    monkeypatch.setattr("app.services.inbox.inbound_mail_service.get_inbound_provider", lambda: FakeProvider())
+    monkeypatch.setattr(
+        "app.services.inbox.inbound_mail_service.get_inbound_provider", lambda: FakeProvider()
+    )
 
     resp = client.post("/api/v1/mail/inbound/sync")
     assert resp.status_code == 200
     assert resp.json()["matched_count"] == 1
 
     messages = client.get("/api/v1/mail/inbound/messages").json()
-    matched = next(item for item in messages if item["provider_message_id"] == "imap-reply-followup-001")
+    matched = next(
+        item for item in messages if item["provider_message_id"] == "imap-reply-followup-001"
+    )
     assert matched["thread_id"] == str(thread.id)
     assert matched["lead_id"] == str(lead.id)
     assert matched["delivery_id"] is None

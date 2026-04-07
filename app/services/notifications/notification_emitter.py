@@ -20,10 +20,12 @@ def _emit(db: Session, **kwargs) -> None:
     """Safe wrapper around notification creation. Respects notifications_enabled setting."""
     try:
         from app.services.settings.operational_settings_service import get_cached_settings
+
         ops = get_cached_settings(db)
         if not ops.notifications_enabled:
             return
         from app.services.notifications.notification_service import create_notification
+
         create_notification(db, **kwargs)
     except Exception as exc:
         logger.error("notification_emit_failed", error=str(exc), type=kwargs.get("type"))
@@ -32,6 +34,7 @@ def _emit(db: Session, **kwargs) -> None:
 # ---------------------------------------------------------------------------
 # Business events
 # ---------------------------------------------------------------------------
+
 
 def on_reply_classified(
     db: Session,
@@ -79,7 +82,12 @@ def on_reply_classified(
         message=f"De: {from_email or 'desconocido'}. Label: {label}. Confianza: {confidence or 0:.0%}.",
         source_kind="inbound_message",
         source_id=message_id,
-        metadata={"label": label, "business_name": business_name, "from_email": from_email, "confidence": confidence},
+        metadata={
+            "label": label,
+            "business_name": business_name,
+            "from_email": from_email,
+            "confidence": confidence,
+        },
         dedup_key=f"reply_classified:{message_id}",
     )
 
@@ -124,7 +132,7 @@ def on_draft_needs_review(
         category=NotificationCategory.BUSINESS,
         severity=NotificationSeverity.WARNING,
         title=f"Draft requiere review — {business_name or 'lead'}",
-        message=f"Un draft asistido requiere revision antes de enviar.",
+        message="Un draft asistido requiere revision antes de enviar.",
         source_kind=source_type,
         source_id=draft_id,
         metadata={"business_name": business_name},
@@ -135,6 +143,7 @@ def on_draft_needs_review(
 # ---------------------------------------------------------------------------
 # System events
 # ---------------------------------------------------------------------------
+
 
 def on_send_failed(
     db: Session,
@@ -185,6 +194,7 @@ def on_sync_failed(
 # ---------------------------------------------------------------------------
 # Security events
 # ---------------------------------------------------------------------------
+
 
 def on_security_event(
     db: Session,

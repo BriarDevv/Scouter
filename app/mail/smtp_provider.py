@@ -8,7 +8,6 @@ from email.utils import formataddr, make_msgid
 from app.mail.provider import MailProviderError, MailSendRequest, MailSendResult
 
 
-
 def _sanitize_smtp_error(msg: str) -> str:
     """Sanitize SMTP error messages to avoid leaking server details."""
     low = msg.lower()

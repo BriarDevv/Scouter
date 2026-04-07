@@ -30,7 +30,9 @@ def _pipeline_uuid(pipeline_run_id: str | None) -> uuid.UUID | None:
     time_limit=360,
 )
 def task_generate_brief(
-    self, lead_id: str, pipeline_run_id: str | None = None,
+    self,
+    lead_id: str,
+    pipeline_run_id: str | None = None,
     correlation_id: str | None = None,
 ):
     """Generate a commercial brief for a lead asynchronously."""
@@ -39,17 +41,19 @@ def task_generate_brief(
     pipeline_uuid = _pipeline_uuid(pipeline_run_id)
 
     try:
-        with SessionLocal() as db, tracked_task_step(
-            db,
-            task_id=task_id,
-            task_name="task_generate_brief",
-            queue=queue,
-            lead_id=uuid.UUID(lead_id),
-            pipeline_run_id=pipeline_uuid,
-            correlation_id=correlation_id,
-            current_step="brief_generation",
-        ) as tracker:
-
+        with (
+            SessionLocal() as db,
+            tracked_task_step(
+                db,
+                task_id=task_id,
+                task_name="task_generate_brief",
+                queue=queue,
+                lead_id=uuid.UUID(lead_id),
+                pipeline_run_id=pipeline_uuid,
+                correlation_id=correlation_id,
+                current_step="brief_generation",
+            ) as tracker,
+        ):
             from app.services.research.brief_service import generate_brief
 
             brief = generate_brief(db, uuid.UUID(lead_id))
@@ -68,14 +72,24 @@ def task_generate_brief(
                 # Write brief context for downstream steps
                 if pipeline_uuid:
                     from app.services.pipeline.context_service import append_step_context
-                    append_step_context(db, pipeline_uuid, "brief", {
-                        "opportunity_score": brief.opportunity_score,
-                        "budget_tier": brief.budget_tier.value if brief.budget_tier else None,
-                        "estimated_scope": brief.estimated_scope.value if brief.estimated_scope else None,
-                        "recommended_contact_method": brief.recommended_contact_method.value if brief.recommended_contact_method else None,
-                        "recommended_angle": brief.recommended_angle,
-                        "why_this_lead_matters": brief.why_this_lead_matters,
-                    })
+
+                    append_step_context(
+                        db,
+                        pipeline_uuid,
+                        "brief",
+                        {
+                            "opportunity_score": brief.opportunity_score,
+                            "budget_tier": brief.budget_tier.value if brief.budget_tier else None,
+                            "estimated_scope": brief.estimated_scope.value
+                            if brief.estimated_scope
+                            else None,
+                            "recommended_contact_method": brief.recommended_contact_method.value
+                            if brief.recommended_contact_method
+                            else None,
+                            "recommended_angle": brief.recommended_angle,
+                            "why_this_lead_matters": brief.why_this_lead_matters,
+                        },
+                    )
 
                 # Chain: review brief with REVIEWER
                 try:
@@ -113,7 +127,9 @@ def task_generate_brief(
     time_limit=360,
 )
 def task_review_brief(
-    self, lead_id: str, pipeline_run_id: str | None = None,
+    self,
+    lead_id: str,
+    pipeline_run_id: str | None = None,
     correlation_id: str | None = None,
 ):
     """Review a commercial brief with the REVIEWER model."""
@@ -122,22 +138,22 @@ def task_review_brief(
     pipeline_uuid = _pipeline_uuid(pipeline_run_id)
 
     try:
-        with SessionLocal() as db, tracked_task_step(
-            db,
-            task_id=task_id,
-            task_name="task_review_brief",
-            queue=queue,
-            lead_id=uuid.UUID(lead_id),
-            pipeline_run_id=pipeline_uuid,
-            correlation_id=correlation_id,
-            current_step="brief_review",
-        ) as tracker:
-
+        with (
+            SessionLocal() as db,
+            tracked_task_step(
+                db,
+                task_id=task_id,
+                task_name="task_review_brief",
+                queue=queue,
+                lead_id=uuid.UUID(lead_id),
+                pipeline_run_id=pipeline_uuid,
+                correlation_id=correlation_id,
+                current_step="brief_review",
+            ) as tracker,
+        ):
             from app.models.commercial_brief import BriefStatus, CommercialBrief
 
-            brief = db.query(CommercialBrief).filter_by(
-                lead_id=uuid.UUID(lead_id)
-            ).first()
+            brief = db.query(CommercialBrief).filter_by(lead_id=uuid.UUID(lead_id)).first()
             if not brief or brief.status != BriefStatus.GENERATED:
                 result = {
                     "status": "skipped",
@@ -184,10 +200,16 @@ def task_review_brief(
             # Write review context for downstream steps
             if pipeline_uuid:
                 from app.services.pipeline.context_service import append_step_context
-                append_step_context(db, pipeline_uuid, "brief_review", {
-                    "approved": review_payload.approved if review_payload else None,
-                    "verdict_reasoning": review_payload.feedback if review_payload else None,
-                })
+
+                append_step_context(
+                    db,
+                    pipeline_uuid,
+                    "brief_review",
+                    {
+                        "approved": review_payload.approved if review_payload else None,
+                        "verdict_reasoning": review_payload.feedback if review_payload else None,
+                    },
+                )
 
             result = {
                 "status": "ok",

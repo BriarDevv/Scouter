@@ -6,10 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db
 from app.api.request_context import get_correlation_id
 from app.core.config import settings as env
 from app.crawlers.google_maps_crawler import DEFAULT_CATEGORIES
+from app.db.session import get_db
 from app.services.deploy_config_service import get_google_maps_api_key_status
 from app.services.pipeline.operational_task_service import (
     get_territory_crawl_status_snapshot,
@@ -24,6 +24,7 @@ DbSession = Annotated[Session, Depends(get_db)]
 
 
 # ── Territory-based crawl (async via Celery) ──────────────────────────
+
 
 class TerritoryCrawlRequest(BaseModel):
     territory_id: str
@@ -70,6 +71,7 @@ def start_territory_crawl(
 
     # Launch Celery task
     from app.workers.tasks import task_crawl_territory
+
     correlation_id = get_correlation_id(request)
     result = task_crawl_territory.delay(
         territory_id=body.territory_id,
@@ -94,10 +96,7 @@ def start_territory_crawl(
         "ok": True,
         "task_id": str(result.id),
         "correlation_id": correlation_id,
-        "message": (
-            f"Crawl iniciado para {territory.name} "
-            f"({len(territory.cities)} ciudades)."
-        ),
+        "message": (f"Crawl iniciado para {territory.name} ({len(territory.cities)} ciudades)."),
     }
 
 
@@ -126,6 +125,7 @@ def stop_territory_crawl(territory_id: str, db: DbSession):
 
 # ── Categories ────────────────────────────────────────────────────────
 
+
 @router.get("/categories")
 def get_categories():
     """Return the default crawl categories."""
@@ -133,6 +133,7 @@ def get_categories():
 
 
 # ── API Key management ────────────────────────────────────────────────
+
 
 @router.get("/api-key-status")
 def api_key_status():

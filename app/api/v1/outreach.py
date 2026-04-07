@@ -3,8 +3,8 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db
 from app.api.request_context import get_correlation_id
+from app.db.session import get_db
 from app.mail.provider import MailProviderError
 from app.models.outreach import DraftStatus
 from app.schemas.mail import OutreachDeliveryResponse

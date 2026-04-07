@@ -1,13 +1,13 @@
-from datetime import UTC, datetime
 import uuid
+from datetime import UTC, datetime
 
 from app.core.config import settings
 from app.mail.provider import MailProviderError, MailSendResult
 from app.models.lead import Lead, LeadStatus
 from app.models.mail_credentials import MailCredentials
-from app.models.settings import OperationalSettings
 from app.models.outreach import DraftStatus, OutreachDraft
 from app.models.outreach_delivery import OutreachDelivery, OutreachDeliveryStatus
+from app.models.settings import OperationalSettings
 
 
 def _create_approved_draft(db, *, email: str | None = "owner@example.com"):
@@ -117,7 +117,9 @@ def test_send_draft_success_persists_delivery_and_updates_state(client, db, monk
     monkeypatch.setattr(settings, "MAIL_ENABLED", False)
     monkeypatch.setattr(settings, "MAIL_FROM_EMAIL", None)
     monkeypatch.setattr(settings, "MAIL_SMTP_HOST", None)
-    monkeypatch.setattr("app.services.outreach.mail_service.get_mail_provider", lambda: FakeProvider())
+    monkeypatch.setattr(
+        "app.services.outreach.mail_service.get_mail_provider", lambda: FakeProvider()
+    )
 
     resp = client.post(f"/api/v1/outreach/drafts/{draft.id}/send")
     assert resp.status_code == 200
@@ -158,7 +160,9 @@ def test_send_draft_failure_persists_failed_delivery(client, db, monkeypatch):
     monkeypatch.setattr(settings, "MAIL_ENABLED", False)
     monkeypatch.setattr(settings, "MAIL_FROM_EMAIL", None)
     monkeypatch.setattr(settings, "MAIL_SMTP_HOST", None)
-    monkeypatch.setattr("app.services.outreach.mail_service.get_mail_provider", lambda: BrokenProvider())
+    monkeypatch.setattr(
+        "app.services.outreach.mail_service.get_mail_provider", lambda: BrokenProvider()
+    )
 
     resp = client.post(f"/api/v1/outreach/drafts/{draft.id}/send")
     assert resp.status_code == 200

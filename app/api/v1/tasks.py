@@ -6,7 +6,11 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.schemas.task_tracking import TaskStatusResponse
-from app.services.pipeline.task_tracking_service import get_pipeline_run, get_task_run, list_task_runs
+from app.services.pipeline.task_tracking_service import (
+    get_pipeline_run,
+    get_task_run,
+    list_task_runs,
+)
 from app.workers.celery_app import celery_app
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])

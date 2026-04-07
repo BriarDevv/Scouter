@@ -16,6 +16,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+import app.agent.tools  # noqa: F401 — ensure all tools are registered
 from app.agent.events import (
     AgentError,
     AgentEvent,
@@ -32,13 +33,12 @@ from app.agent.hermes_format import (
 )
 from app.agent.prompts import build_agent_system_prompt
 from app.agent.streaming_client import AgentStreamError, stream_ollama_chat
-import app.agent.tools  # noqa: F401 — ensure all tools are registered
 from app.agent.tool_registry import registry
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.llm.resolver import resolve_model_for_role
 from app.llm.roles import LLMRole
-from app.models.conversation import Conversation, Message, ToolCall
+from app.models.conversation import Message, ToolCall
 
 logger = get_logger(__name__)
 
@@ -58,6 +58,7 @@ def _build_system_context(db: Session) -> str:
 
     try:
         from app.services.dashboard.dashboard_service import get_dashboard_stats
+
         stats = get_dashboard_stats(db)
         parts.append(
             f"Total leads: {stats['total_leads']} | "
@@ -73,6 +74,7 @@ def _build_system_context(db: Session) -> str:
     batch_brief_injected = False
     try:
         from app.services.pipeline.batch_review_service import get_latest_strategy_brief
+
         brief = get_latest_strategy_brief(db)
         if brief:
             parts.append(f"\nUltima reunion del equipo IA:\n{brief[:1500]}")
@@ -83,13 +85,12 @@ def _build_system_context(db: Session) -> str:
     if not batch_brief_injected:
         try:
             from app.models.weekly_report import WeeklyReport
-            latest = (
-                db.query(WeeklyReport)
-                .order_by(WeeklyReport.created_at.desc())
-                .first()
-            )
+
+            latest = db.query(WeeklyReport).order_by(WeeklyReport.created_at.desc()).first()
             if latest and latest.synthesis_text:
-                parts.append(f"\nUltimo reporte semanal del equipo IA:\n{latest.synthesis_text[:1500]}")
+                parts.append(
+                    f"\nUltimo reporte semanal del equipo IA:\n{latest.synthesis_text[:1500]}"
+                )
         except Exception as exc:
             logger.debug("mote_context_weekly_report_failed", error=str(exc))
 
@@ -112,7 +113,9 @@ def _build_system_context(db: Session) -> str:
         )
         if top_corrections:
             lines = [f"  - {cat}: {cnt} veces" for cat, cnt in top_corrections]
-            parts.append("\nPatrones de correccion del Reviewer (ultimos 30 dias):\n" + "\n".join(lines))
+            parts.append(
+                "\nPatrones de correccion del Reviewer (ultimos 30 dias):\n" + "\n".join(lines)
+            )
     except Exception as exc:
         logger.debug("mote_context_corrections_failed", error=str(exc))
 
@@ -212,8 +215,12 @@ def _suggest_tools(name: str) -> str:
     """Suggest similar tool names when a tool is not found."""
     all_names = [t.name for t in registry.list_all()]
     # Simple substring matching
-    matches = [n for n in all_names if name.replace("_", "") in n.replace("_", "")
-               or any(w in n for w in name.split("_") if len(w) > 3)]
+    matches = [
+        n
+        for n in all_names
+        if name.replace("_", "") in n.replace("_", "")
+        or any(w in n for w in name.split("_") if len(w) > 3)
+    ]
     if matches:
         return f" Herramientas similares: {', '.join(matches[:5])}"
     return f" Herramientas disponibles: {', '.join(all_names)}"
@@ -299,7 +306,11 @@ async def run_agent_turn(
         if not contains_tool_call(full_response):
             # No tool calls — save assistant message and finish
             assistant_msg = _save_message(
-                db, conversation_id, "assistant", full_response, model=model,
+                db,
+                conversation_id,
+                "assistant",
+                full_response,
+                model=model,
             )
             db.commit()
             yield TurnComplete(message_id=assistant_msg.id)
@@ -310,7 +321,11 @@ async def run_agent_turn(
         if not tool_calls:
             # Failed to parse — save as regular message
             assistant_msg = _save_message(
-                db, conversation_id, "assistant", full_response, model=model,
+                db,
+                conversation_id,
+                "assistant",
+                full_response,
+                model=model,
             )
             db.commit()
             yield TurnComplete(message_id=assistant_msg.id)
@@ -318,7 +333,11 @@ async def run_agent_turn(
 
         # Save assistant message with tool calls
         assistant_msg = _save_message(
-            db, conversation_id, "assistant", full_response, model=model,
+            db,
+            conversation_id,
+            "assistant",
+            full_response,
+            model=model,
         )
 
         # Execute each tool call
@@ -330,7 +349,10 @@ async def run_agent_turn(
             # Check if confirmation is required
             if tool_def and tool_def.requires_confirmation:
                 _save_tool_call(
-                    db, assistant_msg.id, tc.name, tc.arguments,
+                    db,
+                    assistant_msg.id,
+                    tc.name,
+                    tc.arguments,
                     status="pending",
                 )
                 db.commit()
@@ -362,8 +384,12 @@ async def run_agent_turn(
             duration_ms = int((time.perf_counter() - start_time) * 1000)
 
             _save_tool_call(
-                db, assistant_msg.id, tc.name, tc.arguments,
-                result=result, error=error,
+                db,
+                assistant_msg.id,
+                tc.name,
+                tc.arguments,
+                result=result,
+                error=error,
                 status="failed" if error else "completed",
                 duration_ms=duration_ms,
             )

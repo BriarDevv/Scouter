@@ -36,6 +36,7 @@ def test_enrich_skips_already_enriched(db):
 
     with patch("app.workers.pipeline_tasks.enrich_lead") as mock_enrich:
         from app.workers.pipeline_tasks import task_enrich_lead
+
         result = task_enrich_lead(str(lead.id))
         assert result["status"] == "skipped"
         assert result["reason"] == "already_enriched"
@@ -59,6 +60,7 @@ def test_enrich_skip_chains_to_scoring(db):
 
     with patch("app.workers.pipeline_tasks.task_score_lead.delay") as mock_delay:
         from app.workers.pipeline_tasks import task_enrich_lead
+
         result = task_enrich_lead(
             str(lead.id),
             pipeline_run_id=pipeline_run_id,
@@ -88,6 +90,7 @@ def test_score_skips_already_scored(db):
 
     with patch("app.workers.pipeline_tasks.score_lead") as mock_score:
         from app.workers.pipeline_tasks import task_score_lead
+
         result = task_score_lead(str(lead.id))
         assert result["status"] == "skipped"
         assert result["reason"] == "already_scored"
@@ -112,6 +115,7 @@ def test_score_skip_chains_to_analysis(db):
 
     with patch("app.workers.pipeline_tasks.task_analyze_lead.delay") as mock_delay:
         from app.workers.pipeline_tasks import task_score_lead
+
         result = task_score_lead(
             str(lead.id),
             pipeline_run_id=pipeline_run_id,
@@ -142,6 +146,7 @@ def test_analyze_skips_already_analyzed(db):
 
     with patch("app.workers.pipeline_tasks.run_lead_analysis_step") as mock_analysis:
         from app.workers.pipeline_tasks import task_analyze_lead
+
         result = task_analyze_lead(str(lead.id))
         assert result["status"] == "skipped"
         assert result["reason"] == "already_analyzed"
@@ -167,6 +172,7 @@ def test_analyze_skip_high_chains_to_research(db):
 
     with patch("app.workers.research_tasks.task_research_lead.delay") as mock_delay:
         from app.workers.pipeline_tasks import task_analyze_lead
+
         result = task_analyze_lead(
             str(lead.id),
             pipeline_run_id=pipeline_run_id,
@@ -175,7 +181,9 @@ def test_analyze_skip_high_chains_to_research(db):
         assert result["status"] == "skipped"
         assert result["quality"] == "high"
         mock_delay.assert_called_once_with(
-            str(lead.id), pipeline_run_id, correlation_id,
+            str(lead.id),
+            pipeline_run_id,
+            correlation_id,
         )
 
 
@@ -198,6 +206,7 @@ def test_analyze_skip_non_high_chains_to_draft(db):
 
     with patch("app.workers.pipeline_tasks.task_generate_draft.delay") as mock_delay:
         from app.workers.pipeline_tasks import task_analyze_lead
+
         result = task_analyze_lead(
             str(lead.id),
             pipeline_run_id=pipeline_run_id,

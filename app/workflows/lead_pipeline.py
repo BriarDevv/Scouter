@@ -74,21 +74,13 @@ def run_lead_analysis_step(
     )
     evaluation_payload = evaluation.parsed
 
-    reasoning = (
-        evaluation_payload.reasoning
-        if evaluation_payload
-        else "LLM analysis unavailable"
-    )
+    reasoning = evaluation_payload.reasoning if evaluation_payload else "LLM analysis unavailable"
     suggested_angle = (
         evaluation_payload.suggested_angle
         if evaluation_payload
         else "General web development services"
     )
-    raw_quality = (
-        evaluation_payload.quality.lower().strip()
-        if evaluation_payload
-        else "unknown"
-    )
+    raw_quality = evaluation_payload.quality.lower().strip() if evaluation_payload else "unknown"
     if raw_quality not in ("high", "medium", "low"):
         logger.warning(
             "quality_normalized_to_unknown",
@@ -204,12 +196,10 @@ def run_draft_generation_step(
 ) -> OutreachDraftWorkflowResult:
     """Run the canonical draft generation workflow and optional automation."""
     workflow_result = run_outreach_draft_generation_workflow(
-        db, lead_id, pipeline_context_text=pipeline_context_text,
+        db,
+        lead_id,
+        pipeline_context_text=pipeline_context_text,
     )
-    if (
-        apply_automation
-        and workflow_result.status == "ok"
-        and workflow_result.draft_id
-    ):
+    if apply_automation and workflow_result.status == "ok" and workflow_result.draft_id:
         run_outreach_draft_automation(db, uuid.UUID(workflow_result.draft_id))
     return workflow_result

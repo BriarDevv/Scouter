@@ -15,6 +15,7 @@ def generate_reply_draft(db: Session, *, message_id: str) -> dict:
         return {"error": "ID de mensaje inválido (debe ser UUID)"}
 
     from app.services.inbox.reply_response_service import generate_reply_assistant_draft
+
     draft = generate_reply_assistant_draft(db, mid)
     if not draft:
         return {"error": "Mensaje no encontrado o sin contexto suficiente para generar respuesta"}
@@ -35,6 +36,7 @@ def send_reply_draft(db: Session, *, message_id: str) -> dict:
 
     try:
         from app.services.inbox.reply_send_service import send_reply_assistant_draft
+
         send_record = send_reply_assistant_draft(db, mid)
         db.commit()
     except Exception as exc:
@@ -46,30 +48,34 @@ def send_reply_draft(db: Session, *, message_id: str) -> dict:
     }
 
 
-registry.register(ToolDefinition(
-    name="generate_reply_draft",
-    description=(
-        "Generar un borrador de respuesta asistida por LLM para un mensaje entrante "
-        "(requiere confirmación — invoca al modelo)"
-    ),
-    parameters=[
-        ToolParameter("message_id", "string", "UUID del mensaje entrante"),
-    ],
-    category="replies",
-    requires_confirmation=True,
-    handler=generate_reply_draft,
-))
+registry.register(
+    ToolDefinition(
+        name="generate_reply_draft",
+        description=(
+            "Generar un borrador de respuesta asistida por LLM para un mensaje entrante "
+            "(requiere confirmación — invoca al modelo)"
+        ),
+        parameters=[
+            ToolParameter("message_id", "string", "UUID del mensaje entrante"),
+        ],
+        category="replies",
+        requires_confirmation=True,
+        handler=generate_reply_draft,
+    )
+)
 
-registry.register(ToolDefinition(
-    name="send_reply_draft",
-    description=(
-        "Enviar el borrador de respuesta asistida para un mensaje entrante "
-        "(requiere confirmación — envía email real)"
-    ),
-    parameters=[
-        ToolParameter("message_id", "string", "UUID del mensaje entrante"),
-    ],
-    category="replies",
-    requires_confirmation=True,
-    handler=send_reply_draft,
-))
+registry.register(
+    ToolDefinition(
+        name="send_reply_draft",
+        description=(
+            "Enviar el borrador de respuesta asistida para un mensaje entrante "
+            "(requiere confirmación — envía email real)"
+        ),
+        parameters=[
+            ToolParameter("message_id", "string", "UUID del mensaje entrante"),
+        ],
+        category="replies",
+        requires_confirmation=True,
+        handler=send_reply_draft,
+    )
+)

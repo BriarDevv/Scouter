@@ -235,7 +235,9 @@ def test_task_generate_draft_uses_shared_draft_generation_step(db, monkeypatch):
 
     captured: dict[str, object] = {}
 
-    def fake_run_draft_generation_step(db_session, lead_id, *, apply_automation=True, pipeline_context_text=""):
+    def fake_run_draft_generation_step(
+        db_session, lead_id, *, apply_automation=True, pipeline_context_text=""
+    ):
         captured["lead_id"] = str(lead_id)
         captured["apply_automation"] = apply_automation
         return type(

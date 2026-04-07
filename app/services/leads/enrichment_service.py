@@ -33,15 +33,32 @@ def _fetch_url(url: str) -> httpx.Response:
 
 _EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
 _JUNK_EMAIL_DOMAINS = {
-    "example.com", "email.com", "test.com", "placeholder.com",
-    "sentry.io", "sentry-next.wixpress.com", "wixpress.com",
-    "wordpress.com", "gravatar.com", "w3.org",
-    "ingest.de.sentry.io", "ingest.sentry.io",
+    "example.com",
+    "email.com",
+    "test.com",
+    "placeholder.com",
+    "sentry.io",
+    "sentry-next.wixpress.com",
+    "wixpress.com",
+    "wordpress.com",
+    "gravatar.com",
+    "w3.org",
+    "ingest.de.sentry.io",
+    "ingest.sentry.io",
 }
 _JUNK_EMAIL_PREFIXES = (
-    "noreply", "no-reply", "no_reply", "donotreply",
-    "notify", "notification", "alert", "mailer-daemon",
-    "tuemail", "youremail", "your-email", "tu-email",
+    "noreply",
+    "no-reply",
+    "no_reply",
+    "donotreply",
+    "notify",
+    "notification",
+    "alert",
+    "mailer-daemon",
+    "tuemail",
+    "youremail",
+    "your-email",
+    "tu-email",
 )
 
 
@@ -161,7 +178,14 @@ def _analyze_website(url: str) -> tuple[list[tuple[SignalType, str]], list[str]]
     return signals, emails
 
 
-_SOCIAL_MEDIA_DOMAINS = {"instagram.com", "facebook.com", "tiktok.com", "twitter.com", "x.com", "linkedin.com"}
+_SOCIAL_MEDIA_DOMAINS = {
+    "instagram.com",
+    "facebook.com",
+    "tiktok.com",
+    "twitter.com",
+    "x.com",
+    "linkedin.com",
+}
 
 
 def _is_social_media_url(url: str) -> bool:
@@ -191,6 +215,7 @@ def enrich_lead(db: Session, lead_id: uuid.UUID) -> Lead | None:
     if not lead.website_url and lead.instagram_url:
         try:
             from app.crawlers.instagram_scraper import scrape_instagram_bio_link
+
             bio_website = scrape_instagram_bio_link(lead.instagram_url)
             if bio_website:
                 lead.website_url = bio_website

@@ -18,11 +18,6 @@ from app.services.inbox.reply_draft_review_service import (
     ensure_reply_assistant_review_pending,
     get_reply_assistant_review_for_message,
 )
-from app.services.outreach.mail_service import (
-    DraftRecipientMissingError,
-    MailConfigurationError,
-    MailDisabledError,
-)
 from app.services.inbox.reply_response_service import (
     generate_reply_assistant_draft,
     get_inbound_message_with_reply_context,
@@ -36,6 +31,11 @@ from app.services.inbox.reply_send_service import (
     get_reply_send_status,
     send_reply_assistant_draft,
     update_reply_assistant_draft,
+)
+from app.services.outreach.mail_service import (
+    DraftRecipientMissingError,
+    MailConfigurationError,
+    MailDisabledError,
 )
 from app.services.pipeline.task_tracking_service import queue_task_run
 from app.workers.tasks import task_review_reply_assistant_draft
@@ -99,7 +99,9 @@ def send_reply_draft(message_id: uuid.UUID, db: Session = Depends(get_db)):
         raise HTTPException(status_code=503, detail=str(exc))
 
 
-@router.get("/{message_id}/draft-response/send-status", response_model=ReplyAssistantSendStatusResponse)
+@router.get(
+    "/{message_id}/draft-response/send-status", response_model=ReplyAssistantSendStatusResponse
+)
 def get_reply_draft_send_status(message_id: uuid.UUID, db: Session = Depends(get_db)):
     try:
         return get_reply_send_status(db, message_id)

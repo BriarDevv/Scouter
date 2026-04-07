@@ -3,6 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.db.session import get_db
 from app.mail.inbound_provider import InboundMailProviderError
 from app.schemas.inbound_mail import (
@@ -25,7 +26,6 @@ from app.services.inbox.reply_classification_service import (
     classify_inbound_message,
     classify_pending_inbound_messages,
 )
-from app.core.config import settings
 
 router = APIRouter(prefix="/mail/inbound", tags=["mail-inbound"])
 
@@ -42,7 +42,9 @@ def sync_inbound_mail(
     except InboundMailDisabledError:
         raise HTTPException(status_code=503, detail="Sincronización de mail inbound deshabilitada.")
     except InboundMailProviderError:
-        raise HTTPException(status_code=500, detail="Error de conexión con el servidor de mail. Revisá los logs.")
+        raise HTTPException(
+            status_code=500, detail="Error de conexión con el servidor de mail. Revisá los logs."
+        )
 
 
 @router.get("/messages", response_model=list[InboundMessageResponse])

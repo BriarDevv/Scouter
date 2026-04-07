@@ -1,10 +1,10 @@
+from helpers import create_sent_delivery, message_payload
+
 from app.llm.invocation_metadata import LLMInvocationMetadata
 from app.llm.types import LLMInvocationStatus
 from app.models.inbound_mail import InboundMailClassificationStatus
 from app.services.inbox.inbound_mail_service import sync_inbound_messages
 from app.services.inbox.reply_classification_service import VALID_REPLY_LABELS
-
-from helpers import create_sent_delivery, message_payload
 
 
 def _seed_inbound_message(
@@ -28,7 +28,9 @@ def _seed_inbound_message(
         def list_messages(self, *, limit: int):
             return [payload]
 
-    monkeypatch.setattr("app.services.inbox.inbound_mail_service.get_inbound_provider", lambda: FakeProvider())
+    monkeypatch.setattr(
+        "app.services.inbox.inbound_mail_service.get_inbound_provider", lambda: FakeProvider()
+    )
     message = sync_inbound_messages(db, limit=1)
     assert message.new_count == 1
     return payload
@@ -168,7 +170,9 @@ def test_classify_pending_endpoint_and_filter(client, db, monkeypatch):
         InboundMailClassificationStatus.CLASSIFIED.value
     }
     assert {item["classification_label"] for item in payload}.issubset(VALID_REPLY_LABELS)
-    escalated = [item for item in payload if item["classification_label"] == "needs_human_review"][0]
+    escalated = [item for item in payload if item["classification_label"] == "needs_human_review"][
+        0
+    ]
     assert escalated["should_escalate_reviewer"] is True
 
     filtered = client.get("/api/v1/mail/inbound/messages?classification_status=classified")

@@ -138,9 +138,7 @@ def review_inbound_reply_structured(
         or "No executor summary available",
         "next_action_suggestion": sanitize_field(next_action_suggestion)
         or "No executor suggestion available",
-        "should_escalate_reviewer": "true"
-        if should_escalate_reviewer
-        else "false",
+        "should_escalate_reviewer": "true" if should_escalate_reviewer else "false",
     }
     return client_module.invoke_structured(
         function_name="review_inbound_reply",
@@ -239,13 +237,10 @@ def generate_reply_assistant_draft_structured(
         or "No classification summary available",
         "next_action_suggestion": sanitize_field(next_action_suggestion)
         or "No next action suggestion available",
-        "should_escalate_reviewer": "true"
-        if should_escalate_reviewer
-        else "false",
+        "should_escalate_reviewer": "true" if should_escalate_reviewer else "false",
         "outbound_subject": sanitize_field(outbound_subject) or "Unknown",
         "outbound_body": sanitize_field(outbound_body) or "Unknown",
-        "thread_context": sanitize_field(thread_context)
-        or "No previous thread context available",
+        "thread_context": sanitize_field(thread_context) or "No previous thread context available",
         "from_email": sanitize_field(from_email) or "Unknown",
         "to_email": sanitize_field(to_email) or "Unknown",
         "subject": sanitize_field(subject) or "No subject",
@@ -254,8 +249,7 @@ def generate_reply_assistant_draft_structured(
         "signature_name": bc.get("signature_name") or "No especificado",
         "signature_role": bc.get("signature_role") or "No especificado",
         "signature_company": bc.get("signature_company") or "No especificado",
-        "brand_website_url": bc.get("website_url")
-        or "No proporcionado — NO inventar URLs",
+        "brand_website_url": bc.get("website_url") or "No proporcionado — NO inventar URLs",
         "signature_cta": bc.get("signature_cta") or "No especificado",
         "default_reply_tone": bc.get("default_reply_tone") or "profesional",
         "default_closing_line": bc.get("default_closing_line") or "No especificado",
@@ -366,21 +360,17 @@ def review_reply_assistant_draft_structured(
         or "No classification summary available",
         "next_action_suggestion": sanitize_field(next_action_suggestion)
         or "No next action suggestion available",
-        "reply_should_escalate_reviewer": "true"
-        if reply_should_escalate_reviewer
-        else "false",
+        "reply_should_escalate_reviewer": "true" if reply_should_escalate_reviewer else "false",
         "outbound_subject": sanitize_field(outbound_subject) or "Unknown",
         "outbound_body": sanitize_field(outbound_body) or "Unknown",
-        "thread_context": sanitize_field(thread_context)
-        or "No previous thread context available",
+        "thread_context": sanitize_field(thread_context) or "No previous thread context available",
         "from_email": sanitize_field(from_email) or "Unknown",
         "to_email": sanitize_field(to_email) or "Unknown",
         "subject": sanitize_field(subject) or "No subject",
         "body_text": sanitize_field(body_text) or "No body text available",
         "draft_subject": sanitize_field(draft_subject),
         "draft_body": sanitize_field(draft_body),
-        "draft_summary": sanitize_field(draft_summary)
-        or "No draft summary available",
+        "draft_summary": sanitize_field(draft_summary) or "No draft summary available",
         "suggested_tone": suggested_tone or "Unknown",
     }
     return client_module.invoke_structured(

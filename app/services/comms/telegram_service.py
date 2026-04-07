@@ -37,7 +37,11 @@ def get_credentials(db: Session) -> TelegramCredentials:
 
 
 _ALLOWED_FIELDS = {
-    "bot_username", "bot_token", "chat_id", "webhook_url", "webhook_secret",
+    "bot_username",
+    "bot_token",
+    "chat_id",
+    "webhook_url",
+    "webhook_secret",
 }
 _SECRET_FIELDS = {"bot_token", "webhook_secret"}
 
@@ -107,11 +111,15 @@ def send_message(
         return True
 
     try:
-        result = _call_telegram(token, "sendMessage", {
-            "chat_id": target_chat,
-            "text": text,
-            "parse_mode": parse_mode,
-        })
+        result = _call_telegram(
+            token,
+            "sendMessage",
+            {
+                "chat_id": target_chat,
+                "text": text,
+                "parse_mode": parse_mode,
+            },
+        )
         if result.get("ok"):
             logger.info("telegram_sent", chat_id=target_chat[:6] + "***")
             return True
@@ -171,7 +179,9 @@ def test_telegram(db: Session) -> dict:
 
         # If chat_id is set, try sending a test message
         if creds.chat_id:
-            send_ok = send_message(db, "✅ Scouter Telegram test — canal configurado correctamente.")
+            send_ok = send_message(
+                db, "✅ Scouter Telegram test — canal configurado correctamente."
+            )
             if not send_ok:
                 result = {
                     "ok": False,

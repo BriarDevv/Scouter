@@ -23,16 +23,10 @@ def get_agent_status(db: Session) -> dict:
     last_24h = now - timedelta(hours=24)
 
     # Mote status
-    latest_conversation = (
-        db.query(Conversation)
-        .order_by(Conversation.updated_at.desc())
-        .first()
-    )
+    latest_conversation = db.query(Conversation).order_by(Conversation.updated_at.desc()).first()
     mote_last_active = latest_conversation.updated_at if latest_conversation else None
     active_conversations = (
-        db.query(func.count(Conversation.id))
-        .filter(Conversation.is_active.is_(True))
-        .scalar()
+        db.query(func.count(Conversation.id)).filter(Conversation.is_active.is_(True)).scalar()
     ) or 0
 
     # Scout status (investigation threads in last 24h)
@@ -97,15 +91,11 @@ def get_agent_status(db: Session) -> dict:
 
     # Outcomes
     total_won = (
-        db.query(func.count(OutcomeSnapshot.id))
-        .filter(OutcomeSnapshot.outcome == "won")
-        .scalar()
+        db.query(func.count(OutcomeSnapshot.id)).filter(OutcomeSnapshot.outcome == "won").scalar()
         or 0
     )
     total_lost = (
-        db.query(func.count(OutcomeSnapshot.id))
-        .filter(OutcomeSnapshot.outcome == "lost")
-        .scalar()
+        db.query(func.count(OutcomeSnapshot.id)).filter(OutcomeSnapshot.outcome == "lost").scalar()
         or 0
     )
 
@@ -161,10 +151,7 @@ def get_agent_status(db: Session) -> dict:
 def get_recent_decisions(db: Session, limit: int) -> list[dict]:
     """Return recent AI decisions across all agents."""
     invocations = (
-        db.query(LLMInvocation)
-        .order_by(LLMInvocation.created_at.desc())
-        .limit(limit)
-        .all()
+        db.query(LLMInvocation).order_by(LLMInvocation.created_at.desc()).limit(limit).all()
     )
     return [
         {
@@ -323,12 +310,7 @@ def get_weekly_reports(db: Session, limit: int) -> list[dict]:
     """Return recent weekly AI team reports."""
     from app.models.weekly_report import WeeklyReport
 
-    reports = (
-        db.query(WeeklyReport)
-        .order_by(WeeklyReport.created_at.desc())
-        .limit(limit)
-        .all()
-    )
+    reports = db.query(WeeklyReport).order_by(WeeklyReport.created_at.desc()).limit(limit).all()
     return [
         {
             "id": str(r.id),

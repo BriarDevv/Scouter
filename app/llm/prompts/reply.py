@@ -6,7 +6,8 @@ from app.llm.prompts.system import ANTI_INJECTION_PREAMBLE
 # CLASSIFY_INBOUND_REPLY
 # ---------------------------------------------------------------------------
 
-CLASSIFY_INBOUND_REPLY_SYSTEM = """\
+CLASSIFY_INBOUND_REPLY_SYSTEM = (
+    """\
 You are the executor model for Scouter. Classify this inbound sales reply from a lead and produce a short operator-facing summary.
 
 Valid labels:
@@ -37,7 +38,9 @@ Respond ONLY with a JSON object:
   "confidence": 0.0,
   "next_action_suggestion": "short operator next step",
   "should_escalate_reviewer": false
-}""" + ANTI_INJECTION_PREAMBLE
+}"""
+    + ANTI_INJECTION_PREAMBLE
+)
 
 CLASSIFY_INBOUND_REPLY_DATA = """\
 <external_data>
@@ -63,7 +66,8 @@ Inbound reply:
 # GENERATE_REPLY_ASSISTANT_DRAFT
 # ---------------------------------------------------------------------------
 
-GENERATE_REPLY_ASSISTANT_DRAFT_SYSTEM = """\
+GENERATE_REPLY_ASSISTANT_DRAFT_SYSTEM = (
+    """\
 You are the executor model for Scouter. Draft a reply email for a real inbound sales reply.
 
 Rules:
@@ -86,7 +90,9 @@ Respond ONLY with a JSON object:
   "summary": "short operator-facing summary",
   "suggested_tone": "professional",
   "should_escalate_reviewer": false
-}""" + ANTI_INJECTION_PREAMBLE
+}"""
+    + ANTI_INJECTION_PREAMBLE
+)
 
 GENERATE_REPLY_ASSISTANT_DRAFT_DATA = """\
 <external_data>

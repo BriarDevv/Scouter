@@ -23,11 +23,11 @@ logger = get_logger(__name__)
 
 # -- Permission tiers --
 PERMISSION_TIERS: dict[str, int] = {
-    "resolve_notification": 1,    # Low risk
-    "mark_read_notifications": 1, # Low risk
-    "approve_draft": 2,           # Medium risk - sends email
-    "reject_draft": 2,            # Medium risk
-    "generate_draft": 3,          # Higher risk - creates content
+    "resolve_notification": 1,  # Low risk
+    "mark_read_notifications": 1,  # Low risk
+    "approve_draft": 2,  # Medium risk - sends email
+    "reject_draft": 2,  # Medium risk
+    "generate_draft": 3,  # Higher risk - creates content
 }
 
 
@@ -79,6 +79,7 @@ def execute_resolve_notification(db: Session, notification_id: str) -> str:
             return "ID de notificacion invalido."
 
         from app.services.notifications.notification_service import update_notification_status
+
         notif = update_notification_status(db, uid, "resolved")
         if notif is None:
             return "No se encontro la notificacion con ese ID."
@@ -94,6 +95,7 @@ def execute_mark_read_all(db: Session) -> str:
     """Mark all unread notifications as read."""
     try:
         from app.services.notifications.notification_service import bulk_update_notifications
+
         count = bulk_update_notifications(db, action="mark_read")
         logger.info("wa_action_mark_read_all", count=count)
         return "Se marcaron " + str(count) + " notificaciones como leidas."
@@ -135,7 +137,9 @@ def _execute_draft_status_change(
 def execute_approve_draft(db: Session, draft_id: str) -> str:
     """Approve an outreach draft."""
     try:
-        return _execute_draft_status_change(db, draft_id, DraftStatus.APPROVED, "wa_action_approve_draft")
+        return _execute_draft_status_change(
+            db, draft_id, DraftStatus.APPROVED, "wa_action_approve_draft"
+        )
     except Exception as exc:
         logger.error("wa_action_approve_draft_failed", error=str(exc))
         return "Error al aprobar el borrador. Intenta de nuevo."
@@ -144,7 +148,9 @@ def execute_approve_draft(db: Session, draft_id: str) -> str:
 def execute_reject_draft(db: Session, draft_id: str) -> str:
     """Reject an outreach draft."""
     try:
-        return _execute_draft_status_change(db, draft_id, DraftStatus.REJECTED, "wa_action_reject_draft")
+        return _execute_draft_status_change(
+            db, draft_id, DraftStatus.REJECTED, "wa_action_reject_draft"
+        )
     except Exception as exc:
         logger.error("wa_action_reject_draft_failed", error=str(exc))
         return "Error al rechazar el borrador. Intenta de nuevo."
@@ -161,6 +167,7 @@ def execute_generate_draft(db: Session, lead_name: str) -> str:
         # Try to use the outreach service to generate the draft
         try:
             from app.services.outreach.outreach_service import generate_outreach_draft
+
             draft = generate_outreach_draft(db, lead.id)
             if draft:
                 logger.info("wa_action_generate_draft", lead_name=lead_name, draft_id=str(draft.id))
@@ -168,7 +175,9 @@ def execute_generate_draft(db: Session, lead_name: str) -> str:
         except ImportError as exc:
             logger.warning("wa_action_generate_draft_import_error", error=str(exc))
         except Exception as exc:
-            logger.warning("wa_action_generate_draft_service_error", lead_name=lead_name, error=str(exc))
+            logger.warning(
+                "wa_action_generate_draft_service_error", lead_name=lead_name, error=str(exc)
+            )
 
         # Fallback: queue placeholder
         logger.info("wa_action_generate_draft_queued", lead_name=lead_name)

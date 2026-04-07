@@ -30,7 +30,9 @@ class OperationalSettings(Base):
     signature_cta: Mapped[str | None] = mapped_column(String, nullable=True)
     signature_include_portfolio: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     signature_is_solo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    default_outreach_tone: Mapped[str] = mapped_column(String, default="profesional", nullable=False)
+    default_outreach_tone: Mapped[str] = mapped_column(
+        String, default="profesional", nullable=False
+    )
     default_reply_tone: Mapped[str] = mapped_column(String, default="profesional", nullable=False)
     default_closing_line: Mapped[str | None] = mapped_column(String, nullable=True)
 
@@ -57,7 +59,9 @@ class OperationalSettings(Base):
     reviewer_confidence_threshold: Mapped[float] = mapped_column(Float, default=0.7, nullable=False)
     prioritize_quote_replies: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     prioritize_meeting_replies: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    allow_reply_assistant_generation: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    allow_reply_assistant_generation: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False
+    )
     use_reviewer_for_labels: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
 
     updated_at: Mapped[datetime] = mapped_column(
@@ -73,8 +77,10 @@ class OperationalSettings(Base):
 
     # ── WhatsApp alerts (non-secret config only; secrets in WhatsAppCredentials)
     whatsapp_alerts_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    whatsapp_min_severity: Mapped[str] = mapped_column(String, default='high', nullable=False)
-    whatsapp_categories: Mapped[list] = mapped_column(JSON, default=lambda: ['business', 'security'], nullable=False)
+    whatsapp_min_severity: Mapped[str] = mapped_column(String, default="high", nullable=False)
+    whatsapp_categories: Mapped[list] = mapped_column(
+        JSON, default=lambda: ["business", "security"], nullable=False
+    )
     # ── Telegram alerts (non-secret config; secrets in TelegramCredentials)
     telegram_alerts_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 

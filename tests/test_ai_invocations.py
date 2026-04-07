@@ -103,9 +103,7 @@ def test_lead_quality_structured_fallback_marks_failure_explicitly(db, monkeypat
     assert row.error == "ollama unavailable"
 
 
-def test_commercial_brief_structured_marks_heuristic_parse_as_degraded(
-    db, monkeypatch
-):
+def test_commercial_brief_structured_marks_heuristic_parse_as_degraded(db, monkeypatch):
     clear_last_invocation()
 
     def fake_chat(system_prompt, user_prompt, role, format_schema=None):
@@ -235,9 +233,7 @@ def test_generate_brief_and_review_use_typed_invocation_seam(db, monkeypatch):
 
     db.expire_all()
     invocation_rows = (
-        db.query(LLMInvocation)
-        .filter(LLMInvocation.target_type == "commercial_brief")
-        .all()
+        db.query(LLMInvocation).filter(LLMInvocation.target_type == "commercial_brief").all()
     )
     prompt_ids = {row.prompt_id for row in invocation_rows}
     assert "commercial_brief.generate" in prompt_ids

@@ -22,12 +22,48 @@ def test_setup_readiness_endpoint_aggregates_runtime_and_config(client, db, monk
         "app.services.settings.setup_service.get_setup_status",
         lambda db: {
             "steps": [
-                {"id": "brand", "label": "Marca", "status": "complete", "detail": None, "action": None},
-                {"id": "whatsapp", "label": "WhatsApp", "status": "complete", "detail": None, "action": None},
-                {"id": "mail_out", "label": "SMTP", "status": "complete", "detail": None, "action": None},
-                {"id": "mail_in", "label": "IMAP", "status": "complete", "detail": None, "action": None},
-                {"id": "telegram", "label": "Telegram", "status": "incomplete", "detail": None, "action": None},
-                {"id": "rules", "label": "Reglas", "status": "complete", "detail": None, "action": None},
+                {
+                    "id": "brand",
+                    "label": "Marca",
+                    "status": "complete",
+                    "detail": None,
+                    "action": None,
+                },
+                {
+                    "id": "whatsapp",
+                    "label": "WhatsApp",
+                    "status": "complete",
+                    "detail": None,
+                    "action": None,
+                },
+                {
+                    "id": "mail_out",
+                    "label": "SMTP",
+                    "status": "complete",
+                    "detail": None,
+                    "action": None,
+                },
+                {
+                    "id": "mail_in",
+                    "label": "IMAP",
+                    "status": "complete",
+                    "detail": None,
+                    "action": None,
+                },
+                {
+                    "id": "telegram",
+                    "label": "Telegram",
+                    "status": "incomplete",
+                    "detail": None,
+                    "action": None,
+                },
+                {
+                    "id": "rules",
+                    "label": "Reglas",
+                    "status": "complete",
+                    "detail": None,
+                    "action": None,
+                },
             ],
             "overall": "ready",
             "ready_to_send": True,
@@ -87,12 +123,48 @@ def test_setup_readiness_endpoint_blocks_unsupported_platform_and_derives_wizard
         "app.services.settings.setup_service.get_setup_status",
         lambda db: {
             "steps": [
-                {"id": "brand", "label": "Marca", "status": "incomplete", "detail": "Falta", "action": "Completar"},
-                {"id": "whatsapp", "label": "WhatsApp", "status": "incomplete", "detail": "Falta", "action": "Configurar"},
-                {"id": "mail_out", "label": "SMTP", "status": "warning", "detail": "Sin probar", "action": "Probar"},
-                {"id": "mail_in", "label": "IMAP", "status": "incomplete", "detail": "Falta", "action": "Completar"},
-                {"id": "telegram", "label": "Telegram", "status": "incomplete", "detail": "Falta", "action": "Configurar"},
-                {"id": "rules", "label": "Reglas", "status": "complete", "detail": None, "action": None},
+                {
+                    "id": "brand",
+                    "label": "Marca",
+                    "status": "incomplete",
+                    "detail": "Falta",
+                    "action": "Completar",
+                },
+                {
+                    "id": "whatsapp",
+                    "label": "WhatsApp",
+                    "status": "incomplete",
+                    "detail": "Falta",
+                    "action": "Configurar",
+                },
+                {
+                    "id": "mail_out",
+                    "label": "SMTP",
+                    "status": "warning",
+                    "detail": "Sin probar",
+                    "action": "Probar",
+                },
+                {
+                    "id": "mail_in",
+                    "label": "IMAP",
+                    "status": "incomplete",
+                    "detail": "Falta",
+                    "action": "Completar",
+                },
+                {
+                    "id": "telegram",
+                    "label": "Telegram",
+                    "status": "incomplete",
+                    "detail": "Falta",
+                    "action": "Configurar",
+                },
+                {
+                    "id": "rules",
+                    "label": "Reglas",
+                    "status": "complete",
+                    "detail": None,
+                    "action": None,
+                },
             ],
             "overall": "incomplete",
             "ready_to_send": False,
@@ -155,11 +227,12 @@ def test_setup_action_preflight_runs_whitelisted_command(client, monkeypatch):
     assert captured["timeout"] == 120
 
 
-
 def test_setup_readiness_exposes_update_action_only_when_autopull_is_possible(
     client, db, monkeypatch
 ):
-    monkeypatch.setattr("app.services.settings.setup_service._current_platform", lambda: "windows-wsl")
+    monkeypatch.setattr(
+        "app.services.settings.setup_service._current_platform", lambda: "windows-wsl"
+    )
     monkeypatch.setattr(
         "app.services.settings.setup_service.get_system_health",
         lambda db: {

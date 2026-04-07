@@ -20,12 +20,16 @@ ACTIVE_STATUSES = ("running", "queued", "retrying", "stopping")
 def sweep_orphan_pipelines(db) -> int:
     """Find PipelineRun records stuck in 'running' with no activity for 30+ minutes."""
     orphan_cutoff = datetime.now(UTC) - ORPHAN_THRESHOLD
-    orphans = db.execute(
-        select(PipelineRun).where(
-            PipelineRun.status == "running",
-            PipelineRun.updated_at < orphan_cutoff,
+    orphans = (
+        db.execute(
+            select(PipelineRun).where(
+                PipelineRun.status == "running",
+                PipelineRun.updated_at < orphan_cutoff,
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     count = 0
     for pipeline_run in orphans:
@@ -51,12 +55,16 @@ def sweep_stale_tasks(session_factory=None) -> dict:
 
     with factory() as db:
         # Sweep stale TaskRuns
-        stale = db.execute(
-            select(TaskRun).where(
-                TaskRun.status.in_(ACTIVE_STATUSES),
-                TaskRun.updated_at < cutoff,
+        stale = (
+            db.execute(
+                select(TaskRun).where(
+                    TaskRun.status.in_(ACTIVE_STATUSES),
+                    TaskRun.updated_at < cutoff,
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         task_count = 0
         for task_run in stale:
@@ -76,12 +84,16 @@ def sweep_stale_tasks(session_factory=None) -> dict:
             )
 
         # Sweep stale PipelineRuns
-        stale_pipelines = db.execute(
-            select(PipelineRun).where(
-                PipelineRun.status.in_(ACTIVE_STATUSES),
-                PipelineRun.updated_at < pipeline_cutoff,
+        stale_pipelines = (
+            db.execute(
+                select(PipelineRun).where(
+                    PipelineRun.status.in_(ACTIVE_STATUSES),
+                    PipelineRun.updated_at < pipeline_cutoff,
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         pipeline_count = 0
         for pipeline_run in stale_pipelines:
@@ -107,15 +119,21 @@ def sweep_stale_tasks(session_factory=None) -> dict:
         batch_review_count = 0
         try:
             from sqlalchemy import inspect as sa_inspect
+
             if sa_inspect(db.bind).has_table("batch_reviews"):
                 from app.models.batch_review import BatchReview
+
                 batch_review_cutoff = datetime.now(UTC) - timedelta(minutes=10)
-                stuck_reviews = db.execute(
-                    select(BatchReview).where(
-                        BatchReview.status.in_(["generating", "reviewing"]),
-                        BatchReview.updated_at < batch_review_cutoff,
+                stuck_reviews = (
+                    db.execute(
+                        select(BatchReview).where(
+                            BatchReview.status.in_(["generating", "reviewing"]),
+                            BatchReview.updated_at < batch_review_cutoff,
+                        )
                     )
-                ).scalars().all()
+                    .scalars()
+                    .all()
+                )
                 for review in stuck_reviews:
                     old_status = review.status
                     review.status = "failed"
@@ -134,7 +152,12 @@ def sweep_stale_tasks(session_factory=None) -> dict:
         if task_count or pipeline_count or orphan_count or batch_review_count:
             db.commit()
 
-    result = {"tasks_failed": task_count, "pipelines_failed": pipeline_count, "orphans_failed": orphan_count, "batch_reviews_failed": batch_review_count}
+    result = {
+        "tasks_failed": task_count,
+        "pipelines_failed": pipeline_count,
+        "orphans_failed": orphan_count,
+        "batch_reviews_failed": batch_review_count,
+    }
     logger.info("janitor_sweep_done", **result)
     return result
 

@@ -37,9 +37,7 @@ class RequestContextMiddleware:
 
         headers = Headers(scope=scope)
         request_id = _normalize_or_generate(headers.get(REQUEST_ID_HEADER))
-        correlation_id = _normalize_or_generate(
-            headers.get(CORRELATION_ID_HEADER) or request_id
-        )
+        correlation_id = _normalize_or_generate(headers.get(CORRELATION_ID_HEADER) or request_id)
 
         structlog.contextvars.clear_contextvars()
         structlog.contextvars.bind_contextvars(

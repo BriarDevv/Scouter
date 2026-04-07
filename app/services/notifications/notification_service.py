@@ -64,7 +64,9 @@ def create_notification(
     if source_kind and source_id:
         cutoff = datetime.now(timezone.utc) - _RATE_LIMIT_WINDOW
         recent = db.execute(
-            select(func.count()).select_from(Notification).where(
+            select(func.count())
+            .select_from(Notification)
+            .where(
                 Notification.type == type,
                 Notification.source_kind == source_kind,
                 Notification.source_id == source_id,
@@ -144,9 +146,9 @@ def list_notifications(
 
     total = db.execute(count_q).scalar_one()
     unread_count = db.execute(
-        select(func.count()).select_from(Notification).where(
-            Notification.status == NotificationStatus.UNREAD
-        )
+        select(func.count())
+        .select_from(Notification)
+        .where(Notification.status == NotificationStatus.UNREAD)
     ).scalar_one()
 
     items = list(
@@ -154,7 +156,9 @@ def list_notifications(
             q.order_by(Notification.created_at.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
-        ).scalars().all()
+        )
+        .scalars()
+        .all()
     )
     return items, total, unread_count
 
@@ -171,7 +175,14 @@ def get_notification_counts(db: Session) -> dict:
         .group_by(Notification.category, Notification.severity)
     ).all()
 
-    result = {"total_unread": 0, "business": 0, "system": 0, "security": 0, "critical": 0, "high": 0}
+    result = {
+        "total_unread": 0,
+        "business": 0,
+        "system": 0,
+        "security": 0,
+        "critical": 0,
+        "high": 0,
+    }
     for cat, sev, cnt in rows:
         result["total_unread"] += cnt
         if cat in result:
@@ -240,6 +251,7 @@ def bulk_update_notifications(
 def _get_ops_settings(db: Session):
     """Return the singleton OperationalSettings row, creating if needed."""
     from app.services.settings.operational_settings_service import get_or_create
+
     return get_or_create(db)
 
 
@@ -263,7 +275,10 @@ def _maybe_dispatch_whatsapp(db: Session, notif: Notification) -> None:
 
     try:
         from app.services.comms.whatsapp_service import send_alert
-        result = send_alert(db, title=notif.title, message=notif.message, severity=notif.severity.value)
+
+        result = send_alert(
+            db, title=notif.title, message=notif.message, severity=notif.severity.value
+        )
         notif.channel_state = {
             **(notif.channel_state or {}),
             "whatsapp": "sent" if result else "failed",
@@ -298,7 +313,10 @@ def _maybe_dispatch_telegram(db: Session, notif: Notification) -> None:
 
     try:
         from app.services.comms.telegram_service import send_alert
-        result = send_alert(db, title=notif.title, message=notif.message, severity=notif.severity.value)
+
+        result = send_alert(
+            db, title=notif.title, message=notif.message, severity=notif.severity.value
+        )
         notif.channel_state = {
             **(notif.channel_state or {}),
             "telegram": "sent" if result else "failed",

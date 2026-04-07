@@ -34,12 +34,20 @@ def list_notifs(
     db=Depends(get_db),
 ):
     items, total, unread_count = list_notifications(
-        db, page=page, page_size=page_size, category=category,
-        severity=severity, status=status, type=type,
+        db,
+        page=page,
+        page_size=page_size,
+        category=category,
+        severity=severity,
+        status=status,
+        type=type,
     )
     return NotificationListResponse(
         items=[_to_response(n) for n in items],
-        total=total, page=page, page_size=page_size, unread_count=unread_count,
+        total=total,
+        page=page,
+        page_size=page_size,
+        unread_count=unread_count,
     )
 
 

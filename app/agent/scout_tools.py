@@ -26,7 +26,14 @@ _BOOKING_RE = re.compile(
     r"booksy|calendly|reservar|turnero|appointy|setmore|acuityscheduling",
     re.IGNORECASE,
 )
-_JUNK_EMAIL_DOMAINS = {"example.com", "sentry.io", "wixpress.com", "w3.org", "schema.org", "googleapis.com"}
+_JUNK_EMAIL_DOMAINS = {
+    "example.com",
+    "sentry.io",
+    "wixpress.com",
+    "w3.org",
+    "schema.org",
+    "googleapis.com",
+}
 
 # Max text we extract from a page to stay within token budget
 _MAX_PAGE_TEXT = 3000
@@ -125,6 +132,7 @@ def _extract_text_from_html(html: str) -> str:
     """Extract visible text from HTML, stripping tags."""
     try:
         from bs4 import BeautifulSoup
+
         soup = BeautifulSoup(html, "html.parser")
         for tag in soup(["script", "style", "nav", "footer", "header"]):
             tag.decompose()
@@ -154,7 +162,10 @@ def browse_page(url: str) -> dict[str, Any]:
 
     # SSRF protection — block private IPs and dangerous schemes
     if _validate_url(url) is None:
-        return {"error": "URL blocked by security policy (private IP or dangerous scheme)", "url": url}
+        return {
+            "error": "URL blocked by security policy (private IP or dangerous scheme)",
+            "url": url,
+        }
 
     result = _try_playwright(url)
     if result is None:
@@ -170,7 +181,9 @@ def browse_page(url: str) -> dict[str, Any]:
         title = title_match.group(1).strip() if title_match else ""
 
     meta_desc = ""
-    meta_match = re.search(r'<meta[^>]*name=["\']description["\'][^>]*content=["\']([^"\']*)', html, re.IGNORECASE)
+    meta_match = re.search(
+        r'<meta[^>]*name=["\']description["\'][^>]*content=["\']([^"\']*)', html, re.IGNORECASE
+    )
     if meta_match:
         meta_desc = meta_match.group(1).strip()
 
@@ -196,7 +209,12 @@ def extract_contacts(url: str) -> dict[str, Any]:
         url = "https://" + url
 
     if _validate_url(url) is None:
-        return {"error": "URL blocked by security policy", "emails": [], "phones": [], "whatsapp": False}
+        return {
+            "error": "URL blocked by security policy",
+            "emails": [],
+            "phones": [],
+            "whatsapp": False,
+        }
 
     result = _try_playwright(url)
     if result is None:
@@ -277,11 +295,16 @@ def take_screenshot(url: str) -> dict[str, Any]:
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
-        return {"url": url, "screenshot_path": None, "error": "Playwright not installed — screenshot unavailable"}
+        return {
+            "url": url,
+            "screenshot_path": None,
+            "error": "Playwright not installed — screenshot unavailable",
+        }
 
     try:
         import os
         from datetime import datetime
+
         artifacts_dir = os.path.join("storage", "screenshots")
         os.makedirs(artifacts_dir, exist_ok=True)
         filename = f"scout_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{hash(url) % 10000}.png"
@@ -335,6 +358,7 @@ def finish_investigation(findings: str) -> dict[str, Any]:
     The findings parameter should be a JSON string with the investigation summary.
     """
     import json
+
     try:
         parsed = json.loads(findings) if isinstance(findings, str) else findings
         return {"status": "completed", "findings": parsed}
@@ -350,35 +374,65 @@ SCOUT_TOOLS: dict[str, dict] = {
     "browse_page": {
         "handler": browse_page,
         "description": "Browse a web page and get its content, title, meta, WhatsApp detection, and booking system detection.",
-        "parameters": [{"name": "url", "type": "string", "description": "URL to browse", "required": True}],
+        "parameters": [
+            {"name": "url", "type": "string", "description": "URL to browse", "required": True}
+        ],
     },
     "extract_contacts": {
         "handler": extract_contacts,
         "description": "Extract emails, phones, and WhatsApp links from a web page.",
-        "parameters": [{"name": "url", "type": "string", "description": "URL to extract contacts from", "required": True}],
+        "parameters": [
+            {
+                "name": "url",
+                "type": "string",
+                "description": "URL to extract contacts from",
+                "required": True,
+            }
+        ],
     },
     "check_technical": {
         "handler": check_technical,
         "description": "Check technical quality of a website: SSL, mobile, speed, SEO basics.",
-        "parameters": [{"name": "url", "type": "string", "description": "URL to check", "required": True}],
+        "parameters": [
+            {"name": "url", "type": "string", "description": "URL to check", "required": True}
+        ],
     },
     "take_screenshot": {
         "handler": take_screenshot,
         "description": "Take a screenshot of a web page (requires Playwright).",
-        "parameters": [{"name": "url", "type": "string", "description": "URL to screenshot", "required": True}],
+        "parameters": [
+            {"name": "url", "type": "string", "description": "URL to screenshot", "required": True}
+        ],
     },
     "search_competitors": {
         "handler": search_competitors,
         "description": "Search for competitors in the same industry and city.",
         "parameters": [
-            {"name": "industry", "type": "string", "description": "Industry/business type", "required": True},
-            {"name": "city", "type": "string", "description": "City to search in", "required": True},
+            {
+                "name": "industry",
+                "type": "string",
+                "description": "Industry/business type",
+                "required": True,
+            },
+            {
+                "name": "city",
+                "type": "string",
+                "description": "City to search in",
+                "required": True,
+            },
         ],
     },
     "finish_investigation": {
         "handler": finish_investigation,
         "description": "Complete the investigation and return your findings as a JSON summary.",
-        "parameters": [{"name": "findings", "type": "string", "description": "JSON string with investigation findings", "required": True}],
+        "parameters": [
+            {
+                "name": "findings",
+                "type": "string",
+                "description": "JSON string with investigation findings",
+                "required": True,
+            }
+        ],
     },
 }
 
@@ -386,6 +440,7 @@ SCOUT_TOOLS: dict[str, dict] = {
 def build_scout_tools_schema() -> str:
     """Build Hermes 3 compatible tool schema for Scout's toolset."""
     import json
+
     tools_xml = []
     for name, tool in SCOUT_TOOLS.items():
         schema = {

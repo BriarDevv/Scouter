@@ -9,8 +9,8 @@ from app.llm.invocation_metadata import clear_last_invocation, pop_last_invocati
 from app.models.lead import Lead, LeadStatus
 from app.models.outreach import DraftStatus, LogAction, OutreachDraft, OutreachLog
 from app.models.outreach_delivery import OutreachDelivery
-from app.services.outreach.generator import generate_draft_content
 from app.services.leads.lead_service import is_suppressed
+from app.services.outreach.generator import generate_draft_content
 
 logger = get_logger(__name__)
 
@@ -60,17 +60,19 @@ def generate_outreach_draft(
     db.flush()
 
     # Log generation
-    db.add(OutreachLog(
-        lead_id=lead.id,
-        draft_id=draft.id,
-        action=LogAction.GENERATED,
-        actor="system",
-        detail=(
-            "ai_degraded=true; ai_fallback_used=true"
-            if generation_metadata and generation_metadata.get("degraded")
-            else None
-        ),
-    ))
+    db.add(
+        OutreachLog(
+            lead_id=lead.id,
+            draft_id=draft.id,
+            action=LogAction.GENERATED,
+            actor="system",
+            detail=(
+                "ai_degraded=true; ai_fallback_used=true"
+                if generation_metadata and generation_metadata.get("degraded")
+                else None
+            ),
+        )
+    )
 
     lead.status = LeadStatus.DRAFT_READY
 
@@ -82,9 +84,7 @@ def generate_outreach_draft(
         "outreach_draft_generated",
         lead_id=str(lead_id),
         draft_id=str(draft.id),
-        ai_fallback_used=(
-            bool(generation_metadata and generation_metadata.get("fallback_used"))
-        ),
+        ai_fallback_used=(bool(generation_metadata and generation_metadata.get("fallback_used"))),
         ai_degraded=bool(generation_metadata and generation_metadata.get("degraded")),
     )
     return draft
@@ -113,7 +113,11 @@ def list_drafts(
         stmt = stmt.where(OutreachDraft.status == status)
     if lead_id:
         stmt = stmt.where(OutreachDraft.lead_id == lead_id)
-    stmt = stmt.order_by(OutreachDraft.generated_at.desc()).offset((page - 1) * page_size).limit(page_size)
+    stmt = (
+        stmt.order_by(OutreachDraft.generated_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
     return list(db.execute(stmt).scalars().all())
 
 
@@ -208,7 +212,9 @@ def generate_whatsapp_draft(
 
     if not lead.phone:
         logger.warning(
-            "wa_draft_skipped_no_phone", lead_id=str(lead_id), business=lead.business_name,
+            "wa_draft_skipped_no_phone",
+            lead_id=str(lead_id),
+            business=lead.business_name,
         )
         return None
 
@@ -229,17 +235,19 @@ def generate_whatsapp_draft(
     db.add(draft)
     db.flush()
 
-    db.add(OutreachLog(
-        lead_id=lead.id,
-        draft_id=draft.id,
-        action=LogAction.GENERATED,
-        actor="system",
-        detail=(
-            "ai_degraded=true; ai_fallback_used=true"
-            if generation_metadata and generation_metadata.get("degraded")
-            else None
-        ),
-    ))
+    db.add(
+        OutreachLog(
+            lead_id=lead.id,
+            draft_id=draft.id,
+            action=LogAction.GENERATED,
+            actor="system",
+            detail=(
+                "ai_degraded=true; ai_fallback_used=true"
+                if generation_metadata and generation_metadata.get("degraded")
+                else None
+            ),
+        )
+    )
 
     if commit:
         db.commit()
@@ -249,9 +257,7 @@ def generate_whatsapp_draft(
         "wa_draft_generated",
         lead_id=str(lead_id),
         draft_id=str(draft.id),
-        ai_fallback_used=(
-            bool(generation_metadata and generation_metadata.get("fallback_used"))
-        ),
+        ai_fallback_used=(bool(generation_metadata and generation_metadata.get("fallback_used"))),
         ai_degraded=bool(generation_metadata and generation_metadata.get("degraded")),
     )
     return draft
@@ -260,8 +266,9 @@ def generate_whatsapp_draft(
 def send_whatsapp_draft(db: Session, draft_id: uuid.UUID) -> "OutreachDelivery":
     """Send an approved WhatsApp draft via Kapso."""
     from datetime import datetime, timezone
+
     from app.models.outreach_delivery import OutreachDelivery
-    from app.services.comms.kapso_service import KapsoError, send_whatsapp_message
+    from app.services.comms.kapso_service import send_whatsapp_message
 
     draft = db.get(OutreachDraft, draft_id)
     if not draft:
@@ -290,16 +297,22 @@ def send_whatsapp_draft(db: Session, draft_id: uuid.UUID) -> "OutreachDelivery":
     draft.status = DraftStatus.SENT
     draft.sent_at = datetime.now(timezone.utc)
 
-    db.add(OutreachLog(
-        lead_id=lead.id,
-        draft_id=draft.id,
-        action=LogAction.SENT,
-        actor="system",
-    ))
+    db.add(
+        OutreachLog(
+            lead_id=lead.id,
+            draft_id=draft.id,
+            action=LogAction.SENT,
+            actor="system",
+        )
+    )
 
     if lead.status not in (
-        LeadStatus.CONTACTED, LeadStatus.OPENED, LeadStatus.REPLIED,
-        LeadStatus.MEETING, LeadStatus.WON, LeadStatus.LOST,
+        LeadStatus.CONTACTED,
+        LeadStatus.OPENED,
+        LeadStatus.REPLIED,
+        LeadStatus.MEETING,
+        LeadStatus.WON,
+        LeadStatus.LOST,
     ):
         lead.status = LeadStatus.CONTACTED
 

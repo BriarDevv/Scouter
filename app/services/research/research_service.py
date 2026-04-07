@@ -66,22 +66,16 @@ def run_research(db: Session, lead_id: uuid.UUID) -> LeadResearchReport | None:
 
                         soup = BeautifulSoup(resp.text[:50000], "lxml")
                         html_meta["title"] = (
-                            soup.title.string.strip()
-                            if soup.title and soup.title.string
-                            else None
+                            soup.title.string.strip() if soup.title and soup.title.string else None
                         )
                         meta_desc = soup.find("meta", attrs={"name": "description"})
                         html_meta["description"] = (
-                            meta_desc["content"]
-                            if meta_desc and meta_desc.get("content")
-                            else None
+                            meta_desc["content"] if meta_desc and meta_desc.get("content") else None
                         )
                         og_tags = {}
                         for tag in soup.find_all(
                             "meta",
-                            attrs={
-                                "property": lambda x: x and x.startswith("og:")
-                            },
+                            attrs={"property": lambda x: x and x.startswith("og:")},
                         ):
                             og_tags[tag["property"]] = tag.get("content", "")
                         if og_tags:
@@ -96,11 +90,13 @@ def run_research(db: Session, lead_id: uuid.UUID) -> LeadResearchReport | None:
                         ):
                             report.whatsapp_detected = True
                             report.whatsapp_confidence = ConfidenceLevel.PROBABLE
-                            signals.append({
-                                "type": "whatsapp_detected",
-                                "detail": "WhatsApp link/reference found on website",
-                                "confidence": 0.7,
-                            })
+                            signals.append(
+                                {
+                                    "type": "whatsapp_detected",
+                                    "detail": "WhatsApp link/reference found on website",
+                                    "confidence": 0.7,
+                                }
+                            )
                         else:
                             report.whatsapp_detected = False
                             report.whatsapp_confidence = ConfidenceLevel.UNKNOWN
@@ -108,33 +104,41 @@ def run_research(db: Session, lead_id: uuid.UUID) -> LeadResearchReport | None:
                         # Check SSL
                         is_https = lead.website_url.startswith("https")
                         if is_https:
-                            signals.append({
-                                "type": "has_ssl",
-                                "detail": "HTTPS detected",
-                                "confidence": 1.0,
-                            })
+                            signals.append(
+                                {
+                                    "type": "has_ssl",
+                                    "detail": "HTTPS detected",
+                                    "confidence": 1.0,
+                                }
+                            )
                     else:
                         report.website_confidence = ConfidenceLevel.MISMATCH
-                        signals.append({
-                            "type": "website_error",
-                            "detail": f"HTTP {resp.status_code}",
-                            "confidence": 0.9,
-                        })
+                        signals.append(
+                            {
+                                "type": "website_error",
+                                "detail": f"HTTP {resp.status_code}",
+                                "confidence": 0.9,
+                            }
+                        )
             except Exception as exc:
                 report.website_confidence = ConfidenceLevel.MISMATCH
-                signals.append({
-                    "type": "website_error",
-                    "detail": str(exc)[:200],
-                    "confidence": 0.8,
-                })
+                signals.append(
+                    {
+                        "type": "website_error",
+                        "detail": str(exc)[:200],
+                        "confidence": 0.8,
+                    }
+                )
         else:
             report.website_exists = False
             report.website_confidence = ConfidenceLevel.CONFIRMED
-            signals.append({
-                "type": "no_website",
-                "detail": "No website URL in lead data",
-                "confidence": 1.0,
-            })
+            signals.append(
+                {
+                    "type": "no_website",
+                    "detail": "No website URL in lead data",
+                    "confidence": 1.0,
+                }
+            )
 
         # Instagram analysis
         if lead.instagram_url:
@@ -149,6 +153,7 @@ def run_research(db: Session, lead_id: uuid.UUID) -> LeadResearchReport | None:
         if not report.whatsapp_detected and lead.instagram_url:
             try:
                 import httpx as _httpx
+
                 with _httpx.Client(timeout=10, follow_redirects=True) as _client:
                     ig_resp = _client.get(
                         lead.instagram_url,
@@ -156,14 +161,20 @@ def run_research(db: Session, lead_id: uuid.UUID) -> LeadResearchReport | None:
                     )
                     if ig_resp.status_code < 400:
                         ig_text = ig_resp.text[:100000].lower()
-                        if "wa.me" in ig_text or "api.whatsapp.com" in ig_text or "whatsapp" in ig_text:
+                        if (
+                            "wa.me" in ig_text
+                            or "api.whatsapp.com" in ig_text
+                            or "whatsapp" in ig_text
+                        ):
                             report.whatsapp_detected = True
                             report.whatsapp_confidence = ConfidenceLevel.CONFIRMED
-                            signals.append({
-                                "type": "whatsapp_confirmed",
-                                "detail": "WhatsApp link/mention found on Instagram page",
-                                "confidence": 1.0,
-                            })
+                            signals.append(
+                                {
+                                    "type": "whatsapp_confirmed",
+                                    "detail": "WhatsApp link/mention found on Instagram page",
+                                    "confidence": 1.0,
+                                }
+                            )
             except Exception:
                 pass  # Non-critical: fall through to phone heuristic
 
@@ -172,11 +183,13 @@ def run_research(db: Session, lead_id: uuid.UUID) -> LeadResearchReport | None:
         if not report.whatsapp_detected and lead.phone:
             report.whatsapp_detected = True
             report.whatsapp_confidence = ConfidenceLevel.PROBABLE
-            signals.append({
-                "type": "whatsapp_probable",
-                "detail": f"Phone detected ({lead.phone[:6]}...) — WhatsApp probable",
-                "confidence": 0.8,
-            })
+            signals.append(
+                {
+                    "type": "whatsapp_probable",
+                    "detail": f"Phone detected ({lead.phone[:6]}...) — WhatsApp probable",
+                    "confidence": 0.8,
+                }
+            )
 
         report.detected_signals_json = signals
         report.html_metadata_json = html_meta if html_meta else None

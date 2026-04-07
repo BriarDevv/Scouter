@@ -19,13 +19,13 @@ os.environ["REDIS_URL"] = "redis://localhost:6379/0"
 atexit.register(_pg.stop)
 
 # Now safe to import app modules — they'll pick up the Postgres URL
+from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import create_engine  # noqa: E402
 from sqlalchemy.orm import Session, sessionmaker  # noqa: E402
-from fastapi.testclient import TestClient  # noqa: E402
 
-from app.db.session import get_db  # noqa: E402
-from app.db.base import Base  # noqa: E402
 import app.models  # noqa: E402, F401 — register all models with Base.metadata
+from app.db.base import Base  # noqa: E402
+from app.db.session import get_db  # noqa: E402
 from app.main import app  # noqa: E402
 
 engine = create_engine(_pg.get_connection_url())
@@ -47,6 +47,7 @@ def db():
         # Seed OperationalSettings with auto_classify_inbound=False to match
         # the env-var default and keep tests deterministic.
         from app.models.settings import OperationalSettings
+
         ops = OperationalSettings(id=1, auto_classify_inbound=False, reviewer_enabled=True)
         session.add(ops)
         session.commit()

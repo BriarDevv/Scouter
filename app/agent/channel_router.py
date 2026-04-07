@@ -7,7 +7,6 @@ all events and returns a plain-text response.
 from __future__ import annotations
 
 import asyncio
-import uuid
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -17,9 +16,6 @@ from app.agent.events import (
     AgentError,
     ConfirmationRequired,
     TextDelta,
-    ToolResult,
-    ToolStart,
-    TurnComplete,
 )
 from app.core.logging import get_logger
 from app.models.conversation import Conversation
@@ -33,9 +29,7 @@ MAX_RESPONSE_LENGTH = {
 }
 
 
-def _find_or_create_conversation(
-    db: Session, channel: str, channel_id: str
-) -> Conversation:
+def _find_or_create_conversation(db: Session, channel: str, channel_id: str) -> Conversation:
     """Find the most recent active conversation, or create one.
 
     For telegram/whatsapp: joins the most recent active conversation
@@ -108,8 +102,7 @@ def handle_channel_message(
                 text_parts.append(event.content)
             elif isinstance(event, ConfirmationRequired):
                 confirmations.append(
-                    f"⚠️ {event.description_es}\n"
-                    "Respondé SI para confirmar o NO para cancelar."
+                    f"⚠️ {event.description_es}\nRespondé SI para confirmar o NO para cancelar."
                 )
             elif isinstance(event, AgentError):
                 text_parts.append(f"\n❌ Error: {event.error}")
@@ -119,6 +112,7 @@ def handle_channel_message(
         if loop.is_running():
             # Already in an async context — create a new task
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 pool.submit(lambda: asyncio.run(_collect_events())).result()
         else:

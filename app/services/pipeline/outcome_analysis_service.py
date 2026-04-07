@@ -50,7 +50,7 @@ def analyze_signal_correlations(db: Session) -> list[dict]:
 
     signal_stats: dict[str, dict] = {}
     for s in snapshots:
-        for sig in (s.signals_json or []):
+        for sig in s.signals_json or []:
             if sig not in signal_stats:
                 signal_stats[sig] = {"signal": sig, "won": 0, "lost": 0, "total": 0}
             signal_stats[sig][s.outcome] += 1
@@ -119,12 +119,14 @@ def generate_scoring_recommendations(db: Session) -> list[dict]:
     """
     summary = get_outcome_summary(db)
     if not summary["sufficient_data"]:
-        return [{
-            "type": "info",
-            "description": f"Datos insuficientes: {summary['total']} outcomes (necesitamos ≥50)",
-            "evidence": f"{summary['won']} WON, {summary['lost']} LOST",
-            "action": "Seguir acumulando outcomes",
-        }]
+        return [
+            {
+                "type": "info",
+                "description": f"Datos insuficientes: {summary['total']} outcomes (necesitamos ≥50)",
+                "evidence": f"{summary['won']} WON, {summary['lost']} LOST",
+                "action": "Seguir acumulando outcomes",
+            }
+        ]
 
     signal_data = analyze_signal_correlations(db)
     avg_win_rate = summary["win_rate"]
@@ -136,21 +138,25 @@ def generate_scoring_recommendations(db: Session) -> list[dict]:
 
         diff = sig["win_rate"] - avg_win_rate
         if diff > 0.15:
-            recommendations.append({
-                "type": "increase_weight",
-                "signal": sig["signal"],
-                "description": f'{sig["signal"]} tiene win rate {sig["win_rate"]:.0%} vs promedio {avg_win_rate:.0%}',
-                "evidence": f'{sig["won"]} WON / {sig["total"]} total',
-                "action": f"Aumentar peso de {sig['signal']} en scoring (+5 a +10 puntos)",
-            })
+            recommendations.append(
+                {
+                    "type": "increase_weight",
+                    "signal": sig["signal"],
+                    "description": f"{sig['signal']} tiene win rate {sig['win_rate']:.0%} vs promedio {avg_win_rate:.0%}",
+                    "evidence": f"{sig['won']} WON / {sig['total']} total",
+                    "action": f"Aumentar peso de {sig['signal']} en scoring (+5 a +10 puntos)",
+                }
+            )
         elif diff < -0.15:
-            recommendations.append({
-                "type": "decrease_weight",
-                "signal": sig["signal"],
-                "description": f'{sig["signal"]} tiene win rate {sig["win_rate"]:.0%} vs promedio {avg_win_rate:.0%}',
-                "evidence": f'{sig["won"]} WON / {sig["total"]} total',
-                "action": f"Reducir peso de {sig['signal']} en scoring (-5 puntos)",
-            })
+            recommendations.append(
+                {
+                    "type": "decrease_weight",
+                    "signal": sig["signal"],
+                    "description": f"{sig['signal']} tiene win rate {sig['win_rate']:.0%} vs promedio {avg_win_rate:.0%}",
+                    "evidence": f"{sig['won']} WON / {sig['total']} total",
+                    "action": f"Reducir peso de {sig['signal']} en scoring (-5 puntos)",
+                }
+            )
 
     # Industry recommendations
     industry_data = analyze_industry_performance(db)
@@ -158,13 +164,15 @@ def generate_scoring_recommendations(db: Session) -> list[dict]:
         if ind["total"] < 5:
             continue
         if ind["win_rate"] > avg_win_rate + 0.2:
-            recommendations.append({
-                "type": "high_value_industry",
-                "signal": ind["industry"],
-                "description": f'Industria "{ind["industry"]}" convierte a {ind["win_rate"]:.0%}',
-                "evidence": f'{ind["won"]} WON / {ind["total"]} total',
-                "action": f'Agregar "{ind["industry"]}" a HIGH_VALUE_INDUSTRIES si no está',
-            })
+            recommendations.append(
+                {
+                    "type": "high_value_industry",
+                    "signal": ind["industry"],
+                    "description": f'Industria "{ind["industry"]}" convierte a {ind["win_rate"]:.0%}',
+                    "evidence": f"{ind['won']} WON / {ind['total']} total",
+                    "action": f'Agregar "{ind["industry"]}" a HIGH_VALUE_INDUSTRIES si no está',
+                }
+            )
 
     # Correction pattern recommendations
     corrections = (
@@ -174,16 +182,20 @@ def generate_scoring_recommendations(db: Session) -> list[dict]:
         .all()
     )
     if corrections:
-        category_counts = Counter(c[0].value if hasattr(c[0], "value") else c[0] for c in corrections)
+        category_counts = Counter(
+            c[0].value if hasattr(c[0], "value") else c[0] for c in corrections
+        )
         for cat, count in category_counts.most_common(3):
             if count >= 5:
-                recommendations.append({
-                    "type": "prompt_improvement",
-                    "signal": cat,
-                    "description": f'Reviewer corrigio "{cat}" {count} veces en las ultimas 100 reviews',
-                    "evidence": f"{count} correcciones",
-                    "action": f"Mejorar prompt del Executor para reducir errores de {cat}",
-                })
+                recommendations.append(
+                    {
+                        "type": "prompt_improvement",
+                        "signal": cat,
+                        "description": f'Reviewer corrigio "{cat}" {count} veces en las ultimas 100 reviews',
+                        "evidence": f"{count} correcciones",
+                        "action": f"Mejorar prompt del Executor para reducir errores de {cat}",
+                    }
+                )
 
     logger.info(
         "scoring_recommendations_generated",

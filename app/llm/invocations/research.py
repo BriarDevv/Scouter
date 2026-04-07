@@ -22,9 +22,7 @@ def _dossier_fallback(
     city: str | None,
 ) -> DossierResult:
     return DossierResult(
-        business_description=(
-            f"{business_name} - negocio en {city or 'ubicacion desconocida'}"
-        ),
+        business_description=(f"{business_name} - negocio en {city or 'ubicacion desconocida'}"),
         digital_maturity="unknown",
         key_findings=[],
         improvement_opportunities=[],
@@ -153,9 +151,7 @@ def generate_commercial_brief_structured(
         "llm_summary": sanitize_field(llm_summary) or "Sin resumen",
         "signals": ", ".join(signals) if signals else "Ninguna",
         "research_data": (
-            json.dumps(research_data, ensure_ascii=False)
-            if research_data
-            else "Sin datos"
+            json.dumps(research_data, ensure_ascii=False) if research_data else "Sin datos"
         ),
         "pricing_matrix": json.dumps(pricing_matrix, ensure_ascii=False),
     }

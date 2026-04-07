@@ -36,7 +36,9 @@ def auto_send_draft(db: Session, draft_id: uuid.UUID) -> OutboundConversation | 
         return None
 
     if draft.status != DraftStatus.APPROVED:
-        logger.debug("auto_send_skip_not_approved", draft_id=str(draft_id), status=draft.status.value)
+        logger.debug(
+            "auto_send_skip_not_approved", draft_id=str(draft_id), status=draft.status.value
+        )
         return None
 
     lead = db.get(Lead, draft.lead_id)
@@ -95,7 +97,9 @@ def _send_whatsapp(db: Session, draft: OutreachDraft, lead: Lead) -> OutboundCon
 
         # Select template based on lead signals
         raw_signals = lead.signals or []
-        signals = [s.signal_type.value if hasattr(s, "signal_type") else str(s) for s in raw_signals]
+        signals = [
+            s.signal_type.value if hasattr(s, "signal_type") else str(s) for s in raw_signals
+        ]
         template = select_template(signals)
         params = build_template_parameters(
             template,
@@ -146,6 +150,7 @@ def _send_whatsapp(db: Session, draft: OutreachDraft, lead: Lead) -> OutboundCon
         # Emit notification
         try:
             from app.services.notifications.notification_emitter import on_outreach_sent
+
             on_outreach_sent(
                 db,
                 lead_id=lead.id,
@@ -191,11 +196,13 @@ def _send_email(db: Session, draft: OutreachDraft, lead: Lead) -> OutboundConver
 
         send_draft(db, draft.id)
         conversation.status = ConversationStatus.SENT
-        conversation.messages_json = [{
-            "role": "mote",
-            "content": f"Subject: {draft.subject}\n\n{draft.body}",
-            "timestamp": datetime.now(UTC).isoformat(),
-        }]
+        conversation.messages_json = [
+            {
+                "role": "mote",
+                "content": f"Subject: {draft.subject}\n\n{draft.body}",
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+        ]
         db.flush()
 
         logger.info(
@@ -223,5 +230,7 @@ def operator_takeover(db: Session, conversation_id: uuid.UUID) -> OutboundConver
     convo.status = ConversationStatus.OPERATOR_TOOK_OVER
     db.flush()
 
-    logger.info("operator_takeover", conversation_id=str(conversation_id), lead_id=str(convo.lead_id))
+    logger.info(
+        "operator_takeover", conversation_id=str(conversation_id), lead_id=str(convo.lead_id)
+    )
     return convo

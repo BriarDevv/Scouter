@@ -14,10 +14,9 @@ from app.agent.events import (
     ToolStart,
     TurnComplete,
 )
-from app.db.session import get_db
 from app.core.logging import get_logger
+from app.db.session import get_db
 from app.schemas.chat import (
-    ConfirmationRequest,
     ConversationDetail,
     ConversationResponse,
     ConversationSummary,
@@ -40,9 +39,7 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
-@router.post(
-    "/conversations", response_model=ConversationResponse, status_code=201
-)
+@router.post("/conversations", response_model=ConversationResponse, status_code=201)
 def create(db: Session = Depends(get_db)):
     conv = create_conversation(db)
     db.commit()
@@ -54,9 +51,7 @@ def list_all(
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
 ) -> list[ConversationSummary]:
-    return [
-        ConversationSummary(**c) for c in list_conversations(db, limit=limit)
-    ]
+    return [ConversationSummary(**c) for c in list_conversations(db, limit=limit)]
 
 
 @router.get("/conversations/{conversation_id}")
@@ -105,9 +100,7 @@ def get_detail(
 
 
 @router.delete("/conversations/{conversation_id}", status_code=204)
-def delete(
-    conversation_id: uuid.UUID, db: Session = Depends(get_db)
-):
+def delete(conversation_id: uuid.UUID, db: Session = Depends(get_db)):
     if not delete_conversation(db, conversation_id):
         raise HTTPException(404, "Conversación no encontrada")
     db.commit()
@@ -125,9 +118,7 @@ async def send_message(
 
     # Auto-generate title from first message
     if not conv.title:
-        update_conversation_title(
-            db, conversation_id, generate_title(body.content)
-        )
+        update_conversation_title(db, conversation_id, generate_title(body.content))
         db.commit()
 
     async def event_stream():
@@ -170,10 +161,7 @@ async def send_message(
                     )
         except Exception as exc:
             logger.error("agent_stream_error", error=str(exc))
-            yield (
-                "event: error\n"
-                f"data: {json.dumps({'error': str(exc)})}\n\n"
-            )
+            yield (f"event: error\ndata: {json.dumps({'error': str(exc)})}\n\n")
 
     return StreamingResponse(
         event_stream(),

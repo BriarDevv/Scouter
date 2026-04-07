@@ -3,8 +3,8 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db
 from app.api.request_context import get_correlation_id
+from app.db.session import get_db
 from app.schemas.lead import LeadResponse
 from app.schemas.task_tracking import TaskEnqueueResponse
 from app.services.leads.enrichment_service import enrich_lead

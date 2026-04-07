@@ -1,5 +1,9 @@
 from app.llm.roles import LLMRole
-from app.models.reply_assistant import ReplyAssistantDraft, ReplyAssistantReview, ReplyAssistantReviewStatus
+from app.models.reply_assistant import (
+    ReplyAssistantDraft,
+    ReplyAssistantReview,
+    ReplyAssistantReviewStatus,
+)
 from app.services.inbox.reply_draft_review_service import (
     get_reply_assistant_review_for_message,
     review_reply_assistant_draft_with_reviewer,

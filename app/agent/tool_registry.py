@@ -203,8 +203,7 @@ class ToolRegistry:
         for param in tool.parameters:
             if param.required and param.name not in args:
                 raise ValueError(
-                    f"Herramienta '{name}': parámetro obligatorio "
-                    f"'{param.name}' no proporcionado"
+                    f"Herramienta '{name}': parámetro obligatorio '{param.name}' no proporcionado"
                 )
 
         # Coerce and validate provided args
@@ -229,8 +228,7 @@ class ToolRegistry:
                     value = target_type(value)
                 except (TypeError, ValueError) as exc:
                     raise ValueError(
-                        f"Herramienta '{name}': no se pudo convertir "
-                        f"'{key}' a {param.type}: {exc}"
+                        f"Herramienta '{name}': no se pudo convertir '{key}' a {param.type}: {exc}"
                     ) from exc
 
             validated[key] = value

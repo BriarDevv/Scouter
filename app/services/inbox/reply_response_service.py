@@ -8,13 +8,13 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core.logging import get_logger
 from app.llm.client import generate_reply_assistant_draft as llm_generate_reply_assistant_draft
-from app.services.settings.operational_settings_service import get_brand_context
-from app.services.inbox.reply_send_service import attach_reply_send_metadata
 from app.llm.resolver import resolve_model_for_role
 from app.llm.roles import LLMRole
 from app.models.inbound_mail import InboundMessage
 from app.models.outreach_delivery import OutreachDelivery
 from app.models.reply_assistant import ReplyAssistantDraft, ReplyAssistantDraftStatus
+from app.services.inbox.reply_send_service import attach_reply_send_metadata
+from app.services.settings.operational_settings_service import get_brand_context
 
 logger = get_logger(__name__)
 
@@ -76,8 +76,12 @@ def get_inbound_message_with_reply_context(
             joinedload(InboundMessage.lead),
             joinedload(InboundMessage.delivery).joinedload(OutreachDelivery.draft),
             joinedload(InboundMessage.draft),
-            selectinload(InboundMessage.reply_assistant_draft).joinedload(ReplyAssistantDraft.review),
-            selectinload(InboundMessage.reply_assistant_draft).selectinload(ReplyAssistantDraft.sends),
+            selectinload(InboundMessage.reply_assistant_draft).joinedload(
+                ReplyAssistantDraft.review
+            ),
+            selectinload(InboundMessage.reply_assistant_draft).selectinload(
+                ReplyAssistantDraft.sends
+            ),
         )
         .where(InboundMessage.id == message_id)
     )
@@ -125,7 +129,8 @@ def generate_reply_assistant_draft(
         draft = existing
         # Guard: block regeneration if a send is active or completed
         from app.models.reply_assistant_send import ReplyAssistantSendStatus
-        latest_send = draft.latest_send if hasattr(draft, 'latest_send') and draft.sends else None
+
+        latest_send = draft.latest_send if hasattr(draft, "latest_send") and draft.sends else None
         if latest_send and latest_send.status in (
             ReplyAssistantSendStatus.SENDING,
             ReplyAssistantSendStatus.SENT,
@@ -201,7 +206,9 @@ def _build_thread_context(message: InboundMessage) -> str:
 
     ordered_messages = sorted(
         thread.messages,
-        key=lambda item: item.received_at.isoformat() if item.received_at else item.created_at.isoformat(),
+        key=lambda item: (
+            item.received_at.isoformat() if item.received_at else item.created_at.isoformat()
+        ),
     )
     context_lines: list[str] = []
     for item in ordered_messages[-3:]:

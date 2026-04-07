@@ -6,7 +6,8 @@ from app.llm.prompts.system import ANTI_INJECTION_PREAMBLE
 # GENERATE_OUTREACH_EMAIL
 # ---------------------------------------------------------------------------
 
-GENERATE_OUTREACH_EMAIL_SYSTEM = """\
+GENERATE_OUTREACH_EMAIL_SYSTEM = (
+    """\
 You are a professional copywriter. Write a cold outreach email for a prospect.
 
 Rules:
@@ -33,7 +34,9 @@ Respond ONLY with a JSON object:
 {
   "subject": "Email subject line",
   "body": "Full email body"
-}""" + ANTI_INJECTION_PREAMBLE
+}"""
+    + ANTI_INJECTION_PREAMBLE
+)
 
 GENERATE_OUTREACH_EMAIL_DATA = """\
 <external_data>
@@ -70,7 +73,9 @@ Sender context (operator configuration, trusted):
 # GENERATE_WHATSAPP_DRAFT
 # ---------------------------------------------------------------------------
 
-GENERATE_WHATSAPP_DRAFT_SYSTEM = ANTI_INJECTION_PREAMBLE + """
+GENERATE_WHATSAPP_DRAFT_SYSTEM = (
+    ANTI_INJECTION_PREAMBLE
+    + """
 Sos un experto en ventas de servicios de desarrollo web. Generá un mensaje de WhatsApp
 corto y conversacional en español rioplatense (Argentina) para contactar a un posible cliente.
 
@@ -89,6 +94,7 @@ Respondé SOLO con JSON:
   "body": "El mensaje de WhatsApp completo"
 }
 """
+)
 
 GENERATE_WHATSAPP_DRAFT_DATA = """
 <external_data>

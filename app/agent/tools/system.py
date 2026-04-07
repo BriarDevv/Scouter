@@ -1,10 +1,10 @@
 """System tools — health check and current time."""
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from app.agent.tool_registry import ToolDefinition, ToolParameter, registry
+from app.agent.tool_registry import ToolDefinition, registry
 from app.services.dashboard.health_service import get_system_health
 
 
@@ -26,16 +26,20 @@ def get_current_time() -> dict:
     }
 
 
-registry.register(ToolDefinition(
-    name="health_check",
-    description="Verificar el estado de salud del sistema (base de datos, Redis, Ollama, Celery)",
-    category="system",
-    handler=health_check,
-))
+registry.register(
+    ToolDefinition(
+        name="health_check",
+        description="Verificar el estado de salud del sistema (base de datos, Redis, Ollama, Celery)",
+        category="system",
+        handler=health_check,
+    )
+)
 
-registry.register(ToolDefinition(
-    name="get_current_time",
-    description="Obtener la fecha y hora actual del servidor",
-    category="system",
-    handler=get_current_time,
-))
+registry.register(
+    ToolDefinition(
+        name="get_current_time",
+        description="Obtener la fecha y hora actual del servidor",
+        category="system",
+        handler=get_current_time,
+    )
+)

@@ -1,12 +1,12 @@
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import case, func as sa_func, select
+from sqlalchemy import case, select
+from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.lead import Lead, LeadStatus
 from app.models.outreach import LogAction, OutreachDraft, OutreachLog
-
 
 PIPELINE_STAGE_META = (
     (LeadStatus.NEW, "Nuevos", "#94a3b8"),
@@ -98,18 +98,15 @@ def _last_lead_at(db: Session) -> str | None:
     normalized = _normalize_timestamp(result)
     return normalized.isoformat() if normalized else None
 
+
 def _status_at_or_beyond(stage: LeadStatus):
     """Return a SQL CASE expression: 1 if lead has reached this stage, else 0."""
     target_rank = PIPELINE_STAGE_ORDER[stage]
-    matching = [
-        s for s, rank in PIPELINE_STAGE_ORDER.items() if rank >= target_rank
-    ]
+    matching = [s for s, rank in PIPELINE_STAGE_ORDER.items() if rank >= target_rank]
     # Also include LOST (counts as having reached CONTACTED)
     if target_rank <= PIPELINE_STAGE_ORDER.get(LeadStatus.CONTACTED, 99):
         matching.append(LeadStatus.LOST)
-    return sa_func.sum(
-        case((Lead.status.in_(matching), 1), else_=0)
-    )
+    return sa_func.sum(case((Lead.status.in_(matching), 1), else_=0))
 
 
 def get_dashboard_stats(db: Session, *, leads: list[Lead] | None = None) -> dict:
@@ -133,7 +130,9 @@ def get_dashboard_stats(db: Session, *, leads: list[Lead] | None = None) -> dict
             _status_at_or_beyond(LeadStatus.MEETING).label("meetings"),
             sa_func.sum(case((Lead.status == LeadStatus.WON, 1), else_=0)).label("won"),
             sa_func.sum(case((Lead.status == LeadStatus.LOST, 1), else_=0)).label("lost"),
-            sa_func.sum(case((Lead.status == LeadStatus.SUPPRESSED, 1), else_=0)).label("suppressed"),
+            sa_func.sum(case((Lead.status == LeadStatus.SUPPRESSED, 1), else_=0)).label(
+                "suppressed"
+            ),
         )
     ).one()
 
@@ -147,9 +146,7 @@ def get_dashboard_stats(db: Session, *, leads: list[Lead] | None = None) -> dict
     # Pipeline velocity: avg days from created_at to updated_at for won/lost leads
     velocity_row = db.execute(
         select(
-            sa_func.avg(
-                sa_func.extract("epoch", Lead.updated_at - Lead.created_at) / 86400
-            )
+            sa_func.avg(sa_func.extract("epoch", Lead.updated_at - Lead.created_at) / 86400)
         ).where(Lead.status.in_([LeadStatus.WON, LeadStatus.LOST]))
     ).scalar()
 
@@ -231,7 +228,9 @@ def get_pipeline_breakdown(db: Session) -> list[dict]:
 
     first_count = stage_counts[0]["count"] if stage_counts else 0
     for stage in stage_counts:
-        stage["percentage"] = round(_safe_rate(stage["count"], first_count), 4) if first_count else 0.0
+        stage["percentage"] = (
+            round(_safe_rate(stage["count"], first_count), 4) if first_count else 0.0
+        )
     return stage_counts
 
 
@@ -292,7 +291,9 @@ def get_industry_breakdown(db: Session, *, leads: list[Lead] | None = None) -> l
                 "conversion_rate": round(_safe_rate(won, contacted), 4),
             }
         )
-    return sorted(result, key=lambda item: (-item["conversion_rate"], -item["count"], item["industry"]))
+    return sorted(
+        result, key=lambda item: (-item["conversion_rate"], -item["count"], item["industry"])
+    )
 
 
 def get_city_breakdown(db: Session, *, leads: list[Lead] | None = None) -> list[dict]:
@@ -339,7 +340,9 @@ def get_source_performance(db: Session, *, leads: list[Lead] | None = None) -> l
                 "conversion_rate": round(_safe_rate(won, contacted), 4),
             }
         )
-    return sorted(result, key=lambda item: (-item["conversion_rate"], -item["leads"], item["source"]))
+    return sorted(
+        result, key=lambda item: (-item["conversion_rate"], -item["leads"], item["source"])
+    )
 
 
 def get_recent_activity(db: Session, limit: int = 20) -> list[OutreachLog]:

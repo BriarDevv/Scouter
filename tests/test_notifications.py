@@ -4,29 +4,32 @@ import uuid
 
 import pytest
 
-from app.models.notification import Notification, NotificationCategory, NotificationSeverity, NotificationStatus
+from app.models.notification import (
+    NotificationCategory,
+    NotificationSeverity,
+    NotificationStatus,
+)
+from app.services.notifications.notification_emitter import (
+    on_high_score_lead,
+    on_reply_classified,
+    on_security_event,
+    on_send_failed,
+    on_sync_failed,
+)
 from app.services.notifications.notification_service import (
+    bulk_update_notifications,
     create_notification,
     get_notification_counts,
     list_notifications,
     update_notification_status,
-    bulk_update_notifications,
 )
-from app.services.notifications.notification_emitter import (
-    on_reply_classified,
-    on_high_score_lead,
-    on_send_failed,
-    on_sync_failed,
-    on_security_event,
-)
-
 
 # ---------------------------------------------------------------------------
 # Notification service tests
 # ---------------------------------------------------------------------------
 
-class TestNotificationService:
 
+class TestNotificationService:
     def test_create_notification(self, db):
         notif = create_notification(
             db,
@@ -45,12 +48,22 @@ class TestNotificationService:
 
     def test_dedup_by_key(self, db):
         n1 = create_notification(
-            db, type="test", category="business", severity="info",
-            title="A", message="A", dedup_key="unique_key_1",
+            db,
+            type="test",
+            category="business",
+            severity="info",
+            title="A",
+            message="A",
+            dedup_key="unique_key_1",
         )
         n2 = create_notification(
-            db, type="test", category="business", severity="info",
-            title="B", message="B", dedup_key="unique_key_1",
+            db,
+            type="test",
+            category="business",
+            severity="info",
+            title="B",
+            message="B",
+            dedup_key="unique_key_1",
         )
         assert n1 is not None
         assert n2 is None
@@ -60,9 +73,14 @@ class TestNotificationService:
         results = []
         for i in range(5):
             n = create_notification(
-                db, type="rate_test", category="system", severity="warning",
-                title=f"Rate {i}", message=f"Rate {i}",
-                source_kind="test", source_id=source_id,
+                db,
+                type="rate_test",
+                category="system",
+                severity="warning",
+                title=f"Rate {i}",
+                message=f"Rate {i}",
+                source_kind="test",
+                source_id=source_id,
             )
             results.append(n)
 
@@ -70,9 +88,15 @@ class TestNotificationService:
         assert len(created) == 3  # rate limit is 3 per 15 min window
 
     def test_list_with_filters(self, db):
-        create_notification(db, type="a", category="business", severity="high", title="Biz", message="x")
-        create_notification(db, type="b", category="security", severity="critical", title="Sec", message="y")
-        create_notification(db, type="c", category="system", severity="info", title="Sys", message="z")
+        create_notification(
+            db, type="a", category="business", severity="high", title="Biz", message="x"
+        )
+        create_notification(
+            db, type="b", category="security", severity="critical", title="Sec", message="y"
+        )
+        create_notification(
+            db, type="c", category="system", severity="info", title="Sys", message="z"
+        )
 
         items, total, unread = list_notifications(db, category="security")
         assert total == 1
@@ -84,8 +108,12 @@ class TestNotificationService:
 
     def test_update_status(self, db):
         notif = create_notification(
-            db, type="status_test", category="business", severity="info",
-            title="Update Me", message="test",
+            db,
+            type="status_test",
+            category="business",
+            severity="info",
+            title="Update Me",
+            message="test",
         )
         updated = update_notification_status(db, notif.id, "read")
         assert updated.status == NotificationStatus.READ
@@ -98,16 +126,26 @@ class TestNotificationService:
     def test_bulk_mark_read(self, db):
         for i in range(3):
             create_notification(
-                db, type="bulk_test", category="business", severity="info",
-                title=f"Bulk {i}", message="x",
+                db,
+                type="bulk_test",
+                category="business",
+                severity="info",
+                title=f"Bulk {i}",
+                message="x",
             )
         affected = bulk_update_notifications(db, action="mark_read", category="business")
         assert affected == 3
 
     def test_counts(self, db):
-        create_notification(db, type="a", category="business", severity="high", title="A", message="x")
-        create_notification(db, type="b", category="security", severity="critical", title="B", message="y")
-        create_notification(db, type="c", category="system", severity="info", title="C", message="z")
+        create_notification(
+            db, type="a", category="business", severity="high", title="A", message="x"
+        )
+        create_notification(
+            db, type="b", category="security", severity="critical", title="B", message="y"
+        )
+        create_notification(
+            db, type="c", category="system", severity="info", title="C", message="z"
+        )
 
         counts = get_notification_counts(db)
         assert counts["total_unread"] == 3
@@ -121,14 +159,18 @@ class TestNotificationService:
 # Notification emitter tests
 # ---------------------------------------------------------------------------
 
-class TestNotificationEmitter:
 
+class TestNotificationEmitter:
     def test_reply_interested_emits(self, db):
         msg_id = uuid.uuid4()
         on_reply_classified(
-            db, message_id=msg_id, label="interested",
-            business_name="Cafe Test", from_email="test@example.com",
-            confidence=0.9, should_escalate=False,
+            db,
+            message_id=msg_id,
+            label="interested",
+            business_name="Cafe Test",
+            from_email="test@example.com",
+            confidence=0.9,
+            should_escalate=False,
         )
         items, total, _ = list_notifications(db, type="reply_interested")
         assert total == 1
@@ -137,9 +179,13 @@ class TestNotificationEmitter:
     def test_quote_request_emits(self, db):
         msg_id = uuid.uuid4()
         on_reply_classified(
-            db, message_id=msg_id, label="asked_for_quote",
-            business_name="Shop", from_email="shop@example.com",
-            confidence=0.85, should_escalate=False,
+            db,
+            message_id=msg_id,
+            label="asked_for_quote",
+            business_name="Shop",
+            from_email="shop@example.com",
+            confidence=0.85,
+            should_escalate=False,
         )
         items, total, _ = list_notifications(db, type="quote_request")
         assert total == 1
@@ -147,9 +193,13 @@ class TestNotificationEmitter:
     def test_low_value_label_does_not_emit(self, db):
         msg_id = uuid.uuid4()
         on_reply_classified(
-            db, message_id=msg_id, label="not_interested",
-            business_name="Meh", from_email="meh@example.com",
-            confidence=0.9, should_escalate=False,
+            db,
+            message_id=msg_id,
+            label="not_interested",
+            business_name="Meh",
+            from_email="meh@example.com",
+            confidence=0.9,
+            should_escalate=False,
         )
         items, total, _ = list_notifications(db)
         assert total == 0
@@ -157,9 +207,13 @@ class TestNotificationEmitter:
     def test_escalation_emits_review_required(self, db):
         msg_id = uuid.uuid4()
         on_reply_classified(
-            db, message_id=msg_id, label="neutral",
-            business_name="Ambiguous", from_email="a@example.com",
-            confidence=0.3, should_escalate=True,
+            db,
+            message_id=msg_id,
+            label="neutral",
+            business_name="Ambiguous",
+            from_email="a@example.com",
+            confidence=0.3,
+            should_escalate=True,
         )
         items, total, _ = list_notifications(db, type="review_required")
         assert total == 1
@@ -192,7 +246,8 @@ class TestNotificationEmitter:
 
     def test_security_event_emits(self, db):
         on_security_event(
-            db, event_type="prompt_injection_detected",
+            db,
+            event_type="prompt_injection_detected",
             title="Intento de inyeccion detectado",
             message="Email body contenia instrucciones sospechosas.",
             severity="critical",
@@ -206,10 +261,11 @@ class TestNotificationEmitter:
 # WhatsApp provider tests
 # ---------------------------------------------------------------------------
 
-class TestWhatsAppProvider:
 
+class TestWhatsAppProvider:
     def test_callmebot_format(self):
         from app.services.comms.whatsapp_service import CallMeBotProvider
+
         provider = CallMeBotProvider()
         # Just verify the class instantiates and has the right methods
         assert hasattr(provider, "send_message")
@@ -217,6 +273,7 @@ class TestWhatsAppProvider:
 
     def test_provider_registry(self):
         from app.services.comms.whatsapp_service import _get_provider
+
         provider = _get_provider("callmebot")
         assert provider is not None
         with pytest.raises(ValueError):

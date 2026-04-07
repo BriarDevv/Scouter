@@ -2,7 +2,6 @@
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Test 1: WhatsApp draft prompt includes anti-injection
 # ---------------------------------------------------------------------------
@@ -82,7 +81,9 @@ def test_kapso_raises_without_api_key(monkeypatch):
 def test_kapso_builds_correct_payload(monkeypatch):
     """Verify Kapso payload format matches WhatsApp Cloud API spec."""
     monkeypatch.setattr("app.services.comms.kapso_service.settings.KAPSO_API_KEY", "test-key")
-    monkeypatch.setattr("app.services.comms.kapso_service.settings.KAPSO_PHONE_NUMBER_ID", "647015955153740")
+    monkeypatch.setattr(
+        "app.services.comms.kapso_service.settings.KAPSO_PHONE_NUMBER_ID", "647015955153740"
+    )
     monkeypatch.setattr(
         "app.services.comms.kapso_service.settings.KAPSO_BASE_URL",
         "https://api.kapso.ai/meta/whatsapp",
@@ -116,9 +117,7 @@ def test_kapso_builds_correct_payload(monkeypatch):
             captured["headers"] = headers
             return MockResponse()
 
-    monkeypatch.setattr(
-        "app.services.comms.kapso_service.httpx.Client", lambda **kw: MockClient()
-    )
+    monkeypatch.setattr("app.services.comms.kapso_service.httpx.Client", lambda **kw: MockClient())
 
     from app.services.comms.kapso_service import send_text_message
 
@@ -158,9 +157,7 @@ def test_whatsapp_tools_require_confirmation():
 
     for tool in registry.list_all():
         if "whatsapp" in tool.name:
-            assert tool.requires_confirmation is True, (
-                f"{tool.name} should require confirmation"
-            )
+            assert tool.requires_confirmation is True, f"{tool.name} should require confirmation"
 
 
 # ---------------------------------------------------------------------------

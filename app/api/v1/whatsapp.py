@@ -11,11 +11,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.agent.channel_router import handle_channel_message
-from app.db.session import get_db
 from app.core.logging import get_logger
-from app.services.settings.operational_settings_service import get_or_create as get_settings
+from app.db.session import get_db
 from app.services.comms.whatsapp_audit import log_inbound, log_outbound
 from app.services.comms.whatsapp_service import send_alert
+from app.services.settings.operational_settings_service import get_or_create as get_settings
 
 logger = get_logger(__name__)
 
@@ -48,11 +48,11 @@ def webhook_inbound(
     """Receive WhatsApp messages, process via Hermes 3 agent, send response."""
     # Validate webhook secret
     from app.models.whatsapp_credentials import WhatsAppCredentials
+
     wa_creds = db.get(WhatsAppCredentials, 1)
     webhook_secret = (
-        (wa_creds.webhook_secret if wa_creds and wa_creds.webhook_secret else None)
-        or os.environ.get("WHATSAPP_WEBHOOK_SECRET", "")
-    )
+        wa_creds.webhook_secret if wa_creds and wa_creds.webhook_secret else None
+    ) or os.environ.get("WHATSAPP_WEBHOOK_SECRET", "")
     if not webhook_secret or not hmac.compare_digest(x_webhook_secret, webhook_secret):
         logger.warning("wa_webhook_auth_failed", phone=body.phone[:6] + "***")
         raise HTTPException(status_code=403, detail="Webhook secret invalido.")
@@ -66,7 +66,10 @@ def webhook_inbound(
     # Process via Hermes 3 agent
     start = time.monotonic()
     response_text = handle_channel_message(
-        db=db, channel="whatsapp", channel_id=body.phone, message=body.message,
+        db=db,
+        channel="whatsapp",
+        channel_id=body.phone,
+        message=body.message,
     )
     elapsed_ms = int((time.monotonic() - start) * 1000)
 

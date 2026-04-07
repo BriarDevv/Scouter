@@ -7,7 +7,11 @@ from sqlalchemy.orm import Session
 from app.agent.tool_registry import ToolDefinition, ToolParameter, registry
 from app.services.inbox.inbound_mail_service import (
     InboundMailServiceError,
+)
+from app.services.inbox.inbound_mail_service import (
     list_inbound_messages as _list_inbound_messages,
+)
+from app.services.inbox.inbound_mail_service import (
     sync_inbound_messages as _sync_inbound_messages,
 )
 from app.services.inbox.reply_classification_service import (
@@ -83,51 +87,60 @@ def classify_inbound_message(db: Session, *, message_id: str) -> dict:
     }
 
 
-registry.register(ToolDefinition(
-    name="sync_inbound_mail",
-    description=(
-        "Sincronizar correos entrantes desde el servidor IMAP "
-        "(requiere confirmación — dispara la conexión al servidor de mail)"
-    ),
-    parameters=[
-        ToolParameter(
-            "limit", "integer",
-            "Cantidad máxima de mensajes a buscar (default 25)",
-            required=False,
+registry.register(
+    ToolDefinition(
+        name="sync_inbound_mail",
+        description=(
+            "Sincronizar correos entrantes desde el servidor IMAP "
+            "(requiere confirmación — dispara la conexión al servidor de mail)"
         ),
-    ],
-    category="mail",
-    requires_confirmation=True,
-    handler=sync_inbound_mail,
-))
+        parameters=[
+            ToolParameter(
+                "limit",
+                "integer",
+                "Cantidad máxima de mensajes a buscar (default 25)",
+                required=False,
+            ),
+        ],
+        category="mail",
+        requires_confirmation=True,
+        handler=sync_inbound_mail,
+    )
+)
 
-registry.register(ToolDefinition(
-    name="list_inbound_messages",
-    description="Listar mensajes entrantes con filtros opcionales de lead y estado de clasificación",
-    parameters=[
-        ToolParameter("lead_id", "string", "UUID del lead asociado", required=False),
-        ToolParameter(
-            "classification_status", "string",
-            "Estado de clasificación",
-            required=False,
-            enum=["pending", "classified", "failed"],
-        ),
-        ToolParameter(
-            "limit", "integer",
-            "Cantidad máxima de resultados (default 20)",
-            required=False,
-        ),
-    ],
-    category="mail",
-    handler=list_inbound,
-))
+registry.register(
+    ToolDefinition(
+        name="list_inbound_messages",
+        description="Listar mensajes entrantes con filtros opcionales de lead y estado de clasificación",
+        parameters=[
+            ToolParameter("lead_id", "string", "UUID del lead asociado", required=False),
+            ToolParameter(
+                "classification_status",
+                "string",
+                "Estado de clasificación",
+                required=False,
+                enum=["pending", "classified", "failed"],
+            ),
+            ToolParameter(
+                "limit",
+                "integer",
+                "Cantidad máxima de resultados (default 20)",
+                required=False,
+            ),
+        ],
+        category="mail",
+        handler=list_inbound,
+    )
+)
 
-registry.register(ToolDefinition(
-    name="classify_inbound_message",
-    description="Clasificar un mensaje entrante individual usando el modelo LLM executor",
-    parameters=[
-        ToolParameter("message_id", "string", "UUID del mensaje entrante"),
-    ],
-    category="mail",
-    handler=classify_inbound_message,
-))
+registry.register(
+    ToolDefinition(
+        name="classify_inbound_message",
+        description="Clasificar un mensaje entrante individual usando el modelo LLM executor",
+        parameters=[
+            ToolParameter("message_id", "string", "UUID del mensaje entrante"),
+        ],
+        category="mail",
+        handler=classify_inbound_message,
+    )
+)

@@ -96,15 +96,19 @@ def build_template_parameters(
 
     params = []
     for param_name in template.param_names:
-        params.append({
-            "type": "text",
-            "text": value_map.get(param_name, business_name),
-        })
+        params.append(
+            {
+                "type": "text",
+                "text": value_map.get(param_name, business_name),
+            }
+        )
 
     if not params:
         return []
 
-    return [{
-        "type": "body",
-        "parameters": params,
-    }]
+    return [
+        {
+            "type": "body",
+            "parameters": params,
+        }
+    ]

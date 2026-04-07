@@ -51,15 +51,11 @@ class ReviewCorrection(Base):
         Uuid, ForeignKey("pipeline_runs.id", ondelete="SET NULL"), nullable=True
     )
     review_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    category: Mapped[CorrectionCategory] = mapped_column(
-        Enum(CorrectionCategory), nullable=False
-    )
+    category: Mapped[CorrectionCategory] = mapped_column(Enum(CorrectionCategory), nullable=False)
     severity: Mapped[CorrectionSeverity] = mapped_column(
         Enum(CorrectionSeverity), nullable=False, default=CorrectionSeverity.SUGGESTION
     )
     issue: Mapped[str] = mapped_column(Text, nullable=False)
     suggestion: Mapped[str | None] = mapped_column(Text, nullable=True)
     model: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

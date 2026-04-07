@@ -85,7 +85,9 @@ def format_context_for_prompt(context: dict, max_chars: int = 2000) -> str:
     if "enrichment" in context:
         e = context["enrichment"]
         signals = ", ".join(e.get("signals", []))
-        parts.append(f"Enrichment: signals=[{signals}], email={'yes' if e.get('email_found') else 'no'}")
+        parts.append(
+            f"Enrichment: signals=[{signals}], email={'yes' if e.get('email_found') else 'no'}"
+        )
 
     if "scoring" in context:
         s = context["scoring"]
@@ -101,7 +103,9 @@ def format_context_for_prompt(context: dict, max_chars: int = 2000) -> str:
         sc = context["scout"]
         findings = sc.get("findings", {})
         if isinstance(findings, dict):
-            parts.append(f"Scout findings: {findings.get('opportunity', findings.get('summary', ''))}")
+            parts.append(
+                f"Scout findings: {findings.get('opportunity', findings.get('summary', ''))}"
+            )
         elif isinstance(findings, str):
             parts.append(f"Scout findings: {findings}")
         pages = sc.get("pages_visited", [])

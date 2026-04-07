@@ -98,7 +98,11 @@ def get_credentials(db: Session) -> WhatsAppCredentials:
 
 
 _ALLOWED_FIELDS = {
-    "provider", "phone_number", "api_key", "webhook_url", "webhook_secret",
+    "provider",
+    "phone_number",
+    "api_key",
+    "webhook_url",
+    "webhook_secret",
 }
 _SECRET_FIELDS = {"api_key", "webhook_secret"}
 
@@ -159,7 +163,12 @@ def send_alert(
         logger.debug("whatsapp_alert_skipped_no_credentials")
         return False
 
-    sev_emoji = {"critical": "\u26a0\ufe0f", "high": "\U0001f534", "warning": "\U0001f7e1", "info": "\u2139\ufe0f"}
+    sev_emoji = {
+        "critical": "\u26a0\ufe0f",
+        "high": "\U0001f534",
+        "warning": "\U0001f7e1",
+        "info": "\u2139\ufe0f",
+    }
     emoji = sev_emoji.get(severity, "\u2139\ufe0f")
     text = f"{emoji} *Scouter — {title}*\n\n{message}\n\nSeveridad: {severity.upper()}"
 
@@ -179,7 +188,11 @@ def test_whatsapp(db: Session) -> dict:
     """Test WhatsApp connectivity using configured credentials."""
     creds = _get_or_create_credentials(db)
     if not creds.phone_number:
-        result = {"ok": False, "error": "No hay numero de WhatsApp configurado.", "provider": creds.provider}
+        result = {
+            "ok": False,
+            "error": "No hay numero de WhatsApp configurado.",
+            "provider": creds.provider,
+        }
         creds.last_test_at = datetime.now(timezone.utc)
         creds.last_test_ok = False
         creds.last_test_error = result["error"]

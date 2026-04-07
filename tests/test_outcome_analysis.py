@@ -1,7 +1,5 @@
 """Tests for outcome analysis service — signal correlations, quality accuracy, recommendations."""
 
-import uuid
-
 from app.models.lead import Lead
 from app.models.outcome_snapshot import OutcomeSnapshot
 from app.models.review_correction import CorrectionCategory, CorrectionSeverity, ReviewCorrection
@@ -40,6 +38,7 @@ def _seed_snapshot(db, outcome="won", signals=None, quality="high", industry="Ga
 # Summary
 # ---------------------------------------------------------------------------
 
+
 def test_summary_empty(db):
     result = get_outcome_summary(db)
     assert result["total"] == 0
@@ -62,6 +61,7 @@ def test_summary_with_data(db):
 # ---------------------------------------------------------------------------
 # Signal correlations
 # ---------------------------------------------------------------------------
+
 
 def test_signal_correlations_empty(db):
     assert analyze_signal_correlations(db) == []
@@ -87,6 +87,7 @@ def test_signal_correlations_with_data(db):
 # Quality accuracy
 # ---------------------------------------------------------------------------
 
+
 def test_quality_accuracy_empty(db):
     assert analyze_quality_accuracy(db) == []
 
@@ -107,6 +108,7 @@ def test_quality_accuracy_with_data(db):
 # Industry performance
 # ---------------------------------------------------------------------------
 
+
 def test_industry_empty(db):
     assert analyze_industry_performance(db) == []
 
@@ -126,6 +128,7 @@ def test_industry_with_data(db):
 # Scoring recommendations
 # ---------------------------------------------------------------------------
 
+
 def test_recommendations_insufficient_data(db):
     _seed_snapshot(db, "won")
     result = generate_scoring_recommendations(db)
@@ -144,13 +147,15 @@ def test_recommendations_with_corrections(db):
     # Seed corrections with a repeated pattern
     for _ in range(8):
         corr_lead = _make_lead(db)
-        db.add(ReviewCorrection(
-            lead_id=corr_lead.id,
-            review_type="draft_review",
-            category=CorrectionCategory.TONE,
-            severity=CorrectionSeverity.IMPORTANT,
-            issue="Tono demasiado formal",
-        ))
+        db.add(
+            ReviewCorrection(
+                lead_id=corr_lead.id,
+                review_type="draft_review",
+                category=CorrectionCategory.TONE,
+                severity=CorrectionSeverity.IMPORTANT,
+                issue="Tono demasiado formal",
+            )
+        )
     db.commit()
 
     result = generate_scoring_recommendations(db)

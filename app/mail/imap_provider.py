@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from email import message_from_bytes
 from email.message import Message
 from email.policy import default as default_policy
-from email.utils import getaddresses, parsedate_to_datetime, parseaddr
+from email.utils import getaddresses, parseaddr, parsedate_to_datetime
 
 from app.core.config import settings
 from app.mail.inbound_provider import InboundMailMessage, InboundMailProviderError

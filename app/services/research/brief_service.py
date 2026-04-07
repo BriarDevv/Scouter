@@ -45,34 +45,24 @@ def get_pricing_matrix(db: Session) -> dict:
     return DEFAULT_PRICING_MATRIX
 
 
-def create_or_get_brief(
-    db: Session, lead_id: uuid.UUID
-) -> CommercialBrief:
+def create_or_get_brief(db: Session, lead_id: uuid.UUID) -> CommercialBrief:
     """Return existing brief for lead or create a new PENDING one (race-safe)."""
-    brief = (
-        db.query(CommercialBrief).filter_by(lead_id=lead_id).first()
-    )
+    brief = db.query(CommercialBrief).filter_by(lead_id=lead_id).first()
     if not brief:
         try:
-            brief = CommercialBrief(
-                lead_id=lead_id, status=BriefStatus.PENDING
-            )
+            brief = CommercialBrief(lead_id=lead_id, status=BriefStatus.PENDING)
             db.add(brief)
             db.flush()
             db.refresh(brief)
         except Exception:
             db.rollback()
-            brief = db.query(CommercialBrief).filter_by(
-                lead_id=lead_id
-            ).first()
+            brief = db.query(CommercialBrief).filter_by(lead_id=lead_id).first()
             if not brief:
                 raise
     return brief
 
 
-def generate_brief(
-    db: Session, lead_id: uuid.UUID
-) -> CommercialBrief | None:
+def generate_brief(db: Session, lead_id: uuid.UUID) -> CommercialBrief | None:
     """Generate a commercial brief for a lead."""
     lead = db.get(Lead, lead_id)
     if not lead:
@@ -81,9 +71,7 @@ def generate_brief(
     brief = create_or_get_brief(db, lead_id)
 
     # Link research report if exists
-    report = (
-        db.query(LeadResearchReport).filter_by(lead_id=lead_id).first()
-    )
+    report = db.query(LeadResearchReport).filter_by(lead_id=lead_id).first()
     if report:
         brief.research_report_id = report.id
 
@@ -103,11 +91,7 @@ def generate_brief(
             instagram_url=lead.instagram_url,
             score=lead.score,
             llm_summary=lead.llm_summary,
-            signals=(
-                [s.signal_type.value for s in lead.signals]
-                if lead.signals
-                else []
-            ),
+            signals=([s.signal_type.value for s in lead.signals] if lead.signals else []),
             research_data=(
                 {
                     "website_confidence": (
@@ -120,15 +104,9 @@ def generate_brief(
                         if report and report.instagram_confidence
                         else None
                     ),
-                    "whatsapp_detected": (
-                        report.whatsapp_detected if report else None
-                    ),
-                    "html_metadata": (
-                        report.html_metadata_json if report else None
-                    ),
-                    "business_description": (
-                        report.business_description if report else None
-                    ),
+                    "whatsapp_detected": (report.whatsapp_detected if report else None),
+                    "html_metadata": (report.html_metadata_json if report else None),
+                    "business_description": (report.business_description if report else None),
                 }
                 if report
                 else {}
@@ -150,17 +128,12 @@ def generate_brief(
         brief.estimated_scope = _safe_enum(EstimatedScope, scope_raw)
 
         # Budget from pricing matrix + scope
-        if (
-            brief.estimated_scope
-            and brief.estimated_scope.value in pricing
-        ):
+        if brief.estimated_scope and brief.estimated_scope.value in pricing:
             tier_data = pricing[brief.estimated_scope.value]
             brief.estimated_budget_min = tier_data["min"]
             brief.estimated_budget_max = tier_data["max"]
 
-        brief.budget_tier = _infer_budget_tier(
-            brief.estimated_budget_max
-        )
+        brief.budget_tier = _infer_budget_tier(brief.estimated_budget_max)
         brief.recommended_contact_method = _safe_enum(
             ContactMethod,
             brief_result.recommended_contact_method.lower().strip() if brief_result else "",
@@ -170,22 +143,12 @@ def generate_brief(
             brief_result.should_call.lower().strip() if brief_result else "",
         )
         brief.call_reason = brief_result.call_reason if brief_result else None
-        brief.why_this_lead_matters = (
-            brief_result.why_this_lead_matters if brief_result else None
-        )
-        brief.main_business_signals = (
-            brief_result.main_business_signals if brief_result else None
-        )
-        brief.main_digital_gaps = (
-            brief_result.main_digital_gaps if brief_result else None
-        )
-        brief.recommended_angle = (
-            brief_result.recommended_angle if brief_result else None
-        )
+        brief.why_this_lead_matters = brief_result.why_this_lead_matters if brief_result else None
+        brief.main_business_signals = brief_result.main_business_signals if brief_result else None
+        brief.main_digital_gaps = brief_result.main_digital_gaps if brief_result else None
+        brief.recommended_angle = brief_result.recommended_angle if brief_result else None
         brief.demo_recommended = brief_result.demo_recommended if brief_result else False
-        brief.contact_priority = _infer_contact_priority(
-            brief.opportunity_score
-        )
+        brief.contact_priority = _infer_contact_priority(brief.opportunity_score)
         brief.generator_model = llm_result.model
         brief.is_fallback = llm_result.fallback_used
         brief.status = BriefStatus.GENERATED
@@ -196,14 +159,13 @@ def generate_brief(
         # Emit notification
         try:
             from app.services.notifications.notification_emitter import on_brief_generated
+
             on_brief_generated(
                 db,
                 lead_id=lead_id,
                 business_name=lead.business_name,
                 opportunity_score=brief.opportunity_score,
-                should_call=(
-                    brief.should_call.value if brief.should_call else None
-                ),
+                should_call=(brief.should_call.value if brief.should_call else None),
             )
         except Exception:
             logger.debug("brief_notification_failed", exc_info=True)
@@ -227,9 +189,7 @@ def generate_brief(
         return brief
 
 
-def _safe_float(
-    val, min_v: float, max_v: float
-) -> float | None:
+def _safe_float(val, min_v: float, max_v: float) -> float | None:
     """Clamp a value to [min_v, max_v], returning None on failure."""
     try:
         v = float(val)

@@ -35,6 +35,7 @@ class ToolCallRequest(NamedTuple):
     name: str
     arguments: dict[str, Any]
 
+
 # ---------------------------------------------------------------------------
 # Regex
 # ---------------------------------------------------------------------------
@@ -119,5 +120,3 @@ def format_tool_result(
         + json.dumps(payload, ensure_ascii=False, default=str)
         + "\n</tool_response>"
     )
-
-

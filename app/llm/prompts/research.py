@@ -14,8 +14,7 @@ DOSSIER_SYSTEM = (
     '- "digital_maturity": "none" | "basic" | "intermediate" | "advanced"\n'
     '- "key_findings": lista de hallazgos clave (max 5)\n'
     '- "improvement_opportunities": lista de oportunidades de mejora (max 5)\n'
-    '- "overall_assessment": evaluación general en 1-2 oraciones\n\n'
-    + ANTI_INJECTION_PREAMBLE
+    '- "overall_assessment": evaluación general en 1-2 oraciones\n\n' + ANTI_INJECTION_PREAMBLE
 )
 
 DOSSIER_DATA = (
@@ -56,8 +55,7 @@ COMMERCIAL_BRIEF_SYSTEM = (
     "(max 5)\n"
     '- "main_digital_gaps": lista de gaps digitales detectados (max 5)\n'
     '- "recommended_angle": ángulo comercial recomendado (1 oración)\n'
-    '- "demo_recommended": true o false\n\n'
-    + ANTI_INJECTION_PREAMBLE
+    '- "demo_recommended": true o false\n\n' + ANTI_INJECTION_PREAMBLE
 )
 
 COMMERCIAL_BRIEF_DATA = (

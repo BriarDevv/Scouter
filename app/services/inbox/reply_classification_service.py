@@ -60,8 +60,7 @@ def list_pending_inbound_messages(db: Session, *, limit: int = 25) -> list[Inbou
             joinedload(InboundMessage.delivery),
         )
         .where(
-            InboundMessage.classification_status
-            == InboundMailClassificationStatus.PENDING.value
+            InboundMessage.classification_status == InboundMailClassificationStatus.PENDING.value
         )
         .order_by(InboundMessage.received_at.desc(), InboundMessage.created_at.desc())
         .limit(limit)
@@ -87,8 +86,7 @@ def classify_inbound_message(db: Session, message_id: uuid.UUID) -> InboundMessa
         update(InboundMessage)
         .where(InboundMessage.id == message_id)
         .where(
-            InboundMessage.classification_status
-            == InboundMailClassificationStatus.PENDING.value
+            InboundMessage.classification_status == InboundMailClassificationStatus.PENDING.value
         )
         .values(classification_status=InboundMailClassificationStatus.CLASSIFYING.value)
     )
@@ -139,9 +137,10 @@ def classify_inbound_message(db: Session, message_id: uuid.UUID) -> InboundMessa
         message.classified_at = datetime.now(UTC)
         db.flush()
         db.refresh(message)
-       # Emit notification for actionable classification results
+        # Emit notification for actionable classification results
         try:
             from app.services.notifications.notification_emitter import on_reply_classified
+
             on_reply_classified(
                 db,
                 message_id=message.id,
@@ -189,9 +188,7 @@ def classify_inbound_message(db: Session, message_id: uuid.UUID) -> InboundMessa
         return message
 
 
-def classify_pending_inbound_messages(
-    db: Session, *, limit: int = 25
-) -> list[InboundMessage]:
+def classify_pending_inbound_messages(db: Session, *, limit: int = 25) -> list[InboundMessage]:
     messages = list_pending_inbound_messages(db, limit=limit)
     return [classify_inbound_message(db, message.id) for message in messages if message]
 

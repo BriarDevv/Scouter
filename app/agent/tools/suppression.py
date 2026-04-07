@@ -8,10 +8,13 @@ from app.agent.tool_registry import ToolDefinition, ToolParameter, registry
 from app.schemas.suppression import SuppressionCreate
 from app.services.suppression_service import (
     add_to_suppression_list,
+)
+from app.services.suppression_service import (
     list_suppression as _list_suppression,
+)
+from app.services.suppression_service import (
     remove_from_suppression as _remove_from_suppression,
 )
-
 
 # ---------------------------------------------------------------------------
 # list_suppression
@@ -30,28 +33,29 @@ def list_suppression(db: Session, *, limit: int = 20) -> dict:
                 "domain": e.domain,
                 "phone": e.phone,
                 "reason": e.reason,
-                "added_at": (
-                    e.added_at.isoformat() if e.added_at else None
-                ),
+                "added_at": (e.added_at.isoformat() if e.added_at else None),
             }
             for e in entries
         ],
     }
 
 
-registry.register(ToolDefinition(
-    name="list_suppression",
-    description="Listar las entradas de la lista de supresión",
-    parameters=[
-        ToolParameter(
-            "limit", "integer",
-            "Cantidad máxima de resultados (default 20)",
-            required=False,
-        ),
-    ],
-    category="suppression",
-    handler=list_suppression,
-))
+registry.register(
+    ToolDefinition(
+        name="list_suppression",
+        description="Listar las entradas de la lista de supresión",
+        parameters=[
+            ToolParameter(
+                "limit",
+                "integer",
+                "Cantidad máxima de resultados (default 20)",
+                required=False,
+            ),
+        ],
+        category="suppression",
+        handler=list_suppression,
+    )
+)
 
 
 # ---------------------------------------------------------------------------
@@ -84,30 +88,35 @@ def add_to_suppression(
     }
 
 
-registry.register(ToolDefinition(
-    name="add_to_suppression",
-    description=(
-        "Agregar un email o dominio a la lista de supresión "
-        "(requiere confirmación)"
-    ),
-    parameters=[
-        ToolParameter(
-            "email", "string",
-            "Email a suprimir", required=False,
-        ),
-        ToolParameter(
-            "domain", "string",
-            "Dominio a suprimir", required=False,
-        ),
-        ToolParameter(
-            "reason", "string",
-            "Motivo de la supresión", required=False,
-        ),
-    ],
-    category="suppression",
-    requires_confirmation=True,
-    handler=add_to_suppression,
-))
+registry.register(
+    ToolDefinition(
+        name="add_to_suppression",
+        description=("Agregar un email o dominio a la lista de supresión (requiere confirmación)"),
+        parameters=[
+            ToolParameter(
+                "email",
+                "string",
+                "Email a suprimir",
+                required=False,
+            ),
+            ToolParameter(
+                "domain",
+                "string",
+                "Dominio a suprimir",
+                required=False,
+            ),
+            ToolParameter(
+                "reason",
+                "string",
+                "Motivo de la supresión",
+                required=False,
+            ),
+        ],
+        category="suppression",
+        requires_confirmation=True,
+        handler=add_to_suppression,
+    )
+)
 
 
 # ---------------------------------------------------------------------------
@@ -126,19 +135,19 @@ def remove_from_suppression(db: Session, *, entry_id: str) -> dict:
     return {"success": success}
 
 
-registry.register(ToolDefinition(
-    name="remove_from_suppression",
-    description=(
-        "Eliminar una entrada de la lista de supresión "
-        "(requiere confirmación)"
-    ),
-    parameters=[
-        ToolParameter(
-            "entry_id", "string",
-            "UUID de la entrada a eliminar",
-        ),
-    ],
-    category="suppression",
-    requires_confirmation=True,
-    handler=remove_from_suppression,
-))
+registry.register(
+    ToolDefinition(
+        name="remove_from_suppression",
+        description=("Eliminar una entrada de la lista de supresión (requiere confirmación)"),
+        parameters=[
+            ToolParameter(
+                "entry_id",
+                "string",
+                "UUID de la entrada a eliminar",
+            ),
+        ],
+        category="suppression",
+        requires_confirmation=True,
+        handler=remove_from_suppression,
+    )
+)

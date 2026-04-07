@@ -73,18 +73,14 @@ async def stream_ollama_chat(
                     yield content
     except httpx.TimeoutException as exc:
         logger.error("agent_stream_timeout", model=model, error=str(exc))
-        raise AgentStreamError(
-            f"Ollama streaming timeout after {timeout}s"
-        ) from exc
+        raise AgentStreamError(f"Ollama streaming timeout after {timeout}s") from exc
     except httpx.HTTPStatusError as exc:
         logger.error(
             "agent_stream_http_error",
             model=model,
             status=exc.response.status_code,
         )
-        raise AgentStreamError(
-            f"Ollama HTTP error: {exc.response.status_code}"
-        ) from exc
+        raise AgentStreamError(f"Ollama HTTP error: {exc.response.status_code}") from exc
     except httpx.ConnectError as exc:
         logger.error("agent_stream_connect_error", model=model)
         raise AgentStreamError("No se pudo conectar a Ollama") from exc

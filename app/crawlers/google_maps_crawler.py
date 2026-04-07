@@ -16,37 +16,53 @@ logger = get_logger(__name__)
 # Categories relevant for web development services — ordered by prospect value
 DEFAULT_CATEGORIES = [
     # High-value: service businesses that benefit most from a website
-    "restaurante", "clinica", "consultorio odontologico",
-    "inmobiliaria", "hotel", "hostel",
-    "estudio contable", "abogado", "estudio juridico",
+    "restaurante",
+    "clinica",
+    "consultorio odontologico",
+    "inmobiliaria",
+    "hotel",
+    "hostel",
+    "estudio contable",
+    "abogado",
+    "estudio juridico",
     # Medium-high: personal care, fitness, retail
-    "peluqueria", "barberia", "gimnasio",
-    "veterinaria", "optica", "boutique",
+    "peluqueria",
+    "barberia",
+    "gimnasio",
+    "veterinaria",
+    "optica",
+    "boutique",
     # Medium: food/hospitality
-    "cafeteria", "bar", "panaderia",
-    "floreria", "ferreteria", "libreria",
+    "cafeteria",
+    "bar",
+    "panaderia",
+    "floreria",
+    "ferreteria",
+    "libreria",
 ]
 
 _PLACES_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
-_FIELD_MASK = ",".join([
-    "places.id",
-    "places.displayName",
-    "places.formattedAddress",
-    "places.shortFormattedAddress",
-    "places.addressComponents",
-    "places.nationalPhoneNumber",
-    "places.internationalPhoneNumber",
-    "places.websiteUri",
-    "places.googleMapsUri",
-    "places.types",
-    "places.primaryType",
-    "places.primaryTypeDisplayName",
-    "places.rating",
-    "places.userRatingCount",
-    "places.businessStatus",
-    "places.regularOpeningHours",
-    "places.location",
-])
+_FIELD_MASK = ",".join(
+    [
+        "places.id",
+        "places.displayName",
+        "places.formattedAddress",
+        "places.shortFormattedAddress",
+        "places.addressComponents",
+        "places.nationalPhoneNumber",
+        "places.internationalPhoneNumber",
+        "places.websiteUri",
+        "places.googleMapsUri",
+        "places.types",
+        "places.primaryType",
+        "places.primaryTypeDisplayName",
+        "places.rating",
+        "places.userRatingCount",
+        "places.businessStatus",
+        "places.regularOpeningHours",
+        "places.location",
+    ]
+)
 
 
 class GoogleMapsCrawler(BaseCrawler):
@@ -188,7 +204,11 @@ class GoogleMapsCrawler(BaseCrawler):
             )
 
         if resp.status_code != 200:
-            error_data = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
+            error_data = (
+                resp.json()
+                if resp.headers.get("content-type", "").startswith("application/json")
+                else {}
+            )
             error_msg = error_data.get("error", {}).get("message", resp.text[:200])
             raise RuntimeError(f"Places API error ({resp.status_code}): {error_msg}")
 

@@ -39,5 +39,4 @@ class MailProviderError(RuntimeError):
 class MailProvider(Protocol):
     name: str
 
-    def send_email(self, request: MailSendRequest) -> MailSendResult:
-        ...
+    def send_email(self, request: MailSendRequest) -> MailSendResult: ...

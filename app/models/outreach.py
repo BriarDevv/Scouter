@@ -17,9 +17,7 @@ class DraftStatus(str, enum.Enum):
 
 class OutreachDraft(Base):
     __tablename__ = "outreach_drafts"
-    __table_args__ = (
-        Index("ix_outreach_drafts_lead_id", "lead_id"),
-    )
+    __table_args__ = (Index("ix_outreach_drafts_lead_id", "lead_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     lead_id: Mapped[uuid.UUID] = mapped_column(
@@ -86,8 +84,6 @@ class OutreachLog(Base):
     action: Mapped[LogAction] = mapped_column(Enum(LogAction), nullable=False)
     actor: Mapped[str] = mapped_column(String(50), nullable=False, default="system")
     detail: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     draft: Mapped[OutreachDraft | None] = relationship("OutreachDraft", back_populates="logs")

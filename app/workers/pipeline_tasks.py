@@ -52,17 +52,19 @@ def task_enrich_lead(
     pipeline_uuid = _pipeline_uuid(pipeline_run_id)
 
     try:
-        with SessionLocal() as db, tracked_task_step(
-            db,
-            task_id=task_id,
-            task_name="task_enrich_lead",
-            queue=queue,
-            lead_id=uuid.UUID(lead_id),
-            pipeline_run_id=pipeline_uuid,
-            correlation_id=correlation_id,
-            current_step="enrichment",
-        ) as tracker:
-
+        with (
+            SessionLocal() as db,
+            tracked_task_step(
+                db,
+                task_id=task_id,
+                task_name="task_enrich_lead",
+                queue=queue,
+                lead_id=uuid.UUID(lead_id),
+                pipeline_run_id=pipeline_uuid,
+                correlation_id=correlation_id,
+                current_step="enrichment",
+            ) as tracker,
+        ):
             lead = db.get(Lead, uuid.UUID(lead_id))
             if not lead:
                 error = "Lead not found"
@@ -100,12 +102,18 @@ def task_enrich_lead(
             # Write enrichment context for downstream steps
             if pipeline_uuid:
                 from app.services.pipeline.context_service import append_step_context
-                append_step_context(db, pipeline_uuid, "enrichment", {
-                    "signals": [s.signal_type for s in lead.signals],
-                    "email_found": lead.email is not None,
-                    "website_exists": lead.website_url is not None,
-                    "instagram_exists": lead.instagram_url is not None,
-                })
+
+                append_step_context(
+                    db,
+                    pipeline_uuid,
+                    "enrichment",
+                    {
+                        "signals": [s.signal_type for s in lead.signals],
+                        "email_found": lead.email is not None,
+                        "website_exists": lead.website_url is not None,
+                        "instagram_exists": lead.instagram_url is not None,
+                    },
+                )
 
             # Chain to scoring
             if pipeline_run_id:
@@ -128,7 +136,7 @@ def task_enrich_lead(
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
+        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries))
 
 
 @celery_app.task(
@@ -149,17 +157,19 @@ def task_score_lead(
     pipeline_uuid = _pipeline_uuid(pipeline_run_id)
 
     try:
-        with SessionLocal() as db, tracked_task_step(
-            db,
-            task_id=task_id,
-            task_name="task_score_lead",
-            queue=queue,
-            lead_id=uuid.UUID(lead_id),
-            pipeline_run_id=pipeline_uuid,
-            correlation_id=correlation_id,
-            current_step="scoring",
-        ) as tracker:
-
+        with (
+            SessionLocal() as db,
+            tracked_task_step(
+                db,
+                task_id=task_id,
+                task_name="task_score_lead",
+                queue=queue,
+                lead_id=uuid.UUID(lead_id),
+                pipeline_run_id=pipeline_uuid,
+                correlation_id=correlation_id,
+                current_step="scoring",
+            ) as tracker,
+        ):
             lead = db.get(Lead, uuid.UUID(lead_id))
             if not lead:
                 error = "Lead not found"
@@ -202,10 +212,16 @@ def task_score_lead(
             # Write scoring context for downstream steps
             if pipeline_uuid:
                 from app.services.pipeline.context_service import append_step_context
-                append_step_context(db, pipeline_uuid, "scoring", {
-                    "score": lead.score,
-                    "signal_count": len(lead.signals),
-                })
+
+                append_step_context(
+                    db,
+                    pipeline_uuid,
+                    "scoring",
+                    {
+                        "score": lead.score,
+                        "signal_count": len(lead.signals),
+                    },
+                )
 
             # Chain to analysis
             if pipeline_run_id:
@@ -228,7 +244,7 @@ def task_score_lead(
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
+        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries))
 
 
 @celery_app.task(
@@ -251,17 +267,19 @@ def task_analyze_lead(
     pipeline_uuid = _pipeline_uuid(pipeline_run_id)
 
     try:
-        with SessionLocal() as db, tracked_task_step(
-            db,
-            task_id=task_id,
-            task_name="task_analyze_lead",
-            queue=queue,
-            lead_id=uuid.UUID(lead_id),
-            pipeline_run_id=pipeline_uuid,
-            correlation_id=correlation_id,
-            current_step="analysis",
-        ) as tracker:
-
+        with (
+            SessionLocal() as db,
+            tracked_task_step(
+                db,
+                task_id=task_id,
+                task_name="task_analyze_lead",
+                queue=queue,
+                lead_id=uuid.UUID(lead_id),
+                pipeline_run_id=pipeline_uuid,
+                correlation_id=correlation_id,
+                current_step="analysis",
+            ) as tracker,
+        ):
             lead = db.get(Lead, uuid.UUID(lead_id))
             if not lead:
                 error = "Lead not found"
@@ -286,8 +304,11 @@ def task_analyze_lead(
                 if lead.llm_quality == "high":
                     try:
                         from app.workers.research_tasks import task_research_lead
+
                         task_research_lead.delay(
-                            lead_id, pipeline_run_id, correlation_id,
+                            lead_id,
+                            pipeline_run_id,
+                            correlation_id,
                         )
                     except Exception as chain_exc:
                         logger.warning(
@@ -324,19 +345,23 @@ def task_analyze_lead(
                 "quality": analysis.quality,
             }
             tracker.succeed(result)
-            logger.info(
-                "task_step_completed", task_name="task_analyze_lead", result=result
-            )
+            logger.info("task_step_completed", task_name="task_analyze_lead", result=result)
 
             # Write analysis context for downstream steps
             if pipeline_uuid:
                 from app.services.pipeline.context_service import append_step_context
-                append_step_context(db, pipeline_uuid, "analysis", {
-                    "quality": analysis.quality,
-                    "reasoning": analysis.reasoning,
-                    "suggested_angle": analysis.suggested_angle,
-                    "summary": getattr(lead, "llm_summary", None),
-                })
+
+                append_step_context(
+                    db,
+                    pipeline_uuid,
+                    "analysis",
+                    {
+                        "quality": analysis.quality,
+                        "reasoning": analysis.reasoning,
+                        "suggested_angle": analysis.suggested_angle,
+                        "summary": getattr(lead, "llm_summary", None),
+                    },
+                )
 
             # Chain next step based on quality
             if lead.llm_quality == "high":
@@ -344,7 +369,9 @@ def task_analyze_lead(
                     from app.workers.research_tasks import task_research_lead
 
                     task_research_lead.delay(
-                        lead_id, pipeline_run_id, correlation_id,
+                        lead_id,
+                        pipeline_run_id,
+                        correlation_id,
                     )
                     logger.info(
                         "research_chained",
@@ -374,9 +401,7 @@ def task_analyze_lead(
 
             return result
     except SoftTimeLimitExceeded:
-        logger.error(
-            "task_soft_time_limit", task_name="task_analyze_lead", task_id=task_id
-        )
+        logger.error("task_soft_time_limit", task_name="task_analyze_lead", task_id=task_id)
         with SessionLocal() as db:
             mark_task_failed(
                 db,
@@ -398,7 +423,7 @@ def task_analyze_lead(
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
+        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries))
 
 
 @celery_app.task(
@@ -421,17 +446,19 @@ def task_generate_draft(
     pipeline_uuid = _pipeline_uuid(pipeline_run_id)
 
     try:
-        with SessionLocal() as db, tracked_task_step(
-            db,
-            task_id=task_id,
-            task_name="task_generate_draft",
-            queue=queue,
-            lead_id=uuid.UUID(lead_id),
-            pipeline_run_id=pipeline_uuid,
-            correlation_id=correlation_id,
-            current_step="draft_generation",
-        ) as tracker:
-
+        with (
+            SessionLocal() as db,
+            tracked_task_step(
+                db,
+                task_id=task_id,
+                task_name="task_generate_draft",
+                queue=queue,
+                lead_id=uuid.UUID(lead_id),
+                pipeline_run_id=pipeline_uuid,
+                correlation_id=correlation_id,
+                current_step="draft_generation",
+            ) as tracker,
+        ):
             lead = db.get(Lead, uuid.UUID(lead_id))
             if not lead:
                 error = "Lead not found"
@@ -441,12 +468,17 @@ def task_generate_draft(
             # Read accumulated pipeline context for informed draft generation
             pipeline_context_text = ""
             if pipeline_uuid:
-                from app.services.pipeline.context_service import get_step_context, format_context_for_prompt
+                from app.services.pipeline.context_service import (
+                    format_context_for_prompt,
+                    get_step_context,
+                )
+
                 pipeline_context = get_step_context(db, pipeline_uuid)
                 pipeline_context_text = format_context_for_prompt(pipeline_context)
 
             workflow_result = run_draft_generation_step(
-                db, uuid.UUID(lead_id),
+                db,
+                uuid.UUID(lead_id),
                 pipeline_context_text=pipeline_context_text,
             )
             result = workflow_result.to_payload()
@@ -485,6 +517,7 @@ def task_generate_draft(
             # Trigger batch review threshold check after pipeline completion
             try:
                 from app.workers.batch_review_tasks import task_check_batch_review
+
                 task_check_batch_review.delay(correlation_id=correlation_id)
             except Exception as exc:
                 logger.debug("batch_review_check_failed", error=str(exc), exc_info=True)
@@ -517,7 +550,7 @@ def task_generate_draft(
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
+        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries))
 
 
 @celery_app.task(
@@ -540,17 +573,19 @@ def task_full_pipeline(
     pipeline_uuid = _pipeline_uuid(pipeline_run_id)
 
     try:
-        with SessionLocal() as db, tracked_task_step(
-            db,
-            task_id=task_id,
-            task_name="task_full_pipeline",
-            queue=queue,
-            lead_id=uuid.UUID(lead_id),
-            pipeline_run_id=pipeline_uuid,
-            correlation_id=correlation_id,
-            current_step="pipeline_dispatch",
-        ) as tracker:
-
+        with (
+            SessionLocal() as db,
+            tracked_task_step(
+                db,
+                task_id=task_id,
+                task_name="task_full_pipeline",
+                queue=queue,
+                lead_id=uuid.UUID(lead_id),
+                pipeline_run_id=pipeline_uuid,
+                correlation_id=correlation_id,
+                current_step="pipeline_dispatch",
+            ) as tracker,
+        ):
             # Dispatch only the first step; each step chains forward.
             task_enrich_lead.delay(
                 lead_id,

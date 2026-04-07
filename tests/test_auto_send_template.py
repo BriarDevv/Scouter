@@ -1,10 +1,8 @@
 """Tests for auto_send_service template-first WhatsApp flow."""
 
-import uuid
-
 from app.models.lead import Lead
 from app.models.lead_signal import LeadSignal, SignalType
-from app.models.outbound_conversation import ConversationStatus, OutboundConversation
+from app.models.outbound_conversation import ConversationStatus
 from app.models.outreach import DraftStatus, OutreachDraft
 from app.services.outreach.auto_send_service import auto_send_draft
 from app.services.outreach.template_selection import (
@@ -12,10 +10,10 @@ from app.services.outreach.template_selection import (
     select_template,
 )
 
-
 # ---------------------------------------------------------------------------
 # Template selection
 # ---------------------------------------------------------------------------
+
 
 def test_select_template_instagram():
     t = select_template(["instagram_only"])
@@ -57,6 +55,7 @@ def test_select_template_instagram_priority():
 # Template parameter building
 # ---------------------------------------------------------------------------
 
+
 def test_build_params_with_contact_name():
     t = select_template([])  # apertura_general
     params = build_template_parameters(t, contact_name="Juan", business_name="Cafe Test")
@@ -74,6 +73,7 @@ def test_build_params_fallback_to_business_name():
 # ---------------------------------------------------------------------------
 # Auto-send with template flow
 # ---------------------------------------------------------------------------
+
 
 def test_auto_send_whatsapp_sends_template(db, monkeypatch):
     lead = Lead(

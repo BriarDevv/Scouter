@@ -7,7 +7,11 @@ from sqlalchemy.orm import Session
 from app.agent.tool_registry import ToolDefinition, ToolParameter, registry
 from app.services.notifications.notification_service import (
     get_notification_counts as _get_counts,
+)
+from app.services.notifications.notification_service import (
     list_notifications as _list,
+)
+from app.services.notifications.notification_service import (
     update_notification_status,
 )
 
@@ -21,8 +25,11 @@ def list_notifications(
 ) -> dict:
     """List recent notifications."""
     items, total, unread = _list(
-        db, page=1, page_size=min(limit, 50),
-        status=status, category=category,
+        db,
+        page=1,
+        page_size=min(limit, 50),
+        status=status,
+        category=category,
     )
     return {
         "total": total,
@@ -56,33 +63,49 @@ def get_notification_counts(db: Session) -> dict:
     return _get_counts(db)
 
 
-registry.register(ToolDefinition(
-    name="list_notifications",
-    description="Listar notificaciones recientes con filtros opcionales",
-    parameters=[
-        ToolParameter("status", "string", "Filtrar por estado", required=False,
-                      enum=["unread", "read", "acknowledged", "resolved"]),
-        ToolParameter("category", "string", "Filtrar por categoría", required=False,
-                      enum=["business", "system", "security"]),
-        ToolParameter("limit", "integer", "Cantidad máxima (default 10)", required=False),
-    ],
-    category="notifications",
-    handler=list_notifications,
-))
+registry.register(
+    ToolDefinition(
+        name="list_notifications",
+        description="Listar notificaciones recientes con filtros opcionales",
+        parameters=[
+            ToolParameter(
+                "status",
+                "string",
+                "Filtrar por estado",
+                required=False,
+                enum=["unread", "read", "acknowledged", "resolved"],
+            ),
+            ToolParameter(
+                "category",
+                "string",
+                "Filtrar por categoría",
+                required=False,
+                enum=["business", "system", "security"],
+            ),
+            ToolParameter("limit", "integer", "Cantidad máxima (default 10)", required=False),
+        ],
+        category="notifications",
+        handler=list_notifications,
+    )
+)
 
-registry.register(ToolDefinition(
-    name="mark_notification_read",
-    description="Marcar una notificación como leída",
-    parameters=[
-        ToolParameter("notification_id", "string", "UUID de la notificación"),
-    ],
-    category="notifications",
-    handler=mark_notification_read,
-))
+registry.register(
+    ToolDefinition(
+        name="mark_notification_read",
+        description="Marcar una notificación como leída",
+        parameters=[
+            ToolParameter("notification_id", "string", "UUID de la notificación"),
+        ],
+        category="notifications",
+        handler=mark_notification_read,
+    )
+)
 
-registry.register(ToolDefinition(
-    name="get_notification_counts",
-    description="Obtener resumen de conteo de notificaciones (total, por categoría, por severidad)",
-    category="notifications",
-    handler=get_notification_counts,
-))
+registry.register(
+    ToolDefinition(
+        name="get_notification_counts",
+        description="Obtener resumen de conteo de notificaciones (total, por categoría, por severidad)",
+        category="notifications",
+        handler=get_notification_counts,
+    )
+)

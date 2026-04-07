@@ -92,9 +92,21 @@ def test_format_full_pipeline_context():
     ctx = {
         "enrichment": {"signals": ["no_website"], "email_found": False},
         "scoring": {"score": 92},
-        "analysis": {"quality": "high", "reasoning": "Strong signals", "suggested_angle": "web redesign"},
-        "scout": {"findings": {"opportunity": "No web presence, great fit"}, "pages_visited": [{"url": "https://example.com"}]},
-        "brief": {"opportunity_score": 9, "budget_tier": "high", "recommended_contact_method": "whatsapp", "recommended_angle": "Modern web presence"},
+        "analysis": {
+            "quality": "high",
+            "reasoning": "Strong signals",
+            "suggested_angle": "web redesign",
+        },
+        "scout": {
+            "findings": {"opportunity": "No web presence, great fit"},
+            "pages_visited": [{"url": "https://example.com"}],
+        },
+        "brief": {
+            "opportunity_score": 9,
+            "budget_tier": "high",
+            "recommended_contact_method": "whatsapp",
+            "recommended_angle": "Modern web presence",
+        },
         "brief_review": {"approved": True, "verdict_reasoning": "Solid brief"},
     }
     result = format_context_for_prompt(ctx)

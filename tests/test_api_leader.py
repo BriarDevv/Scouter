@@ -1,5 +1,5 @@
-from datetime import datetime, timedelta, timezone
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from app.models.inbound_mail import EmailThread, InboundMailClassificationStatus, InboundMessage
 from app.models.lead import Lead, LeadStatus
@@ -346,7 +346,11 @@ def test_leader_recent_drafts_pipelines_and_activity(client, db):
     assert activity_resp.status_code == 200
     activity = activity_resp.json()
     assert len(activity) == 3
-    assert {item["lead_name"] for item in activity} == {"Atlas AI", "Cometa Health", "Delta Services"}
+    assert {item["lead_name"] for item in activity} == {
+        "Atlas AI",
+        "Cometa Health",
+        "Delta Services",
+    }
 
 
 def test_leader_task_health(client, db):

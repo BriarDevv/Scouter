@@ -10,11 +10,14 @@ def test_health(client):
 
 
 def test_create_lead(client):
-    resp = client.post("/api/v1/leads", json={
-        "business_name": "Test Cafe",
-        "industry": "restaurante",
-        "city": "Buenos Aires",
-    })
+    resp = client.post(
+        "/api/v1/leads",
+        json={
+            "business_name": "Test Cafe",
+            "industry": "restaurante",
+            "city": "Buenos Aires",
+        },
+    )
     assert resp.status_code == 201
     data = resp.json()
     assert data["business_name"] == "Test Cafe"
@@ -70,6 +73,7 @@ def test_create_lead_validation(client):
 
 
 # --- GET /leads/names ---
+
 
 def test_leads_names_empty(client):
     resp = client.get("/api/v1/leads/names")

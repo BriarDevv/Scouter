@@ -20,10 +20,7 @@ def list_batch_reviews(db: DbSession, limit: int = 10):
     from app.models.batch_review import BatchReview
 
     reviews = (
-        db.query(BatchReview)
-        .order_by(BatchReview.created_at.desc())
-        .limit(min(limit, 50))
-        .all()
+        db.query(BatchReview).order_by(BatchReview.created_at.desc()).limit(min(limit, 50)).all()
     )
     return [
         {

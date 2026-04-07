@@ -10,8 +10,12 @@ from app.models.lead import Lead, LeadStatus
 from app.schemas.lead import LeadCreate
 from app.services.leads.lead_service import (
     create_lead as _create_lead,
+)
+from app.services.leads.lead_service import (
     get_lead,
     list_leads,
+)
+from app.services.leads.lead_service import (
     update_lead_status as _update_lead_status,
 )
 
@@ -29,15 +33,19 @@ def search_leads(
     """Search leads with filters."""
     lead_status = LeadStatus(status) if status else None
     leads, total = list_leads(
-        db, page=1, page_size=min(limit, 50),
-        status=lead_status, min_score=min_score,
+        db,
+        page=1,
+        page_size=min(limit, 50),
+        status=lead_status,
+        min_score=min_score,
     )
 
     # Apply text/city/industry filters in-memory (simple for now)
     if query:
         q = query.lower()
         leads = [
-            l for l in leads
+            l
+            for l in leads
             if q in (l.business_name or "").lower()
             or q in (l.industry or "").lower()
             or q in (l.city or "").lower()
@@ -80,9 +88,7 @@ def get_lead_detail(
         except ValueError:
             return {"error": "ID de lead inválido (debe ser UUID)"}
     elif business_name:
-        stmt = select(Lead).where(
-            Lead.business_name.ilike(f"%{business_name}%")
-        ).limit(1)
+        stmt = select(Lead).where(Lead.business_name.ilike(f"%{business_name}%")).limit(1)
         lead = db.execute(stmt).scalar_one_or_none()
 
     if not lead:
@@ -109,47 +115,62 @@ def get_lead_detail(
 
 def count_leads_by_status(db: Session) -> dict:
     """Count leads grouped by status."""
-    rows = db.execute(
-        select(Lead.status, func.count()).group_by(Lead.status)
-    ).all()
+    rows = db.execute(select(Lead.status, func.count()).group_by(Lead.status)).all()
     counts = {row[0].value: row[1] for row in rows}
     counts["total"] = sum(counts.values())
     return counts
 
 
-registry.register(ToolDefinition(
-    name="search_leads",
-    description="Buscar leads con filtros opcionales (texto, estado, ciudad, industria, score mínimo)",
-    parameters=[
-        ToolParameter("query", "string", "Texto de búsqueda (nombre, industria o ciudad)", required=False),
-        ToolParameter("status", "string", "Filtrar por estado del lead", required=False,
-                      enum=[s.value for s in LeadStatus]),
-        ToolParameter("city", "string", "Filtrar por ciudad", required=False),
-        ToolParameter("industry", "string", "Filtrar por industria/rubro", required=False),
-        ToolParameter("min_score", "number", "Score mínimo", required=False),
-        ToolParameter("limit", "integer", "Cantidad máxima de resultados (default 10)", required=False),
-    ],
-    category="leads",
-    handler=search_leads,
-))
+registry.register(
+    ToolDefinition(
+        name="search_leads",
+        description="Buscar leads con filtros opcionales (texto, estado, ciudad, industria, score mínimo)",
+        parameters=[
+            ToolParameter(
+                "query", "string", "Texto de búsqueda (nombre, industria o ciudad)", required=False
+            ),
+            ToolParameter(
+                "status",
+                "string",
+                "Filtrar por estado del lead",
+                required=False,
+                enum=[s.value for s in LeadStatus],
+            ),
+            ToolParameter("city", "string", "Filtrar por ciudad", required=False),
+            ToolParameter("industry", "string", "Filtrar por industria/rubro", required=False),
+            ToolParameter("min_score", "number", "Score mínimo", required=False),
+            ToolParameter(
+                "limit", "integer", "Cantidad máxima de resultados (default 10)", required=False
+            ),
+        ],
+        category="leads",
+        handler=search_leads,
+    )
+)
 
-registry.register(ToolDefinition(
-    name="get_lead_detail",
-    description="Obtener información detallada de un lead por ID o nombre del negocio",
-    parameters=[
-        ToolParameter("lead_id", "string", "UUID del lead", required=False),
-        ToolParameter("business_name", "string", "Nombre del negocio (búsqueda parcial)", required=False),
-    ],
-    category="leads",
-    handler=get_lead_detail,
-))
+registry.register(
+    ToolDefinition(
+        name="get_lead_detail",
+        description="Obtener información detallada de un lead por ID o nombre del negocio",
+        parameters=[
+            ToolParameter("lead_id", "string", "UUID del lead", required=False),
+            ToolParameter(
+                "business_name", "string", "Nombre del negocio (búsqueda parcial)", required=False
+            ),
+        ],
+        category="leads",
+        handler=get_lead_detail,
+    )
+)
 
-registry.register(ToolDefinition(
-    name="count_leads_by_status",
-    description="Contar leads agrupados por estado (new, enriched, scored, etc.)",
-    category="leads",
-    handler=count_leads_by_status,
-))
+registry.register(
+    ToolDefinition(
+        name="count_leads_by_status",
+        description="Contar leads agrupados por estado (new, enriched, scored, etc.)",
+        category="leads",
+        handler=count_leads_by_status,
+    )
+)
 
 
 def get_lead_journey(db: Session, *, lead_id: str) -> dict:
@@ -177,10 +198,7 @@ def get_lead_journey(db: Session, *, lead_id: str) -> dict:
 
     # Pipeline context (latest run)
     run = (
-        db.query(PipelineRun)
-        .filter_by(lead_id=lid)
-        .order_by(PipelineRun.created_at.desc())
-        .first()
+        db.query(PipelineRun).filter_by(lead_id=lid).order_by(PipelineRun.created_at.desc()).first()
     )
     if run:
         journey["pipeline"] = {
@@ -215,8 +233,7 @@ def get_lead_journey(db: Session, *, lead_id: str) -> dict:
     )
     if corrections:
         journey["corrections"] = [
-            {"category": c.category, "severity": c.severity, "issue": c.issue}
-            for c in corrections
+            {"category": c.category, "severity": c.severity, "issue": c.issue} for c in corrections
         ]
 
     # Outreach draft
@@ -236,15 +253,17 @@ def get_lead_journey(db: Session, *, lead_id: str) -> dict:
     return journey
 
 
-registry.register(ToolDefinition(
-    name="get_lead_journey",
-    description="Ver el viaje completo de un lead: pipeline, Scout, corrections, draft, delivery",
-    parameters=[
-        ToolParameter("lead_id", "string", "UUID del lead"),
-    ],
-    category="leads",
-    handler=get_lead_journey,
-))
+registry.register(
+    ToolDefinition(
+        name="get_lead_journey",
+        description="Ver el viaje completo de un lead: pipeline, Scout, corrections, draft, delivery",
+        parameters=[
+            ToolParameter("lead_id", "string", "UUID del lead"),
+        ],
+        category="leads",
+        handler=get_lead_journey,
+    )
+)
 
 
 # ---------------------------------------------------------------------------
@@ -288,45 +307,58 @@ def create_lead(
     }
 
 
-registry.register(ToolDefinition(
-    name="create_lead",
-    description=(
-        "Crear un nuevo lead en el sistema "
-        "(requiere confirmación)"
-    ),
-    parameters=[
-        ToolParameter(
-            "business_name", "string",
-            "Nombre del negocio",
-        ),
-        ToolParameter(
-            "industry", "string",
-            "Industria o rubro", required=False,
-        ),
-        ToolParameter(
-            "city", "string", "Ciudad", required=False,
-        ),
-        ToolParameter(
-            "email", "string",
-            "Email de contacto", required=False,
-        ),
-        ToolParameter(
-            "website_url", "string",
-            "URL del sitio web", required=False,
-        ),
-        ToolParameter(
-            "instagram_url", "string",
-            "URL de Instagram", required=False,
-        ),
-        ToolParameter(
-            "phone", "string",
-            "Teléfono de contacto", required=False,
-        ),
-    ],
-    category="leads",
-    requires_confirmation=True,
-    handler=create_lead,
-))
+registry.register(
+    ToolDefinition(
+        name="create_lead",
+        description=("Crear un nuevo lead en el sistema (requiere confirmación)"),
+        parameters=[
+            ToolParameter(
+                "business_name",
+                "string",
+                "Nombre del negocio",
+            ),
+            ToolParameter(
+                "industry",
+                "string",
+                "Industria o rubro",
+                required=False,
+            ),
+            ToolParameter(
+                "city",
+                "string",
+                "Ciudad",
+                required=False,
+            ),
+            ToolParameter(
+                "email",
+                "string",
+                "Email de contacto",
+                required=False,
+            ),
+            ToolParameter(
+                "website_url",
+                "string",
+                "URL del sitio web",
+                required=False,
+            ),
+            ToolParameter(
+                "instagram_url",
+                "string",
+                "URL de Instagram",
+                required=False,
+            ),
+            ToolParameter(
+                "phone",
+                "string",
+                "Teléfono de contacto",
+                required=False,
+            ),
+        ],
+        category="leads",
+        requires_confirmation=True,
+        handler=create_lead,
+    )
+)
 
 
 # ---------------------------------------------------------------------------
@@ -334,9 +366,7 @@ registry.register(ToolDefinition(
 # ---------------------------------------------------------------------------
 
 
-def update_lead_status(
-    db: Session, *, lead_id: str, status: str
-) -> dict:
+def update_lead_status(db: Session, *, lead_id: str, status: str) -> dict:
     """Update a lead's status."""
     try:
         lid = uuid.UUID(lead_id)
@@ -360,20 +390,21 @@ def update_lead_status(
     }
 
 
-registry.register(ToolDefinition(
-    name="update_lead_status",
-    description=(
-        "Actualizar el estado de un lead "
-        "(requiere confirmación)"
-    ),
-    parameters=[
-        ToolParameter("lead_id", "string", "UUID del lead"),
-        ToolParameter(
-            "status", "string", "Nuevo estado del lead",
-            enum=[s.value for s in LeadStatus],
-        ),
-    ],
-    category="leads",
-    requires_confirmation=True,
-    handler=update_lead_status,
-))
+registry.register(
+    ToolDefinition(
+        name="update_lead_status",
+        description=("Actualizar el estado de un lead (requiere confirmación)"),
+        parameters=[
+            ToolParameter("lead_id", "string", "UUID del lead"),
+            ToolParameter(
+                "status",
+                "string",
+                "Nuevo estado del lead",
+                enum=[s.value for s in LeadStatus],
+            ),
+        ],
+        category="leads",
+        requires_confirmation=True,
+        handler=update_lead_status,
+    )
+)

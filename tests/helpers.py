@@ -1,4 +1,5 @@
 """Shared test-data seeding helpers used across inbound mail test modules."""
+
 from datetime import UTC, datetime
 
 

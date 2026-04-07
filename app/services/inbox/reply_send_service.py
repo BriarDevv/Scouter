@@ -14,7 +14,9 @@ from app.models.outreach import LogAction, OutreachLog
 from app.models.reply_assistant import ReplyAssistantDraft, ReplyAssistantReviewStatus
 from app.models.reply_assistant_send import ReplyAssistantSend, ReplyAssistantSendStatus
 from app.schemas.reply_send import ReplyAssistantSendStatusResponse
-from app.services.inbox.inbound_mail_service import _normalize_message_id as normalize_inbound_message_id
+from app.services.inbox.inbound_mail_service import (
+    _normalize_message_id as normalize_inbound_message_id,
+)
 from app.services.outreach.mail_service import (
     DraftRecipientMissingError,
     build_mail_send_request,
@@ -129,13 +131,18 @@ def send_reply_assistant_draft(db: Session, message_id: uuid.UUID) -> ReplyAssis
     if latest_send and latest_send.status == ReplyAssistantSendStatus.SENDING:
         # Auto-recover stuck SENDING after 5 minutes
         from datetime import timedelta
-        if latest_send.created_at and (datetime.now(UTC) - latest_send.created_at) > timedelta(minutes=5):
+
+        if latest_send.created_at and (datetime.now(UTC) - latest_send.created_at) > timedelta(
+            minutes=5
+        ):
             latest_send.status = ReplyAssistantSendStatus.FAILED
             latest_send.error = "Send timed out after 5 minutes."
             db.flush()
             db.refresh(latest_send)
         else:
-            raise ReplyDraftAlreadySendingError(blocked_reason or "Reply draft is already being sent.")
+            raise ReplyDraftAlreadySendingError(
+                blocked_reason or "Reply draft is already being sent."
+            )
     if blocked_reason:
         raise ReplyDraftValidationError(blocked_reason)
 
@@ -197,7 +204,14 @@ def send_reply_assistant_draft(db: Session, message_id: uuid.UUID) -> ReplyAssis
         db.refresh(send_record)
         try:
             from app.services.notifications.notification_emitter import on_send_failed
-            on_send_failed(db, send_id=send_record.id, recipient=send_record.recipient_email, error=send_record.error, send_type="reply_assistant")
+
+            on_send_failed(
+                db,
+                send_id=send_record.id,
+                recipient=send_record.recipient_email,
+                error=send_record.error,
+                send_type="reply_assistant",
+            )
         except Exception:
             logger.debug("reply_send_failed_notification_failed", exc_info=True)
         logger.warning(
@@ -259,7 +273,10 @@ def _compute_send_blocked_reason(draft: ReplyAssistantDraft) -> str | None:
     if latest_send and latest_send.status == ReplyAssistantSendStatus.SENDING:
         # Auto-recover stuck SENDING after 5 minutes
         from datetime import timedelta
-        if latest_send.created_at and (datetime.now(UTC) - latest_send.created_at) > timedelta(minutes=5):
+
+        if latest_send.created_at and (datetime.now(UTC) - latest_send.created_at) > timedelta(
+            minutes=5
+        ):
             latest_send.status = ReplyAssistantSendStatus.FAILED
             latest_send.error = "Send timed out after 5 minutes."
         else:
@@ -276,7 +293,9 @@ def _compute_send_blocked_reason(draft: ReplyAssistantDraft) -> str | None:
     if not recipient_email:
         return "Inbound message does not have a sender email."
 
-    if not _resolve_reply_subject(draft.subject, inbound_message.subject if inbound_message else None):
+    if not _resolve_reply_subject(
+        draft.subject, inbound_message.subject if inbound_message else None
+    ):
         return "Reply draft subject is missing."
 
     if not (draft.body or "").strip():
@@ -286,14 +305,18 @@ def _compute_send_blocked_reason(draft: ReplyAssistantDraft) -> str | None:
 
 
 def _require_recipient_email(inbound_message: InboundMessage | None) -> str:
-    recipient_email = ((inbound_message.from_email if inbound_message else None) or "").strip().lower()
+    recipient_email = (
+        ((inbound_message.from_email if inbound_message else None) or "").strip().lower()
+    )
     if not recipient_email:
         raise DraftRecipientMissingError("Inbound message does not have a sender email.")
     return recipient_email
 
 
 def _require_subject(draft: ReplyAssistantDraft, inbound_message: InboundMessage | None) -> str:
-    subject = _resolve_reply_subject(draft.subject, inbound_message.subject if inbound_message else None)
+    subject = _resolve_reply_subject(
+        draft.subject, inbound_message.subject if inbound_message else None
+    )
     if not subject:
         raise ReplyDraftValidationError("Reply draft subject is missing.")
     return subject

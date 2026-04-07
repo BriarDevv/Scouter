@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.schemas.lead import LeadResponse
 from app.schemas.territory import (
     TerritoryCreate,
     TerritoryResponse,
@@ -13,16 +14,14 @@ from app.schemas.territory import (
     TerritoryWithStats,
 )
 from app.services.territory_service import (
+    _get_leads_in_cities,
     create_territory,
     delete_territory,
     get_all_territories_with_stats,
     get_territory,
     get_territory_with_stats,
-    list_territories,
     update_territory,
-    _get_leads_in_cities,
 )
-from app.schemas.lead import LeadResponse
 
 router = APIRouter(prefix="/territories", tags=["territories"])
 

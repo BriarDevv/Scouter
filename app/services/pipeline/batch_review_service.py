@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -131,11 +131,7 @@ def collect_batch_data(db: Session, since: datetime) -> dict:
     # Outcome summary
     from app.models.outcome_snapshot import OutcomeSnapshot
 
-    outcomes = (
-        db.query(OutcomeSnapshot)
-        .filter(OutcomeSnapshot.created_at >= since)
-        .all()
-    )
+    outcomes = db.query(OutcomeSnapshot).filter(OutcomeSnapshot.created_at >= since).all()
     won = sum(1 for o in outcomes if o.outcome == "won")
     lost = len(outcomes) - won
 
@@ -143,9 +139,7 @@ def collect_batch_data(db: Session, since: datetime) -> dict:
     from app.models.llm_invocation import LLMInvocation
 
     invocation_count = (
-        db.query(func.count(LLMInvocation.id))
-        .filter(LLMInvocation.created_at >= since)
-        .scalar()
+        db.query(func.count(LLMInvocation.id)).filter(LLMInvocation.created_at >= since).scalar()
         or 0
     )
     fallback_count = (
@@ -306,7 +300,9 @@ def generate_batch_review(db: Session, trigger_reason: str = "manual") -> BatchR
     return review
 
 
-def approve_proposal(db: Session, proposal_id: uuid.UUID, approved_by: str = "operator") -> ImprovementProposal | None:
+def approve_proposal(
+    db: Session, proposal_id: uuid.UUID, approved_by: str = "operator"
+) -> ImprovementProposal | None:
     proposal = db.get(ImprovementProposal, proposal_id)
     if not proposal or proposal.status != "pending":
         return None
@@ -325,14 +321,18 @@ def reject_proposal(db: Session, proposal_id: uuid.UUID) -> ImprovementProposal 
     return proposal
 
 
-def apply_proposal(db: Session, proposal_id: uuid.UUID, result_notes: str = "") -> ImprovementProposal | None:
+def apply_proposal(
+    db: Session, proposal_id: uuid.UUID, result_notes: str = ""
+) -> ImprovementProposal | None:
     """Mark an approved proposal as applied."""
     proposal = db.get(ImprovementProposal, proposal_id)
     if not proposal or proposal.status != "approved":
         return None
     proposal.status = "applied"
     proposal.applied_at = datetime.now(UTC)
-    proposal.result_notes = result_notes or f"Applied by operator at {datetime.now(UTC).isoformat()}"
+    proposal.result_notes = (
+        result_notes or f"Applied by operator at {datetime.now(UTC).isoformat()}"
+    )
     db.flush()
     logger.info(
         "proposal_applied",

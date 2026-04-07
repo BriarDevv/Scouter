@@ -8,7 +8,6 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db
 from app.api.request_context import (
     CORRELATION_ID_HEADER,
     REQUEST_ID_HEADER,
@@ -17,6 +16,7 @@ from app.api.request_context import (
 from app.api.router import api_router
 from app.core.config import settings
 from app.core.logging import get_logger, setup_logging
+from app.db.session import get_db
 from app.services.dashboard.health_service import get_system_health
 
 setup_logging()
@@ -62,6 +62,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
         content={"detail": "Error interno del servidor."},
     )
 
+
 # CORS for dashboard dev server
 app.add_middleware(
     CORSMiddleware,
@@ -80,6 +81,7 @@ app.add_middleware(
 )
 
 from app.api.auth import APIKeyMiddleware
+
 app.add_middleware(APIKeyMiddleware)
 app.add_middleware(RequestContextMiddleware)
 
@@ -87,6 +89,7 @@ app.include_router(api_router)
 
 # Prometheus metrics
 from prometheus_fastapi_instrumentator import Instrumentator
+
 Instrumentator(
     should_group_status_codes=True,
     should_ignore_untemplated=True,

@@ -14,9 +14,7 @@ from app.services.pipeline.operational_task_service import (
 from app.services.pipeline.task_tracking_service import queue_task_run
 
 
-def start_territory_crawl(
-    db: Session, *, territory_id: str, max_results: int = 20
-) -> dict:
+def start_territory_crawl(db: Session, *, territory_id: str, max_results: int = 20) -> dict:
     """Launch a territory crawl via Celery."""
     try:
         tid = uuid.UUID(territory_id)
@@ -79,31 +77,36 @@ def get_crawl_status(db: Session, *, territory_id: str) -> dict:
     return get_territory_crawl_status_snapshot(db, territory_id)
 
 
-registry.register(ToolDefinition(
-    name="start_territory_crawl",
-    description=(
-        "Iniciar un crawl de Google Maps para un territorio "
-        "(requiere confirmación — lanza tarea asíncrona y consume API key)"
-    ),
-    parameters=[
-        ToolParameter("territory_id", "string", "UUID del territorio"),
-        ToolParameter(
-            "max_results", "integer",
-            "Máximo de resultados por categoría (default 20)",
-            required=False,
+registry.register(
+    ToolDefinition(
+        name="start_territory_crawl",
+        description=(
+            "Iniciar un crawl de Google Maps para un territorio "
+            "(requiere confirmación — lanza tarea asíncrona y consume API key)"
         ),
-    ],
-    category="crawl",
-    requires_confirmation=True,
-    handler=start_territory_crawl,
-))
+        parameters=[
+            ToolParameter("territory_id", "string", "UUID del territorio"),
+            ToolParameter(
+                "max_results",
+                "integer",
+                "Máximo de resultados por categoría (default 20)",
+                required=False,
+            ),
+        ],
+        category="crawl",
+        requires_confirmation=True,
+        handler=start_territory_crawl,
+    )
+)
 
-registry.register(ToolDefinition(
-    name="get_crawl_status",
-    description="Consultar el progreso de un crawl de territorio en curso",
-    parameters=[
-        ToolParameter("territory_id", "string", "UUID del territorio"),
-    ],
-    category="crawl",
-    handler=get_crawl_status,
-))
+registry.register(
+    ToolDefinition(
+        name="get_crawl_status",
+        description="Consultar el progreso de un crawl de territorio en curso",
+        parameters=[
+            ToolParameter("territory_id", "string", "UUID del territorio"),
+        ],
+        category="crawl",
+        handler=get_crawl_status,
+    )
+)

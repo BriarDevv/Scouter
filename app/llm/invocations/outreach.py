@@ -48,19 +48,15 @@ def generate_outreach_draft_structured(
         "website_url": sanitize_field(website_url) or "None",
         "instagram_url": sanitize_field(instagram_url) or "None",
         "llm_summary": sanitize_field(llm_summary) or "No summary available",
-        "llm_suggested_angle": sanitize_field(llm_suggested_angle)
-        or "Web development services",
+        "llm_suggested_angle": sanitize_field(llm_suggested_angle) or "Web development services",
         "signals": format_signals(signals),
         "brand_name": bc.get("brand_name") or "No especificado",
         "signature_name": bc.get("signature_name") or "No especificado",
         "signature_role": bc.get("signature_role") or "No especificado",
         "signature_company": bc.get("signature_company") or "No especificado",
-        "brand_website_url": bc.get("website_url")
-        or "No proporcionado — NO inventar URLs",
-        "portfolio_url": bc.get("portfolio_url")
-        or "No proporcionado — NO inventar URLs",
-        "calendar_url": bc.get("calendar_url")
-        or "No proporcionado — NO inventar URLs",
+        "brand_website_url": bc.get("website_url") or "No proporcionado — NO inventar URLs",
+        "portfolio_url": bc.get("portfolio_url") or "No proporcionado — NO inventar URLs",
+        "calendar_url": bc.get("calendar_url") or "No proporcionado — NO inventar URLs",
         "signature_cta": bc.get("signature_cta") or "No especificado",
         "default_outreach_tone": bc.get("default_outreach_tone") or "profesional",
         "default_closing_line": bc.get("default_closing_line") or "No especificado",
@@ -231,8 +227,7 @@ def generate_whatsapp_draft_structured(
         "website_url": sanitize_field(website_url) or "None",
         "instagram_url": sanitize_field(instagram_url) or "None",
         "llm_summary": sanitize_field(llm_summary) or "No summary available",
-        "llm_suggested_angle": sanitize_field(llm_suggested_angle)
-        or "Web development services",
+        "llm_suggested_angle": sanitize_field(llm_suggested_angle) or "Web development services",
         "signals": format_signals(signals),
     }
     return client_module.invoke_structured(

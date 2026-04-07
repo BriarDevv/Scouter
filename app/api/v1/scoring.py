@@ -4,10 +4,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db
 from app.api.request_context import get_correlation_id
+from app.db.session import get_db
 from app.schemas.lead import LeadResponse
 from app.schemas.task_tracking import TaskEnqueueResponse
+from app.services.leads.scoring_service import score_lead
 from app.services.pipeline.operational_task_service import (
     RESCORE_ALL_REDIS_KEY,
     RESCORE_ALL_SCOPE_KEY,
@@ -15,7 +16,6 @@ from app.services.pipeline.operational_task_service import (
     load_legacy_operational_state,
     serialize_rescore_all_status,
 )
-from app.services.leads.scoring_service import score_lead
 from app.services.pipeline.task_tracking_service import (
     attach_pipeline_root_task,
     create_pipeline_run,

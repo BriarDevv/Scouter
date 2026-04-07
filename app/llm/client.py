@@ -529,9 +529,7 @@ def invoke_structured[StructuredT: BaseModel](
         except (ValidationError, ValueError, TypeError) as exc:
             parse_error = str(exc)
             try:
-                parsed = prompt.response_model.model_validate(
-                    _extract_json(completion.text)
-                )
+                parsed = prompt.response_model.model_validate(_extract_json(completion.text))
                 result = StructuredInvocationResult[StructuredT](
                     status=LLMInvocationStatus.DEGRADED,
                     role=normalized_role.value,

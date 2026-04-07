@@ -77,19 +77,21 @@ def build_agent_system_prompt(
     if system_context:
         parts.extend(["", "## Contexto actual del sistema", system_context])
 
-    parts.extend([
-        "",
-        "## Herramientas disponibles",
-        "",
-        "Cuando necesites usar una herramienta, respondé con el formato:",
-        "<tool_call>",
-        '{"name": "nombre_herramienta", "arguments": {"param": "valor"}}',
-        "</tool_call>",
-        "",
-        "Podés usar múltiples herramientas en un mismo mensaje.",
-        "Después de recibir el resultado, continuá tu respuesta al usuario.",
-        "",
-        tools_schema,
-    ])
+    parts.extend(
+        [
+            "",
+            "## Herramientas disponibles",
+            "",
+            "Cuando necesites usar una herramienta, respondé con el formato:",
+            "<tool_call>",
+            '{"name": "nombre_herramienta", "arguments": {"param": "valor"}}',
+            "</tool_call>",
+            "",
+            "Podés usar múltiples herramientas en un mismo mensaje.",
+            "Después de recibir el resultado, continuá tu respuesta al usuario.",
+            "",
+            tools_schema,
+        ]
+    )
 
     return "\n".join(parts)

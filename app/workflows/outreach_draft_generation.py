@@ -13,8 +13,8 @@ from app.core.logging import get_logger
 from app.models.commercial_brief import CommercialBrief
 from app.models.lead import Lead
 from app.models.outreach import DraftStatus, OutreachDraft
-from app.services.settings.operational_settings_service import get_cached_settings
 from app.services.outreach.outreach_service import generate_outreach_draft, generate_whatsapp_draft
+from app.services.settings.operational_settings_service import get_cached_settings
 
 logger = get_logger(__name__)
 
@@ -65,9 +65,7 @@ def run_outreach_draft_generation_workflow(
     existing_draft = db.execute(
         select(OutreachDraft).where(
             OutreachDraft.lead_id == lead_id,
-            OutreachDraft.status.in_(
-                [DraftStatus.PENDING_REVIEW, DraftStatus.APPROVED]
-            ),
+            OutreachDraft.status.in_([DraftStatus.PENDING_REVIEW, DraftStatus.APPROVED]),
         )
     ).scalar_one_or_none()
     if existing_draft:
@@ -118,7 +116,9 @@ def run_outreach_draft_generation_workflow(
             whatsapp_draft_id=whatsapp_draft_id,
         )
 
-    draft = generate_outreach_draft(db, lead_id, commit=False, pipeline_context_text=pipeline_context_text)
+    draft = generate_outreach_draft(
+        db, lead_id, commit=False, pipeline_context_text=pipeline_context_text
+    )
     if not draft:
         db.rollback()
         return OutreachDraftWorkflowResult(
@@ -127,11 +127,7 @@ def run_outreach_draft_generation_workflow(
             reason="draft_generation_failed",
         )
 
-    if (
-        wa_settings.whatsapp_outreach_enabled
-        and lead.phone
-        and whatsapp_draft_id is None
-    ):
+    if wa_settings.whatsapp_outreach_enabled and lead.phone and whatsapp_draft_id is None:
         try:
             wa_draft = generate_whatsapp_draft(db, lead_id, commit=False)
             if wa_draft:

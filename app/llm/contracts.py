@@ -34,8 +34,14 @@ class ReviewCorrectionItem(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     category: Literal[
-        "tone", "cta", "personalization", "length",
-        "accuracy", "relevance", "format", "language",
+        "tone",
+        "cta",
+        "personalization",
+        "length",
+        "accuracy",
+        "relevance",
+        "format",
+        "language",
     ]
     severity: Literal["critical", "important", "suggestion"] = "suggestion"
     issue: str

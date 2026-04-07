@@ -6,7 +6,8 @@ from app.llm.prompts.system import ANTI_INJECTION_PREAMBLE
 # SUMMARIZE_BUSINESS
 # ---------------------------------------------------------------------------
 
-SUMMARIZE_BUSINESS_SYSTEM = """\
+SUMMARIZE_BUSINESS_SYSTEM = (
+    """\
 You are a business analyst for a web development agency called Scouter. Given lead data, write a brief summary that helps the sales team understand this prospect.
 
 Your summary should cover:
@@ -23,7 +24,9 @@ Important:
 Respond ONLY with a JSON object:
 {
   "summary": "2-3 sentence summary of the business with opportunity context"
-}""" + ANTI_INJECTION_PREAMBLE
+}"""
+    + ANTI_INJECTION_PREAMBLE
+)
 
 SUMMARIZE_BUSINESS_DATA = """\
 <external_data>
@@ -41,7 +44,8 @@ Lead data:
 # EVALUATE_LEAD_QUALITY
 # ---------------------------------------------------------------------------
 
-EVALUATE_LEAD_QUALITY_SYSTEM = """\
+EVALUATE_LEAD_QUALITY_SYSTEM = (
+    """\
 You are a sales qualification expert for Scouter, a web development agency. Evaluate whether this business is a good prospect for web development/redesign services.
 
 Quality criteria:
@@ -75,7 +79,9 @@ Respond ONLY with a JSON object:
   "quality": "high" | "medium" | "low",
   "reasoning": "1-2 sentences explaining your assessment with specific evidence",
   "suggested_angle": "1 sentence suggesting the best sales angle for this specific business"
-}""" + ANTI_INJECTION_PREAMBLE
+}"""
+    + ANTI_INJECTION_PREAMBLE
+)
 
 EVALUATE_LEAD_QUALITY_DATA = """\
 <external_data>

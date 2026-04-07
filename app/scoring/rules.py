@@ -32,24 +32,61 @@ SIGNAL_WEIGHTS: dict[SignalType, float] = {
 
 # Industries with higher likelihood of needing web services
 HIGH_VALUE_INDUSTRIES = {
-    "restaurante", "restaurant", "gastronomia", "gastronomía",
-    "peluqueria", "peluquería", "salon", "salón", "barberia", "barbería",
-    "gimnasio", "gym", "fitness",
-    "clinica", "clínica", "consultorio", "odontologia", "odontología",
-    "inmobiliaria", "real estate",
-    "estudio contable", "contador",
-    "abogado", "estudio jurídico", "estudio juridico",
+    "restaurante",
+    "restaurant",
+    "gastronomia",
+    "gastronomía",
+    "peluqueria",
+    "peluquería",
+    "salon",
+    "salón",
+    "barberia",
+    "barbería",
+    "gimnasio",
+    "gym",
+    "fitness",
+    "clinica",
+    "clínica",
+    "consultorio",
+    "odontologia",
+    "odontología",
+    "inmobiliaria",
+    "real estate",
+    "estudio contable",
+    "contador",
+    "abogado",
+    "estudio jurídico",
+    "estudio juridico",
     "veterinaria",
-    "hotel", "hostel", "alojamiento",
-    "tienda", "shop", "boutique", "indumentaria",
-    "taller", "mecanico", "mecánico",
-    "floreria", "florería",
-    "panaderia", "panadería", "confiteria", "confitería",
-    "optica", "óptica",
-    "libreria", "librería",
-    "lavadero", "car wash",
-    "ferreteria", "ferretería",
-    "cafeteria", "cafetería", "café", "cafe", "bar",
+    "hotel",
+    "hostel",
+    "alojamiento",
+    "tienda",
+    "shop",
+    "boutique",
+    "indumentaria",
+    "taller",
+    "mecanico",
+    "mecánico",
+    "floreria",
+    "florería",
+    "panaderia",
+    "panadería",
+    "confiteria",
+    "confitería",
+    "optica",
+    "óptica",
+    "libreria",
+    "librería",
+    "lavadero",
+    "car wash",
+    "ferreteria",
+    "ferretería",
+    "cafeteria",
+    "cafetería",
+    "café",
+    "cafe",
+    "bar",
 }
 
 INDUSTRY_BONUS = 15.0
@@ -69,6 +106,7 @@ def _get_scoring_overrides(db=None) -> dict[str, float]:
         return {}
     try:
         from app.services.settings.operational_settings_service import get_cached_settings
+
         ops = get_cached_settings(db)
         return getattr(ops, "scoring_overrides", None) or {}
     except Exception as exc:
@@ -87,7 +125,11 @@ def compute_score(lead: Lead, db=None) -> float:
 
     # Signal-based scoring (with optional overrides from proposals)
     for signal in lead.signals:
-        signal_key = signal.signal_type.value if hasattr(signal.signal_type, 'value') else str(signal.signal_type)
+        signal_key = (
+            signal.signal_type.value
+            if hasattr(signal.signal_type, "value")
+            else str(signal.signal_type)
+        )
         if signal_key in overrides:
             score += overrides[signal_key]
         else:

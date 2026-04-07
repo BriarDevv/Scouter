@@ -7,9 +7,17 @@ from sqlalchemy.orm import Session
 from app.agent.tool_registry import ToolDefinition, ToolParameter, registry
 from app.services.territory_service import (
     create_territory as _create,
+)
+from app.services.territory_service import (
     delete_territory as _delete,
+)
+from app.services.territory_service import (
     get_territory_with_stats,
+)
+from app.services.territory_service import (
     list_territories as _list,
+)
+from app.services.territory_service import (
     update_territory as _update,
 )
 
@@ -19,9 +27,7 @@ def list_territories(db: Session) -> dict:
     territories = _list(db)
     return {
         "count": len(territories),
-        "territories": [
-            get_territory_with_stats(db, t) for t in territories
-        ],
+        "territories": [get_territory_with_stats(db, t) for t in territories],
     }
 
 
@@ -109,56 +115,68 @@ def delete_territory(db: Session, *, territory_id: str) -> dict:
     return {"success": result}
 
 
-registry.register(ToolDefinition(
-    name="list_territories",
-    description="Listar todos los territorios con estadísticas de leads",
-    category="territories",
-    handler=list_territories,
-))
+registry.register(
+    ToolDefinition(
+        name="list_territories",
+        description="Listar todos los territorios con estadísticas de leads",
+        category="territories",
+        handler=list_territories,
+    )
+)
 
-registry.register(ToolDefinition(
-    name="create_territory",
-    description="Crear un nuevo territorio geográfico (requiere confirmación)",
-    parameters=[
-        ToolParameter("name", "string", "Nombre del territorio"),
-        ToolParameter("cities", "string", "Ciudades separadas por coma"),
-        ToolParameter("description", "string", "Descripción opcional", required=False),
-        ToolParameter("color", "string", "Color hex (default #8b5cf6)", required=False),
-    ],
-    category="territories",
-    requires_confirmation=True,
-    handler=create_territory,
-))
+registry.register(
+    ToolDefinition(
+        name="create_territory",
+        description="Crear un nuevo territorio geográfico (requiere confirmación)",
+        parameters=[
+            ToolParameter("name", "string", "Nombre del territorio"),
+            ToolParameter("cities", "string", "Ciudades separadas por coma"),
+            ToolParameter("description", "string", "Descripción opcional", required=False),
+            ToolParameter("color", "string", "Color hex (default #8b5cf6)", required=False),
+        ],
+        category="territories",
+        requires_confirmation=True,
+        handler=create_territory,
+    )
+)
 
-registry.register(ToolDefinition(
-    name="update_territory",
-    description="Actualizar un territorio existente (requiere confirmación)",
-    parameters=[
-        ToolParameter("territory_id", "string", "UUID del territorio"),
-        ToolParameter("name", "string", "Nuevo nombre", required=False),
-        ToolParameter("cities", "string", "Ciudades separadas por coma", required=False),
-        ToolParameter(
-            "description", "string", "Nueva descripción", required=False,
-        ),
-        ToolParameter("color", "string", "Nuevo color hex", required=False),
-        ToolParameter(
-            "is_active", "string",
-            "Activar/desactivar territorio (true/false)",
-            required=False,
-        ),
-    ],
-    category="territories",
-    requires_confirmation=True,
-    handler=update_territory,
-))
+registry.register(
+    ToolDefinition(
+        name="update_territory",
+        description="Actualizar un territorio existente (requiere confirmación)",
+        parameters=[
+            ToolParameter("territory_id", "string", "UUID del territorio"),
+            ToolParameter("name", "string", "Nuevo nombre", required=False),
+            ToolParameter("cities", "string", "Ciudades separadas por coma", required=False),
+            ToolParameter(
+                "description",
+                "string",
+                "Nueva descripción",
+                required=False,
+            ),
+            ToolParameter("color", "string", "Nuevo color hex", required=False),
+            ToolParameter(
+                "is_active",
+                "string",
+                "Activar/desactivar territorio (true/false)",
+                required=False,
+            ),
+        ],
+        category="territories",
+        requires_confirmation=True,
+        handler=update_territory,
+    )
+)
 
-registry.register(ToolDefinition(
-    name="delete_territory",
-    description="Eliminar un territorio por ID (requiere confirmación)",
-    parameters=[
-        ToolParameter("territory_id", "string", "UUID del territorio a eliminar"),
-    ],
-    category="territories",
-    requires_confirmation=True,
-    handler=delete_territory,
-))
+registry.register(
+    ToolDefinition(
+        name="delete_territory",
+        description="Eliminar un territorio por ID (requiere confirmación)",
+        parameters=[
+            ToolParameter("territory_id", "string", "UUID del territorio a eliminar"),
+        ],
+        category="territories",
+        requires_confirmation=True,
+        handler=delete_territory,
+    )
+)

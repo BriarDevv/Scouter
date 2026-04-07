@@ -285,9 +285,8 @@ def get_setup_readiness(db: Session) -> dict:
     # At least one outreach channel (WhatsApp or Email)
     wa_step = next((s for s in config_steps if s["id"] == "whatsapp"), None)
     mail_step = next((s for s in config_steps if s["id"] == "mail_out"), None)
-    has_outreach = (
-        (wa_step is not None and wa_step["status"] != "incomplete")
-        or (mail_step is not None and mail_step["status"] != "incomplete")
+    has_outreach = (wa_step is not None and wa_step["status"] != "incomplete") or (
+        mail_step is not None and mail_step["status"] != "incomplete"
     )
 
     dashboard_unlocked = platform_ready and runtime_ready and brand_ready and has_outreach
@@ -330,8 +329,7 @@ def get_setup_readiness(db: Session) -> dict:
                 "label": "Actualizar Scouter",
                 "kind": "manual",
                 "description": (
-                    "Update guiado y explícito para evitar reinicios opacos "
-                    "desde la API."
+                    "Update guiado y explícito para evitar reinicios opacos desde la API."
                 ),
                 "endpoint": None,
                 "method": "POST",

@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 from app.agent.tool_registry import ToolDefinition, ToolParameter, registry
 from app.services.review_service import (
     review_draft_with_reviewer as _review_draft,
+)
+from app.services.review_service import (
     review_lead_with_reviewer as _review_lead,
 )
 
@@ -49,28 +51,32 @@ def review_draft(db: Session, *, draft_id: str) -> dict:
     }
 
 
-registry.register(ToolDefinition(
-    name="review_lead",
-    description=(
-        "Ejecutar una revisión con el modelo Reviewer sobre un lead: "
-        "obtiene veredicto, confianza, razonamiento y acción recomendada"
-    ),
-    parameters=[
-        ToolParameter("lead_id", "string", "UUID del lead a revisar"),
-    ],
-    category="reviews",
-    handler=review_lead,
-))
+registry.register(
+    ToolDefinition(
+        name="review_lead",
+        description=(
+            "Ejecutar una revisión con el modelo Reviewer sobre un lead: "
+            "obtiene veredicto, confianza, razonamiento y acción recomendada"
+        ),
+        parameters=[
+            ToolParameter("lead_id", "string", "UUID del lead a revisar"),
+        ],
+        category="reviews",
+        handler=review_lead,
+    )
+)
 
-registry.register(ToolDefinition(
-    name="review_draft",
-    description=(
-        "Ejecutar una revisión con el modelo Reviewer sobre un borrador de outreach: "
-        "obtiene veredicto, confianza, razonamiento y cambios sugeridos"
-    ),
-    parameters=[
-        ToolParameter("draft_id", "string", "UUID del draft a revisar"),
-    ],
-    category="reviews",
-    handler=review_draft,
-))
+registry.register(
+    ToolDefinition(
+        name="review_draft",
+        description=(
+            "Ejecutar una revisión con el modelo Reviewer sobre un borrador de outreach: "
+            "obtiene veredicto, confianza, razonamiento y cambios sugeridos"
+        ),
+        parameters=[
+            ToolParameter("draft_id", "string", "UUID del draft a revisar"),
+        ],
+        category="reviews",
+        handler=review_draft,
+    )
+)

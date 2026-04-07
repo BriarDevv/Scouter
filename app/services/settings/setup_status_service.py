@@ -38,63 +38,75 @@ def get_setup_status(db: Session) -> dict:
     if not ops.signature_name:
         brand_missing.append("Nombre del firmante")
     if brand_missing:
-        steps.append({
-            "id": "brand",
-            "label": "Marca y firma",
-            "status": "incomplete",
-            "detail": f"Falta: {', '.join(brand_missing)}",
-            "action": "Completar marca",
-        })
+        steps.append(
+            {
+                "id": "brand",
+                "label": "Marca y firma",
+                "status": "incomplete",
+                "detail": f"Falta: {', '.join(brand_missing)}",
+                "action": "Completar marca",
+            }
+        )
     else:
-        steps.append({
-            "id": "brand",
-            "label": "Marca y firma",
-            "status": "complete",
-            "detail": f"{ops.brand_name} · {ops.signature_name}",
-            "action": None,
-        })
+        steps.append(
+            {
+                "id": "brand",
+                "label": "Marca y firma",
+                "status": "complete",
+                "detail": f"{ops.brand_name} · {ops.signature_name}",
+                "action": None,
+            }
+        )
 
     # ── Step 2: WhatsApp (CallMeBot notifications + Kapso outreach) ───
     wa_has_phone = bool(wa and wa.phone_number)
     wa_has_key = bool(wa and wa.api_key)
     if wa_has_phone and wa_has_key:
         if wa.last_test_ok is None:
-            steps.append({
-                "id": "whatsapp",
-                "label": "WhatsApp",
-                "status": "warning",
-                "detail": "Credenciales cargadas pero conexión no probada",
-                "action": "Probar conexión",
-            })
+            steps.append(
+                {
+                    "id": "whatsapp",
+                    "label": "WhatsApp",
+                    "status": "warning",
+                    "detail": "Credenciales cargadas pero conexión no probada",
+                    "action": "Probar conexión",
+                }
+            )
         elif not wa.last_test_ok:
-            steps.append({
-                "id": "whatsapp",
-                "label": "WhatsApp",
-                "status": "warning",
-                "detail": f"Última prueba falló: {wa.last_test_error or 'error'}",
-                "action": "Probar conexión",
-            })
+            steps.append(
+                {
+                    "id": "whatsapp",
+                    "label": "WhatsApp",
+                    "status": "warning",
+                    "detail": f"Última prueba falló: {wa.last_test_error or 'error'}",
+                    "action": "Probar conexión",
+                }
+            )
         else:
-            steps.append({
-                "id": "whatsapp",
-                "label": "WhatsApp",
-                "status": "complete",
-                "detail": f"{wa.phone_number} · CallMeBot",
-                "action": None,
-            })
+            steps.append(
+                {
+                    "id": "whatsapp",
+                    "label": "WhatsApp",
+                    "status": "complete",
+                    "detail": f"{wa.phone_number} · CallMeBot",
+                    "action": None,
+                }
+            )
     else:
         wa_missing = []
         if not wa_has_phone:
             wa_missing.append("número de teléfono")
         if not wa_has_key:
             wa_missing.append("API key")
-        steps.append({
-            "id": "whatsapp",
-            "label": "WhatsApp",
-            "status": "incomplete",
-            "detail": f"Falta: {', '.join(wa_missing)}",
-            "action": "Configurar WhatsApp",
-        })
+        steps.append(
+            {
+                "id": "whatsapp",
+                "label": "WhatsApp",
+                "status": "incomplete",
+                "detail": f"Falta: {', '.join(wa_missing)}",
+                "action": "Configurar WhatsApp",
+            }
+        )
 
     # ── Step 3: Mail Outbound ─────────────────────────────────────────
     smtp_missing = []
@@ -109,37 +121,45 @@ def get_setup_status(db: Session) -> dict:
         smtp_missing.append("dirección de envío (From Email)")
 
     if smtp_missing:
-        steps.append({
-            "id": "mail_out",
-            "label": "Mail de salida (SMTP)",
-            "status": "incomplete",
-            "detail": f"Falta: {', '.join(smtp_missing)}",
-            "action": "Conectar mail de salida",
-        })
+        steps.append(
+            {
+                "id": "mail_out",
+                "label": "Mail de salida (SMTP)",
+                "status": "incomplete",
+                "detail": f"Falta: {', '.join(smtp_missing)}",
+                "action": "Conectar mail de salida",
+            }
+        )
     elif creds.smtp_last_test_ok is None:
-        steps.append({
-            "id": "mail_out",
-            "label": "Mail de salida (SMTP)",
-            "status": "warning",
-            "detail": "Credenciales cargadas pero conexión no probada aún",
-            "action": "Probar conexión",
-        })
+        steps.append(
+            {
+                "id": "mail_out",
+                "label": "Mail de salida (SMTP)",
+                "status": "warning",
+                "detail": "Credenciales cargadas pero conexión no probada aún",
+                "action": "Probar conexión",
+            }
+        )
     elif not creds.smtp_last_test_ok:
-        steps.append({
-            "id": "mail_out",
-            "label": "Mail de salida (SMTP)",
-            "status": "warning",
-            "detail": f"Última prueba falló: {creds.smtp_last_test_error or 'error desconocido'}",
-            "action": "Probar conexión",
-        })
+        steps.append(
+            {
+                "id": "mail_out",
+                "label": "Mail de salida (SMTP)",
+                "status": "warning",
+                "detail": f"Última prueba falló: {creds.smtp_last_test_error or 'error desconocido'}",
+                "action": "Probar conexión",
+            }
+        )
     else:
-        steps.append({
-            "id": "mail_out",
-            "label": "Mail de salida (SMTP)",
-            "status": "complete",
-            "detail": f"{smtp.host} · {smtp.username}",
-            "action": None,
-        })
+        steps.append(
+            {
+                "id": "mail_out",
+                "label": "Mail de salida (SMTP)",
+                "status": "complete",
+                "detail": f"{smtp.host} · {smtp.username}",
+                "action": None,
+            }
+        )
 
     # ── Step 4: Mail Inbound ──────────────────────────────────────────
     imap_missing = []
@@ -151,88 +171,106 @@ def get_setup_status(db: Session) -> dict:
         imap_missing.append("contraseña")
 
     if imap_missing:
-        steps.append({
-            "id": "mail_in",
-            "label": "Bandeja de entrada (IMAP)",
-            "status": "incomplete",
-            "detail": f"Falta: {', '.join(imap_missing)}",
-            "action": "Conectar bandeja de entrada",
-        })
+        steps.append(
+            {
+                "id": "mail_in",
+                "label": "Bandeja de entrada (IMAP)",
+                "status": "incomplete",
+                "detail": f"Falta: {', '.join(imap_missing)}",
+                "action": "Conectar bandeja de entrada",
+            }
+        )
     elif creds.imap_last_test_ok is None:
-        steps.append({
-            "id": "mail_in",
-            "label": "Bandeja de entrada (IMAP)",
-            "status": "warning",
-            "detail": "Credenciales cargadas pero conexión no probada aún",
-            "action": "Probar conexión",
-        })
+        steps.append(
+            {
+                "id": "mail_in",
+                "label": "Bandeja de entrada (IMAP)",
+                "status": "warning",
+                "detail": "Credenciales cargadas pero conexión no probada aún",
+                "action": "Probar conexión",
+            }
+        )
     elif not creds.imap_last_test_ok:
-        steps.append({
-            "id": "mail_in",
-            "label": "Bandeja de entrada (IMAP)",
-            "status": "warning",
-            "detail": f"Última prueba falló: {creds.imap_last_test_error or 'error desconocido'}",
-            "action": "Probar conexión",
-        })
+        steps.append(
+            {
+                "id": "mail_in",
+                "label": "Bandeja de entrada (IMAP)",
+                "status": "warning",
+                "detail": f"Última prueba falló: {creds.imap_last_test_error or 'error desconocido'}",
+                "action": "Probar conexión",
+            }
+        )
     else:
-        steps.append({
-            "id": "mail_in",
-            "label": "Bandeja de entrada (IMAP)",
-            "status": "complete",
-            "detail": f"{imap.host} · {imap.username}",
-            "action": None,
-        })
+        steps.append(
+            {
+                "id": "mail_in",
+                "label": "Bandeja de entrada (IMAP)",
+                "status": "complete",
+                "detail": f"{imap.host} · {imap.username}",
+                "action": None,
+            }
+        )
 
     # ── Step 5: Telegram notifications ────────────────────────────────
     tg_has_token = bool(tg and tg.bot_token)
     tg_has_chat = bool(tg and tg.chat_id)
     if tg_has_token and tg_has_chat:
         if tg.last_test_ok is None:
-            steps.append({
-                "id": "telegram",
-                "label": "Telegram",
-                "status": "warning",
-                "detail": "Bot configurado pero conexión no probada",
-                "action": "Probar conexión",
-            })
+            steps.append(
+                {
+                    "id": "telegram",
+                    "label": "Telegram",
+                    "status": "warning",
+                    "detail": "Bot configurado pero conexión no probada",
+                    "action": "Probar conexión",
+                }
+            )
         elif not tg.last_test_ok:
-            steps.append({
-                "id": "telegram",
-                "label": "Telegram",
-                "status": "warning",
-                "detail": f"Última prueba falló: {tg.last_test_error or 'error'}",
-                "action": "Probar conexión",
-            })
+            steps.append(
+                {
+                    "id": "telegram",
+                    "label": "Telegram",
+                    "status": "warning",
+                    "detail": f"Última prueba falló: {tg.last_test_error or 'error'}",
+                    "action": "Probar conexión",
+                }
+            )
         else:
-            steps.append({
-                "id": "telegram",
-                "label": "Telegram",
-                "status": "complete",
-                "detail": f"@{tg.bot_username or 'bot'} · chat {tg.chat_id}",
-                "action": None,
-            })
+            steps.append(
+                {
+                    "id": "telegram",
+                    "label": "Telegram",
+                    "status": "complete",
+                    "detail": f"@{tg.bot_username or 'bot'} · chat {tg.chat_id}",
+                    "action": None,
+                }
+            )
     else:
         tg_missing = []
         if not tg_has_token:
             tg_missing.append("bot token")
         if not tg_has_chat:
             tg_missing.append("chat ID")
-        steps.append({
-            "id": "telegram",
-            "label": "Telegram",
-            "status": "incomplete",
-            "detail": f"Falta: {', '.join(tg_missing)}",
-            "action": "Configurar Telegram",
-        })
+        steps.append(
+            {
+                "id": "telegram",
+                "label": "Telegram",
+                "status": "incomplete",
+                "detail": f"Falta: {', '.join(tg_missing)}",
+                "action": "Configurar Telegram",
+            }
+        )
 
     # ── Step 6: Rules ─────────────────────────────────────────────────
-    steps.append({
-        "id": "rules",
-        "label": "Reglas operativas",
-        "status": "complete",
-        "detail": "Usando configuración por defecto",
-        "action": None,
-    })
+    steps.append(
+        {
+            "id": "rules",
+            "label": "Reglas operativas",
+            "status": "complete",
+            "detail": "Usando configuración por defecto",
+            "action": None,
+        }
+    )
 
     # ── Compute overall ───────────────────────────────────────────────
     statuses = [s["status"] for s in steps]
@@ -241,16 +279,14 @@ def get_setup_status(db: Session) -> dict:
         and creds.smtp_last_test_ok is True
     )
     ready_to_receive = (
-        bool(imap.host and imap.username and imap.password)
-        and creds.imap_last_test_ok is True
+        bool(imap.host and imap.username and imap.password) and creds.imap_last_test_ok is True
     )
 
     # At least one outreach channel configured (WhatsApp OR Email)
     wa_step = next((s for s in steps if s["id"] == "whatsapp"), None)
     mail_step = next((s for s in steps if s["id"] == "mail_out"), None)
-    has_outreach_channel = (
-        (wa_step and wa_step["status"] != "incomplete")
-        or (mail_step and mail_step["status"] != "incomplete")
+    has_outreach_channel = (wa_step and wa_step["status"] != "incomplete") or (
+        mail_step and mail_step["status"] != "incomplete"
     )
 
     if "incomplete" in statuses:

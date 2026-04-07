@@ -7,7 +7,7 @@ route configuration, and argument serialization entirely in-process.
 import json
 import uuid
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -17,10 +17,10 @@ import pytest
 # ---------------------------------------------------------------------------
 from app.workers.celery_app import _TASK_ROUTES_FULL, celery_app
 
-
 # ---------------------------------------------------------------------------
 # 1. All tasks in _TASK_ROUTES_FULL are actually registered
 # ---------------------------------------------------------------------------
+
 
 def test_all_tasks_registered():
     """Every task name declared in _TASK_ROUTES_FULL must exist in the Celery registry."""
@@ -36,6 +36,7 @@ def test_all_tasks_registered():
 # 2. Each route entry has a matching task object with the correct .name
 # ---------------------------------------------------------------------------
 
+
 def test_task_routes_match_definitions():
     """Each route key must correspond to a registered task whose .name == the key."""
     for task_name in _TASK_ROUTES_FULL:
@@ -50,6 +51,7 @@ def test_task_routes_match_definitions():
 # 3. Beat schedule tasks are registered
 # ---------------------------------------------------------------------------
 
+
 def test_beat_schedule_tasks_exist():
     """Every task referenced in beat_schedule must be registered in the Celery registry."""
     beat_schedule = celery_app.conf.beat_schedule or {}
@@ -59,14 +61,13 @@ def test_beat_schedule_tasks_exist():
         task_name = entry.get("task")
         if task_name and task_name not in registered:
             missing.append((entry_name, task_name))
-    assert missing == [], (
-        f"Beat schedule entries reference unregistered tasks: {missing}"
-    )
+    assert missing == [], f"Beat schedule entries reference unregistered tasks: {missing}"
 
 
 # ---------------------------------------------------------------------------
 # 4. Low-resource mode collapses all routes to 'default' queue
 # ---------------------------------------------------------------------------
+
 
 def test_low_resource_mode_collapses_queues(monkeypatch):
     """When _resolve_low_resource returns True, task_routes must be empty (all tasks
@@ -78,8 +79,7 @@ def test_low_resource_mode_collapses_queues(monkeypatch):
     # Simulate what celery_app.conf.update does in low-resource mode
     effective_routes = low_resource_routes
     assert effective_routes == {}, (
-        "In low-resource mode, task_routes should be empty so all tasks "
-        "land on the default queue"
+        "In low-resource mode, task_routes should be empty so all tasks land on the default queue"
     )
     # Verify the default queue is 'default'
     assert celery_app.conf.task_default_queue == "default"
@@ -93,11 +93,19 @@ _PIPELINE_TASK_ARGS = [
     # (task_name, args_dict)
     (
         "app.workers.tasks.task_enrich_lead",
-        {"lead_id": str(uuid.uuid4()), "pipeline_run_id": str(uuid.uuid4()), "correlation_id": "corr-001"},
+        {
+            "lead_id": str(uuid.uuid4()),
+            "pipeline_run_id": str(uuid.uuid4()),
+            "correlation_id": "corr-001",
+        },
     ),
     (
         "app.workers.tasks.task_score_lead",
-        {"lead_id": str(uuid.uuid4()), "pipeline_run_id": str(uuid.uuid4()), "correlation_id": None},
+        {
+            "lead_id": str(uuid.uuid4()),
+            "pipeline_run_id": str(uuid.uuid4()),
+            "correlation_id": None,
+        },
     ),
     (
         "app.workers.tasks.task_analyze_lead",
@@ -109,11 +117,19 @@ _PIPELINE_TASK_ARGS = [
     ),
     (
         "app.workers.tasks.task_research_lead",
-        {"lead_id": str(uuid.uuid4()), "pipeline_run_id": str(uuid.uuid4()), "correlation_id": None},
+        {
+            "lead_id": str(uuid.uuid4()),
+            "pipeline_run_id": str(uuid.uuid4()),
+            "correlation_id": None,
+        },
     ),
     (
         "app.workers.brief_tasks.task_generate_brief",
-        {"lead_id": str(uuid.uuid4()), "pipeline_run_id": str(uuid.uuid4()), "correlation_id": None},
+        {
+            "lead_id": str(uuid.uuid4()),
+            "pipeline_run_id": str(uuid.uuid4()),
+            "correlation_id": None,
+        },
     ),
     (
         "app.workers.brief_tasks.task_review_brief",
@@ -142,6 +158,7 @@ def test_task_serialization_roundtrip(task_name, kwargs):
 # ---------------------------------------------------------------------------
 # 6. Pipeline chain: task_enrich_lead dispatches task_score_lead on success
 # ---------------------------------------------------------------------------
+
 
 def test_pipeline_chain_dispatches_next_step(db, monkeypatch):
     """task_enrich_lead.run() must call task_score_lead.delay() with the correct

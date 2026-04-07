@@ -10,18 +10,29 @@ import re
 import time
 from urllib.parse import urlparse
 
-import httpx
-from tenacity import retry, retry_if_result, stop_after_attempt, wait_exponential
-
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
 _SOCIAL_DOMAINS = {
-    "instagram.com", "facebook.com", "tiktok.com", "twitter.com",
-    "x.com", "linkedin.com", "youtube.com", "wa.me", "linktr.ee",
-    "bit.ly", "t.me", "linkin.bio", "api.whatsapp.com", "whatsapp.com",
-    "maps.app.goo.gl", "maps.google.com", "goo.gl", "drive.google.com",
+    "instagram.com",
+    "facebook.com",
+    "tiktok.com",
+    "twitter.com",
+    "x.com",
+    "linkedin.com",
+    "youtube.com",
+    "wa.me",
+    "linktr.ee",
+    "bit.ly",
+    "t.me",
+    "linkin.bio",
+    "api.whatsapp.com",
+    "whatsapp.com",
+    "maps.app.goo.gl",
+    "maps.google.com",
+    "goo.gl",
+    "drive.google.com",
     "docs.google.com",
 }
 
@@ -130,7 +141,10 @@ def scrape_instagram_bio_link(instagram_url: str) -> str | None:
             logger.info("ig_scrape_found", username=username, website=url)
             return url
 
-    logger.info("ig_scrape_no_website", username=username,
-                external_url=external_url,
-                bio_links=[bl.get("url") for bl in bio_links])
+    logger.info(
+        "ig_scrape_no_website",
+        username=username,
+        external_url=external_url,
+        bio_links=[bl.get("url") for bl in bio_links],
+    )
     return None

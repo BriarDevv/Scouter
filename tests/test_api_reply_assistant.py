@@ -1,17 +1,17 @@
-from datetime import UTC, datetime
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy.exc import IntegrityError
 
 from app.db.session import SessionLocal
 from app.mail.provider import MailSendResult
-from app.models.mail_credentials import MailCredentials
 from app.models.inbound_mail import (
     EmailThread,
     InboundMailClassificationStatus,
     InboundMessage,
 )
 from app.models.lead import Lead, LeadStatus
+from app.models.mail_credentials import MailCredentials
 from app.models.outreach import DraftStatus, OutreachDraft
 from app.models.outreach_delivery import OutreachDelivery, OutreachDeliveryStatus
 from app.models.reply_assistant import ReplyAssistantDraft
@@ -289,7 +289,9 @@ def test_generate_reply_assistant_draft_handles_concurrent_insert(client, db, mo
             raise IntegrityError("insert", {}, Exception("duplicate"))
         return original_commit()
 
-    monkeypatch.setattr("app.services.inbox.reply_response_service.get_brand_context", lambda db: {})
+    monkeypatch.setattr(
+        "app.services.inbox.reply_response_service.get_brand_context", lambda db: {}
+    )
     monkeypatch.setattr(db, "commit", flaky_commit)
 
     resp = client.post(f"/api/v1/replies/{message.id}/draft-response")
@@ -357,7 +359,9 @@ def test_send_reply_assistant_draft_persists_send_and_threading_headers(client, 
                 sent_at=datetime(2026, 3, 14, 14, 0, tzinfo=UTC),
             )
 
-    monkeypatch.setattr("app.services.outreach.mail_service.get_mail_provider", lambda: FakeProvider())
+    monkeypatch.setattr(
+        "app.services.outreach.mail_service.get_mail_provider", lambda: FakeProvider()
+    )
 
     create_resp = client.post(f"/api/v1/replies/{message.id}/draft-response")
     assert create_resp.status_code == 200
@@ -419,7 +423,9 @@ def test_send_reply_assistant_draft_blocks_when_review_requires_edits(client, db
         "app.services.inbox.reply_draft_review_service.resolve_model_for_role",
         lambda role: "qwen3.5:27b",
     )
-    from app.services.inbox.reply_draft_review_service import review_reply_assistant_draft_with_reviewer
+    from app.services.inbox.reply_draft_review_service import (
+        review_reply_assistant_draft_with_reviewer,
+    )
 
     review_reply_assistant_draft_with_reviewer(db, message.id)
 
@@ -452,7 +458,9 @@ def test_send_reply_assistant_draft_is_idempotent_under_duplicate_clicks(client,
                 sent_at=datetime(2026, 3, 14, 14, 0, tzinfo=UTC),
             )
 
-    monkeypatch.setattr("app.services.outreach.mail_service.get_mail_provider", lambda: FakeProvider())
+    monkeypatch.setattr(
+        "app.services.outreach.mail_service.get_mail_provider", lambda: FakeProvider()
+    )
     client.post(f"/api/v1/replies/{message.id}/draft-response")
 
     first = client.post(f"/api/v1/replies/{message.id}/draft-response/send")

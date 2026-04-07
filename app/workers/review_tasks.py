@@ -39,15 +39,17 @@ def task_review_lead(self, lead_id: str) -> dict:
     queue = _queue_name(self.request, "reviewer")
 
     try:
-        with SessionLocal() as db, tracked_task_step(
-            db,
-            task_id=task_id,
-            task_name="task_review_lead",
-            queue=queue,
-            lead_id=uuid.UUID(lead_id),
-            current_step="lead_review",
-        ) as tracker:
-
+        with (
+            SessionLocal() as db,
+            tracked_task_step(
+                db,
+                task_id=task_id,
+                task_name="task_review_lead",
+                queue=queue,
+                lead_id=uuid.UUID(lead_id),
+                current_step="lead_review",
+            ) as tracker,
+        ):
             ops = get_cached_settings(db)
             if not ops.reviewer_enabled:
                 result = {
@@ -72,9 +74,7 @@ def task_review_lead(self, lead_id: str) -> dict:
             result = jsonable_encoder(result)
             tracker.succeed(result)
             db.commit()
-            logger.info(
-                "task_step_completed", task_name="task_review_lead", result=result
-            )
+            logger.info("task_step_completed", task_name="task_review_lead", result=result)
             return result
     except Exception as exc:
         _track_failure(
@@ -88,7 +88,7 @@ def task_review_lead(self, lead_id: str) -> dict:
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
+        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries))
 
 
 @celery_app.task(
@@ -144,9 +144,7 @@ def task_review_draft(self, draft_id: str) -> dict:
                 result = jsonable_encoder(result)
                 tracker.succeed(result)
                 db.commit()
-                logger.info(
-                    "task_step_completed", task_name="task_review_draft", result=result
-                )
+                logger.info("task_step_completed", task_name="task_review_draft", result=result)
                 return result
     except Exception as exc:
         _track_failure(
@@ -160,7 +158,7 @@ def task_review_draft(self, draft_id: str) -> dict:
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
+        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries))
 
 
 @celery_app.task(
@@ -200,9 +198,7 @@ def task_review_inbound_message(self, message_id: str) -> dict:
                     tracker.succeed(result)
                     return result
 
-                payload = review_inbound_message_with_reviewer(
-                    db, uuid.UUID(message_id)
-                )
+                payload = review_inbound_message_with_reviewer(db, uuid.UUID(message_id))
                 if not payload:
                     error = "Inbound message not found"
                     tracker.fail(error)
@@ -234,7 +230,7 @@ def task_review_inbound_message(self, message_id: str) -> dict:
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
+        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries))
 
 
 @celery_app.task(
@@ -277,9 +273,7 @@ def task_review_reply_assistant_draft(self, message_id: str) -> dict:
                     tracker.succeed(result)
                     return result
 
-                payload = review_reply_assistant_draft_with_reviewer(
-                    db, uuid.UUID(message_id)
-                )
+                payload = review_reply_assistant_draft_with_reviewer(db, uuid.UUID(message_id))
                 if not payload:
                     error = "Reply assistant draft not found"
                     mark_reply_assistant_review_failed(
@@ -323,4 +317,4 @@ def task_review_reply_assistant_draft(self, message_id: str) -> dict:
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
+        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries))

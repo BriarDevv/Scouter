@@ -1,16 +1,15 @@
 """Tests for weekly report generation — metrics collection, synthesis fallback."""
 
-import uuid
 from datetime import UTC, datetime, timedelta
 
 from app.models.lead import Lead
 from app.models.weekly_report import WeeklyReport
 from app.workers.weekly_tasks import _collect_metrics, _generate_synthesis
 
-
 # ---------------------------------------------------------------------------
 # Metrics collection
 # ---------------------------------------------------------------------------
+
 
 def test_collect_metrics_empty_db(db):
     now = datetime.now(UTC)
@@ -38,8 +37,10 @@ def test_collect_metrics_with_leads(db):
 # Synthesis fallback
 # ---------------------------------------------------------------------------
 
+
 def test_synthesis_fallback_when_llm_fails(db, monkeypatch):
     """When LLM raises, synthesis falls back to template."""
+
     def fake_invoke_text(**kwargs):
         raise RuntimeError("Ollama unavailable")
 
@@ -74,6 +75,7 @@ def test_synthesis_fallback_when_llm_fails(db, monkeypatch):
 # ---------------------------------------------------------------------------
 # Weekly report model
 # ---------------------------------------------------------------------------
+
 
 def test_weekly_report_model_stores_data(db):
     now = datetime.now(UTC)

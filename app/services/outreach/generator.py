@@ -56,7 +56,9 @@ def _collect_allowed_urls(lead: Lead, brand_ctx: dict | None) -> set[str]:
     return urls
 
 
-def _validate_draft(subject: str, body: str, *, brand_ctx: dict | None, lead: Lead) -> tuple[str, str, list[str]]:
+def _validate_draft(
+    subject: str, body: str, *, brand_ctx: dict | None, lead: Lead
+) -> tuple[str, str, list[str]]:
     """Validate LLM output against rules. Returns (subject, body, warnings)."""
     warnings: list[str] = []
     bc = brand_ctx or {}
@@ -161,8 +163,10 @@ def generate_draft_content(
     )
 
     subject, body, warnings = _validate_draft(
-        result["subject"], result["body"],
-        brand_ctx=brand_ctx, lead=lead,
+        result["subject"],
+        result["body"],
+        brand_ctx=brand_ctx,
+        lead=lead,
     )
 
     if warnings:
@@ -198,7 +202,7 @@ def generate_whatsapp_draft_content(lead: Lead, db: Session | None = None) -> st
         warnings.append(f"wa_body_words={len(body.split())} (limit {WA_WORD_LIMIT})")
 
     if len(body) > WA_CHAR_LIMIT:
-        body = body[:WA_CHAR_LIMIT - 3] + "..."
+        body = body[: WA_CHAR_LIMIT - 3] + "..."
         warnings.append(f"wa_body_truncated_at={WA_CHAR_LIMIT}")
 
     allowed = _collect_allowed_urls(lead, brand_ctx)

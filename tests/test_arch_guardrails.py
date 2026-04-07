@@ -68,10 +68,7 @@ def test_all_worker_tasks_use_shared_celery_app():
 
 def test_no_manual_enum_drift_in_frontend_for_known_backend_values():
     types_dir = Path("dashboard/types")
-    all_type_content = "\n".join(
-        p.read_text(encoding="utf-8")
-        for p in types_dir.glob("*.ts")
-    )
+    all_type_content = "\n".join(p.read_text(encoding="utf-8") for p in types_dir.glob("*.ts"))
 
     for expected in (
         "website_error",
@@ -83,9 +80,7 @@ def test_no_manual_enum_drift_in_frontend_for_known_backend_values():
 def test_services_domain_packages_do_not_cross_import_each_other():
     root = Path("app/services")
     domain_dirs = {
-        path.name
-        for path in root.iterdir()
-        if path.is_dir() and not path.name.startswith("__")
+        path.name for path in root.iterdir() if path.is_dir() and not path.name.startswith("__")
     }
     violations: set[str] = set()
     baseline_allowed = {
@@ -210,24 +205,35 @@ def test_conftest_uses_postgresql():
 
 def test_alembic_migrations_apply_cleanly():
     """Verify all Alembic migrations apply to a fresh PostgreSQL database."""
-    from alembic.config import Config
-    from alembic import command
-    from sqlalchemy import inspect as sa_inspect, create_engine as sa_create_engine
     import os
+
+    from alembic.config import Config
+    from sqlalchemy import create_engine as sa_create_engine
+    from sqlalchemy import inspect as sa_inspect
+
+    from alembic import command
 
     db_url = os.environ["DATABASE_URL"]
     fresh_engine = sa_create_engine(db_url)
 
     # Drop all tables first to test migrations from scratch
     from app.db.base import Base
+
     Base.metadata.drop_all(bind=fresh_engine)
 
     # Also drop alembic_version table if it exists
     with fresh_engine.connect() as conn:
         conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version CASCADE"))
         # Drop all enum types that might linger
-        for enum_name in ["leadstatus", "signaltype", "draftstatus", "outboundstatus",
-                          "outboundchannel", "messagedirection", "communicationchannel"]:
+        for enum_name in [
+            "leadstatus",
+            "signaltype",
+            "draftstatus",
+            "outboundstatus",
+            "outboundchannel",
+            "messagedirection",
+            "communicationchannel",
+        ]:
             conn.execute(sa.text(f"DROP TYPE IF EXISTS {enum_name} CASCADE"))
         conn.commit()
 
@@ -240,14 +246,23 @@ def test_alembic_migrations_apply_cleanly():
     assert "leads" in tables, "leads table must exist after migrations"
     assert "pipeline_runs" in tables, "pipeline_runs table must exist after migrations"
     assert "llm_invocations" in tables, "llm_invocations table must exist after migrations"
-    assert "operational_settings" in tables, "operational_settings table must exist after migrations"
+    assert "operational_settings" in tables, (
+        "operational_settings table must exist after migrations"
+    )
 
     # Restore tables via create_all for remaining tests
     Base.metadata.drop_all(bind=fresh_engine)
     with fresh_engine.connect() as conn:
         conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version CASCADE"))
-        for enum_name in ["leadstatus", "signaltype", "draftstatus", "outboundstatus",
-                          "outboundchannel", "messagedirection", "communicationchannel"]:
+        for enum_name in [
+            "leadstatus",
+            "signaltype",
+            "draftstatus",
+            "outboundstatus",
+            "outboundchannel",
+            "messagedirection",
+            "communicationchannel",
+        ]:
             conn.execute(sa.text(f"DROP TYPE IF EXISTS {enum_name} CASCADE"))
         conn.commit()
     Base.metadata.create_all(bind=fresh_engine)

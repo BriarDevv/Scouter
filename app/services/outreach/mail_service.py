@@ -15,8 +15,11 @@ from app.mail.smtp_provider import SMTPMailProvider
 from app.models.outreach import DraftStatus, OutreachDraft
 from app.models.outreach_delivery import OutreachDelivery, OutreachDeliveryStatus
 from app.services.outreach.mail_credentials_service import get_effective_smtp
-from app.services.settings.operational_settings_service import get_effective_mail_outbound, get_or_create
 from app.services.outreach.outreach_service import update_draft
+from app.services.settings.operational_settings_service import (
+    get_effective_mail_outbound,
+    get_or_create,
+)
 
 logger = get_logger(__name__)
 
@@ -144,7 +147,9 @@ def build_mail_send_request(
 
 
 def send_mail(request: MailSendRequest, *, provider_name: str | None = None) -> MailSendResult:
-    provider = get_mail_provider(provider_name) if provider_name is not None else get_mail_provider()
+    provider = (
+        get_mail_provider(provider_name) if provider_name is not None else get_mail_provider()
+    )
     return provider.send_email(request)
 
 
@@ -184,8 +189,7 @@ def send_draft(db: Session, draft_id: uuid.UUID) -> OutreachDelivery | None:
     )
     if failed_count >= 3:
         raise DraftSendRateLimitError(
-            "Demasiados intentos fallidos (3)."
-            " Revisá la configuración de mail."
+            "Demasiados intentos fallidos (3). Revisá la configuración de mail."
         )
     if failed_count > 0:
         last_failed = (
@@ -203,8 +207,7 @@ def send_draft(db: Session, draft_id: uuid.UUID) -> OutreachDelivery | None:
             if elapsed < cooldown:
                 remaining = cooldown - elapsed
                 raise DraftSendRateLimitError(
-                    f"Cooldown activo."
-                    f" Reintentá en {int(remaining.total_seconds())}s."
+                    f"Cooldown activo. Reintentá en {int(remaining.total_seconds())}s."
                 )
 
     lead = draft.lead
@@ -248,7 +251,14 @@ def send_draft(db: Session, draft_id: uuid.UUID) -> OutreachDelivery | None:
         db.refresh(delivery)
         try:
             from app.services.notifications.notification_emitter import on_send_failed
-            on_send_failed(db, delivery_id=delivery.id, recipient=delivery.recipient_email, error=delivery.error, send_type="outreach")
+
+            on_send_failed(
+                db,
+                delivery_id=delivery.id,
+                recipient=delivery.recipient_email,
+                error=delivery.error,
+                send_type="outreach",
+            )
         except Exception:
             logger.debug("mail_send_failed_notification_failed", exc_info=True)
         logger.warning(

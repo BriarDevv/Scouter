@@ -5,8 +5,14 @@ from sqlalchemy.orm import Session
 from app.agent.tool_registry import ToolDefinition, ToolParameter, registry
 from app.services.dashboard.leader_service import (
     get_reply_summary as _reply_summary,
+)
+from app.services.dashboard.leader_service import (
     get_system_overview as _overview,
+)
+from app.services.dashboard.leader_service import (
     list_recent_activity_items as _recent_activity,
+)
+from app.services.dashboard.leader_service import (
     list_top_leads as _top_leads,
 )
 
@@ -53,42 +59,50 @@ def list_recent_activity(db: Session, *, limit: int = 10) -> dict:
     return {"count": len(items), "items": items}
 
 
-registry.register(ToolDefinition(
-    name="get_system_overview",
-    description=(
-        "Obtener un resumen ejecutivo completo del sistema: leads, drafts, "
-        "pipelines, tareas, actividad reciente y highlights de rendimiento"
-    ),
-    category="stats",
-    handler=get_system_overview,
-))
+registry.register(
+    ToolDefinition(
+        name="get_system_overview",
+        description=(
+            "Obtener un resumen ejecutivo completo del sistema: leads, drafts, "
+            "pipelines, tareas, actividad reciente y highlights de rendimiento"
+        ),
+        category="stats",
+        handler=get_system_overview,
+    )
+)
 
-registry.register(ToolDefinition(
-    name="list_top_leads",
-    description="Listar los leads con mayor score y potencial",
-    parameters=[
-        ToolParameter("limit", "integer", "Cantidad (default 10)", required=False),
-    ],
-    category="leads",
-    handler=list_top_leads,
-))
+registry.register(
+    ToolDefinition(
+        name="list_top_leads",
+        description="Listar los leads con mayor score y potencial",
+        parameters=[
+            ToolParameter("limit", "integer", "Cantidad (default 10)", required=False),
+        ],
+        category="leads",
+        handler=list_top_leads,
+    )
+)
 
-registry.register(ToolDefinition(
-    name="get_reply_summary",
-    description="Resumen de replies inbound recientes (últimas N horas)",
-    parameters=[
-        ToolParameter("hours", "integer", "Ventana de horas (default 24)", required=False),
-    ],
-    category="stats",
-    handler=get_reply_summary,
-))
+registry.register(
+    ToolDefinition(
+        name="get_reply_summary",
+        description="Resumen de replies inbound recientes (últimas N horas)",
+        parameters=[
+            ToolParameter("hours", "integer", "Ventana de horas (default 24)", required=False),
+        ],
+        category="stats",
+        handler=get_reply_summary,
+    )
+)
 
-registry.register(ToolDefinition(
-    name="list_recent_activity",
-    description="Últimas acciones del sistema (outreach logs, actividad reciente)",
-    parameters=[
-        ToolParameter("limit", "integer", "Cantidad (default 10)", required=False),
-    ],
-    category="stats",
-    handler=list_recent_activity,
-))
+registry.register(
+    ToolDefinition(
+        name="list_recent_activity",
+        description="Últimas acciones del sistema (outreach logs, actividad reciente)",
+        parameters=[
+            ToolParameter("limit", "integer", "Cantidad (default 10)", required=False),
+        ],
+        category="stats",
+        handler=list_recent_activity,
+    )
+)

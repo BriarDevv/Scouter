@@ -97,9 +97,7 @@ def run_batch_pipeline_workflow(
                 if not leads:
                     territories = db.query(Territory).all()
                     territory_info = (
-                        (str(territories[0].id), territories[0].name)
-                        if territories
-                        else None
+                        (str(territories[0].id), territories[0].name) if territories else None
                     )
 
             if not lead_ids:
@@ -109,9 +107,7 @@ def run_batch_pipeline_workflow(
                 territory_id_str, territory_name = territory_info
                 crawl_rounds += 1
                 progress["current_step"] = "crawling"
-                progress["current_lead"] = (
-                    f"Crawling {territory_name} (ronda {crawl_rounds})"
-                )
+                progress["current_lead"] = f"Crawling {territory_name} (ronda {crawl_rounds})"
                 progress["crawl_rounds"] = crawl_rounds
                 sync_progress(current_step="crawling")
                 logger.info(
@@ -150,9 +146,7 @@ def run_batch_pipeline_workflow(
                     )
                     lead_ids = [lead.id for lead in new_leads]
 
-                progress["leads_from_crawl"] = progress.get("leads_from_crawl", 0) + len(
-                    lead_ids
-                )
+                progress["leads_from_crawl"] = progress.get("leads_from_crawl", 0) + len(lead_ids)
                 progress["crawl_rounds"] = crawl_rounds
                 sync_progress(current_step="crawling")
                 logger.info("batch_post_crawl", new_leads=len(lead_ids), round=crawl_rounds)
@@ -269,9 +263,7 @@ def run_batch_pipeline_workflow(
         return result
 
     except Exception as exc:
-        mirror_batch_pipeline_state(
-            {"status": "error", "task_id": task_id, "error": str(exc)}
-        )
+        mirror_batch_pipeline_state({"status": "error", "task_id": task_id, "error": str(exc)})
         persist_operational_task_state(
             task_id,
             current_step=progress.get("current_step"),

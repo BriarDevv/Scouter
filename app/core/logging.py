@@ -12,9 +12,7 @@ _SENSITIVE_KEY_RE = re.compile(
 )
 
 
-def _scrub_sensitive_keys(
-    logger: object, method_name: str, event_dict: dict
-) -> dict:
+def _scrub_sensitive_keys(logger: object, method_name: str, event_dict: dict) -> dict:
     """Remove values of keys that look like secrets from log events."""
     for key in list(event_dict):
         if _SENSITIVE_KEY_RE.search(key):

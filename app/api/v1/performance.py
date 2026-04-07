@@ -42,20 +42,32 @@ def source(db: Session = Depends(get_db)):
 def get_ai_health(db: Session = Depends(get_db)):
     """AI health metrics: approval rate, fallback rate, avg latency, invocation count (24h)."""
     from datetime import UTC, datetime, timedelta
+
     from app.models.llm_invocation import LLMInvocation
 
     since = datetime.now(UTC) - timedelta(hours=24)
 
-    total = db.query(func.count(LLMInvocation.id)).filter(LLMInvocation.created_at >= since).scalar() or 0
-    succeeded = db.query(func.count(LLMInvocation.id)).filter(
-        LLMInvocation.created_at >= since, LLMInvocation.status == "succeeded"
-    ).scalar() or 0
-    fallbacks = db.query(func.count(LLMInvocation.id)).filter(
-        LLMInvocation.created_at >= since, LLMInvocation.fallback_used.is_(True)
-    ).scalar() or 0
-    avg_latency = db.query(func.avg(LLMInvocation.latency_ms)).filter(
-        LLMInvocation.created_at >= since, LLMInvocation.latency_ms.isnot(None)
-    ).scalar()
+    total = (
+        db.query(func.count(LLMInvocation.id)).filter(LLMInvocation.created_at >= since).scalar()
+        or 0
+    )
+    succeeded = (
+        db.query(func.count(LLMInvocation.id))
+        .filter(LLMInvocation.created_at >= since, LLMInvocation.status == "succeeded")
+        .scalar()
+        or 0
+    )
+    fallbacks = (
+        db.query(func.count(LLMInvocation.id))
+        .filter(LLMInvocation.created_at >= since, LLMInvocation.fallback_used.is_(True))
+        .scalar()
+        or 0
+    )
+    avg_latency = (
+        db.query(func.avg(LLMInvocation.latency_ms))
+        .filter(LLMInvocation.created_at >= since, LLMInvocation.latency_ms.isnot(None))
+        .scalar()
+    )
 
     return {
         "approval_rate": round(succeeded / max(total, 1), 2),
@@ -74,6 +86,7 @@ def get_outcome_analytics(db: Session = Depends(get_db)):
         analyze_signal_correlations,
         get_outcome_summary,
     )
+
     summary = get_outcome_summary(db)
     signals = analyze_signal_correlations(db)
     return {
@@ -89,6 +102,7 @@ def get_outcome_analytics(db: Session = Depends(get_db)):
 def get_signal_correlation(db: Session = Depends(get_db)):
     """Which signals correlate with WON vs LOST outcomes. Delegates to analysis service."""
     from app.services.pipeline.outcome_analysis_service import analyze_signal_correlations
+
     return analyze_signal_correlations(db)
 
 
@@ -96,6 +110,7 @@ def get_signal_correlation(db: Session = Depends(get_db)):
 def get_scoring_recommendations(db: Session = Depends(get_db)):
     """Scoring and prompt improvement recommendations from outcome data."""
     from app.services.pipeline.outcome_analysis_service import generate_scoring_recommendations
+
     return generate_scoring_recommendations(db)
 
 
@@ -108,6 +123,7 @@ def get_analysis_summary(db: Session = Depends(get_db)):
         analyze_signal_correlations,
         get_outcome_summary,
     )
+
     return {
         "summary": get_outcome_summary(db),
         "signal_correlations": analyze_signal_correlations(db),

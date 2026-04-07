@@ -67,17 +67,27 @@ class OperationalSettingsUpdate(BaseModel):
         return v
 
     # Non-nullable DB columns — can never be set to None from PATCH
-    _NON_NULLABLE: frozenset = frozenset({
-        "require_approved_drafts", "auto_classify_inbound", "reply_assistant_enabled",
-        "reviewer_enabled", "signature_include_portfolio", "signature_is_solo", "prioritize_quote_replies",
-        "prioritize_meeting_replies", "allow_reply_assistant_generation",
-        "reviewer_confidence_threshold",
-        "notifications_enabled", "notification_score_threshold",
-        "whatsapp_alerts_enabled",
-        "whatsapp_outreach_enabled",
-        "telegram_alerts_enabled",
-        "telegram_agent_enabled", "whatsapp_agent_enabled",
-    })
+    _NON_NULLABLE: frozenset = frozenset(
+        {
+            "require_approved_drafts",
+            "auto_classify_inbound",
+            "reply_assistant_enabled",
+            "reviewer_enabled",
+            "signature_include_portfolio",
+            "signature_is_solo",
+            "prioritize_quote_replies",
+            "prioritize_meeting_replies",
+            "allow_reply_assistant_generation",
+            "reviewer_confidence_threshold",
+            "notifications_enabled",
+            "notification_score_threshold",
+            "whatsapp_alerts_enabled",
+            "whatsapp_outreach_enabled",
+            "telegram_alerts_enabled",
+            "telegram_agent_enabled",
+            "whatsapp_agent_enabled",
+        }
+    )
 
     def to_update_dict(self) -> dict:
         """Return fields explicitly included in the request body.

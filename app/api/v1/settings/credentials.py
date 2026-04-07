@@ -3,8 +3,8 @@ from typing import Annotated
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.db.session import get_db
 from app.core.config import settings as app_settings
+from app.db.session import get_db
 from app.schemas.mail_credentials import (
     ConnectionTestResult,
     MailCredentialsResponse,

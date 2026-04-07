@@ -9,14 +9,14 @@ class MailCredentialsUpdate(BaseModel):
     smtp_host: str | None = None
     smtp_port: int | None = None
     smtp_username: str | None = None
-    smtp_password: str | None = None   # write-only
+    smtp_password: str | None = None  # write-only
     smtp_ssl: bool | None = None
     smtp_starttls: bool | None = None
 
     imap_host: str | None = None
     imap_port: int | None = None
     imap_username: str | None = None
-    imap_password: str | None = None   # write-only
+    imap_password: str | None = None  # write-only
     imap_ssl: bool | None = None
 
     def to_update_dict(self) -> dict:
@@ -61,13 +61,13 @@ class ConnectionTestResult(BaseModel):
 class SetupStepStatus(BaseModel):
     id: str
     label: str
-    status: str   # "complete" | "incomplete" | "warning" | "pending"
+    status: str  # "complete" | "incomplete" | "warning" | "pending"
     detail: str | None = None
-    action: str | None = None   # CTA text if actionable
+    action: str | None = None  # CTA text if actionable
 
 
 class SetupStatusResponse(BaseModel):
     steps: list[SetupStepStatus]
-    overall: str   # "ready" | "incomplete" | "warning"
+    overall: str  # "ready" | "incomplete" | "warning"
     ready_to_send: bool
     ready_to_receive: bool

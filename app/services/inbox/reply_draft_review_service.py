@@ -95,9 +95,7 @@ def ensure_reply_assistant_review_pending(
     return review
 
 
-def review_reply_assistant_draft_with_reviewer(
-    db: Session, message_id: uuid.UUID
-) -> dict | None:
+def review_reply_assistant_draft_with_reviewer(db: Session, message_id: uuid.UUID) -> dict | None:
     from app.services.settings.operational_settings_service import get_cached_settings
 
     ops = get_cached_settings(db)
@@ -126,7 +124,8 @@ def review_reply_assistant_draft_with_reviewer(
         classification_label=message.classification_label,
         classification_summary=message.summary,
         next_action_suggestion=message.next_action_suggestion,
-        reply_should_escalate_reviewer=message.should_escalate_reviewer or draft.should_escalate_reviewer,
+        reply_should_escalate_reviewer=message.should_escalate_reviewer
+        or draft.should_escalate_reviewer,
         outbound_subject=message.delivery.subject_snapshot if message.delivery else None,
         outbound_body=related_outbound_draft.body if related_outbound_draft else None,
         thread_context=_build_thread_context(message),
@@ -221,7 +220,9 @@ def _build_thread_context(message: InboundMessage) -> str:
 
     ordered_messages = sorted(
         thread.messages,
-        key=lambda item: item.received_at.isoformat() if item.received_at else item.created_at.isoformat(),
+        key=lambda item: (
+            item.received_at.isoformat() if item.received_at else item.created_at.isoformat()
+        ),
     )
     context_lines: list[str] = []
     for item in ordered_messages[-3:]:

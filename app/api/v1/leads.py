@@ -42,7 +42,9 @@ def list_all(
     db: Session = Depends(get_db),
 ):
     """List leads with pagination and optional filters."""
-    leads, total = list_leads(db, page=page, page_size=page_size, status=status, min_score=min_score)
+    leads, total = list_leads(
+        db, page=page, page_size=page_size, status=status, min_score=min_score
+    )
     return LeadListResponse(items=leads, total=total, page=page, page_size=page_size)
 
 
@@ -96,12 +98,7 @@ def list_names(
     db: Session = Depends(get_db),
 ):
     """Return a lightweight list of {id, business_name} for all leads."""
-    rows = (
-        db.query(Lead.id, Lead.business_name)
-        .order_by(Lead.business_name)
-        .limit(limit)
-        .all()
-    )
+    rows = db.query(Lead.id, Lead.business_name).order_by(Lead.business_name).limit(limit).all()
     return [LeadNameResponse(id=row.id, business_name=row.business_name) for row in rows]
 
 
@@ -116,7 +113,9 @@ def get_by_id(lead_id: uuid.UUID, db: Session = Depends(get_db)):
 
 @router.patch("/{lead_id}/status", response_model=LeadResponse)
 def patch_status(
-    lead_id: uuid.UUID, data: LeadStatusUpdate, db: Session = Depends(get_db),
+    lead_id: uuid.UUID,
+    data: LeadStatusUpdate,
+    db: Session = Depends(get_db),
 ):
     """Update the current pipeline status for a lead."""
     lead = update_lead_status(db, lead_id, data.status)

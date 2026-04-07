@@ -2,8 +2,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from app.db.session import get_db
 from app.core.config import settings as env
+from app.db.session import get_db
 from app.schemas.mail_credentials import SetupStatusResponse
 from app.schemas.operational_settings import (
     CredentialsStatusResponse,

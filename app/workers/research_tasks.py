@@ -37,17 +37,19 @@ def task_research_lead(
     pipeline_uuid = _pipeline_uuid(pipeline_run_id)
 
     try:
-        with SessionLocal() as db, tracked_task_step(
-            db,
-            task_id=task_id,
-            task_name="task_research_lead",
-            queue=queue,
-            lead_id=uuid.UUID(lead_id),
-            pipeline_run_id=pipeline_uuid,
-            correlation_id=correlation_id,
-            current_step="research",
-        ) as tracker:
-
+        with (
+            SessionLocal() as db,
+            tracked_task_step(
+                db,
+                task_id=task_id,
+                task_name="task_research_lead",
+                queue=queue,
+                lead_id=uuid.UUID(lead_id),
+                pipeline_run_id=pipeline_uuid,
+                correlation_id=correlation_id,
+                current_step="research",
+            ) as tracker,
+        ):
             from app.services.research.research_service import run_research
 
             # Try Scout agent first (deep investigation with tools)
@@ -61,11 +63,14 @@ def task_research_lead(
                 if pipeline_uuid:
                     ctx = get_step_context(db, pipeline_uuid)
                     analysis = ctx.get("analysis", {})
-                    analysis_ctx = f"Quality: {analysis.get('quality', '?')}. {analysis.get('reasoning', '')}"
+                    analysis_ctx = (
+                        f"Quality: {analysis.get('quality', '?')}. {analysis.get('reasoning', '')}"
+                    )
 
                 # Inject outcome feedback for Scout's industry+city awareness
                 try:
                     from app.models.outcome_snapshot import OutcomeSnapshot
+
                     lead_obj = db.get(Lead, uuid.UUID(lead_id))
                     if lead_obj and lead_obj.industry:
                         past_outcomes = (
@@ -82,7 +87,9 @@ def task_research_lead(
                             for o in past_outcomes:
                                 if o.outcome == "won" and o.signals_json:
                                     signals_won.update(o.signals_json[:3])
-                            hint = f"\nOutcome history ({lead_obj.industry}): {won} WON, {lost} LOST."
+                            hint = (
+                                f"\nOutcome history ({lead_obj.industry}): {won} WON, {lost} LOST."
+                            )
                             if signals_won:
                                 hint += f" Winning signals: {', '.join(signals_won)}."
                             analysis_ctx += hint
@@ -103,7 +110,9 @@ def task_research_lead(
                         website_url=lead.website_url,
                         instagram_url=lead.instagram_url,
                         score=lead.score,
-                        signals=", ".join(s.signal_type for s in lead.signals) if lead.signals else "",
+                        signals=", ".join(s.signal_type for s in lead.signals)
+                        if lead.signals
+                        else "",
                         analysis_context=analysis_ctx,
                     )
                     logger.info(
@@ -137,13 +146,21 @@ def task_research_lead(
                     # Write structured Scout context for downstream steps
                     if pipeline_uuid and scout_result.findings:
                         from app.services.pipeline.context_service import append_step_context
-                        append_step_context(db, pipeline_uuid, "scout", {
-                            "pages_visited": len(scout_result.pages_visited or []),
-                            "opportunity": scout_result.findings.get("opportunity", ""),
-                            "whatsapp_detected": scout_result.findings.get("whatsapp_detected", False),
-                            "findings_summary": scout_result.findings.get("summary", ""),
-                            "loops_used": scout_result.loops_used,
-                        })
+
+                        append_step_context(
+                            db,
+                            pipeline_uuid,
+                            "scout",
+                            {
+                                "pages_visited": len(scout_result.pages_visited or []),
+                                "opportunity": scout_result.findings.get("opportunity", ""),
+                                "whatsapp_detected": scout_result.findings.get(
+                                    "whatsapp_detected", False
+                                ),
+                                "findings_summary": scout_result.findings.get("summary", ""),
+                                "loops_used": scout_result.loops_used,
+                            },
+                        )
             except Exception as scout_exc:
                 logger.warning(
                     "scout_fallback_to_http",
@@ -174,6 +191,7 @@ def task_research_lead(
             if report.status.value == "completed":
                 try:
                     from app.llm.client import generate_dossier
+
                     lead = db.get(Lead, uuid.UUID(lead_id))
                     if lead and report:
                         dossier = generate_dossier(
@@ -184,30 +202,25 @@ def task_research_lead(
                             instagram_url=lead.instagram_url,
                             score=lead.score,
                             signals=", ".join(
-                                s.get("type", "")
-                                for s in (report.detected_signals_json or [])
+                                s.get("type", "") for s in (report.detected_signals_json or [])
                             ),
                             html_metadata=str(report.html_metadata_json or {}),
                             website_confidence=(
                                 report.website_confidence.value
-                                if report.website_confidence else "unknown"
+                                if report.website_confidence
+                                else "unknown"
                             ),
                             instagram_confidence=(
                                 report.instagram_confidence.value
-                                if report.instagram_confidence else "unknown"
+                                if report.instagram_confidence
+                                else "unknown"
                             ),
-                            whatsapp_detected=str(
-                                report.whatsapp_detected or False
-                            ),
+                            whatsapp_detected=str(report.whatsapp_detected or False),
                         )
                         if dossier:
-                            report.business_description = dossier.get(
-                                "business_description"
-                            )
+                            report.business_description = dossier.get("business_description")
                             db.commit()
-                            logger.info(
-                                "dossier_generated_in_pipeline", lead_id=lead_id
-                            )
+                            logger.info("dossier_generated_in_pipeline", lead_id=lead_id)
                 except Exception as dossier_exc:
                     logger.warning(
                         "dossier_generation_failed_in_pipeline",
@@ -220,6 +233,7 @@ def task_research_lead(
                     from app.services.notifications.notification_emitter import (
                         on_research_completed,
                     )
+
                     lead = db.get(Lead, uuid.UUID(lead_id))
                     on_research_completed(
                         db,
@@ -233,21 +247,31 @@ def task_research_lead(
             # Write research context for downstream steps (always, even on degraded research)
             if pipeline_uuid:
                 from app.services.pipeline.context_service import append_step_context
-                append_step_context(db, pipeline_uuid, "research", {
-                    "status": report.status.value,
-                    "website_exists": report.website_exists,
-                    "whatsapp_detected": report.whatsapp_detected,
-                    "signals": report.detected_signals_json,
-                    "business_description": report.business_description,
-                })
+
+                append_step_context(
+                    db,
+                    pipeline_uuid,
+                    "research",
+                    {
+                        "status": report.status.value,
+                        "website_exists": report.website_exists,
+                        "whatsapp_detected": report.whatsapp_detected,
+                        "signals": report.detected_signals_json,
+                        "business_description": report.business_description,
+                    },
+                )
 
             # Chain: generate brief for HIGH leads (always, even on degraded research)
             if pipeline_run_id:
                 try:
                     from app.workers.brief_tasks import task_generate_brief
-                    task_generate_brief.delay(lead_id, pipeline_run_id, correlation_id=correlation_id)
+
+                    task_generate_brief.delay(
+                        lead_id, pipeline_run_id, correlation_id=correlation_id
+                    )
                     logger.info(
-                        "brief_chained_from_research", lead_id=lead_id,
+                        "brief_chained_from_research",
+                        lead_id=lead_id,
                         research_status=report.status.value,
                     )
                 except Exception as chain_exc:
@@ -296,4 +320,4 @@ def task_research_lead(
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
+        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries))

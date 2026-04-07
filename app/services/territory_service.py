@@ -9,7 +9,6 @@ from app.models.lead import Lead, LeadStatus
 from app.models.territory import Territory
 from app.schemas.territory import TerritoryCreate, TerritoryUpdate
 
-
 # ── Helpers ─────────────────────────────────────────────
 
 _QUALIFIED_STAGE_RANK = 3  # LeadStatus.QUALIFIED index in pipeline
@@ -60,6 +59,7 @@ def _safe_average(values: list[float]) -> float:
 
 # ── CRUD ────────────────────────────────────────────────
 
+
 def create_territory(db: Session, data: TerritoryCreate) -> Territory:
     territory = Territory(
         name=data.name,
@@ -105,6 +105,7 @@ def delete_territory(db: Session, territory_id: UUID) -> bool:
 
 
 # ── Stats ───────────────────────────────────────────────
+
 
 def _get_leads_in_cities(db: Session, cities: list[str]) -> list[Lead]:
     if not cities:

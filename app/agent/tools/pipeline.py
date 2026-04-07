@@ -21,9 +21,7 @@ def run_full_pipeline(db: Session, *, lead_id: str) -> dict:
     except ValueError:
         return {"error": "ID de lead inválido"}
     pipeline_run = create_pipeline_run(db, lead_id=lead_uuid)
-    task = task_enrich_lead.delay(
-        lead_id, str(pipeline_run.id), pipeline_run.correlation_id
-    )
+    task = task_enrich_lead.delay(lead_id, str(pipeline_run.id), pipeline_run.correlation_id)
     queue_task_run(
         db,
         task_id=str(task.id),
@@ -44,12 +42,13 @@ def run_full_pipeline(db: Session, *, lead_id: str) -> dict:
 
 def run_batch_pipeline(db: Session) -> dict:
     """Run batch pipeline for all new leads."""
-    from app.models.lead import Lead, LeadStatus
     from sqlalchemy import select
 
-    new_leads = db.execute(
-        select(Lead.id).where(Lead.status == LeadStatus.NEW).limit(50)
-    ).scalars().all()
+    from app.models.lead import Lead, LeadStatus
+
+    new_leads = (
+        db.execute(select(Lead.id).where(Lead.status == LeadStatus.NEW).limit(50)).scalars().all()
+    )
 
     if not new_leads:
         return {"message": "No hay leads nuevos para procesar", "count": 0}
@@ -78,9 +77,7 @@ def run_batch_pipeline(db: Session) -> dict:
     return {"message": f"Pipeline batch iniciado para {started} leads", "count": started}
 
 
-def get_pipeline_status(
-    db: Session, *, pipeline_run_id: str | None = None, limit: int = 5
-) -> dict:
+def get_pipeline_status(db: Session, *, pipeline_run_id: str | None = None, limit: int = 5) -> dict:
     """Get pipeline run status."""
     if pipeline_run_id:
         try:
@@ -116,32 +113,40 @@ def get_pipeline_status(
     }
 
 
-registry.register(ToolDefinition(
-    name="run_full_pipeline",
-    description="Ejecutar el pipeline completo de enriquecimiento para un lead (requiere confirmación)",
-    parameters=[
-        ToolParameter("lead_id", "string", "UUID del lead"),
-    ],
-    category="pipeline",
-    requires_confirmation=True,
-    handler=run_full_pipeline,
-))
+registry.register(
+    ToolDefinition(
+        name="run_full_pipeline",
+        description="Ejecutar el pipeline completo de enriquecimiento para un lead (requiere confirmación)",
+        parameters=[
+            ToolParameter("lead_id", "string", "UUID del lead"),
+        ],
+        category="pipeline",
+        requires_confirmation=True,
+        handler=run_full_pipeline,
+    )
+)
 
-registry.register(ToolDefinition(
-    name="run_batch_pipeline",
-    description="Ejecutar pipeline batch para todos los leads nuevos (requiere confirmación)",
-    category="pipeline",
-    requires_confirmation=True,
-    handler=run_batch_pipeline,
-))
+registry.register(
+    ToolDefinition(
+        name="run_batch_pipeline",
+        description="Ejecutar pipeline batch para todos los leads nuevos (requiere confirmación)",
+        category="pipeline",
+        requires_confirmation=True,
+        handler=run_batch_pipeline,
+    )
+)
 
-registry.register(ToolDefinition(
-    name="get_pipeline_status",
-    description="Ver el estado de un pipeline run o listar los últimos runs",
-    parameters=[
-        ToolParameter("pipeline_run_id", "string", "UUID del pipeline run", required=False),
-        ToolParameter("limit", "integer", "Cantidad de runs recientes (default 5)", required=False),
-    ],
-    category="pipeline",
-    handler=get_pipeline_status,
-))
+registry.register(
+    ToolDefinition(
+        name="get_pipeline_status",
+        description="Ver el estado de un pipeline run o listar los últimos runs",
+        parameters=[
+            ToolParameter("pipeline_run_id", "string", "UUID del pipeline run", required=False),
+            ToolParameter(
+                "limit", "integer", "Cantidad de runs recientes (default 5)", required=False
+            ),
+        ],
+        category="pipeline",
+        handler=get_pipeline_status,
+    )
+)

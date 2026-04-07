@@ -10,7 +10,6 @@ but in a synchronous loop with a fixed toolset.
 
 from __future__ import annotations
 
-import json
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -114,11 +113,7 @@ def run_scout_investigation(
 
     # Build system prompt with tools
     tools_schema = build_scout_tools_schema()
-    system_prompt = (
-        SCOUT_SYSTEM_PROMPT
-        + "\n\n## Available Tools\n\n"
-        + tools_schema
-    )
+    system_prompt = SCOUT_SYSTEM_PROMPT + "\n\n## Available Tools\n\n" + tools_schema
 
     # Build initial user message
     user_message = SCOUT_USER_PROMPT_TEMPLATE.format(
@@ -179,21 +174,25 @@ def run_scout_investigation(
             tool_duration_ms = int((time.monotonic() - tool_start) * 1000)
 
             # Record for thread storage
-            result.tool_calls.append({
-                "name": tc.name,
-                "arguments": tc.arguments,
-                "result": _truncate_result(tool_result),
-                "duration_ms": tool_duration_ms,
-                "timestamp": time.time(),
-            })
+            result.tool_calls.append(
+                {
+                    "name": tc.name,
+                    "arguments": tc.arguments,
+                    "result": _truncate_result(tool_result),
+                    "duration_ms": tool_duration_ms,
+                    "timestamp": time.time(),
+                }
+            )
 
             # Track pages visited
             if tc.name == "browse_page" and "url" in tool_result:
-                result.pages_visited.append({
-                    "url": tool_result.get("url", tc.arguments.get("url", "")),
-                    "title": tool_result.get("title"),
-                    "status_code": tool_result.get("status_code"),
-                })
+                result.pages_visited.append(
+                    {
+                        "url": tool_result.get("url", tc.arguments.get("url", "")),
+                        "title": tool_result.get("title"),
+                        "status_code": tool_result.get("status_code"),
+                    }
+                )
 
             # Check if investigation is complete
             if tc.name == "finish_investigation":

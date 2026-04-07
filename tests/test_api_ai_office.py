@@ -54,6 +54,7 @@ def test_ai_office_test_send_whatsapp_validates_phone(client):
 
 def test_ai_office_test_send_whatsapp_accepts_valid_body(client, monkeypatch):
     """POST with valid phone should attempt to send (mock Kapso)."""
+
     def fake_send(phone, message):
         return {"message_id": "wamid.TEST"}
 
@@ -75,5 +76,6 @@ def test_ai_office_test_send_whatsapp_accepts_valid_body(client, monkeypatch):
 
 def test_ai_office_conversation_not_found(client):
     import uuid
+
     response = client.get(f"/api/v1/ai-office/conversations/{uuid.uuid4()}")
     assert response.status_code == 404

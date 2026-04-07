@@ -4,8 +4,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db
 from app.api.request_context import get_correlation_id
+from app.db.session import get_db
 from app.schemas.task_tracking import (
     PipelineRunDetailResponse,
     PipelineRunSummaryResponse,
@@ -108,9 +108,13 @@ def resume_pipeline_run(pipeline_run_id: uuid.UUID, db: DbSession):
     if not run:
         raise HTTPException(status_code=404, detail="Pipeline run not found")
     if run.finished_at is not None:
-        raise HTTPException(status_code=400, detail=f"Pipeline already finished with status: {run.status}")
+        raise HTTPException(
+            status_code=400, detail=f"Pipeline already finished with status: {run.status}"
+        )
     if run.status not in {"running", "failed"}:
-        raise HTTPException(status_code=400, detail=f"Cannot resume pipeline in status: {run.status}")
+        raise HTTPException(
+            status_code=400, detail=f"Cannot resume pipeline in status: {run.status}"
+        )
 
     lead_id = str(run.lead_id)
     run_id = str(run.id)
@@ -136,6 +140,7 @@ def resume_pipeline_run(pipeline_run_id: uuid.UUID, db: DbSession):
 
     # Dispatch the next task
     from app.workers import tasks as task_module
+
     task_fn = getattr(task_module, next_task_name, None)
     if task_fn is None:
         raise HTTPException(status_code=500, detail=f"Task function not found: {next_task_name}")
@@ -173,6 +178,7 @@ def start_batch_pipeline(request: Request, db: DbSession):
         }
 
     from app.workers.tasks import task_batch_pipeline
+
     correlation_id = get_correlation_id(request)
     result = task_batch_pipeline.delay(
         status_filter="new",
