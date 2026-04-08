@@ -151,12 +151,12 @@ export default function ChatPage() {
         {/* Toggle handle */}
         <button
           onClick={() => setHistoryOpen(!historyOpen)}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-10 w-4 rounded-r-lg bg-border/30 hover:bg-border/60 text-muted-foreground flex items-center justify-center transition-colors"
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-10 w-4 rounded-r-lg border border-l-0 border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors shadow-sm"
           title={historyOpen ? "Ocultar historial" : "Mostrar historial"}
         >
           {historyOpen
-            ? <ChevronLeft className="h-3 w-3" />
-            : <ChevronRight className="h-3 w-3" />
+            ? <ChevronLeft className="h-4 w-4" />
+            : <ChevronRight className="h-4 w-4" />
           }
         </button>
 
