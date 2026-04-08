@@ -29,7 +29,7 @@ export function AiDecisionsPanel({ leadId, pipelineRunId }: AiDecisionsPanelProp
       try {
         const [ctx, inv] = await Promise.all([
           pipelineRunId ? getPipelineContext(pipelineRunId).catch(() => null) : null,
-          getInvestigation(leadId),
+          getInvestigation(leadId).catch(() => null),
         ]);
         setContext(ctx);
         setInvestigation(inv);
