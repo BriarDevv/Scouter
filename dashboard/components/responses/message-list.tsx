@@ -66,7 +66,7 @@ export function MessageList({
               onClick={() => onFilterChange(value)}
               className={`rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
                 filter === value
-                  ? "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
+                  ? "bg-muted text-foreground dark:bg-muted dark:text-foreground"
                   : "border border-border bg-card text-muted-foreground hover:bg-muted"
               }`}
             >
@@ -147,7 +147,7 @@ export function MessageList({
                 {(lead || outboundDraft || thread) && (
                   <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground/70">
                     {lead && (
-                      <Link href={`/leads/${lead.id}`} className="rounded-md bg-violet-50 dark:bg-violet-950/20 px-2 py-0.5 text-violet-600 dark:text-violet-400 hover:underline font-medium">
+                      <Link href={`/leads/${lead.id}`} className="rounded-md bg-muted dark:bg-muted px-2 py-0.5 text-foreground dark:text-foreground hover:underline font-medium">
                         {lead.business_name}
                       </Link>
                     )}

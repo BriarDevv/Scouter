@@ -313,7 +313,7 @@ export function NotificationListView({
               className={cn(
                 "rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
                 severity === chip.value
-                  ? "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
+                  ? "bg-muted dark:bg-muted text-foreground dark:text-foreground"
                   : "bg-muted text-muted-foreground hover:text-foreground"
               )}
             >
@@ -332,7 +332,7 @@ export function NotificationListView({
               className={cn(
                 "rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
                 status === opt.value
-                  ? "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
+                  ? "bg-muted dark:bg-muted text-foreground dark:text-foreground"
                   : "bg-muted text-muted-foreground hover:text-foreground"
               )}
             >
@@ -380,7 +380,7 @@ export function NotificationListView({
                   className={cn(
                     "group transition-colors",
                     isUnread && isCritical && "bg-red-50/40 dark:bg-red-950/10",
-                    isUnread && !isCritical && "bg-violet-50/30 dark:bg-violet-950/10"
+                    isUnread && !isCritical && "bg-muted/30 dark:bg-muted/30"
                   )}
                 >
                   {/* Main row */}

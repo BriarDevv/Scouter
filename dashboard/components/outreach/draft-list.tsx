@@ -55,19 +55,19 @@ export function DraftList({
               className={cn(
                 "relative px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive
-                  ? "text-violet-700 dark:text-violet-300"
+                  ? "text-foreground dark:text-foreground"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
               {s === "all" ? "Todos" : DRAFT_STATUS_CONFIG[s].label}
               <span className={cn(
                 "ml-1.5 rounded-full px-1.5 py-0.5 text-xs",
-                isActive ? "bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300" : "bg-muted text-muted-foreground"
+                isActive ? "bg-muted dark:bg-muted text-foreground dark:text-foreground" : "bg-muted text-muted-foreground"
               )}>
                 {count}
               </span>
               {isActive && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-600 dark:bg-violet-400 rounded-full" />
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-foreground dark:bg-foreground rounded-full" />
               )}
             </button>
           );
@@ -86,7 +86,7 @@ export function DraftList({
               className={cn(
                 "cursor-pointer rounded-2xl border bg-card p-5 shadow-sm transition-all hover:shadow-md",
                 isSelected
-                  ? "border-l-4 border-l-violet-500 border-violet-200 dark:border-violet-800"
+                  ? "border-l-4 border-l-foreground border-border dark:border-border"
                   : "border-border"
               )}
             >
@@ -104,7 +104,7 @@ export function DraftList({
                       </span>
                     )}
                     {lead && (
-                      <Link href={`/leads/${lead.id}`} className="text-xs text-muted-foreground hover:text-violet-600 transition-colors">
+                      <Link href={`/leads/${lead.id}`} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
                         {lead.business_name}
                       </Link>
                     )}
