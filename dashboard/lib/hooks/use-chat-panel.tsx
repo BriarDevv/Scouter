@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useState,
   type ReactNode,
 } from "react";
@@ -34,11 +35,16 @@ export function ChatPanelProvider({ children }: { children: ReactNode }) {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     try {
       if (localStorage.getItem(CHAT_STORAGE_KEY) === "true") setIsOpen(true);
+      // Fallback: React hydration may override the useState initializer with the server value.
+      // Re-read from the DOM class that the inline script already set.
+      const shouldCollapse = document.documentElement.classList.contains("sidebar-collapsed");
+      if (shouldCollapse !== sidebarCollapsed) setSidebarCollapsed(shouldCollapse);
     } catch {}
     setHydrated(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

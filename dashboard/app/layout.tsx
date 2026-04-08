@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/providers/theme-provider";
-import { Sidebar } from "@/components/layout/sidebar";
-import { LayoutShell } from "@/components/layout/layout-shell";
+import { SidebarClient } from "@/components/layout/sidebar-client";
+import { LayoutShellClient } from "@/components/layout/layout-shell-client";
 import { ReadinessGate } from "@/components/layout/readiness-gate";
 import { ChatPanelProvider } from "@/lib/hooks/use-chat-panel";
 import { ThemedToaster } from "@/components/providers/themed-toaster";
@@ -46,10 +46,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           <TooltipProvider>
             <ChatPanelProvider>
-              <Sidebar />
-              <LayoutShell>
+              <SidebarClient />
+              <LayoutShellClient>
                 <ReadinessGate>{children}</ReadinessGate>
-              </LayoutShell>
+              </LayoutShellClient>
             </ChatPanelProvider>
             <ThemedToaster />
           </TooltipProvider>

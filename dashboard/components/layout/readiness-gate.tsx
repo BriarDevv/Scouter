@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { getSetupReadiness } from "@/lib/api/client";
 import type { SetupReadiness } from "@/types";
 
 const ALLOWED_WHILE_LOCKED = new Set(["/onboarding", "/settings"]);
+const UNLOCKED_KEY = "scouter-dashboard-unlocked";
 
 export function ReadinessGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -14,6 +15,14 @@ export function ReadinessGate({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const hasChecked = useRef(false);
+  const [cachedUnlocked, setCachedUnlocked] = useState(false);
+
+  // Read cached unlock state before paint to avoid blocking flash
+  useLayoutEffect(() => {
+    try {
+      if (localStorage.getItem(UNLOCKED_KEY) === "true") setCachedUnlocked(true);
+    } catch {}
+  }, []);
 
   useEffect(() => {
     // Once the dashboard is confirmed unlocked, skip subsequent checks
@@ -28,6 +37,15 @@ export function ReadinessGate({ children }: { children: React.ReactNode }) {
           hasChecked.current = true;
           setReadiness(data);
           setFailed(false);
+          // Cache unlock state for instant next load
+          try {
+            if (data.dashboard_unlocked) {
+              localStorage.setItem(UNLOCKED_KEY, "true");
+            } else {
+              localStorage.removeItem(UNLOCKED_KEY);
+              setCachedUnlocked(false);
+            }
+          } catch {}
         }
       } catch (err) {
         console.error("readiness_fetch_failed", err);
@@ -52,6 +70,11 @@ export function ReadinessGate({ children }: { children: React.ReactNode }) {
       router.replace(`/onboarding?next=${encodeURIComponent(pathname)}`);
     }
   }, [failed, isAllowedWhileLocked, loading, pathname, readiness, router]);
+
+  // If cached as unlocked, render immediately while API validates in background
+  if (cachedUnlocked) {
+    return <>{children}</>;
+  }
 
   if (loading && !isAllowedWhileLocked) {
     return (

@@ -8,7 +8,6 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
 
   return (
     <main
-      suppressHydrationWarning
       className={cn(
         "fixed inset-y-0 right-0 flex flex-col bg-sidebar pt-2 pr-2 pb-2",
         "transition-[left] duration-[350ms] ease-in-out",
