@@ -42,14 +42,14 @@ export function FeatureToggleList({
   }
 
   const colorEnabled = accentColor === "violet"
-    ? "bg-violet-50 dark:bg-violet-950/30"
+    ? "bg-muted dark:bg-muted"
     : "bg-emerald-50 dark:bg-emerald-950/30";
 
   const iconEnabled = accentColor === "violet"
-    ? "text-violet-600 dark:text-violet-400"
+    ? "text-foreground dark:text-foreground"
     : "text-emerald-600 dark:text-emerald-400";
 
-  const toggleBg = accentColor === "violet" ? "bg-violet-600" : "bg-emerald-600";
+  const toggleBg = accentColor === "violet" ? "bg-foreground" : "bg-emerald-600";
 
   return (
     <div className="space-y-1">

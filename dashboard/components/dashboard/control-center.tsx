@@ -411,7 +411,7 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
             settings={settings}
             loading={loadingSettings}
             savingKey={savingKey}
-            accentColor="violet"
+            accentColor="emerald"
             onToggle={toggleFeature}
             warningMessage={!ollamaOk ? "Ollama no esta corriendo — los features de IA no van a funcionar" : undefined}
           />

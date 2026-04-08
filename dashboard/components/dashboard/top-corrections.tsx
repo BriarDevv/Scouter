@@ -17,7 +17,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
-  tone: "bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-200",
+  tone: "bg-muted dark:bg-muted text-foreground dark:text-foreground",
   cta: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200",
   personalization: "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200",
   length: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200",

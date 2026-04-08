@@ -27,7 +27,7 @@ export function PipelineControls({
           className={cn(
             "flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all",
             celeryOk
-              ? "bg-violet-600 text-white hover:bg-violet-700 active:scale-[0.98]"
+              ? "bg-foreground text-background hover:bg-foreground/80 active:scale-[0.98]"
               : "bg-muted text-muted-foreground cursor-not-allowed"
           )}
         >
@@ -55,7 +55,7 @@ export function PipelineControls({
       {pipelineProgress && (
         <p className={cn(
           "text-[10px] text-center",
-          pipelineStatus === "running" ? "text-violet-500" : pipelineStatus === "done" ? "text-emerald-500" : "text-muted-foreground"
+          pipelineStatus === "running" ? "text-foreground" : pipelineStatus === "done" ? "text-emerald-500" : "text-muted-foreground"
         )}>
           {pipelineStatus === "running" && <Loader2 className="inline h-3 w-3 animate-spin mr-1" />}
           {pipelineProgress}

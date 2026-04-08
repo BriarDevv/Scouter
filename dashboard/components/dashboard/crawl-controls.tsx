@@ -67,7 +67,7 @@ export function CrawlControls({
       {crawlProgress && (
         <p className={cn(
           "text-[10px] text-center",
-          crawlStatus === "running" ? "text-violet-500" : crawlStatus === "done" ? "text-emerald-500" : "text-red-500"
+          crawlStatus === "running" ? "text-foreground" : crawlStatus === "done" ? "text-emerald-500" : "text-red-500"
         )}>
           {crawlStatus === "running" && <Loader2 className="inline h-3 w-3 animate-spin mr-1" />}
           {crawlProgress}

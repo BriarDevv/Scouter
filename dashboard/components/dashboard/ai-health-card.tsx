@@ -28,7 +28,7 @@ export function AiHealthCard() {
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="flex items-center gap-2 mb-3">
-        <Brain className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+        <Brain className="h-4 w-4 text-foreground dark:text-foreground" />
         <h3 className="text-sm font-medium">Salud IA</h3>
       </div>
 
@@ -76,7 +76,7 @@ const METRIC_COLOR_CLASSES: Record<string, string> = {
   red:     "text-red-600 dark:text-red-400",
   amber:   "text-amber-600 dark:text-amber-400",
   blue:    "text-blue-600 dark:text-blue-400",
-  violet:  "text-violet-600 dark:text-violet-400",
+  violet:  "text-foreground dark:text-foreground",
   muted:   "text-muted-foreground",
 };
 

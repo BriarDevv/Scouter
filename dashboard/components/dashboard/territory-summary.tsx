@@ -57,14 +57,14 @@ export function TerritorySummary() {
     <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-950/30">
-            <MapPin className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted dark:bg-muted">
+            <MapPin className="h-4 w-4 text-foreground dark:text-foreground" />
           </div>
           <h3 className="text-sm font-semibold font-heading text-foreground">Territorios</h3>
         </div>
         <Link
           href="/map"
-          className="text-xs font-medium text-violet-600 dark:text-violet-400 hover:underline"
+          className="text-xs font-medium text-foreground dark:text-foreground hover:underline"
         >
           Ver mapa
         </Link>

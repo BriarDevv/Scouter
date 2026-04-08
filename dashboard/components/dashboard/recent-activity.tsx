@@ -15,7 +15,7 @@ const ACTION_ICONS: Record<string, { icon: typeof FileText; color: string; bg: s
   meeting:   { icon: CalendarCheck,  color: "text-teal-600",    bg: "bg-teal-50" },
   won:       { icon: Trophy,         color: "text-green-600",   bg: "bg-green-50" },
   lost:      { icon: XCircle,        color: "text-red-500",     bg: "bg-red-50" },
-  approved:  { icon: CheckCircle,    color: "text-violet-600",  bg: "bg-violet-50" },
+  approved:  { icon: CheckCircle,    color: "text-foreground",  bg: "bg-muted" },
   rejected:  { icon: XCircle,        color: "text-red-500",     bg: "bg-red-50" },
   reviewed:  { icon: Eye,            color: "text-indigo-600",  bg: "bg-indigo-50" },
 };
