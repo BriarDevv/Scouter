@@ -44,7 +44,7 @@ export function IndustryChart({ data }: { data: IndustryBreakdown[] }) {
                     : industry.avg_score >= 30 ? "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300"
                     : "bg-muted text-muted-foreground"
                 )}>
-                  {industry.avg_score.toFixed(0)}
+                  score {industry.avg_score.toFixed(0)}
                 </span>
                 <span className="relative font-data text-sm font-bold text-foreground tabular-nums w-8 text-right">
                   {industry.count}
