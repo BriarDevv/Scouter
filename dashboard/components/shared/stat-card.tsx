@@ -6,7 +6,7 @@ import { ChevronRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 const COLOR_SCHEMES: Record<string, { iconBg: string; iconColor: string }> = {
-  violet:  { iconBg: "bg-violet-50 dark:bg-violet-950/30",  iconColor: "text-violet-600 dark:text-violet-400" },
+  violet:  { iconBg: "bg-muted dark:bg-muted",  iconColor: "text-foreground dark:text-foreground" },
   emerald: { iconBg: "bg-emerald-50 dark:bg-emerald-950/30", iconColor: "text-emerald-600 dark:text-emerald-400" },
   amber:   { iconBg: "bg-amber-50 dark:bg-amber-950/30",   iconColor: "text-amber-600 dark:text-amber-400" },
   cyan:    { iconBg: "bg-cyan-50 dark:bg-cyan-950/30",    iconColor: "text-cyan-600 dark:text-cyan-400" },
@@ -47,8 +47,8 @@ export function StatCard({
   href,
 }: StatCardProps) {
   const scheme = colorScheme ? COLOR_SCHEMES[colorScheme] : undefined;
-  const resolvedIconBg = scheme?.iconBg ?? iconBg ?? "bg-violet-50";
-  const resolvedIconColor = scheme?.iconColor ?? iconColor ?? "text-violet-600";
+  const resolvedIconBg = scheme?.iconBg ?? iconBg ?? "bg-muted";
+  const resolvedIconColor = scheme?.iconColor ?? iconColor ?? "text-foreground";
 
   const content = (
     <div className={cn(

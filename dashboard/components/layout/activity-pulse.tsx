@@ -32,7 +32,7 @@ function TaskRow({ task, llm }: { task: TaskStatusRecord; llm: LLMSettings | nul
     <div className="flex items-start gap-2.5 py-1.5 group">
       <div className="relative mt-0.5 shrink-0">
         {active ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-500" />
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-foreground" />
         ) : failed ? (
           <XCircle className="h-3.5 w-3.5 text-red-500" />
         ) : done ? (
@@ -54,7 +54,7 @@ function TaskRow({ task, llm }: { task: TaskStatusRecord; llm: LLMSettings | nul
         {task.lead_id && (
           <Link
             href={`/leads/${task.lead_id}`}
-            className="text-[10px] text-muted-foreground/70 hover:text-violet-400 truncate block transition-colors"
+            className="text-[10px] text-muted-foreground/70 hover:text-foreground truncate block transition-colors"
           >
             {task.lead_id.slice(0, 8)}...
           </Link>
@@ -154,10 +154,10 @@ export function ActivityPulse() {
           <div className="relative">
             <BrainCircuit className={cn(
               "h-4 w-4",
-              hasActive ? "text-violet-500" : "text-muted-foreground"
+              hasActive ? "text-foreground" : "text-muted-foreground"
             )} />
             {hasActive && (
-              <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-violet-500 animate-pulse" />
+              <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-foreground animate-pulse" />
             )}
           </div>
           <span className={cn(
@@ -180,15 +180,15 @@ export function ActivityPulse() {
       {expanded ? (
         <>
           {batch && batch.status === "running" && (
-            <div className="mb-1.5 rounded-lg bg-violet-500/10 border border-violet-500/20 px-2.5 py-2 ml-1">
+            <div className="mb-1.5 rounded-lg bg-muted/80 border border-border px-2.5 py-2 ml-1">
               <div className="flex items-center gap-2">
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-500" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-foreground" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-semibold text-violet-400">
+                  <p className="text-[11px] font-semibold text-foreground">
                     Pipeline {batch.processed ?? 0}/{batch.total ?? 0}
                   </p>
                   {batch.current_lead && (
-                    <p className="text-[10px] text-violet-300/70 truncate">
+                    <p className="text-[10px] text-muted-foreground/70 truncate">
                       {batch.current_step && STEP_CONFIG[batch.current_step]
                         ? STEP_CONFIG[batch.current_step].label
                         : batch.current_step} — {batch.current_lead}
@@ -207,7 +207,7 @@ export function ActivityPulse() {
           )}
           <Link
             href="/activity"
-            className="mt-1.5 flex items-center gap-1 pl-1 text-[10px] font-medium text-muted-foreground/60 hover:text-violet-400 transition-colors"
+            className="mt-1.5 flex items-center gap-1 pl-1 text-[10px] font-medium text-muted-foreground/60 hover:text-foreground transition-colors"
           >
             Ver todo <ChevronRight className="h-2.5 w-2.5" />
           </Link>
@@ -216,16 +216,16 @@ export function ActivityPulse() {
         <div className="pl-1">
           {batch && batch.status === "running" && (
             <div className="flex items-center gap-2 py-1.5">
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-500 shrink-0" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-foreground shrink-0" />
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium text-violet-400 truncate">
+                <p className="text-xs font-medium text-foreground truncate">
                   Pipeline {batch.processed ?? 0}/{batch.total ?? 0}
                   {batch.current_step && STEP_CONFIG[batch.current_step]
                     ? ` · ${STEP_CONFIG[batch.current_step].label}`
                     : ""}
                 </p>
                 {batch.current_lead && (
-                  <p className="text-[10px] text-violet-300/70 truncate">
+                  <p className="text-[10px] text-muted-foreground/70 truncate">
                     {batch.current_lead}
                   </p>
                 )}
