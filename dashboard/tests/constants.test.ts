@@ -105,7 +105,7 @@ describe("SIGNAL_CONFIG", () => {
     expect(SIGNAL_CONFIG.has_website.severity).toBe("negative");
   });
 
-  it("website_error signal has neutral severity", () => {
-    expect(SIGNAL_CONFIG.website_error.severity).toBe("neutral");
+  it("website_error signal has positive severity", () => {
+    expect(SIGNAL_CONFIG.website_error.severity).toBe("positive");
   });
 });
