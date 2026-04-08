@@ -25,7 +25,10 @@ export default function ChatPage() {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<ChatConversationSummary[]>([]);
   const [currentTitle, setCurrentTitle] = useState<string | null>(null);
-  const [historyOpen, setHistoryOpen] = useState(true);
+  const [historyOpen, setHistoryOpen] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("scouter-chat-history") !== "false";
+  });
   const [loadingList, setLoadingList] = useState(true);
 
   const { messages, isStreaming, error, sendMessage, setMessages } = useChat(activeConversationId);
@@ -150,7 +153,7 @@ export default function ChatPage() {
       <div className="flex-1 flex flex-col min-w-0 relative">
         {/* Toggle handle */}
         <button
-          onClick={() => setHistoryOpen(!historyOpen)}
+          onClick={() => { const next = !historyOpen; setHistoryOpen(next); localStorage.setItem("scouter-chat-history", String(next)); }}
           className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-10 w-4 rounded-r-lg border border-l-0 border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors shadow-sm"
           title={historyOpen ? "Ocultar historial" : "Mostrar historial"}
         >
