@@ -2,15 +2,16 @@
 
 ## 1. Visual Theme & Atmosphere
 
-Scouter is a commercial intelligence cockpit — not a CRM, not a dashboard template. The interface communicates authority through restraint: a neutral grayscale foundation with violet accents that only appear where the user needs to act. Every pixel earns its place by serving an operational purpose.
+Scouter is a commercial intelligence cockpit — not a CRM, not a dashboard template. The interface communicates authority through restraint: a strictly monochromatic foundation of black, white, and grays. Color is reserved exclusively for functional semantics (status pipeline, quality badges, destructive actions). Every pixel earns its place by serving an operational purpose.
 
 The aesthetic is data-forward and utilitarian. Monospace numerals for scores and budgets. Geometric headings that scan quickly. Generous whitespace that lets dense information breathe. The overall mood is a disciplined command center — serious enough for real business decisions, but with enough personality (through Mote's conversational AI layer) to feel alive rather than sterile.
 
-The defining visual technique is **chromatic restraint with semantic color bursts**: the base palette is entirely achromatic (OKLCH with zero chroma), and color only enters through status badges, chart accents, and the violet navigation highlight. This creates a clear visual hierarchy where data and state changes naturally draw the eye against the neutral canvas.
+The defining visual technique is **monochromatic structure with semantic color exceptions**: the entire UI — navigation, buttons, cards, charts, inputs — is achromatic (OKLCH with zero chroma). Color only appears in status badges, quality indicators, and destructive actions where it serves a functional scanning purpose. This creates maximum contrast and lets semantic colors command immediate attention.
 
 **Key Characteristics:**
-- Achromatic base palette using OKLCH color space (perceptually uniform light/dark modes)
-- Violet (`violet-600`) as the sole brand accent, reserved for active navigation and primary interactive states
+- Fully monochromatic UI — black, white, and grays only. No decorative color accents.
+- Color reserved for functional semantics: status pipeline badges, quality badges (emerald/amber/red), destructive red
+- High-contrast inverted buttons: `bg-foreground text-background` (black on white in light mode, white on black in dark mode)
 - Three-font system: geometric display (Satoshi), humanist body (Geist Sans), tabular data (Geist Mono)
 - Sidebar-driven layout with fixed left navigation and adaptive content area
 - Rounded containers (`rounded-xl`) nested inside the viewport with subtle border treatment
@@ -60,25 +61,39 @@ All colors are defined in the OKLCH color space for perceptual uniformity across
 | Ring | `oklch(0.556 0 0)` | `#7C7C7C` | Focus ring, adjusted for dark backgrounds |
 | Destructive | `oklch(0.704 0.191 22.216)` | `#F87171` | Lighter red for dark mode legibility |
 
-### Brand Accent
+### Interactive Accent
 
-- **Violet 600** (`#7C3AED`): Active navigation state for Mote (home). Applied as `bg-violet-600 text-white` with `shadow-sm`.
-- **Violet 700** (`#6D28D9`): Active navigation text for non-Mote pages. Applied as `text-violet-700`.
-- **Violet 50** (`#F5F3FF`): Active navigation background (light mode) for non-Mote pages.
-- **Dark mode active nav (Mote)**: `bg-white/15 text-white shadow-none` (stronger opacity for primary nav item).
-- **Dark mode active nav (other)**: `bg-white/10 text-white` (no violet background — relies on opacity shift).
+There is no brand color. Interactive emphasis uses inverted foreground/background:
 
-### Chart Colors (Blue-Violet Gradient)
+- **CTA buttons**: `bg-foreground text-background hover:bg-foreground/80` — black on white (light), white on black (dark).
+- **Active nav (Mote)**: `bg-foreground text-background shadow-sm` (dark: `bg-foreground shadow-none`).
+- **Active nav (other)**: `bg-muted text-foreground` (dark: `bg-white/10 text-white`).
+- **Links**: `text-foreground/70 hover:text-foreground hover:underline` — subtle until hovered.
+- **Focus rings**: `ring-ring/50` — gray ring, no color accent.
+
+### Chart Colors (Grayscale Gradient)
+
+Charts use a 5-step grayscale that adapts to the active mode for legibility:
+
+**Light Mode**
 
 | Token | OKLCH | Approx. Hex | Usage |
 |-------|-------|-------------|-------|
-| `--chart-1` | `oklch(0.809 0.105 251.813)` | `#93C5FD` | Primary data series |
-| `--chart-2` | `oklch(0.623 0.214 259.815)` | `#6366F1` | Secondary data series |
-| `--chart-3` | `oklch(0.546 0.245 262.881)` | `#4F46E5` | Tertiary data series |
-| `--chart-4` | `oklch(0.488 0.243 264.376)` | `#4338CA` | Quaternary / sidebar dark-mode primary |
-| `--chart-5` | `oklch(0.424 0.199 265.638)` | `#3730A3` | Quinary data series |
+| `--chart-1` | `oklch(0.70 0 0)` | `#A3A3A3` | Lightest data series |
+| `--chart-2` | `oklch(0.55 0 0)` | `#737373` | Second data series |
+| `--chart-3` | `oklch(0.40 0 0)` | `#525252` | Third data series |
+| `--chart-4` | `oklch(0.25 0 0)` | `#333333` | Fourth data series |
+| `--chart-5` | `oklch(0.15 0 0)` | `#1A1A1A` | Darkest data series |
 
-Chart colors are mode-invariant — the same OKLCH values apply in both light and dark mode.
+**Dark Mode**
+
+| Token | OKLCH | Approx. Hex | Usage |
+|-------|-------|-------------|-------|
+| `--chart-1` | `oklch(0.85 0 0)` | `#D4D4D4` | Lightest data series |
+| `--chart-2` | `oklch(0.70 0 0)` | `#A3A3A3` | Second data series |
+| `--chart-3` | `oklch(0.55 0 0)` | `#737373` | Third data series |
+| `--chart-4` | `oklch(0.40 0 0)` | `#525252` | Fourth data series |
+| `--chart-5` | `oklch(0.30 0 0)` | `#404040` | Darkest data series |
 
 ### Status Pipeline Colors
 
@@ -267,8 +282,8 @@ Built with `@base-ui/react/tabs`.
 - **Header**: `h-14` (56px) with logo and collapse toggle
 - **Nav items (expanded)**: `rounded-xl py-2 px-3 gap-2.5 text-sm font-medium font-heading`
 - **Nav items (collapsed)**: `rounded-xl py-2 px-[9px] gap-0` (icons centered, labels hidden)
-- **Active (Mote)**: `bg-violet-600 text-white shadow-sm` (dark: `bg-white/15 shadow-none`)
-- **Active (other)**: `bg-violet-50 dark:bg-white/10 text-violet-700 dark:text-white`
+- **Active (Mote)**: `bg-foreground text-background shadow-sm` (dark: `bg-foreground shadow-none`)
+- **Active (other)**: `bg-muted dark:bg-white/10 text-foreground dark:text-white`
 - **Inactive**: `text-muted-foreground hover:bg-muted hover:text-foreground`
 - **Collapse transition**: `duration-[350ms] ease-in-out`
 - **Icons**: lucide-react, `h-[18px] w-[18px]` (18px)
@@ -356,11 +371,11 @@ Scouter uses a deliberately minimal shadow system. Depth is primarily communicat
 - Use `rounded-full` only for badges and avatar circles.
 - Apply `active:translate-y-px` to clickable buttons for the subtle press-down micro-interaction.
 - Keep dark mode borders as transparent white (`oklch(1 0 0 / 10%)`) rather than opaque gray values.
-- Use the 13 existing `StatCard` color schemes (violet, emerald, amber, cyan, teal, green, blue, indigo, orange, purple, fuchsia, red + muted) when adding new metric displays.
+- Use the existing `StatCard` color schemes when adding new metric displays. The `violet` scheme now resolves to neutral (`bg-muted` / `text-foreground`). Prefer `muted` for new non-semantic cards.
 
 ### Don't
 
-- Don't introduce new brand colors beyond violet. The achromatic + violet constraint is intentional.
+- Don't introduce decorative color accents (violet, blue, etc.). The UI is strictly monochromatic — color is reserved for semantic status badges and destructive actions only.
 - Don't use `font-bold` (700) on body text — the maximum body weight is `font-semibold` (600), and only for data emphasis.
 - Don't apply Satoshi (heading font) to body text or data. Don't apply Geist Sans to headings.
 - Don't add `shadow-lg` or `shadow-xl` — the elevation system caps at `shadow-md` for UI elements.
@@ -420,7 +435,7 @@ The sidebar is the primary responsive mechanism:
 | Card BG | `oklch(1 0 0)` = `#FFF` | `oklch(0.205 0 0)` ~`#2B2B2B` |
 | Border | `oklch(0.922 0 0)` ~`#E5E5E5` | `oklch(1 0 0 / 10%)` |
 | Muted text | `oklch(0.556 0 0)` ~`#7C7C7C` | `oklch(0.708 0 0)` ~`#A3A3A3` |
-| Brand accent | `violet-600` = `#7C3AED` | `bg-white/10` (nav) |
+| CTA / active | `bg-foreground` (inverted) | `bg-foreground` (inverted) |
 | Destructive | `oklch(0.577 0.245 27.325)` | `oklch(0.704 0.191 22.216)` |
 
 ### Quick Font Reference
@@ -437,7 +452,7 @@ The sidebar is the primary responsive mechanism:
 ### Example Component Prompts
 
 **Stat card with icon:**
-"Create a stat card with `rounded-2xl border border-border bg-card p-5 shadow-sm hover:shadow-md`. Include a `h-10 w-10 rounded-xl` icon box with `bg-violet-50 dark:bg-violet-950/30`. Label in `text-sm font-medium text-muted-foreground`, value in `font-data text-2xl font-semibold tracking-tight text-foreground`."
+"Create a stat card with `rounded-2xl border border-border bg-card p-5 shadow-sm hover:shadow-md`. Include a `h-10 w-10 rounded-xl` icon box with `bg-muted dark:bg-muted`. Label in `text-sm font-medium text-muted-foreground`, value in `font-data text-2xl font-semibold tracking-tight text-foreground`."
 
 **Status badge:**
 "Create a badge with `inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium`. For an 'enriched' status, use `bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300`."
