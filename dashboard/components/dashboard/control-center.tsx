@@ -359,8 +359,9 @@ export function ControlCenter({ health, healthLoading, onRefreshHealth }: Contro
     setCrawlProgress(null);
   }
 
-  const ollamaOk = health.find((c) => c.name === "ollama")?.status === "ok";
-  const celeryOk = health.find((c) => c.name === "celery")?.status === "ok";
+  const healthPending = health.length === 0;
+  const ollamaOk = healthPending || health.find((c) => c.name === "ollama")?.status === "ok";
+  const celeryOk = healthPending || health.find((c) => c.name === "celery")?.status === "ok";
 
   return (
     <div className="rounded-2xl border border-border bg-card overflow-hidden">

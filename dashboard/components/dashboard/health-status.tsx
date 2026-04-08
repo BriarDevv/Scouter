@@ -24,7 +24,7 @@ interface HealthStatusProps {
 }
 
 export function HealthStatus({ health, healthLoading, onRefresh }: HealthStatusProps) {
-  const allOk = health.length > 0 && health.every((c) => c.status === "ok");
+  const allOk = health.length === 0 ? healthLoading : health.every((c) => c.status === "ok");
 
   return (
     <div className="flex items-center justify-between border-b border-border px-5 py-3">
@@ -38,7 +38,7 @@ export function HealthStatus({ health, healthLoading, onRefresh }: HealthStatusP
         <div>
           <h3 className="text-sm font-bold text-foreground">Centro de Control</h3>
           <p className="text-[11px] text-muted-foreground">
-            {allOk ? "Todos los servicios operativos" : "Algunos servicios con problemas"}
+            {health.length === 0 && healthLoading ? "Verificando servicios..." : allOk ? "Todos los servicios operativos" : "Algunos servicios con problemas"}
           </p>
         </div>
       </div>
