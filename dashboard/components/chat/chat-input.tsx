@@ -39,7 +39,7 @@ export function ChatInput({ onSend, disabled, error }: ChatInputProps) {
   return (
     <div className="border-t border-border p-4">
       {error && <p className="mb-2 text-xs text-destructive">{error}</p>}
-      <div className="flex items-end gap-2 rounded-2xl border border-border bg-background px-3 py-2 focus-within:ring-2 focus-within:ring-ring/30 focus-within:border-ring transition-all">
+      <div className="mx-auto max-w-4xl flex items-center gap-2 rounded-2xl border border-border bg-background px-3 py-2 focus-within:ring-2 focus-within:ring-ring/30 focus-within:border-ring transition-all">
         <textarea
           ref={textareaRef}
           value={value}
@@ -49,7 +49,7 @@ export function ChatInput({ onSend, disabled, error }: ChatInputProps) {
           placeholder="Escribi un mensaje..."
           rows={1}
           disabled={disabled}
-          className="flex-1 resize-none bg-transparent text-sm leading-relaxed outline-none placeholder:text-muted-foreground disabled:opacity-50"
+          className="flex-1 resize-none bg-transparent text-sm leading-normal outline-none placeholder:text-muted-foreground disabled:opacity-50"
         />
         <button
           onClick={handleSend}
@@ -64,9 +64,6 @@ export function ChatInput({ onSend, disabled, error }: ChatInputProps) {
           <ArrowUp className="h-4 w-4" />
         </button>
       </div>
-      <p className="mt-1.5 text-center text-[10px] text-muted-foreground">
-        Enter para enviar · Shift+Enter para nueva linea
-      </p>
     </div>
   );
 }
