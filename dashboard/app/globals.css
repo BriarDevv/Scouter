@@ -177,6 +177,45 @@
   scrollbar-color: oklch(0.32 0 0) oklch(0.18 0 0);
 }
 
+/* ── Mote ambient glow ────────────────────────────────── */
+@keyframes mote-drift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.mote-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.mote-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    oklch(0.5 0 0 / 0.04) 25%,
+    transparent 50%,
+    oklch(0.5 0 0 / 0.04) 75%,
+    transparent 100%
+  );
+  background-size: 300% 100%;
+  animation: mote-drift 8s linear infinite;
+  pointer-events: none;
+  border-radius: inherit;
+}
+.dark .mote-shimmer::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    oklch(1 0 0 / 0.04) 25%,
+    transparent 50%,
+    oklch(1 0 0 / 0.04) 75%,
+    transparent 100%
+  );
+  background-size: 300% 100%;
+}
+
 /* Utility classes for font switching */
 .font-heading {
   font-family: var(--font-heading), ui-sans-serif, system-ui, sans-serif;

@@ -114,14 +114,16 @@ export function Sidebar() {
                   ? "bg-foreground text-background shadow-sm dark:bg-foreground dark:shadow-none"
                   : isActive
                   ? "bg-muted dark:bg-white/10 text-foreground dark:text-white"
+                  : isMote
+                  ? "text-foreground/70 border border-border/60 hover:bg-foreground hover:text-background hover:border-transparent hover:shadow-sm mote-shimmer"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
               <item.icon className={cn(
                 "h-[18px] w-[18px] shrink-0",
-                isActive && isMote ? "text-background" : isActive ? "text-foreground dark:text-white" : ""
+                isActive && isMote ? "text-background" : isActive ? "text-foreground dark:text-white" : !isActive && isMote ? "text-foreground" : ""
               )} />
-              <span className={lbl}>{item.label}</span>
+              <span className={cn(lbl, !isActive && isMote && "text-foreground")}>{item.label}</span>
             </Link>
           );
         })}
