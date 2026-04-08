@@ -27,12 +27,9 @@ import { PipelineFunnel } from "@/components/dashboard/pipeline-funnel";
 import { AreaChartCard } from "@/components/charts/area-chart-card";
 import { IndustryChart } from "@/components/dashboard/industry-chart";
 import { RecentActivity } from "@/components/dashboard/recent-activity";
-import { AiHealthCard } from "@/components/dashboard/ai-health-card";
-import { TopCorrections } from "@/components/dashboard/top-corrections";
 import { TerritorySummary } from "@/components/dashboard/territory-summary";
 import { FeatureToggleList, type FeatureToggle } from "@/components/dashboard/feature-toggle-list";
 import { SkeletonStatCard, SkeletonCard } from "@/components/shared/skeleton";
-import { CollapsibleSection } from "@/components/shared/collapsible-section";
 import type {
   DashboardStats,
   IndustryBreakdown,
@@ -472,55 +469,41 @@ export default function PanelPage() {
           </div>
         ) : (
           <>
-            <CollapsibleSection title="Tendencias" defaultOpen>
-              <div className="grid gap-6 lg:grid-cols-3">
-                <AreaChartCard
-                  title="Leads por Dia"
-                  subtitle="Ultimos 30 dias"
-                  data={timeSeries ?? []}
-                  dataKey="leads"
-                  color="#8b5cf6"
-                  gradientId="leadsGrad"
-                />
-                <AreaChartCard
-                  title="Outreach por Dia"
-                  subtitle="Emails enviados"
-                  data={timeSeries ?? []}
-                  dataKey="outreach"
-                  color="#06b6d4"
-                  gradientId="outreachGrad"
-                />
-                <AreaChartCard
-                  title="Respuestas por Dia"
-                  subtitle="Replies recibidos"
-                  data={timeSeries ?? []}
-                  dataKey="replies"
-                  color="#10b981"
-                  gradientId="repliesGrad"
-                />
-              </div>
-            </CollapsibleSection>
+            <div className="grid gap-6 lg:grid-cols-2">
+              <PipelineFunnel stages={pipeline ?? []} />
+              <IndustryChart data={industryBreakdown ?? []} />
+            </div>
 
-            <CollapsibleSection title="Pipeline & Distribucion" defaultOpen>
-              <div className="grid gap-6 lg:grid-cols-2">
-                <PipelineFunnel stages={pipeline ?? []} />
-                <IndustryChart data={industryBreakdown ?? []} />
-              </div>
-            </CollapsibleSection>
+            <div className="grid gap-6 lg:grid-cols-3">
+              <AreaChartCard
+                title="Leads por Dia"
+                subtitle="Ultimos 30 dias"
+                data={timeSeries ?? []}
+                dataKey="leads"
+                color="oklch(0.45 0 0)"
+                gradientId="leadsGrad"
+              />
+              <AreaChartCard
+                title="Outreach por Dia"
+                subtitle="Emails enviados"
+                data={timeSeries ?? []}
+                dataKey="outreach"
+                color="oklch(0.55 0 0)"
+                gradientId="outreachGrad"
+              />
+              <AreaChartCard
+                title="Respuestas por Dia"
+                subtitle="Replies recibidos"
+                data={timeSeries ?? []}
+                dataKey="replies"
+                color="oklch(0.35 0 0)"
+                gradientId="repliesGrad"
+              />
+            </div>
 
-            <CollapsibleSection title="Actividad Reciente" defaultOpen={false}>
-              <RecentActivity logs={logs ?? []} />
-            </CollapsibleSection>
+            <RecentActivity logs={logs ?? []} />
           </>
         )}
-
-        {/* ═══════════════════════════════════════════════════
-            BOTTOM CARDS
-            ═══════════════════════════════════════════════════ */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <AiHealthCard />
-          <TopCorrections />
-        </div>
 
         <TerritorySummary />
       </div>
