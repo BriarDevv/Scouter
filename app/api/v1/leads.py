@@ -1,11 +1,13 @@
 import io
+import os
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.models.artifact import Artifact, ArtifactType
 from app.models.lead import Lead, LeadStatus
 from app.models.research_report import LeadResearchReport
 from app.schemas.lead import (
@@ -149,3 +151,36 @@ def trigger_research(lead_id: uuid.UUID, db: Session = Depends(get_db)):
     if not report:
         raise HTTPException(status_code=500, detail="Research failed")
     return ResearchReportResponse.model_validate(report)
+
+
+@router.get("/{lead_id}/screenshot", response_class=FileResponse)
+def get_lead_screenshot(lead_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Serve the screenshot image for a lead."""
+    from pathlib import Path
+
+    lead = db.get(Lead, lead_id)
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    artifact = (
+        db.query(Artifact)
+        .filter(
+            Artifact.lead_id == lead_id,
+            Artifact.artifact_type == ArtifactType.SCREENSHOT,
+        )
+        .order_by(Artifact.created_at.desc())
+        .first()
+    )
+    if not artifact:
+        raise HTTPException(status_code=404, detail="No screenshot available")
+
+    # Security: resolve symlinks and verify path is within storage directory
+    storage_root = Path(__file__).resolve().parent.parent.parent / "storage"
+    resolved = Path(artifact.file_path).resolve()
+    if not resolved.is_relative_to(storage_root):
+        raise HTTPException(status_code=403, detail="Invalid screenshot path")
+
+    if not resolved.is_file():
+        raise HTTPException(status_code=404, detail="Screenshot file not found")
+
+    return FileResponse(str(resolved), media_type="image/png")

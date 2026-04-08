@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ScoreBadge } from "@/components/shared/status-badge";
-import { SIGNAL_CONFIG } from "@/lib/constants";
+import { API_BASE_URL, SIGNAL_CONFIG } from "@/lib/constants";
 import { extractDomain } from "@/lib/formatters";
 import {
   Globe, Instagram, Mail, Phone, MapPin, Building2,
@@ -142,6 +142,30 @@ export function LeadContactCard({ lead, isRunningPipeline, onRunPipeline }: Lead
           </div>
         </div>
       </div>
+
+      {lead.website_url && (
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <h3 className="text-sm font-semibold text-foreground mb-3 font-heading">
+            Captura del sitio
+          </h3>
+          <a
+            href={`${API_BASE_URL}/leads/${lead.id}/screenshot`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <img
+              src={`${API_BASE_URL}/leads/${lead.id}/screenshot`}
+              alt={`Screenshot de ${lead.business_name}`}
+              className="w-full rounded-xl border border-border"
+              loading="lazy"
+              onError={(e) => {
+                const card = (e.target as HTMLElement).closest('.rounded-2xl');
+                if (card instanceof HTMLElement) card.style.display = 'none';
+              }}
+            />
+          </a>
+        </div>
+      )}
 
       <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
         <h3 className="text-sm font-semibold text-foreground mb-3 font-heading">Señales Detectadas</h3>

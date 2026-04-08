@@ -1,3 +1,4 @@
+import os
 import re
 import uuid
 from datetime import datetime, timezone
@@ -10,6 +11,7 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_ex
 
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.models.artifact import Artifact, ArtifactType
 from app.models.lead import Lead, LeadStatus
 from app.models.lead_signal import LeadSignal, SignalType
 
@@ -227,6 +229,51 @@ def enrich_lead(db: Session, lead_id: uuid.UUID) -> Lead | None:
     if lead.website_url:
         web_signals, found_emails = _analyze_website(lead.website_url)
         signals.extend(web_signals)
+
+        # Auto-screenshot for leads with websites (demo material)
+        if not any(st == SignalType.NO_WEBSITE for st, _ in web_signals):
+            try:
+                from app.agent.scout_tools import take_screenshot
+
+                result = take_screenshot(lead.website_url)
+                if result.get("screenshot_path"):
+                    # Remove previous screenshot artifact to avoid disk bloat
+                    old_artifact = (
+                        db.query(Artifact)
+                        .filter(
+                            Artifact.lead_id == lead.id,
+                            Artifact.artifact_type == ArtifactType.SCREENSHOT,
+                        )
+                        .first()
+                    )
+                    if old_artifact:
+                        if os.path.isfile(old_artifact.file_path):
+                            os.unlink(old_artifact.file_path)
+                        db.delete(old_artifact)
+
+                    db.add(
+                        Artifact(
+                            lead_id=lead.id,
+                            artifact_type=ArtifactType.SCREENSHOT,
+                            file_path=result["screenshot_path"],
+                            file_size=os.path.getsize(result["screenshot_path"])
+                            if os.path.exists(result["screenshot_path"])
+                            else None,
+                            metadata_json={
+                                "source": "enrichment_auto",
+                                "url": lead.website_url,
+                            },
+                        )
+                    )
+                    logger.info(
+                        "screenshot_captured",
+                        lead_id=str(lead_id),
+                        path=result["screenshot_path"],
+                    )
+            except Exception as exc:
+                logger.warning(
+                    "auto_screenshot_failed", lead_id=str(lead_id), error=str(exc)
+                )
     else:
         signals.append((SignalType.NO_WEBSITE, "No website URL provided"))
 
