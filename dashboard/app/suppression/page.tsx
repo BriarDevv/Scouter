@@ -104,7 +104,7 @@ export default function SuppressionPage() {
         description="Emails, dominios y telefonos que no deben ser contactados"
       >
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger render={<Button className="rounded-xl bg-violet-600 text-white hover:bg-violet-700" />}>
+          <DialogTrigger render={<Button className="rounded-xl bg-foreground text-background hover:bg-foreground/80" />}>
             <Plus className="mr-2 h-4 w-4" />
             Agregar
           </DialogTrigger>
@@ -146,7 +146,7 @@ export default function SuppressionPage() {
                 Cancelar
               </DialogClose>
               <Button
-                className="rounded-xl bg-violet-600 text-white hover:bg-violet-700"
+                className="rounded-xl bg-foreground text-background hover:bg-foreground/80"
                 onClick={() => void handleAdd()}
                 disabled={isSubmitting || (!email && !domain)}
               >

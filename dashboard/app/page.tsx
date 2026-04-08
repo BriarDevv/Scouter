@@ -94,7 +94,7 @@ export default function ChatPage() {
         historyOpen ? "w-60" : "w-0 overflow-hidden border-r-0"
       )}>
         <div className="flex items-center gap-2 px-3 py-3.5 border-b border-border/40 shrink-0">
-          <MessagesSquare className="h-3.5 w-3.5 text-violet-500 shrink-0" />
+          <MessagesSquare className="h-3.5 w-3.5 text-foreground shrink-0" />
           <span className="text-[11px] font-semibold font-heading text-muted-foreground uppercase tracking-wider flex-1">
             Conversaciones
           </span>
@@ -126,7 +126,7 @@ export default function ChatPage() {
                 className={cn(
                   "group w-full text-left rounded-xl px-3 py-2 transition-all flex items-center gap-2",
                   activeConversationId === conv.id
-                    ? "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
+                    ? "bg-muted dark:bg-muted text-foreground dark:text-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
@@ -162,8 +162,8 @@ export default function ChatPage() {
 
         {/* Header */}
         <div className="flex items-center gap-3 px-6 py-3.5 border-b border-border/40 shrink-0">
-          <div className="h-7 w-7 rounded-lg bg-violet-100 dark:bg-violet-950/50 flex items-center justify-center shrink-0">
-            <Sparkles className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+          <div className="h-7 w-7 rounded-lg bg-muted dark:bg-muted flex items-center justify-center shrink-0">
+            <Sparkles className="h-3.5 w-3.5 text-foreground" />
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold font-heading leading-none truncate">

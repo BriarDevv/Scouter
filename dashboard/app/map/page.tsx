@@ -65,8 +65,8 @@ export default function MapPage() {
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border bg-card px-6 py-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-950/40">
-            <MapPin className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted dark:bg-muted">
+            <MapPin className="h-5 w-5 text-foreground" />
           </div>
           <div>
             <h1 className="font-heading text-lg font-bold text-foreground">Mapa de Leads</h1>

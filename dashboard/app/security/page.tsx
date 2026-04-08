@@ -63,7 +63,7 @@ export default function SecurityPage() {
             description="Alertas de seguridad y eventos del sistema"
           >
             <Button
-              className="rounded-xl bg-violet-600 text-white hover:bg-violet-700"
+              className="rounded-xl bg-foreground text-background hover:bg-foreground/80"
               onClick={() => void handleBulkResolve()}
               disabled={bulkLoading || (counts?.security === 0)}
             >

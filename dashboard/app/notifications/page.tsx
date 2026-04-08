@@ -75,7 +75,7 @@ export default function NotificationsPage() {
             description="Centro de notificaciones y alertas del sistema"
           >
             <Button
-              className="rounded-xl bg-violet-600 text-white hover:bg-violet-700"
+              className="rounded-xl bg-foreground text-background hover:bg-foreground/80"
               onClick={() => void handleBulkMarkRead()}
               disabled={bulkLoading || (counts?.total_unread === 0)}
             >
@@ -99,7 +99,7 @@ export default function NotificationsPage() {
                   label="Total sin leer"
                   value={counts?.total_unread ?? 0}
                   icon={Bell}
-                  colorScheme="violet"
+                  colorScheme="muted"
                 />
                 <StatCard
                   label="Negocio"

@@ -197,7 +197,7 @@ export default function OnboardingPage() {
                     onClick={() => setActiveStep(stepId)}
                     className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${
                       activeStep === stepId
-                        ? "bg-violet-600 text-white"
+                        ? "bg-foreground text-background"
                         : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
                     }`}
                   >
@@ -257,7 +257,7 @@ export default function OnboardingPage() {
                 type="button"
                 onClick={() => canGoNext && setActiveStep(flowSteps[activeIndex + 1])}
                 disabled={!canGoNext}
-                className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-xl bg-foreground px-3 py-2 text-sm font-medium text-background transition hover:bg-foreground/80 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Siguiente
                 <ArrowRight className="h-4 w-4" />
@@ -285,7 +285,7 @@ function StatusCard({ readiness }: { readiness: SetupReadiness }) {
   return (
     <div className={`rounded-2xl border p-5 shadow-sm ${tone}`}>
       <div className="flex items-start gap-3">
-        <div className="rounded-xl bg-violet-600 p-2 text-white">
+        <div className="rounded-xl bg-foreground p-2 text-background">
           <ShieldCheck className="h-4 w-4" />
         </div>
         <div>
@@ -305,7 +305,7 @@ function UpdatesCard({ readiness }: { readiness: SetupReadiness }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground">
-        <RefreshCw className="h-4 w-4 text-violet-500" />
+        <RefreshCw className="h-4 w-4 text-foreground" />
         Updates
       </div>
       <p className="text-xs text-muted-foreground">{readiness.updates.detail}</p>
@@ -337,7 +337,7 @@ function SetupStage({
     <div className="space-y-6">
       <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
         <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
-          <Sparkles className="h-4 w-4 text-violet-500" />
+          <Sparkles className="h-4 w-4 text-foreground" />
           Preparar entorno y runtime
         </div>
         <div className="grid gap-4 lg:grid-cols-3">
@@ -365,7 +365,7 @@ function SetupStage({
                     type="button"
                     onClick={() => void onAction(action)}
                     disabled={runningAction === action.id}
-                    className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-violet-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-xl bg-foreground px-3 py-2 text-sm font-medium text-background transition hover:bg-foreground/80 disabled:opacity-50"
                   >
                     {runningAction === action.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -438,7 +438,7 @@ function ReadyStage({ nextPath }: { nextPath: string }) {
           <div className="mt-4 flex flex-wrap gap-3">
             <Link
               href={nextPath}
-              className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-700"
+              className="inline-flex items-center gap-2 rounded-xl bg-foreground px-4 py-2 text-sm font-medium text-background transition hover:bg-foreground/80"
             >
               Ir al dashboard
               <ArrowRight className="h-4 w-4" />

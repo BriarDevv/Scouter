@@ -122,7 +122,7 @@ export default function SettingsPage() {
                 </div>
                 <Link
                   href="/onboarding"
-                  className="inline-flex items-center rounded-xl bg-violet-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-violet-700"
+                  className="inline-flex items-center rounded-xl bg-foreground px-3 py-2 text-xs font-medium text-background transition hover:bg-foreground/80"
                 >
                   Abrir onboarding
                 </Link>

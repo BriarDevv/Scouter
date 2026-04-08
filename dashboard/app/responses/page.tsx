@@ -172,7 +172,7 @@ export default function ResponsesPage() {
           </PageHeader>
 
           <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-            <StatCard label="Replies recientes" value={recentRepliesCount} icon={Inbox} colorScheme="violet" />
+            <StatCard label="Replies recientes" value={recentRepliesCount} icon={Inbox} colorScheme="muted" />
             <StatCard label="Leads que respondieron" value={repliedLeadsCount} icon={MessagesSquare} colorScheme="emerald" />
             <StatCard
               label="Replies positivas"

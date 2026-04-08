@@ -66,13 +66,13 @@ function ActiveTaskCard({
   }, [task.started_at, task.created_at]);
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-violet-500/30 bg-card p-5 shadow-sm">
-      <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-transparent" />
+    <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="absolute inset-0 bg-gradient-to-br from-foreground/5 to-transparent" />
       <div className="relative">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-950/40">
-              <Loader2 className="h-5 w-5 animate-spin text-violet-600 dark:text-violet-400" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted dark:bg-muted">
+              <Loader2 className="h-5 w-5 animate-spin text-foreground" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -82,12 +82,12 @@ function ActiveTaskCard({
               <p className="text-xs text-muted-foreground">{step.description}</p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 rounded-full bg-violet-50 dark:bg-violet-950/40 px-2.5 py-1">
+          <div className="flex items-center gap-1.5 rounded-full bg-muted dark:bg-muted px-2.5 py-1">
             <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-500 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-violet-500" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-foreground opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-foreground" />
             </span>
-            <span className="text-xs font-medium text-violet-700 dark:text-violet-300 font-data">{elapsed}</span>
+            <span className="text-xs font-medium text-foreground font-data">{elapsed}</span>
           </div>
         </div>
 
@@ -139,7 +139,7 @@ function TaskHistoryRow({
       {/* Status icon */}
       <div className="shrink-0">
         {active ? (
-          <Loader2 className="h-4 w-4 animate-spin text-violet-500" />
+          <Loader2 className="h-4 w-4 animate-spin text-foreground" />
         ) : failed ? (
           <XCircle className="h-4 w-4 text-red-500" />
         ) : done ? (
@@ -166,7 +166,7 @@ function TaskHistoryRow({
         {task.lead_id ? (
           <Link
             href={`/leads/${task.lead_id}`}
-            className="text-sm text-violet-600 dark:text-violet-400 hover:underline truncate block"
+            className="text-sm text-foreground/70 dark:text-foreground/70 hover:text-foreground hover:underline truncate block"
           >
             {leadName || task.lead_id.slice(0, 16) + "..."}
           </Link>
@@ -179,7 +179,7 @@ function TaskHistoryRow({
       <div className="shrink-0">
         <span className={cn(
           "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium",
-          active && "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300",
+          active && "bg-muted dark:bg-muted text-foreground dark:text-foreground",
           done && "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300",
           failed && "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300",
           !active && !done && !failed && "bg-muted text-muted-foreground",
@@ -273,11 +273,11 @@ export default function ActivityPage() {
               <p className="text-sm font-medium text-muted-foreground">En curso</p>
               <p className="mt-1 font-data text-3xl font-bold text-foreground">{activeTasks.length}</p>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-950/40">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted dark:bg-muted">
               {activeTasks.length > 0 ? (
-                <Loader2 className="h-6 w-6 animate-spin text-violet-600 dark:text-violet-400" />
+                <Loader2 className="h-6 w-6 animate-spin text-foreground" />
               ) : (
-                <BrainCircuit className="h-6 w-6 text-violet-600 dark:text-violet-400" />
+                <BrainCircuit className="h-6 w-6 text-foreground" />
               )}
             </div>
           </div>
@@ -365,7 +365,7 @@ export default function ActivityPage() {
                       {task.lead_id && (
                         <Link
                           href={`/leads/${task.lead_id}`}
-                          className="text-xs text-violet-600 dark:text-violet-400 hover:underline"
+                          className="text-xs text-foreground/70 dark:text-foreground/70 hover:text-foreground hover:underline"
                         >
                           {leadMap[task.lead_id] || task.lead_id.slice(0, 16) + "..."}
                         </Link>

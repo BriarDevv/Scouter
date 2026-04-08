@@ -81,7 +81,7 @@ export default function LeadsPage() {
           <Tooltip>
             <TooltipTrigger
               render={
-                <Button className="rounded-xl bg-violet-600 text-white hover:bg-violet-700 opacity-50 cursor-not-allowed" disabled />
+                <Button className="rounded-xl bg-foreground text-background hover:bg-foreground/80 opacity-50 cursor-not-allowed" disabled />
               }
             >
               <Plus className="mr-2 h-4 w-4" />

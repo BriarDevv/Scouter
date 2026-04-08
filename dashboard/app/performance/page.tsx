@@ -164,13 +164,13 @@ export default function PerformancePage() {
               className={cn(
                 "relative px-4 py-2.5 text-sm font-medium transition-colors",
                 isActive
-                  ? "text-violet-700 dark:text-violet-300"
+                  ? "text-foreground dark:text-foreground"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
               {tab.label}
               {isActive && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-600 dark:bg-violet-400 rounded-full" />
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-foreground dark:bg-foreground rounded-full" />
               )}
             </button>
           );
@@ -300,10 +300,10 @@ export default function PerformancePage() {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-violet-200 dark:border-violet-900/30 bg-violet-50/30 dark:bg-violet-950/10 p-5">
+            <div className="rounded-2xl border border-border bg-muted/30 dark:bg-muted/30 p-5">
               <div className="flex items-center gap-2 mb-2">
-                <Zap className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-                <h4 className="text-sm font-semibold text-violet-800 dark:text-violet-300 font-heading">Oportunidad</h4>
+                <Zap className="h-4 w-4 text-foreground" />
+                <h4 className="text-sm font-semibold text-foreground font-heading">Oportunidad</h4>
               </div>
               <p className="text-sm text-foreground/80">
                 {insights.bestCity ? (

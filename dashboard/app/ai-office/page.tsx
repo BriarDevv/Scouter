@@ -35,7 +35,7 @@ const AGENT_ICONS: Record<string, React.ComponentType<{ className?: string }>> =
 };
 
 const AGENT_COLOR_CLASSES: Record<string, { border: string; bg: string; icon: string }> = {
-  mote:     { border: "border-violet-100 dark:border-violet-900/30", bg: "bg-violet-50/30 dark:bg-violet-950/20",   icon: "text-violet-600 dark:text-violet-400" },
+  mote:     { border: "border-border", bg: "bg-muted/50 dark:bg-muted/50",   icon: "text-foreground" },
   scout:    { border: "border-cyan-100 dark:border-cyan-900/30",     bg: "bg-cyan-50/30 dark:bg-cyan-950/20",       icon: "text-cyan-600 dark:text-cyan-400" },
   executor: { border: "border-blue-100 dark:border-blue-900/30",     bg: "bg-blue-50/30 dark:bg-blue-950/20",       icon: "text-blue-600 dark:text-blue-400" },
   reviewer: { border: "border-emerald-100 dark:border-emerald-900/30", bg: "bg-emerald-50/30 dark:bg-emerald-950/20", icon: "text-emerald-600 dark:text-emerald-400" },
@@ -262,7 +262,7 @@ export default function AiOfficePage() {
       {/* Decision Log */}
       <div className="rounded-xl border border-border bg-card p-4">
         <div className="flex items-center gap-2 mb-3">
-          <Zap className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+          <Zap className="h-4 w-4 text-foreground" />
           <h3 className="text-sm font-medium">Decisiones recientes</h3>
         </div>
         {(decisions ?? []).length > 0 ? (
@@ -344,7 +344,7 @@ function RoleBadge({ role }: { role: string }) {
   const colors: Record<string, string> = {
     executor: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300",
     reviewer: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300",
-    agent: "bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300",
+    agent: "bg-muted dark:bg-muted text-foreground dark:text-foreground",
     leader: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300",
   };
   return (
