@@ -1,10 +1,13 @@
 """Rule-based scoring engine for leads. Higher score = better prospect.
 
 Score breakdown (max 100):
-  Signals:        up to 55  (no_website 30 + instagram_only 25, OR website issues)
+  Signals:        up to ~95  (bad website signals stack; no-website signals lower)
   Industry:       up to 15
   Completeness:   up to 12  (phone 3 + email 5 + instagram 2 + city 2)
   Google Maps:    up to 18  (low rating 8 + few reviews 10)
+
+Philosophy: leads with BAD websites score highest (proven web intent,
+demo-ready). Leads with NO website score lower (uncertain intent).
 """
 
 from app.core.logging import get_logger
@@ -13,19 +16,22 @@ from app.models.lead_signal import SignalType
 
 logger = get_logger(__name__)
 
-# Signal weights: positive = good prospect for web dev services
+# Signal weights — Tier 1: bad website signals (proven web intent, demo-ready);
+# Tier 2: no-website signals (uncertain intent)
 SIGNAL_WEIGHTS: dict[SignalType, float] = {
-    SignalType.NO_WEBSITE: 30.0,
-    SignalType.INSTAGRAM_ONLY: 25.0,
-    SignalType.OUTDATED_WEBSITE: 20.0,
-    SignalType.NO_CUSTOM_DOMAIN: 15.0,
-    SignalType.NO_VISIBLE_EMAIL: 10.0,
-    SignalType.NO_SSL: 10.0,
-    SignalType.WEAK_SEO: 8.0,
-    SignalType.NO_MOBILE_FRIENDLY: 12.0,
-    SignalType.SLOW_LOAD: 8.0,
-    SignalType.WEBSITE_ERROR: 15.0,
-    # Neutral: having a website is not a penalty — score comes from problems found
+    # Tier 1 — bad website signals (proven web intent, demo-ready)
+    SignalType.OUTDATED_WEBSITE: 22.0,
+    SignalType.WEBSITE_ERROR: 22.0,
+    SignalType.NO_CUSTOM_DOMAIN: 18.0,
+    SignalType.NO_MOBILE_FRIENDLY: 15.0,
+    SignalType.NO_SSL: 12.0,
+    SignalType.SLOW_LOAD: 10.0,
+    SignalType.WEAK_SEO: 10.0,
+    SignalType.NO_VISIBLE_EMAIL: 8.0,
+    # Tier 2 — no website signals (uncertain intent)
+    SignalType.NO_WEBSITE: 12.0,
+    SignalType.INSTAGRAM_ONLY: 10.0,
+    # Neutral
     SignalType.HAS_WEBSITE: 0.0,
     SignalType.HAS_CUSTOM_DOMAIN: 0.0,
 }

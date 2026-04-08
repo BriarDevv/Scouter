@@ -35,7 +35,7 @@ def _make_lead(
     return lead
 
 
-def test_no_website_high_score():
+def test_no_website_medium_score():
     lead = _make_lead(
         signals=[_make_signal(SignalType.NO_WEBSITE)],
         industry="restaurante",
@@ -43,7 +43,7 @@ def test_no_website_high_score():
         phone="+5411123456",
     )
     score = compute_score(lead)
-    assert score >= 40.0
+    assert score >= 30.0
 
 
 def test_good_website_low_score():
@@ -57,7 +57,7 @@ def test_good_website_low_score():
     assert score == 0.0  # Negative signals clamped to 0
 
 
-def test_instagram_only_scores_well():
+def test_instagram_only_scores_moderate():
     lead = _make_lead(
         signals=[
             _make_signal(SignalType.NO_WEBSITE),
@@ -67,7 +67,7 @@ def test_instagram_only_scores_well():
         email="test@test.com",
     )
     score = compute_score(lead)
-    assert score >= 50.0
+    assert score >= 25.0
 
 
 def test_website_with_problems_scores_well():
@@ -84,8 +84,8 @@ def test_website_with_problems_scores_well():
         city="CABA",
     )
     score = compute_score(lead)
-    # NO_SSL(10) + WEAK_SEO(8) + NO_MOBILE_FRIENDLY(12) + industry(15) + city(2) = 47
-    assert score >= 40.0
+    # NO_SSL(12) + WEAK_SEO(10) + NO_MOBILE_FRIENDLY(15) + industry(15) + city(2) = 54
+    assert score >= 50.0
 
 
 def test_website_error_scores_like_prospect():
@@ -96,7 +96,7 @@ def test_website_error_scores_like_prospect():
         city="CABA",
     )
     score = compute_score(lead)
-    # WEBSITE_ERROR(15) + industry(15) + city(2) = 32
+    # WEBSITE_ERROR(22) + industry(15) + city(2) = 39
     assert score >= 25.0
 
 
@@ -121,3 +121,42 @@ def test_score_capped_at_100():
     )
     score = compute_score(lead)
     assert score == 100.0
+
+
+def test_bad_website_stacking_high_score():
+    """A lead with multiple website problems should score HIGH (>=60)."""
+    lead = _make_lead(
+        signals=[
+            _make_signal(SignalType.HAS_WEBSITE),
+            _make_signal(SignalType.OUTDATED_WEBSITE),
+            _make_signal(SignalType.NO_CUSTOM_DOMAIN),
+            _make_signal(SignalType.NO_MOBILE_FRIENDLY),
+            _make_signal(SignalType.NO_SSL),
+            _make_signal(SignalType.WEAK_SEO),
+        ],
+        industry="restaurante",
+        city="CABA",
+    )
+    score = compute_score(lead)
+    # OUTDATED(22) + NO_CUSTOM_DOMAIN(18) + NO_MOBILE_FRIENDLY(15) + NO_SSL(12) + WEAK_SEO(10) + industry(15) + city(2) = 94
+    assert score >= 60.0
+
+
+def test_bad_website_beats_no_website():
+    """A lead with a bad website should outscore a lead with no website, same context."""
+    bad_web = _make_lead(
+        signals=[
+            _make_signal(SignalType.HAS_WEBSITE),
+            _make_signal(SignalType.NO_SSL),
+            _make_signal(SignalType.WEAK_SEO),
+            _make_signal(SignalType.NO_MOBILE_FRIENDLY),
+        ],
+        industry="restaurante",
+        city="CABA",
+    )
+    no_web = _make_lead(
+        signals=[_make_signal(SignalType.NO_WEBSITE)],
+        industry="restaurante",
+        city="CABA",
+    )
+    assert compute_score(bad_web) > compute_score(no_web)
