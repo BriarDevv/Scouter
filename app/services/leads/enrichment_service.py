@@ -271,9 +271,7 @@ def enrich_lead(db: Session, lead_id: uuid.UUID) -> Lead | None:
                         path=result["screenshot_path"],
                     )
             except Exception as exc:
-                logger.warning(
-                    "auto_screenshot_failed", lead_id=str(lead_id), error=str(exc)
-                )
+                logger.warning("auto_screenshot_failed", lead_id=str(lead_id), error=str(exc))
     else:
         signals.append((SignalType.NO_WEBSITE, "No website URL provided"))
 
