@@ -32,14 +32,7 @@ export function FeatureToggleList({
   onToggle,
   warningMessage,
 }: FeatureToggleListProps) {
-  if (loading || !settings) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        Cargando...
-      </div>
-    );
-  }
+  const pending = loading || !settings;
 
   const colorEnabled = accentColor === "violet"
     ? "bg-muted dark:bg-muted"
@@ -54,15 +47,15 @@ export function FeatureToggleList({
   return (
     <div className="space-y-1">
       {features.map((feat) => {
-        const enabled = Boolean(settings[feat.key]);
+        const enabled = pending ? false : Boolean(settings[feat.key]);
         const saving = savingKey === feat.key;
-        const depDisabled = feat.dependsOn && !settings[feat.dependsOn];
+        const depDisabled = feat.dependsOn && settings && !settings[feat.dependsOn];
 
         return (
           <button
             key={feat.key}
             onClick={() => onToggle(feat.key, !enabled)}
-            disabled={saving || Boolean(depDisabled)}
+            disabled={pending || saving || Boolean(depDisabled)}
             className={cn(
               "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-all",
               enabled ? colorEnabled : "bg-muted/30 hover:bg-muted/50",
