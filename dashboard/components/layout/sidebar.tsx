@@ -81,7 +81,7 @@ export function Sidebar() {
           <span className="font-heading text-base font-bold tracking-tight text-sidebar-foreground">
             Scouter
           </span>
-          <span className="rounded-md bg-violet-50 dark:bg-white/8 px-1.5 py-0.5 text-[10px] font-medium text-violet-600 dark:text-white/60 shrink-0">
+          <span className="rounded-md bg-muted dark:bg-white/8 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground dark:text-white/60 shrink-0">
             v2
           </span>
         </div>
@@ -111,15 +111,15 @@ export function Sidebar() {
                 "flex items-center rounded-xl py-2 text-sm font-medium font-heading transition-all duration-[350ms] ease-in-out",
                 collapsed ? "px-[9px] gap-0" : "gap-2.5 px-3",
                 isActive && isMote
-                  ? "bg-violet-600 text-white shadow-sm dark:bg-white/15 dark:shadow-none"
+                  ? "bg-foreground text-background shadow-sm dark:bg-foreground dark:shadow-none"
                   : isActive
-                  ? "bg-violet-50 dark:bg-white/10 text-violet-700 dark:text-white"
+                  ? "bg-muted dark:bg-white/10 text-foreground dark:text-white"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
               <item.icon className={cn(
                 "h-[18px] w-[18px] shrink-0",
-                isActive && isMote ? "text-white" : isActive ? "text-violet-600 dark:text-white" : ""
+                isActive && isMote ? "text-background" : isActive ? "text-foreground dark:text-white" : ""
               )} />
               <span className={lbl}>{item.label}</span>
             </Link>
@@ -139,11 +139,11 @@ export function Sidebar() {
                 "relative flex items-center rounded-xl py-2 text-sm font-medium font-heading transition-all duration-[350ms] ease-in-out",
                 collapsed ? "px-[9px] gap-0" : "gap-2.5 px-3",
                 isActive
-                  ? "bg-violet-50 dark:bg-white/10 text-violet-700 dark:text-white"
+                  ? "bg-muted dark:bg-white/10 text-foreground dark:text-white"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
-              <item.icon className={cn("h-[18px] w-[18px] shrink-0", isActive ? "text-violet-600 dark:text-white" : "")} />
+              <item.icon className={cn("h-[18px] w-[18px] shrink-0", isActive ? "text-foreground dark:text-white" : "")} />
               <span className={cn(lbl, "flex-1")}>{item.label}</span>
               {item.badge && unreadCount > 0 && (
                 <span className={cn(
@@ -176,11 +176,11 @@ export function Sidebar() {
             "flex items-center rounded-xl py-2 text-sm font-medium font-heading transition-all duration-[350ms] ease-in-out",
             collapsed ? "px-[9px] gap-0" : "gap-2.5 px-3",
             pathname.startsWith("/settings")
-              ? "bg-violet-50 dark:bg-white/10 text-violet-700 dark:text-white"
+              ? "bg-muted dark:bg-white/10 text-foreground dark:text-white"
               : "text-muted-foreground hover:bg-muted hover:text-foreground"
           )}
         >
-          <Settings className={cn("h-[18px] w-[18px] shrink-0", pathname.startsWith("/settings") ? "text-violet-600 dark:text-violet-400" : "")} />
+          <Settings className={cn("h-[18px] w-[18px] shrink-0", pathname.startsWith("/settings") ? "text-foreground dark:text-foreground" : "")} />
           <span className={lbl}>Configuración</span>
         </Link>
       </div>
