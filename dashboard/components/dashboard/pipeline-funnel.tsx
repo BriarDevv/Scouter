@@ -1,51 +1,58 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import type { PipelineStage } from "@/types";
-import { formatPercent } from "@/lib/formatters";
 
 export function PipelineFunnel({ stages }: { stages: PipelineStage[] }) {
   const maxCount = stages[0]?.count || 1;
+  const isEmpty = stages.every((s) => s.count === 0);
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-      <h3 className="text-sm font-semibold text-foreground font-heading">Pipeline Comercial</h3>
-      <p className="mt-0.5 text-xs text-muted-foreground">Embudo de conversión por etapa</p>
-
-      <div className="mt-5 space-y-2">
-        {stages.map((stage, i) => {
-          const widthPercent = Math.max((stage.count / maxCount) * 100, 8);
-          const conversionFromPrev = i > 0 && stages[i - 1].count > 0
-            ? ((stage.count / stages[i - 1].count) * 100).toFixed(0) + "%"
-            : null;
-
-          return (
-            <div key={stage.stage} className="group flex items-center gap-3">
-              <div className="w-24 text-right">
-                <span className="text-xs font-medium text-muted-foreground font-heading">{stage.label}</span>
-              </div>
-              <div className="flex-1">
-                <div className="relative h-8 w-full overflow-hidden rounded-lg bg-muted">
-                  <div
-                    className="absolute inset-y-0 left-0 flex items-center rounded-lg px-3 transition-[width] duration-500"
-                    style={{ width: `${widthPercent}%`, backgroundColor: stage.color }}
-                  >
-                    <span className="text-xs font-semibold text-white drop-shadow-sm font-data">
-                      {stage.count}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div className="w-14 text-right">
-                {conversionFromPrev ? (
-                  <span className="text-xs text-muted-foreground font-data">{conversionFromPrev}</span>
-                ) : (
-                  <span className="text-xs text-muted-foreground/50">—</span>
-                )}
-              </div>
-            </div>
-          );
-        })}
+      <div className="flex items-baseline justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground font-heading">Pipeline</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">Embudo de conversion</p>
+        </div>
+        {!isEmpty && (
+          <span className="text-2xl font-bold text-foreground font-data">{maxCount}</span>
+        )}
       </div>
+
+      {isEmpty ? (
+        <p className="mt-6 text-center text-xs text-muted-foreground py-8">Sin leads en el pipeline</p>
+      ) : (
+        <div className="mt-5 space-y-px">
+          {stages.map((stage, i) => {
+            const pct = (stage.count / maxCount) * 100;
+            const drop = i > 0 && stages[i - 1].count > 0
+              ? ((stage.count / stages[i - 1].count) * 100).toFixed(0)
+              : null;
+
+            return (
+              <div
+                key={stage.stage}
+                className={cn(
+                  "group relative flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-muted/50",
+                  stage.count === 0 && "opacity-40"
+                )}
+              >
+                <div className="absolute inset-0 rounded-lg overflow-hidden">
+                  <div
+                    className="h-full bg-foreground/[0.04] transition-[width] duration-700"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+
+                <span className="relative w-28 text-xs text-muted-foreground truncate">{stage.label}</span>
+                <span className="relative font-data text-sm font-bold text-foreground ml-auto tabular-nums">
+                  {stage.count}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

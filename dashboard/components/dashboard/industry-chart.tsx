@@ -1,49 +1,59 @@
 "use client";
 
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import { CHART_TOOLTIP_STYLE } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 import type { IndustryBreakdown } from "@/types";
 
 export function IndustryChart({ data }: { data: IndustryBreakdown[] }) {
   const sorted = [...data].sort((a, b) => b.count - a.count).slice(0, 8);
+  const maxCount = sorted[0]?.count || 1;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-      <h3 className="text-sm font-semibold text-foreground font-heading">Top Industrias</h3>
-      <p className="mt-0.5 text-xs text-muted-foreground">Leads por rubro</p>
-
-      <div className="mt-4 h-[250px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={sorted} layout="vertical" margin={{ top: 0, right: 4, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
-            <XAxis type="number" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} />
-            <YAxis
-              type="category"
-              dataKey="industry"
-              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-              tickLine={false}
-              axisLine={false}
-              width={90}
-            />
-            <Tooltip
-              contentStyle={CHART_TOOLTIP_STYLE}
-              formatter={(value, name) => {
-                if (name === "count") return [String(value), "Leads"];
-                return [String(value), String(name)];
-              }}
-            />
-            <Bar dataKey="count" fill="#8b5cf6" radius={[0, 6, 6, 0]} barSize={20} />
-          </BarChart>
-        </ResponsiveContainer>
+      <div className="flex items-baseline justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground font-heading">Top Industrias</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">Leads por rubro</p>
+        </div>
+        <span className="text-xs text-muted-foreground font-data">{sorted.length} rubros</span>
       </div>
+
+      {sorted.length === 0 ? (
+        <p className="mt-6 text-center text-xs text-muted-foreground py-8">Sin datos de industrias</p>
+      ) : (
+        <div className="mt-5 space-y-px">
+          {sorted.map((industry, i) => {
+            const pct = (industry.count / maxCount) * 100;
+
+            return (
+              <div
+                key={industry.industry}
+                className="group relative flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-muted/50"
+              >
+                <div className="absolute inset-0 rounded-lg overflow-hidden">
+                  <div
+                    className="h-full bg-foreground/[0.06] transition-[width] duration-700"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+
+                <span className="relative text-[10px] text-muted-foreground/50 font-data w-4 text-right">{i + 1}</span>
+                <span className="relative flex-1 text-xs text-foreground font-medium truncate">{industry.industry}</span>
+                <span className={cn(
+                  "relative text-[10px] font-data font-bold px-1.5 py-0.5 rounded-full",
+                  industry.avg_score >= 60 ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
+                    : industry.avg_score >= 30 ? "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300"
+                    : "bg-muted text-muted-foreground"
+                )}>
+                  {industry.avg_score.toFixed(0)}
+                </span>
+                <span className="relative font-data text-sm font-bold text-foreground tabular-nums w-8 text-right">
+                  {industry.count}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
