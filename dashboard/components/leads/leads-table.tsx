@@ -119,7 +119,7 @@ export function LeadsTable({ leads }: LeadsTableProps) {
               className={cn(
                 "shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors",
                 statusFilter === s
-                  ? "bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
+                  ? "bg-muted dark:bg-muted text-foreground dark:text-foreground"
                   : "bg-card text-muted-foreground hover:bg-muted hover:text-foreground/80 border border-border"
               )}
             >
@@ -135,7 +135,7 @@ export function LeadsTable({ leads }: LeadsTableProps) {
             className={cn(
               "rounded-lg px-2.5 py-1.5 text-xs font-medium border transition-colors bg-card text-muted-foreground cursor-pointer",
               MORE_FILTER_OPTIONS.includes(statusFilter as LeadStatus)
-                ? "border-violet-200 bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
+                ? "border-border bg-muted dark:bg-muted text-foreground dark:text-foreground"
                 : "border-border hover:bg-muted"
             )}
           >
@@ -206,7 +206,7 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                     ) : (
                       <MailX className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
                     )}
-                    <span className="font-medium text-foreground group-hover:text-violet-700 transition-colors">
+                    <span className="font-medium text-foreground group-hover:text-foreground transition-colors">
                       {truncate(lead.business_name, 30)}
                     </span>
                   </Link>

@@ -50,7 +50,7 @@ export function LeadDossierSection({ research, isRunningResearch, onRunResearch 
               )}>{research.website_confidence}</span>
             )}
             {research.website_url_verified && (
-              <a href={research.website_url_verified} target="_blank" rel="noopener noreferrer" className="text-xs text-violet-600 dark:text-violet-400 hover:underline truncate">
+              <a href={research.website_url_verified} target="_blank" rel="noopener noreferrer" className="text-xs text-foreground/70 dark:text-foreground/70 hover:text-foreground hover:underline truncate">
                 {research.website_url_verified}
               </a>
             )}

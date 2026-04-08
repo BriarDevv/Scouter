@@ -19,7 +19,7 @@ function InfoRow({ icon: Icon, label, value, href }: { icon: typeof Globe; label
       <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
       <span className="text-sm text-muted-foreground w-24 shrink-0">{label}</span>
       {href ? (
-        <a href={href} target="_blank" rel="noopener noreferrer" className="text-sm text-violet-600 dark:text-violet-400 hover:underline truncate font-data">
+        <a href={href} target="_blank" rel="noopener noreferrer" className="text-sm text-foreground/70 dark:text-foreground/70 hover:text-foreground hover:underline truncate font-data">
           {value}
         </a>
       ) : (
@@ -91,7 +91,7 @@ export function LeadContactCard({ lead, isRunningPipeline, onRunPipeline }: Lead
             <Globe className="h-4 w-4 shrink-0 text-muted-foreground" />
             <span className="text-sm text-muted-foreground w-24 shrink-0">Website</span>
             {lead.website_url ? (
-              <a href={lead.website_url} target="_blank" rel="noopener noreferrer" className="text-sm text-violet-600 dark:text-violet-400 hover:underline truncate font-data">
+              <a href={lead.website_url} target="_blank" rel="noopener noreferrer" className="text-sm text-foreground/70 dark:text-foreground/70 hover:text-foreground hover:underline truncate font-data">
                 {extractDomain(lead.website_url)}
               </a>
             ) : (
@@ -102,7 +102,7 @@ export function LeadContactCard({ lead, isRunningPipeline, onRunPipeline }: Lead
             <Instagram className="h-4 w-4 shrink-0 text-muted-foreground" />
             <span className="text-sm text-muted-foreground w-24 shrink-0">Instagram</span>
             {lead.instagram_url ? (
-              <a href={lead.instagram_url} target="_blank" rel="noopener noreferrer" className="text-sm text-violet-600 dark:text-violet-400 hover:underline truncate font-data">
+              <a href={lead.instagram_url} target="_blank" rel="noopener noreferrer" className="text-sm text-foreground/70 dark:text-foreground/70 hover:text-foreground hover:underline truncate font-data">
                 @{lead.instagram_url.split("/").pop()}
               </a>
             ) : (

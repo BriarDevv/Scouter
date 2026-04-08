@@ -160,7 +160,7 @@ export function AiDecisionsPanel({ leadId, pipelineRunId }: AiDecisionsPanelProp
 }
 
 const STEP_COLOR_CLASSES: Record<string, { border: string; bg: string; title: string }> = {
-  violet:  { border: "border-violet-100 dark:border-violet-900/30",   bg: "bg-violet-50/40 dark:bg-violet-950/20",   title: "text-violet-700 dark:text-violet-300" },
+  violet:  { border: "border-border",                                  bg: "bg-muted/50 dark:bg-muted/50",            title: "text-foreground dark:text-foreground" },
   blue:    { border: "border-blue-100 dark:border-blue-900/30",       bg: "bg-blue-50/40 dark:bg-blue-950/20",       title: "text-blue-700 dark:text-blue-300" },
   emerald: { border: "border-emerald-100 dark:border-emerald-900/30", bg: "bg-emerald-50/40 dark:bg-emerald-950/20", title: "text-emerald-700 dark:text-emerald-300" },
   amber:   { border: "border-amber-100 dark:border-amber-900/30",     bg: "bg-amber-50/40 dark:bg-amber-950/20",     title: "text-amber-700 dark:text-amber-300" },

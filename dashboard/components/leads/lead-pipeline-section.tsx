@@ -23,8 +23,8 @@ export function LeadPipelineSection({ pipelineRuns, latestTask }: LeadPipelineSe
       }
     >
       {latestTask && (
-        <div className="mb-4 rounded-xl border border-violet-100 dark:border-violet-900/30 bg-violet-50/40 dark:bg-violet-950/20 p-3">
-          <p className="text-xs font-medium text-violet-700 dark:text-violet-300">Última task</p>
+        <div className="mb-4 rounded-xl border border-border bg-muted/50 dark:bg-muted/50 p-3">
+          <p className="text-xs font-medium text-foreground dark:text-foreground">Última task</p>
           <p className="mt-1 text-sm text-foreground/80">
             {latestTask.status} {latestTask.current_step ? `· ${latestTask.current_step}` : ""}
           </p>

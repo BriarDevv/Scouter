@@ -91,7 +91,7 @@ export function LeadBriefSection({ brief, isGeneratingBrief, onGenerateBrief }: 
               )}>Llamar: {brief.should_call}</span>
             )}
             {brief.demo_recommended && (
-              <span className="rounded-full bg-violet-50 dark:bg-violet-950/30 px-2 py-0.5 text-xs font-medium text-violet-700 dark:text-violet-300">
+              <span className="rounded-full bg-muted dark:bg-muted px-2 py-0.5 text-xs font-medium text-foreground dark:text-foreground">
                 Demo recomendada
               </span>
             )}

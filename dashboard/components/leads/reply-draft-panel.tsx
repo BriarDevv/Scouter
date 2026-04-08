@@ -99,7 +99,7 @@ function CollapsedSummary({
     <button
       type="button"
       onClick={onExpand}
-      className="mt-3 flex w-full items-center justify-between gap-3 rounded-xl border border-violet-100 dark:border-violet-900/40 bg-violet-50/30 dark:bg-violet-950/20 px-3 py-2 text-left transition-colors hover:bg-violet-50/60 dark:hover:bg-violet-950/40"
+      className="mt-3 flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-muted/50 dark:bg-muted/50 px-3 py-2 text-left transition-colors hover:bg-muted dark:hover:bg-muted"
     >
       <span className="text-xs font-medium text-foreground/70">{statusText}</span>
       <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -249,7 +249,7 @@ export function ReplyDraftPanel({
   if (!draft) {
     return (
       <div className={cn(
-        "rounded-2xl border border-violet-100 dark:border-violet-900/40 bg-violet-50/30 dark:bg-violet-950/20",
+        "rounded-2xl border border-border bg-muted/50 dark:bg-muted/50",
         compact ? "p-4" : "p-5"
       )}>
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -286,7 +286,7 @@ export function ReplyDraftPanel({
   // ─── Draft exists ────────────────────────────────────
   return (
     <div className={cn(
-      "rounded-2xl border border-violet-100 dark:border-violet-900/40 bg-violet-50/30 dark:bg-violet-950/20",
+      "rounded-2xl border border-border bg-muted/50 dark:bg-muted/50",
       compact ? "p-4" : "p-5"
     )}>
       {/* ── HEADER ── */}
@@ -381,7 +381,7 @@ export function ReplyDraftPanel({
                 type="text"
                 value={editSubject}
                 onChange={(e) => setEditSubject(e.target.value)}
-                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-violet-300 focus:ring-1 focus:ring-violet-200"
+                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring/50"
               />
             </div>
             <div>
@@ -390,7 +390,7 @@ export function ReplyDraftPanel({
                 value={editBody}
                 onChange={(e) => setEditBody(e.target.value)}
                 rows={compact ? 4 : 8}
-                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm leading-relaxed text-foreground outline-none focus:border-violet-300 focus:ring-1 focus:ring-violet-200"
+                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm leading-relaxed text-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring/50"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -477,7 +477,7 @@ export function ReplyDraftPanel({
               "rounded-xl gap-1.5",
               isAlreadySent
                 ? "bg-emerald-600 hover:bg-emerald-700"
-                : "bg-violet-600 hover:bg-violet-700"
+                : "bg-foreground hover:bg-foreground/80"
             )}
             onClick={() => void handleSend()}
             disabled={isSendDisabled}
