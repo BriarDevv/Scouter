@@ -51,7 +51,7 @@ export function ChatHistoryDrawer({
               className={cn(
                 "group flex items-center gap-2 rounded-xl px-3 py-2 text-sm cursor-pointer transition-colors",
                 activeId === conv.id
-                  ? "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
+                  ? "bg-muted dark:bg-muted text-foreground dark:text-foreground"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
               onClick={() => onSelect(conv.id)}

@@ -25,7 +25,7 @@ export function ChatPanelHeader({
         className={cn(
           "rounded-lg p-1.5 transition-colors",
           showHistory
-            ? "bg-violet-100 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400"
+            ? "bg-muted dark:bg-muted text-foreground dark:text-foreground"
             : "text-muted-foreground hover:bg-muted hover:text-foreground"
         )}
         title="Historial de conversaciones"

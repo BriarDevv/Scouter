@@ -39,7 +39,7 @@ export function ChatInput({ onSend, disabled, error }: ChatInputProps) {
   return (
     <div className="border-t border-border p-4">
       {error && <p className="mb-2 text-xs text-destructive">{error}</p>}
-      <div className="flex items-end gap-2 rounded-2xl border border-border bg-background px-3 py-2 focus-within:ring-2 focus-within:ring-violet-500/20 focus-within:border-violet-500/50 transition-all">
+      <div className="flex items-end gap-2 rounded-2xl border border-border bg-background px-3 py-2 focus-within:ring-2 focus-within:ring-ring/30 focus-within:border-ring transition-all">
         <textarea
           ref={textareaRef}
           value={value}
@@ -57,7 +57,7 @@ export function ChatInput({ onSend, disabled, error }: ChatInputProps) {
           className={cn(
             "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-colors",
             value.trim() && !disabled
-              ? "bg-violet-600 text-white hover:bg-violet-700"
+              ? "bg-foreground text-background hover:bg-foreground/80"
               : "bg-muted text-muted-foreground"
           )}
         >
