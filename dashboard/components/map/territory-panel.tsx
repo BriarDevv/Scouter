@@ -142,7 +142,7 @@ export function TerritoryPanel({
           className="flex w-full items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors"
         >
           <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-violet-500" />
+            <MapPin className="h-4 w-4 text-foreground" />
             <span className="font-heading text-sm font-semibold text-foreground">
               Territorios ({territories.length})
             </span>
@@ -242,7 +242,7 @@ export function TerritoryPanel({
                   placeholder="Nombre del territorio"
                   value={form.name}
                   onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                  className="w-full rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+                  className="w-full rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-ring"
                 />
 
                 {/* Description */}
@@ -251,7 +251,7 @@ export function TerritoryPanel({
                   placeholder="Descripcion (opcional)"
                   value={form.description}
                   onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-                  className="w-full rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+                  className="w-full rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-ring"
                 />
 
                 {/* Color */}
@@ -329,7 +329,7 @@ export function TerritoryPanel({
                       {form.cities.slice(0, 8).map((city) => (
                         <span
                           key={city}
-                          className="inline-flex items-center gap-1 rounded-full bg-violet-50 dark:bg-violet-950/40 px-2 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-300"
+                          className="inline-flex items-center gap-1 rounded-full bg-muted dark:bg-muted px-2 py-0.5 text-[10px] font-medium text-foreground dark:text-foreground"
                         >
                           {city}
                           <button
@@ -367,7 +367,7 @@ export function TerritoryPanel({
                   <button
                     onClick={handleSave}
                     disabled={!form.name.trim()}
-                    className="flex-1 rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50 transition-colors"
+                    className="flex-1 rounded-lg bg-foreground px-3 py-1.5 text-sm font-medium text-background hover:bg-foreground/80 disabled:opacity-50 transition-colors"
                   >
                     {creating ? "Crear" : "Guardar"}
                   </button>
@@ -386,7 +386,7 @@ export function TerritoryPanel({
               <div className="border-t border-border px-4 py-2">
                 <button
                   onClick={startCreate}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border px-3 py-2 text-sm text-muted-foreground hover:border-violet-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border px-3 py-2 text-sm text-muted-foreground hover:border-foreground/40 hover:text-foreground dark:hover:text-foreground transition-colors"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   Agregar territorio

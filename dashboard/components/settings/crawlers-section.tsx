@@ -265,7 +265,7 @@ export function CrawlersSection() {
                     disabled={isRunning}
                     className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors disabled:opacity-50 ${
                       selectedCats.includes(cat)
-                        ? "bg-violet-600 text-white"
+                        ? "bg-foreground text-background"
                         : "bg-muted text-muted-foreground hover:bg-muted/80"
                     }`}
                   >
@@ -311,30 +311,30 @@ export function CrawlersSection() {
 
         {/* Progress */}
         {isRunning && (
-          <div className="mt-4 rounded-xl border border-violet-500/20 bg-violet-50 dark:bg-violet-950/20 p-4 space-y-3">
+          <div className="mt-4 rounded-xl border border-border bg-muted dark:bg-muted p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin text-violet-600" />
-                <p className="text-sm font-semibold text-violet-700 dark:text-violet-300">
+                <Loader2 className="h-4 w-4 animate-spin text-foreground" />
+                <p className="text-sm font-semibold text-foreground">
                   Crawling {progress.territory ?? "..."}
                 </p>
               </div>
-              <span className="text-[10px] text-violet-600 dark:text-violet-400 font-mono">
+              <span className="text-[10px] text-foreground font-mono">
                 {progress.current_city_idx ?? 0}/{progress.total_cities ?? 0} ciudades
               </span>
             </div>
 
             {/* Progress bar */}
-            <div className="h-2 rounded-full bg-violet-200 dark:bg-violet-900/50 overflow-hidden">
+            <div className="h-2 rounded-full bg-muted-foreground/20 overflow-hidden">
               <div
-                className="h-full rounded-full bg-violet-600 transition-[width] duration-500"
+                className="h-full rounded-full bg-foreground transition-[width] duration-500"
                 style={{
                   width: `${progress.total_cities ? ((progress.current_city_idx ?? 0) / progress.total_cities) * 100 : 0}%`,
                 }}
               />
             </div>
 
-            <div className="flex items-center justify-between text-[10px] text-violet-600 dark:text-violet-400">
+            <div className="flex items-center justify-between text-[10px] text-foreground">
               <span>
                 Buscando en: <strong>{progress.current_city ?? "..."}</strong>
               </span>

@@ -73,7 +73,7 @@ export function MapSidebar({ cities, open, onToggle, isDarkMap = true }: MapSide
           {/* Header */}
           <div className={cn("border-b px-4 py-3", d ? "border-white/10" : "border-black/8")}>
             <div className="flex items-center gap-2 mb-2">
-              <MapPin className={cn("h-4 w-4", d ? "text-violet-400" : "text-violet-600")} />
+              <MapPin className={cn("h-4 w-4", d ? "text-muted-foreground" : "text-foreground")} />
               <h3 className={cn("text-sm font-bold", d ? "text-white" : "text-foreground")}>
                 Ciudades ({cities.length})
               </h3>
@@ -89,7 +89,7 @@ export function MapSidebar({ cities, open, onToggle, isDarkMap = true }: MapSide
               </div>
               <div className={cn("rounded-lg px-2.5 py-1.5 text-center", d ? "bg-white/5" : "bg-black/5")}>
                 <p className={cn("text-xs", d ? "text-white/40" : "text-black/40")}>Score</p>
-                <p className={cn("text-sm font-bold tabular-nums", d ? "text-violet-400" : "text-violet-600")}>{avgScore.toFixed(0)}</p>
+                <p className={cn("text-sm font-bold tabular-nums", d ? "text-muted-foreground" : "text-foreground")}>{avgScore.toFixed(0)}</p>
               </div>
             </div>
           </div>
@@ -104,7 +104,7 @@ export function MapSidebar({ cities, open, onToggle, isDarkMap = true }: MapSide
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className={cn(
-                  "w-full rounded-lg border py-1.5 pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/40",
+                  "w-full rounded-lg border py-1.5 pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-ring",
                   d
                     ? "border-white/10 bg-white/5 text-white placeholder:text-white/30"
                     : "border-border bg-muted text-foreground placeholder:text-muted-foreground"
@@ -152,8 +152,8 @@ export function MapSidebar({ cities, open, onToggle, isDarkMap = true }: MapSide
                     <span className={cn(
                       "ml-2 flex-shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold tabular-nums",
                       d
-                        ? "bg-violet-500/15 text-violet-300"
-                        : "bg-violet-100 text-violet-700"
+                        ? "bg-muted text-muted-foreground"
+                        : "bg-muted text-foreground"
                     )}>
                       {city.count}
                     </span>

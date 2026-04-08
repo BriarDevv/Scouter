@@ -202,7 +202,7 @@ export function LeadMap({ cities, leads = [], territories = [], onSelectLead }: 
             onClick={() => changeTile(key)}
             className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all ${
               tileKey === key
-                ? "bg-violet-600 text-white shadow-sm"
+                ? "bg-foreground text-background shadow-sm"
                 : isDark
                   ? "text-white/60 hover:text-white hover:bg-white/10"
                   : "text-black/50 hover:text-black hover:bg-black/5"
@@ -216,7 +216,7 @@ export function LeadMap({ cities, leads = [], territories = [], onSelectLead }: 
           onClick={() => setViewMode(viewMode === "leads" ? "cities" : "leads")}
           className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all ${
             viewMode === "leads"
-              ? "bg-violet-600 text-white shadow-sm"
+              ? "bg-foreground text-background shadow-sm"
               : isDark
                 ? "text-white/60 hover:text-white hover:bg-white/10"
                 : "text-black/50 hover:text-black hover:bg-black/5"

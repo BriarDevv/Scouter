@@ -173,7 +173,7 @@ export function TerritoriesSection() {
                 key={t.id}
                 className={cn(
                   "flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 transition-colors",
-                  editing === t.id && "ring-2 ring-violet-500/30"
+                  editing === t.id && "ring-2 ring-ring/30"
                 )}
               >
                 <span
@@ -265,9 +265,9 @@ export function TerritoriesSection() {
                         key={c}
                         type="button"
                         onClick={() => toggleCity(c)}
-                        className="inline-flex items-center gap-1 rounded-full bg-violet-50 dark:bg-violet-950/40 px-2.5 py-1 text-xs font-medium text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-950/60 transition-colors"
+                        className="inline-flex items-center gap-1 rounded-full bg-muted dark:bg-muted px-2.5 py-1 text-xs font-medium text-foreground dark:text-foreground hover:bg-muted/80 dark:hover:bg-muted/80 transition-colors"
                       >
-                        {c} <span className="text-violet-400">&times;</span>
+                        {c} <span className="text-muted-foreground">&times;</span>
                       </button>
                     ))}
                   </div>
@@ -281,13 +281,13 @@ export function TerritoriesSection() {
                       className={cn(
                         "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-xs transition-colors",
                         form.cities.includes(city)
-                          ? "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
+                          ? "bg-muted dark:bg-muted text-foreground dark:text-foreground"
                           : "text-foreground hover:bg-muted"
                       )}
                     >
                       <span className={cn(
                         "h-3 w-3 rounded-sm border",
-                        form.cities.includes(city) ? "bg-violet-600 border-violet-600" : "border-border"
+                        form.cities.includes(city) ? "bg-foreground border-foreground" : "border-border"
                       )} />
                       {city}
                     </button>
