@@ -53,7 +53,7 @@ export const SIGNAL_CONFIG: Record<SignalType, { label: string; emoji: string; s
   slow_load:         { label: "Carga lenta",       emoji: "🐌", severity: "positive" },
   has_website:       { label: "Tiene website",     emoji: "🌐", severity: "negative" },
   has_custom_domain: { label: "Dominio propio",    emoji: "✅", severity: "negative" },
-  website_error:     { label: "Error de website",  emoji: "⚠️", severity: "neutral" },
+  website_error:     { label: "Error de website",  emoji: "⚠️", severity: "positive" },
 };
 
 export const DRAFT_STATUS_CONFIG: Record<DraftStatus, { label: string; color: string; bg: string }> = {
