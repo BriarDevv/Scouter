@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { Lead, OutreachLog } from "@/types";
 import { RelativeTime } from "@/components/shared/relative-time";
 import {
@@ -39,7 +40,9 @@ export function RecentActivity({ logs, leads }: { logs: OutreachLog[]; leads?: L
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm text-foreground/80">
-                  <span className="font-medium">{lead?.business_name || "Lead"}</span>
+                  <Link href={`/leads/${log.lead_id}`} className="font-medium hover:underline">
+                    {log.business_name || lead?.business_name || "Ver lead"}
+                  </Link>
                   {log.detail && <span className="text-muted-foreground"> — {log.detail}</span>}
                 </p>
               </div>

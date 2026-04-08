@@ -53,4 +53,5 @@ export interface OutreachLog {
   actor: string;
   detail: string | null;
   created_at: string;
+  business_name: string | null;
 }
