@@ -43,3 +43,4 @@ class OutreachLogResponse(BaseModel):
     actor: str
     detail: str | None
     created_at: datetime
+    business_name: str | None = None

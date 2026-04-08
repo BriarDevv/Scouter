@@ -126,14 +126,25 @@ def list_logs(
     lead_id: uuid.UUID | None = None,
     draft_id: uuid.UUID | None = None,
     limit: int = 50,
-) -> list[OutreachLog]:
-    stmt = select(OutreachLog)
+) -> list[dict]:
+    from app.models.lead import Lead
+
+    stmt = (
+        select(OutreachLog, Lead.business_name)
+        .outerjoin(Lead, OutreachLog.lead_id == Lead.id)
+    )
     if lead_id:
         stmt = stmt.where(OutreachLog.lead_id == lead_id)
     if draft_id:
         stmt = stmt.where(OutreachLog.draft_id == draft_id)
     stmt = stmt.order_by(OutreachLog.created_at.desc()).limit(limit)
-    return list(db.execute(stmt).scalars().all())
+    rows = db.execute(stmt).all()
+    result = []
+    for log, bname in rows:
+        d = {c.key: getattr(log, c.key) for c in OutreachLog.__table__.columns}
+        d["business_name"] = bname
+        result.append(d)
+    return result
 
 
 def update_draft(
