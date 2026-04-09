@@ -147,7 +147,7 @@ export function LeadsTable({ leads }: LeadsTableProps) {
               >
                 <td className="px-4 py-2.5">
                   <Link href={`/leads/${lead.id}`} className="group min-w-0 block">
-                    <p className="text-xs font-medium text-foreground truncate group-hover:underline">
+                    <p className="text-xs font-medium text-foreground truncate underline decoration-transparent underline-offset-2 group-hover:decoration-foreground/30 transition-all">
                       {truncate(lead.business_name, 32)}
                     </p>
                   </Link>
