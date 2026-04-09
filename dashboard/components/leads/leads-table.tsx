@@ -127,6 +127,7 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                   Negocio <SortIcon field="business_name" />
                 </button>
               </th>
+              <th className="text-left px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Contacto</th>
               <th className="text-left px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Rubro</th>
               <th className="text-left px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Ciudad</th>
               <th className="text-left px-3 py-2.5">
@@ -154,23 +155,26 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                     <p className="text-xs font-medium text-foreground truncate group-hover:underline">
                       {truncate(lead.business_name, 32)}
                     </p>
-                    {(lead.email || lead.phone) && (
-                      <div className="flex items-center gap-2.5 mt-0.5">
-                        {lead.email && (
-                          <span className="flex items-center gap-1 text-[10px] text-muted-foreground truncate font-data">
-                            <Mail className="h-2.5 w-2.5 shrink-0" />
-                            {lead.email}
-                          </span>
-                        )}
-                        {lead.phone && (
-                          <span className="flex items-center gap-1 text-[10px] font-data text-emerald-600 dark:text-emerald-400">
-                            <Phone className="h-2.5 w-2.5 shrink-0" />
-                            {lead.phone}
-                          </span>
-                        )}
+                  </Link>
+                </td>
+                <td className="px-3 py-2.5">
+                  <div className="space-y-0.5">
+                    {lead.email && (
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-data truncate">
+                        <Mail className="h-2.5 w-2.5 shrink-0" />
+                        <span className="truncate">{lead.email}</span>
                       </div>
                     )}
-                  </Link>
+                    {lead.phone && (
+                      <div className="flex items-center gap-1 text-[10px] font-data text-emerald-600 dark:text-emerald-400">
+                        <Phone className="h-2.5 w-2.5 shrink-0" />
+                        {lead.phone}
+                      </div>
+                    )}
+                    {!lead.email && !lead.phone && (
+                      <span className="text-[10px] text-muted-foreground/40">—</span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-3 py-2.5 text-xs text-muted-foreground">{lead.industry || "—"}</td>
                 <td className="px-3 py-2.5 text-xs text-muted-foreground">{lead.city || "—"}</td>
