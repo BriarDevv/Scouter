@@ -10,8 +10,8 @@ import { apiFetch } from "./client";
 
 // ─── Outreach ──────────────────────────────────────────
 
-export async function generateDraft(leadId: string): Promise<OutreachDraft> {
-  return apiFetch(`/outreach/${leadId}/draft`, { method: "POST" });
+export async function generateDraft(leadId: string, channel: "email" | "whatsapp" = "email"): Promise<OutreachDraft> {
+  return apiFetch(`/outreach/${leadId}/draft?channel=${channel}`, { method: "POST" });
 }
 
 export async function getDrafts(params?: {

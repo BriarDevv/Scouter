@@ -26,6 +26,7 @@ from app.services.outreach.mail_service import (
 )
 from app.services.outreach.outreach_service import (
     generate_outreach_draft,
+    generate_whatsapp_draft,
     get_draft,
     list_drafts,
     list_logs,
@@ -39,9 +40,16 @@ router = APIRouter(prefix="/outreach", tags=["outreach"])
 
 
 @router.post("/{lead_id}/draft", response_model=OutreachDraftResponse, status_code=201)
-def generate_draft(lead_id: uuid.UUID, db: Session = Depends(get_db)):
-    """Generate an outreach email draft for a lead (sync)."""
-    draft = generate_outreach_draft(db, lead_id)
+def generate_draft(
+    lead_id: uuid.UUID,
+    channel: str = Query("email", pattern="^(email|whatsapp)$"),
+    db: Session = Depends(get_db),
+):
+    """Generate an outreach draft for a lead (sync)."""
+    if channel == "whatsapp":
+        draft = generate_whatsapp_draft(db, lead_id)
+    else:
+        draft = generate_outreach_draft(db, lead_id)
     if not draft:
         raise HTTPException(status_code=404, detail="Lead not found or suppressed")
     return draft
