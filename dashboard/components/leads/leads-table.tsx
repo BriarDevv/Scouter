@@ -181,7 +181,14 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                 <td className="px-3 py-2.5"><ScoreBadge score={lead.score} /></td>
                 <td className="px-3 py-2.5">
                   {lead.website_url ? (
-                    <span className="text-[10px] text-muted-foreground font-data truncate block">{extractDomain(lead.website_url)}</span>
+                    <a
+                      href={lead.website_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] text-foreground/70 font-data truncate block hover:text-foreground hover:underline transition-colors"
+                    >
+                      {extractDomain(lead.website_url)}
+                    </a>
                   ) : (
                     <span className="text-[10px] text-muted-foreground/40">—</span>
                   )}
