@@ -129,10 +129,7 @@ def list_logs(
 ) -> list[dict]:
     from app.models.lead import Lead
 
-    stmt = (
-        select(OutreachLog, Lead.business_name)
-        .outerjoin(Lead, OutreachLog.lead_id == Lead.id)
-    )
+    stmt = select(OutreachLog, Lead.business_name).outerjoin(Lead, OutreachLog.lead_id == Lead.id)
     if lead_id:
         stmt = stmt.where(OutreachLog.lead_id == lead_id)
     if draft_id:
