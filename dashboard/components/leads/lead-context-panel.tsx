@@ -36,11 +36,13 @@ interface LeadContextPanelProps {
   isGeneratingBrief: boolean;
   isGeneratingDraft: boolean;
   isReviewingDraftId: string | null;
+  isSendingDraftId: string | null;
   onRunPipeline: () => void;
   onRunResearch: () => void;
   onGenerateBrief: () => void;
   onGenerateDraft: () => void;
   onReviewDraft: (draftId: string, approved: boolean) => void;
+  onSendDraft: (draftId: string) => void;
   onRefresh: () => void;
 }
 
@@ -59,11 +61,13 @@ export function LeadContextPanel({
   isGeneratingBrief,
   isGeneratingDraft,
   isReviewingDraftId,
+  isSendingDraftId,
   onRunPipeline,
   onRunResearch,
   onGenerateBrief,
   onGenerateDraft,
   onReviewDraft,
+  onSendDraft,
   onRefresh,
 }: LeadContextPanelProps) {
   return (
@@ -87,11 +91,14 @@ export function LeadContextPanel({
       />
 
       <LeadOutreachSection
+        lead={lead}
         drafts={drafts}
         isGeneratingDraft={isGeneratingDraft}
         isReviewingDraftId={isReviewingDraftId}
+        isSendingDraftId={isSendingDraftId}
         onGenerateDraft={onGenerateDraft}
         onReviewDraft={onReviewDraft}
+        onSendDraft={onSendDraft}
       />
 
       <AiDecisionsPanel

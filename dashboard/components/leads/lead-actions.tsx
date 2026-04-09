@@ -9,6 +9,7 @@ import {
   reviewLeadWithIA,
   runFullPipeline,
   runResearch,
+  sendOutreachDraft,
   updateLeadStatus,
 } from "@/lib/api/client";
 import type { CommercialBrief, LeadResearchReport, TaskStatusRecord } from "@/types";
@@ -19,6 +20,7 @@ export interface LeadActionsState {
   isGeneratingDraft: boolean;
   isApprovingLead: boolean;
   isReviewingDraftId: string | null;
+  isSendingDraftId: string | null;
   isReviewingLead: boolean;
   isRunningResearch: boolean;
   isGeneratingBrief: boolean;
@@ -29,6 +31,8 @@ export interface LeadActionsHandlers {
   handleGenerateDraft: () => void;
   handleApproveLead: () => void;
   handleReviewDraft: (draftId: string, approved: boolean) => void;
+  handleSendDraft: (draftId: string) => void;
+  handleGenerateWhatsAppDraft: () => void;
   handleReviewLead: () => void;
   handleRunResearch: () => void;
   handleGenerateBrief: () => void;
@@ -53,6 +57,7 @@ export function useLeadActions({
   const [isGeneratingDraft, setIsGeneratingDraft] = useState(false);
   const [isApprovingLead, setIsApprovingLead] = useState(false);
   const [isReviewingDraftId, setIsReviewingDraftId] = useState<string | null>(null);
+  const [isSendingDraftId, setIsSendingDraftId] = useState<string | null>(null);
   const [isReviewingLead, setIsReviewingLead] = useState(false);
   const [isRunningResearch, setIsRunningResearch] = useState(false);
   const [isGeneratingBrief, setIsGeneratingBrief] = useState(false);
@@ -94,6 +99,29 @@ export function useLeadActions({
         {
           loading: { title: "Generando borrador..." },
           success: { title: "Borrador generado" },
+          error: (err: unknown) => ({
+            title: "Error al generar borrador",
+            description: err instanceof Error ? err.message : "No se pudo generar.",
+          }),
+        }
+      );
+    } finally {
+      setIsGeneratingDraft(false);
+    }
+  }
+
+  async function handleGenerateWhatsAppDraft() {
+    if (!leadId) return;
+    setIsGeneratingDraft(true);
+    try {
+      await sileo.promise(
+        (async () => {
+          await generateDraft(leadId, "whatsapp");
+          await onRefresh();
+        })(),
+        {
+          loading: { title: "Generando borrador WhatsApp..." },
+          success: { title: "Borrador WhatsApp generado" },
           error: (err: unknown) => ({
             title: "Error al generar borrador",
             description: err instanceof Error ? err.message : "No se pudo generar.",
@@ -147,6 +175,28 @@ export function useLeadActions({
       );
     } finally {
       setIsReviewingDraftId(null);
+    }
+  }
+
+  async function handleSendDraft(draftId: string) {
+    setIsSendingDraftId(draftId);
+    try {
+      await sileo.promise(
+        (async () => {
+          await sendOutreachDraft(draftId);
+          await onRefresh();
+        })(),
+        {
+          loading: { title: "Enviando draft..." },
+          success: { title: "Draft enviado" },
+          error: (err: unknown) => ({
+            title: "Error al enviar",
+            description: err instanceof Error ? err.message : "No se pudo enviar.",
+          }),
+        }
+      );
+    } finally {
+      setIsSendingDraftId(null);
     }
   }
 
@@ -224,13 +274,16 @@ export function useLeadActions({
     isGeneratingDraft,
     isApprovingLead,
     isReviewingDraftId,
+    isSendingDraftId,
     isReviewingLead,
     isRunningResearch,
     isGeneratingBrief,
     handleRunPipeline: () => void handleRunPipeline(),
     handleGenerateDraft: () => void handleGenerateDraft(),
+    handleGenerateWhatsAppDraft: () => void handleGenerateWhatsAppDraft(),
     handleApproveLead: () => void handleApproveLead(),
     handleReviewDraft: (draftId: string, approved: boolean) => void handleReviewDraft(draftId, approved),
+    handleSendDraft: (draftId: string) => void handleSendDraft(draftId),
     handleReviewLead: () => void handleReviewLead(),
     handleRunResearch: () => void handleRunResearch(),
     handleGenerateBrief: () => void handleGenerateBrief(),
