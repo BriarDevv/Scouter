@@ -216,30 +216,6 @@
   background-size: 300% 100%;
 }
 
-/* ── Toast overrides (sileo) ──────────────────────────── */
-[data-sileo-toast] {
-  background: oklch(1 0 0) !important;
-  color: oklch(0.145 0 0) !important;
-  border: 1px solid oklch(0.922 0 0) !important;
-  border-radius: 0.75rem !important;
-  font-size: 0.8125rem !important;
-  box-shadow: 0 4px 12px oklch(0 0 0 / 0.08) !important;
-}
-[data-theme="dark"] [data-sileo-toast],
-.dark [data-sileo-toast] {
-  background: oklch(0.205 0 0) !important;
-  color: oklch(0.985 0 0) !important;
-  border: 1px solid oklch(1 0 0 / 0.1) !important;
-  box-shadow: 0 4px 12px oklch(0 0 0 / 0.3) !important;
-}
-[data-sileo-description] {
-  color: oklch(0.556 0 0) !important;
-}
-[data-theme="dark"] [data-sileo-description],
-.dark [data-sileo-description] {
-  color: oklch(0.708 0 0) !important;
-}
-
 /* Utility classes for font switching */
 .font-heading {
   font-family: var(--font-heading), ui-sans-serif, system-ui, sans-serif;
