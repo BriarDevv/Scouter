@@ -110,13 +110,14 @@ export function Sidebar() {
               className={cn(
                 "flex items-center rounded-xl py-2 text-sm font-medium font-heading transition-all duration-[350ms] ease-in-out",
                 collapsed ? "px-[9px] gap-0" : "gap-2.5 px-3",
+                "border",
                 isActive && isMote
-                  ? "bg-foreground text-background shadow-sm dark:bg-foreground dark:shadow-none"
+                  ? "border-transparent bg-foreground text-background shadow-sm dark:bg-foreground dark:shadow-none"
                   : isActive
-                  ? "bg-muted dark:bg-white/10 text-foreground dark:text-white"
+                  ? "border-transparent bg-muted dark:bg-white/10 text-foreground dark:text-white"
                   : isMote
-                  ? "text-foreground/70 border border-border/60 hover:bg-foreground hover:text-background hover:border-transparent hover:shadow-sm mote-shimmer"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  ? "border-border/60 text-foreground/70 hover:bg-muted hover:border-border mote-shimmer"
+                  : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
               <item.icon className={cn(

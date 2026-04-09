@@ -143,9 +143,6 @@ export default function PanelPage() {
           setPipelineProgress(data.current_lead
             ? `${data.current_lead} (${data.processed ?? 0}/${data.total ?? 0}) — ${data.current_step ?? ""}`
             : "Iniciando...");
-        } else if (data.status === "done") {
-          setPipelineStatus("done");
-          setPipelineProgress(`${data.processed ?? 0} leads procesados`);
         }
       } catch {}
     }
@@ -501,11 +498,12 @@ export default function PanelPage() {
               />
             </div>
 
-            <RecentActivity logs={logs ?? []} />
+            <div className="grid gap-6 lg:grid-cols-2">
+              <RecentActivity logs={logs ?? []} />
+              <TerritorySummary />
+            </div>
           </>
         )}
-
-        <TerritorySummary />
       </div>
     </div>
   );

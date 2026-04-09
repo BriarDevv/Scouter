@@ -42,7 +42,7 @@ export function IndustryChart({ data }: { data: IndustryBreakdown[] }) {
                   "relative text-[10px] font-data font-bold px-1.5 py-0.5 rounded-full",
                   industry.avg_score >= 60 ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
                     : industry.avg_score >= 30 ? "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300"
-                    : "bg-muted text-muted-foreground"
+                    : "bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300"
                 )}>
                   score {industry.avg_score.toFixed(0)}
                 </span>

@@ -79,7 +79,6 @@ export function FeatureToggleList({
                 enabled ? "translate-x-4" : "translate-x-0"
               )} />
             </div>
-            {saving && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
           </button>
         );
       })}
