@@ -88,3 +88,6 @@ logs/
 
 # Export bundles (contain secrets)
 scouter-export-*/
+
+# Playwright MCP
+.playwright-mcp/
