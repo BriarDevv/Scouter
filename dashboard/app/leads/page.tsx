@@ -1,16 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { PageHeader } from "@/components/layout/page-header";
 import { LeadsTable } from "@/components/leads/leads-table";
-import { Button } from "@/components/ui/button";
 import { SkeletonTable } from "@/components/shared/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { getExportUrl } from "@/lib/api/client";
 import { useApi } from "@/lib/hooks/use-swr-fetch";
 import type { Lead, PaginatedResponse } from "@/types";
-import { Plus, Users, RefreshCw, Download, ChevronLeft, ChevronRight } from "lucide-react";
+import { Users, Download, ChevronLeft, ChevronRight } from "lucide-react";
 
 const PAGE_SIZE = 25;
 
@@ -38,113 +35,99 @@ export default function LeadsPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [exportOpen]);
 
-  function handleRefresh() {
-    void mutate();
-  }
-
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto max-w-[1400px] px-8 py-8">
-        <div className="space-y-6">
-          <PageHeader
-        title="Leads"
-        description="Gestion de leads y pipeline comercial"
-      >
-        <div className="flex items-center gap-2">
+      <div className="mx-auto max-w-[1400px] px-8 py-8 space-y-5">
+
+        {/* Header — minimal */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground font-heading">Leads</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              <span className="font-data">{total}</span> leads en el sistema
+            </p>
+          </div>
           <div className="relative" ref={exportRef}>
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-xl gap-1.5"
+            <button
               onClick={() => setExportOpen(!exportOpen)}
+              className="flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             >
               <Download className="h-3.5 w-3.5" />
               Exportar
-            </Button>
+            </button>
             {exportOpen && (
-              <div className="absolute right-0 top-full mt-1 z-50 w-44 rounded-xl border border-border bg-card shadow-lg py-1">
+              <div className="absolute right-0 top-full mt-1 z-50 w-40 rounded-xl border border-border bg-card shadow-md py-1">
                 {(["csv", "json", "xlsx"] as const).map((fmt) => (
                   <a
                     key={fmt}
                     href={getExportUrl(fmt)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                    className="block px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
                     onClick={() => setExportOpen(false)}
                   >
-                    Exportar {fmt.toUpperCase()}
+                    {fmt.toUpperCase()}
                   </a>
                 ))}
               </div>
             )}
           </div>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button className="rounded-xl bg-foreground text-background hover:bg-foreground/80 opacity-50 cursor-not-allowed" disabled />
-              }
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo Lead
-            </TooltipTrigger>
-            <TooltipContent>Proximamente</TooltipContent>
-          </Tooltip>
         </div>
-      </PageHeader>
 
-      {error && (
-        <div className="flex items-center gap-3 rounded-xl border border-rose-200 dark:border-rose-900/30 bg-rose-50 dark:bg-rose-950/20 px-4 py-3">
-          <span className="text-sm text-rose-700 dark:text-rose-300">Error al cargar leads: {error instanceof Error ? error.message : "Error desconocido"}</span>
-          <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={handleRefresh}>
-            <RefreshCw className="h-3.5 w-3.5" /> Reintentar
-          </Button>
-        </div>
-      )}
-
-      {loading ? (
-        <SkeletonTable rows={10} />
-      ) : leads.length === 0 ? (
-        <EmptyState
-          icon={Users}
-          title="Sin leads"
-          description="Todavia no hay leads en el sistema. Ejecuta un crawler para empezar a prospectar."
-        />
-      ) : (
-        <>
-          <LeadsTable leads={leads} />
-          <div className="flex items-center justify-between border-t border-border pt-4">
-            <span className="text-xs text-muted-foreground">
-              {total} lead{total !== 1 ? "s" : ""} en total
+        {/* Error */}
+        {error && (
+          <div className="flex items-center gap-3 rounded-xl border border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-950/20 px-4 py-3">
+            <span className="text-xs text-red-700 dark:text-red-300">
+              Error al cargar leads: {error instanceof Error ? error.message : "Error desconocido"}
             </span>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-xl gap-1.5"
-                disabled={currentPage <= 1}
-                onClick={() => setCurrentPage((p) => p - 1)}
-              >
-                <ChevronLeft className="h-3.5 w-3.5" />
-                Anterior
-              </Button>
-              <span className="text-xs text-muted-foreground px-2">
-                {currentPage} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-xl gap-1.5"
-                disabled={currentPage >= totalPages}
-                onClick={() => setCurrentPage((p) => p + 1)}
-              >
-                Siguiente
-                <ChevronRight className="h-3.5 w-3.5" />
-              </Button>
-            </div>
+            <button
+              onClick={() => void mutate()}
+              className="rounded-lg border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted transition-colors"
+            >
+              Reintentar
+            </button>
           </div>
-        </>
-      )}
-        </div>
+        )}
+
+        {/* Content */}
+        {loading ? (
+          <SkeletonTable rows={10} />
+        ) : leads.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title="Sin leads"
+            description="Ejecuta el pipeline desde el Panel para empezar a prospectar."
+          />
+        ) : (
+          <>
+            <LeadsTable leads={leads} />
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-[10px] text-muted-foreground">
+                Pagina <span className="font-data">{currentPage}</span> de <span className="font-data">{totalPages}</span>
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                  className="flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                >
+                  <ChevronLeft className="h-3 w-3" />
+                  Anterior
+                </button>
+                <button
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                  className="flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                >
+                  Siguiente
+                  <ChevronRight className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

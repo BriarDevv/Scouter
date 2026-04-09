@@ -4,14 +4,6 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { sileo } from "sileo";
 import { runFullPipeline, generateDraft } from "@/lib/api/client";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,21 +13,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { StatusBadge, QualityBadge, ScoreBadge } from "@/components/shared/status-badge";
+import { StatusBadge, ScoreBadge } from "@/components/shared/status-badge";
 import { RelativeTime } from "@/components/shared/relative-time";
-import { extractDomain, truncate } from "@/lib/formatters";
+import { truncate } from "@/lib/formatters";
 import type { Lead, LeadStatus } from "@/types";
 import { STATUS_CONFIG } from "@/lib/constants";
 import {
   Search,
-  SlidersHorizontal,
   MoreHorizontal,
   ExternalLink,
   RefreshCw,
   Mail,
-  MailX,
   ShieldOff,
-  ArrowUpDown,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -43,13 +34,9 @@ interface LeadsTableProps {
   leads: Lead[];
 }
 
-const QUICK_FILTER_OPTIONS: (LeadStatus | "all")[] = [
-  "all", "qualified", "contacted", "replied",
-];
-
-const MORE_FILTER_OPTIONS: LeadStatus[] = [
-  "new", "enriched", "scored", "draft_ready",
-  "approved", "opened", "meeting", "won", "lost", "suppressed",
+const STATUS_FILTERS: (LeadStatus | "all")[] = [
+  "all", "new", "enriched", "scored", "qualified", "draft_ready",
+  "approved", "contacted", "replied", "meeting", "won", "lost",
 ];
 
 export function LeadsTable({ leads }: LeadsTableProps) {
@@ -57,7 +44,6 @@ export function LeadsTable({ leads }: LeadsTableProps) {
   const [statusFilter, setStatusFilter] = useState<LeadStatus | "all">("all");
   const [sortBy, setSortBy] = useState<"score" | "created_at" | "business_name">("score");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [minScore, setMinScore] = useState<number | null>(null);
 
   const filtered = useMemo(() => {
     let result = leads;
@@ -77,10 +63,6 @@ export function LeadsTable({ leads }: LeadsTableProps) {
       result = result.filter((l) => l.status === statusFilter);
     }
 
-    if (minScore !== null) {
-      result = result.filter((l) => (l.score ?? 0) >= minScore);
-    }
-
     result = [...result].sort((a, b) => {
       let cmp = 0;
       if (sortBy === "score") cmp = (a.score ?? 0) - (b.score ?? 0);
@@ -90,148 +72,113 @@ export function LeadsTable({ leads }: LeadsTableProps) {
     });
 
     return result;
-  }, [leads, search, statusFilter, sortBy, sortDir, minScore]);
+  }, [leads, search, statusFilter, sortBy, sortDir]);
 
   function toggleSort(field: typeof sortBy) {
     if (sortBy === field) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else { setSortBy(field); setSortDir("desc"); }
   }
 
+  const SortIcon = ({ field }: { field: typeof sortBy }) => {
+    if (sortBy !== field) return <ChevronDown className="h-3 w-3 opacity-30" />;
+    return sortDir === "desc" ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />;
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[240px]">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nombre, rubro, ciudad, email..."
+            placeholder="Buscar..."
             value={search}
-            onChange={(e) => { setSearch(e.target.value);}}
-            className="pl-9 h-9 rounded-xl border-border bg-card text-sm"
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 h-8 rounded-lg text-xs"
           />
         </div>
 
-        <div className="flex items-center gap-1.5">
-          {QUICK_FILTER_OPTIONS.map((s) => (
+        <div className="flex items-center gap-1 overflow-x-auto">
+          {STATUS_FILTERS.map((s) => (
             <button
               key={s}
-              onClick={() => { setStatusFilter(s);}}
+              onClick={() => setStatusFilter(s)}
               className={cn(
-                "shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors",
+                "shrink-0 rounded-lg px-2 py-1 text-[10px] font-medium transition-colors",
                 statusFilter === s
-                  ? "bg-muted dark:bg-muted text-foreground dark:text-foreground"
-                  : "bg-card text-muted-foreground hover:bg-muted hover:text-foreground/80 border border-border"
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
               {s === "all" ? "Todos" : STATUS_CONFIG[s].label}
-            </button>
-          ))}
-          <select
-            value={MORE_FILTER_OPTIONS.includes(statusFilter as LeadStatus) ? statusFilter : ""}
-            onChange={(e) => {
-              const val = e.target.value as LeadStatus;
-              if (val) { setStatusFilter(val);}
-            }}
-            className={cn(
-              "rounded-lg px-2.5 py-1.5 text-xs font-medium border transition-colors bg-card text-muted-foreground cursor-pointer",
-              MORE_FILTER_OPTIONS.includes(statusFilter as LeadStatus)
-                ? "border-border bg-muted dark:bg-muted text-foreground dark:text-foreground"
-                : "border-border hover:bg-muted"
-            )}
-          >
-            <option value="">Más filtros</option>
-            {MORE_FILTER_OPTIONS.map((s) => (
-              <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Score filters */}
-        <div className="flex items-center gap-1.5">
-          {[
-            { label: "Score 70+", value: 70 },
-            { label: "Score 40+", value: 40 },
-          ].map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => { setMinScore(minScore === opt.value ? null : opt.value);}}
-              className={cn(
-                "shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors",
-                minScore === opt.value
-                  ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
-                  : "bg-card text-muted-foreground hover:bg-muted hover:text-foreground/80 border border-border"
-              )}
-            >
-              {opt.label}
             </button>
           ))}
         </div>
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent border-border">
-              <TableHead className="w-[250px]">
-                <button onClick={() => toggleSort("business_name")} className="flex items-center gap-1 text-xs font-medium font-heading">
-                  Negocio <ArrowUpDown className="h-3 w-3" />
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="text-left px-4 py-2.5 w-[260px]">
+                <button onClick={() => toggleSort("business_name")} className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
+                  Negocio <SortIcon field="business_name" />
                 </button>
-              </TableHead>
-              <TableHead className="text-xs font-medium font-heading">Rubro</TableHead>
-              <TableHead className="text-xs font-medium font-heading">Ciudad</TableHead>
-              <TableHead className="text-xs font-medium font-heading">Web</TableHead>
-              <TableHead>
-                <button onClick={() => toggleSort("score")} className="flex items-center gap-1 text-xs font-medium font-heading">
-                  Score <ArrowUpDown className="h-3 w-3" />
+              </th>
+              <th className="text-left px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Rubro</th>
+              <th className="text-left px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Ciudad</th>
+              <th className="text-left px-3 py-2.5">
+                <button onClick={() => toggleSort("score")} className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
+                  Score <SortIcon field="score" />
                 </button>
-              </TableHead>
-              <TableHead className="text-xs font-medium font-heading">Calidad</TableHead>
-              <TableHead className="text-xs font-medium font-heading">Estado</TableHead>
-              <TableHead>
-                <button onClick={() => toggleSort("created_at")} className="flex items-center gap-1 text-xs font-medium font-heading">
-                  Creado <ArrowUpDown className="h-3 w-3" />
+              </th>
+              <th className="text-left px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Estado</th>
+              <th className="text-left px-3 py-2.5">
+                <button onClick={() => toggleSort("created_at")} className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
+                  Fecha <SortIcon field="created_at" />
                 </button>
-              </TableHead>
-              <TableHead className="w-10" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+              </th>
+              <th className="w-10 px-2" />
+            </tr>
+          </thead>
+          <tbody>
             {filtered.map((lead) => (
-              <TableRow key={lead.id} className="border-border/50 hover:bg-muted/50 transition-colors">
-                <TableCell>
-                  <Link href={`/leads/${lead.id}`} className="group flex items-center gap-2">
-                    {lead.email ? (
-                      <Mail className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                    ) : (
-                      <MailX className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
-                    )}
-                    <span className="font-medium text-foreground group-hover:text-foreground transition-colors">
-                      {truncate(lead.business_name, 30)}
-                    </span>
+              <tr
+                key={lead.id}
+                className="border-b border-border/40 last:border-0 hover:bg-muted/40 transition-colors"
+              >
+                <td className="px-4 py-2.5">
+                  <Link href={`/leads/${lead.id}`} className="group flex items-center gap-2.5 min-w-0">
+                    <div className={cn(
+                      "h-7 w-7 rounded-lg flex items-center justify-center shrink-0 text-[10px] font-bold font-data",
+                      lead.email ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground"
+                    )}>
+                      {lead.business_name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate group-hover:underline">
+                        {truncate(lead.business_name, 32)}
+                      </p>
+                      {lead.email && (
+                        <p className="text-[10px] text-muted-foreground truncate font-data">{lead.email}</p>
+                      )}
+                    </div>
                   </Link>
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">{lead.industry || "—"}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{lead.city || "—"}</TableCell>
-                <TableCell>
-                  {lead.website_url ? (
-                    <span className="text-xs text-muted-foreground font-data">{extractDomain(lead.website_url)}</span>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">Sin web</span>
-                  )}
-                </TableCell>
-                <TableCell><ScoreBadge score={lead.score} /></TableCell>
-                <TableCell><QualityBadge quality={lead.quality} /></TableCell>
-                <TableCell><StatusBadge status={lead.status} /></TableCell>
-                <TableCell className="text-xs text-muted-foreground font-data">
+                </td>
+                <td className="px-3 py-2.5 text-xs text-muted-foreground">{lead.industry || "—"}</td>
+                <td className="px-3 py-2.5 text-xs text-muted-foreground">{lead.city || "—"}</td>
+                <td className="px-3 py-2.5"><ScoreBadge score={lead.score} /></td>
+                <td className="px-3 py-2.5"><StatusBadge status={lead.status} /></td>
+                <td className="px-3 py-2.5 text-[10px] text-muted-foreground font-data">
                   <RelativeTime date={lead.created_at} />
-                </TableCell>
-                <TableCell>
+                </td>
+                <td className="px-2 py-2.5">
                   <DropdownMenu>
-                    <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />}>
-                      <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                    <DropdownMenuTrigger render={<Button variant="ghost" size="icon-xs" className="h-6 w-6" />}>
+                      <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuContent align="end" className="w-44">
                       <DropdownMenuItem render={<Link href={`/leads/${lead.id}`} />}>
                         <ExternalLink className="mr-2 h-3.5 w-3.5" /> Ver detalle
                       </DropdownMenuItem>
@@ -239,29 +186,31 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                         void sileo.promise(runFullPipeline(lead.id), {
                           loading: { title: "Ejecutando pipeline..." },
                           success: { title: "Pipeline iniciado" },
-                          error: (err: unknown) => ({ title: "Error en pipeline", description: err instanceof Error ? err.message : "No se pudo ejecutar." }),
+                          error: (err: unknown) => ({ title: "Error", description: err instanceof Error ? err.message : "" }),
                         });
-                      }}><RefreshCw className="mr-2 h-3.5 w-3.5" /> Ejecutar pipeline</DropdownMenuItem>
+                      }}><RefreshCw className="mr-2 h-3.5 w-3.5" /> Pipeline</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => {
                         void sileo.promise(generateDraft(lead.id), {
                           loading: { title: "Generando draft..." },
                           success: { title: "Draft generado" },
-                          error: (err: unknown) => ({ title: "Error al generar draft", description: err instanceof Error ? err.message : "No se pudo generar." }),
+                          error: (err: unknown) => ({ title: "Error", description: err instanceof Error ? err.message : "" }),
                         });
                       }}><Mail className="mr-2 h-3.5 w-3.5" /> Generar draft</DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem className="text-red-600"><ShieldOff className="mr-2 h-3.5 w-3.5" /> Suprimir</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
 
-        <div className="flex items-center border-t border-border px-4 py-3">
-          <span className="text-xs text-muted-foreground">
-            <span className="font-data">{filtered.length}</span> leads{statusFilter !== "all" && ` (${STATUS_CONFIG[statusFilter].label})`}{minScore !== null && ` · score ≥ ${minScore}`}
+        {/* Footer */}
+        <div className="flex items-center border-t border-border px-4 py-2.5">
+          <span className="text-[10px] text-muted-foreground">
+            <span className="font-data font-bold">{filtered.length}</span> leads
+            {statusFilter !== "all" && ` · ${STATUS_CONFIG[statusFilter].label}`}
           </span>
         </div>
       </div>
