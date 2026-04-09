@@ -12,8 +12,6 @@ import { useVisibleInterval } from "@/lib/hooks/use-visible-interval";
 import {
   Bell,
   Brain,
-  Briefcase,
-  FileSearch,
   Inbox,
   LayoutDashboard,
   Users,
@@ -32,8 +30,6 @@ const NAV_ITEMS = [
   { href: "/",            label: "Mote",        icon: Sparkles },
   { href: "/panel",       label: "Panel",       icon: LayoutDashboard },
   { href: "/leads",       label: "Leads",       icon: Users },
-  { href: "/dossiers",    label: "Dossiers",    icon: FileSearch },
-  { href: "/briefs",      label: "Briefs",      icon: Briefcase },
   { href: "/outreach",    label: "Outreach",    icon: Mail },
   { href: "/responses",   label: "Respuestas",  icon: Inbox },
   { href: "/performance", label: "Rendimiento", icon: BarChart3 },
@@ -76,13 +72,13 @@ export function Sidebar() {
       )}
     >
       {/* Header */}
-      <div className="flex h-14 items-center border-b border-sidebar-border px-2.5 shrink-0">
+      <div className={cn("flex h-14 items-center border-b border-sidebar-border shrink-0", collapsed ? "px-2.5 justify-center" : "px-3")}>
         <div className={cn(lbl, "flex items-center gap-1.5 min-w-0 flex-1")}>
           <span className="font-heading text-base font-bold tracking-tight text-sidebar-foreground">
             Scouter
           </span>
           <span className="rounded-md bg-muted dark:bg-white/8 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground dark:text-white/60 shrink-0">
-            v2
+            v3
           </span>
         </div>
         <button
