@@ -166,9 +166,9 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                       </div>
                     )}
                     {lead.phone && (
-                      <div className="flex items-center gap-1 text-[10px] font-data text-emerald-600 dark:text-emerald-400">
+                      <div className="flex items-center gap-1 text-[10px] font-data text-muted-foreground truncate">
                         <Phone className="h-2.5 w-2.5 shrink-0" />
-                        {lead.phone}
+                        <span className="truncate">{lead.phone}</span>
                       </div>
                     )}
                     {!lead.email && !lead.phone && (
