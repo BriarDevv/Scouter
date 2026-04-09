@@ -24,6 +24,7 @@ import {
   ExternalLink,
   RefreshCw,
   Mail,
+  Phone,
   ShieldOff,
   ChevronUp,
   ChevronDown,
@@ -149,21 +150,26 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                 className="border-b border-border/40 last:border-0 hover:bg-muted/40 transition-colors"
               >
                 <td className="px-4 py-2.5">
-                  <Link href={`/leads/${lead.id}`} className="group flex items-center gap-2.5 min-w-0">
-                    <div className={cn(
-                      "h-7 w-7 rounded-lg flex items-center justify-center shrink-0 text-[10px] font-bold font-data",
-                      lead.email ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground"
-                    )}>
-                      {lead.business_name.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium text-foreground truncate group-hover:underline">
-                        {truncate(lead.business_name, 32)}
-                      </p>
-                      {lead.email && (
-                        <p className="text-[10px] text-muted-foreground truncate font-data">{lead.email}</p>
-                      )}
-                    </div>
+                  <Link href={`/leads/${lead.id}`} className="group min-w-0 block">
+                    <p className="text-xs font-medium text-foreground truncate group-hover:underline">
+                      {truncate(lead.business_name, 32)}
+                    </p>
+                    {(lead.email || lead.phone) && (
+                      <div className="flex items-center gap-2.5 mt-0.5">
+                        {lead.email && (
+                          <span className="flex items-center gap-1 text-[10px] text-muted-foreground truncate font-data">
+                            <Mail className="h-2.5 w-2.5 shrink-0" />
+                            {lead.email}
+                          </span>
+                        )}
+                        {lead.phone && (
+                          <span className="flex items-center gap-1 text-[10px] font-data text-emerald-600 dark:text-emerald-400">
+                            <Phone className="h-2.5 w-2.5 shrink-0" />
+                            {lead.phone}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </Link>
                 </td>
                 <td className="px-3 py-2.5 text-xs text-muted-foreground">{lead.industry || "—"}</td>
