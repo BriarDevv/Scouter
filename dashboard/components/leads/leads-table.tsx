@@ -28,7 +28,6 @@ import {
   ShieldOff,
   ChevronUp,
   ChevronDown,
-  Filter,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -96,35 +95,32 @@ export function LeadsTable({ leads }: LeadsTableProps) {
             placeholder="Buscar..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-8 rounded-lg text-xs"
+            className="pl-9 h-8 rounded-lg text-xs border-border"
           />
         </div>
 
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <button className={cn(
-                "flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-muted",
-                statusFilter !== "all" ? "bg-foreground text-background border-foreground hover:bg-foreground/80" : "bg-card text-foreground"
-              )} />
+              <button className="flex h-8 items-center gap-6 rounded-lg border border-border bg-card pl-3 pr-4 text-xs font-medium text-foreground cursor-pointer hover:bg-muted transition-colors outline-none" />
             }
           >
-            <Filter className="h-3 w-3" />
-            {statusFilter === "all" ? "Estado" : STATUS_CONFIG[statusFilter].label}
+            {statusFilter === "all" ? "Todos" : STATUS_CONFIG[statusFilter].label}
+            <ChevronDown className="h-3 w-3 text-muted-foreground" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuContent align="end" className="min-w-[var(--anchor-width)] max-h-72 overflow-y-auto">
             <DropdownMenuItem
               onClick={() => setStatusFilter("all")}
-              className={cn(statusFilter === "all" && "font-semibold")}
+              className={cn("text-xs", statusFilter === "all" && "bg-muted font-semibold")}
             >
-              Todos los estados
+              Todos
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             {STATUS_FILTERS.filter((s) => s !== "all").map((s) => (
               <DropdownMenuItem
                 key={s}
                 onClick={() => setStatusFilter(s)}
-                className={cn(statusFilter === s && "font-semibold")}
+                className={cn("text-xs", statusFilter === s && "bg-muted font-semibold")}
               >
                 {STATUS_CONFIG[s as LeadStatus].label}
               </DropdownMenuItem>
