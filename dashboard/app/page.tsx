@@ -97,7 +97,6 @@ export default function ChatPage() {
         historyOpen ? "w-60" : "w-0 overflow-hidden border-r-0"
       )}>
         <div className="flex items-center gap-2 px-3 py-3.5 border-b border-border/40 shrink-0">
-          <MessagesSquare className="h-3.5 w-3.5 text-foreground shrink-0" />
           <span className="text-[11px] font-semibold font-heading text-muted-foreground uppercase tracking-wider flex-1">
             Conversaciones
           </span>
@@ -165,16 +164,10 @@ export default function ChatPage() {
 
         {/* Header */}
         <div className="flex items-center gap-3 px-6 py-3.5 border-b border-border/40 shrink-0">
-          <div className="h-7 w-7 rounded-lg bg-muted dark:bg-muted flex items-center justify-center shrink-0">
-            <Sparkles className="h-3.5 w-3.5 text-foreground" />
-          </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold font-heading leading-none truncate">
               {currentTitle || "Mote"}
             </p>
-            {!currentTitle && (
-              <p className="text-xs text-muted-foreground mt-0.5">Agente IA · Scouter</p>
-            )}
           </div>
           <button
             onClick={() => void handleNew()}
@@ -186,7 +179,7 @@ export default function ChatPage() {
         </div>
 
         {/* Messages */}
-        <ChatMessages messages={messages} isStreaming={isStreaming} />
+        <ChatMessages messages={messages} isStreaming={isStreaming} onSuggestion={(msg) => void handleSend(msg)} />
 
         {/* Input */}
         <ChatInput onSend={handleSend} disabled={isStreaming} error={error} />

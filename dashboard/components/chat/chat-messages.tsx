@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useEffect, useRef } from "react";
-import { Bot, User } from "lucide-react";
+import { Sparkles, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ChatToolCallCard } from "@/components/chat/chat-tool-call";
 import type { ChatMessage } from "@/types";
@@ -9,9 +9,10 @@ import type { ChatMessage } from "@/types";
 interface ChatMessagesProps {
   messages: ChatMessage[];
   isStreaming: boolean;
+  onSuggestion?: (msg: string) => void;
 }
 
-export const ChatMessages = memo(function ChatMessages({ messages, isStreaming }: ChatMessagesProps) {
+export const ChatMessages = memo(function ChatMessages({ messages, isStreaming, onSuggestion }: ChatMessagesProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -19,13 +20,31 @@ export const ChatMessages = memo(function ChatMessages({ messages, isStreaming }
   }, [messages]);
 
   if (messages.length === 0) {
+    const suggestions = [
+      { label: "Estado del pipeline", msg: "Como esta el pipeline ahora?" },
+      { label: "Mejores leads", msg: "Cuales son los leads con mejor score?" },
+      { label: "Resumen del dia", msg: "Dame un resumen de la actividad de hoy" },
+      { label: "Proximos pasos", msg: "Que deberia hacer ahora?" },
+    ];
+
     return (
-      <div className="flex flex-1 items-center justify-center p-8">
-        <div className="text-center space-y-2">
-          <Bot className="h-10 w-10 mx-auto text-muted-foreground/40" />
-          <p className="text-sm text-muted-foreground">
-            Escribi algo para comenzar
-          </p>
+      <div className="flex flex-1 flex-col items-center justify-center p-8 gap-6">
+        <div className="text-center space-y-1">
+          <Sparkles className="h-6 w-6 mx-auto text-muted-foreground" />
+          <p className="text-sm font-heading font-semibold text-foreground/60">Mote</p>
+          <p className="text-xs text-muted-foreground">Tu agente de inteligencia comercial</p>
+        </div>
+        <div className="grid grid-cols-2 gap-2 max-w-md w-full">
+          {suggestions.map((s) => (
+            <button
+              key={s.label}
+              onClick={() => onSuggestion?.(s.msg)}
+              className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-left transition-colors hover:bg-muted hover:border-border"
+            >
+              <p className="text-xs font-medium text-foreground">{s.label}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{s.msg}</p>
+            </button>
+          ))}
         </div>
       </div>
     );
@@ -42,7 +61,7 @@ export const ChatMessages = memo(function ChatMessages({ messages, isStreaming }
           <div key={msg.id} className={cn("flex gap-3", isUser && "justify-end")}>
             {!isUser && (
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted dark:bg-muted">
-                <Bot className="h-4 w-4 text-foreground dark:text-foreground" />
+                <Sparkles className="h-4 w-4 text-foreground dark:text-foreground" />
               </div>
             )}
             <div
@@ -73,7 +92,7 @@ export const ChatMessages = memo(function ChatMessages({ messages, isStreaming }
       {isStreaming && (
         <div className="flex gap-3">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted dark:bg-muted">
-            <Bot className="h-4 w-4 text-foreground dark:text-foreground animate-pulse" />
+            <Sparkles className="h-4 w-4 text-foreground dark:text-foreground animate-pulse" />
           </div>
           <div className="flex items-center gap-1 text-muted-foreground">
             <span
