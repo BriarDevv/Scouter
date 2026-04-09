@@ -136,6 +136,7 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                 </button>
               </th>
               <th className="text-left px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Estado</th>
+              <th className="text-left px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Ciudad</th>
               <th className="text-left px-3 py-2.5">
                 <button onClick={() => toggleSort("created_at")} className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
                   Fecha <SortIcon field="created_at" />
@@ -186,6 +187,7 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                 </td>
                 <td className="px-3 py-2.5"><ScoreBadge score={lead.score} /></td>
                 <td className="px-3 py-2.5"><StatusBadge status={lead.status} /></td>
+                <td className="px-3 py-2.5 text-xs text-muted-foreground">{lead.city || "—"}</td>
                 <td className="px-3 py-2.5 text-[10px] text-muted-foreground font-data">
                   <RelativeTime date={lead.created_at} />
                 </td>
