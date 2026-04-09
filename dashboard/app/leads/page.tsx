@@ -56,14 +56,14 @@ export default function LeadsPage() {
               Exportar
             </button>
             {exportOpen && (
-              <div className="absolute right-0 top-full mt-1 z-50 w-40 rounded-xl border border-border bg-card shadow-md py-1">
+              <div className="absolute right-0 top-full mt-1 z-50 min-w-full rounded-xl border border-border bg-card shadow-md overflow-hidden">
                 {(["csv", "json", "xlsx"] as const).map((fmt) => (
                   <a
                     key={fmt}
                     href={getExportUrl(fmt)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
+                    className="block px-3 py-2.5 text-xs text-foreground hover:bg-muted transition-colors"
                     onClick={() => setExportOpen(false)}
                   >
                     {fmt.toUpperCase()}

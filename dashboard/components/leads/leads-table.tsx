@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
 import { sileo } from "sileo";
-import { runFullPipeline, generateDraft } from "@/lib/api/client";
+import { runFullPipeline, runEnrichment, runScoring, runAnalysis, generateDraft } from "@/lib/api/client";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +27,9 @@ import {
   ShieldOff,
   ChevronUp,
   ChevronDown,
+  Zap,
+  Target,
+  FileSearch,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +45,19 @@ const STATUS_FILTERS: (LeadStatus | "all")[] = [
 export function LeadsTable({ leads }: LeadsTableProps) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<LeadStatus | "all">("all");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!filterOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setFilterOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [filterOpen]);
   const [sortBy, setSortBy] = useState<"score" | "created_at" | "business_name">("score");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
@@ -99,34 +114,33 @@ export function LeadsTable({ leads }: LeadsTableProps) {
           />
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <button className="flex h-8 items-center gap-6 rounded-lg border border-border bg-card pl-3 pr-4 text-xs font-medium text-foreground cursor-pointer hover:bg-muted transition-colors outline-none" />
-            }
+        <div className="relative" ref={filterRef}>
+          <button
+            onClick={() => setFilterOpen(!filterOpen)}
+            className="flex h-8 items-center gap-6 rounded-lg border border-border bg-card pl-3 pr-4 text-xs font-medium text-foreground cursor-pointer hover:bg-muted transition-colors outline-none"
           >
             {statusFilter === "all" ? "Todos" : STATUS_CONFIG[statusFilter].label}
-            <ChevronDown className="h-3 w-3 text-muted-foreground" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-[var(--anchor-width)] max-h-72 overflow-y-auto">
-            <DropdownMenuItem
-              onClick={() => setStatusFilter("all")}
-              className={cn("text-xs", statusFilter === "all" && "bg-muted font-semibold")}
-            >
-              Todos
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            {STATUS_FILTERS.filter((s) => s !== "all").map((s) => (
-              <DropdownMenuItem
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                className={cn("text-xs", statusFilter === s && "bg-muted font-semibold")}
-              >
-                {STATUS_CONFIG[s as LeadStatus].label}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+            <ChevronDown className={cn("h-3 w-3 text-muted-foreground transition-transform", filterOpen && "rotate-180")} />
+          </button>
+          {filterOpen && (
+            <div className="absolute right-0 top-full mt-1 z-50 min-w-full rounded-xl border border-border bg-card shadow-md overflow-hidden max-h-72 overflow-y-auto">
+              {STATUS_FILTERS.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => { setStatusFilter(s); setFilterOpen(false); }}
+                  className={cn(
+                    "block w-full text-left px-3 py-2.5 text-xs transition-colors",
+                    statusFilter === s
+                      ? "bg-muted font-semibold text-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  {s === "all" ? "Todos" : STATUS_CONFIG[s].label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Table */}
@@ -206,35 +220,87 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                   )}
                 </td>
                 <td className="px-3 py-2.5"><StatusBadge status={lead.status} /></td>
-                <td className="px-3 py-2.5 text-xs text-muted-foreground">{lead.city || "—"}</td>
+                <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                  {lead.city ? (
+                    <a
+                      href={lead.google_maps_url || (lead.latitude && lead.longitude ? `https://www.google.com/maps?q=${lead.latitude},${lead.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([lead.business_name, lead.city].filter(Boolean).join(", "))}`)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-foreground underline decoration-border underline-offset-2 hover:decoration-foreground/30 transition-all"
+                    >
+                      {lead.city}
+                    </a>
+                  ) : "—"}
+                </td>
                 <td className="px-3 py-2.5 text-[10px] text-muted-foreground font-data">
                   <RelativeTime date={lead.created_at} />
                 </td>
                 <td className="px-2 py-2.5">
                   <DropdownMenu>
-                    <DropdownMenuTrigger render={<Button variant="ghost" size="icon-xs" className="h-6 w-6" />}>
+                    <DropdownMenuTrigger render={
+                      <button className="flex items-center justify-center h-6 w-6 rounded-lg hover:bg-muted transition-colors outline-none cursor-pointer" />
+                    }>
                       <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-44">
-                      <DropdownMenuItem render={<Link href={`/leads/${lead.id}`} />}>
-                        <ExternalLink className="mr-2 h-3.5 w-3.5" /> Ver detalle
+                    <DropdownMenuContent align="end" className="w-auto rounded-xl p-0 ring-0 bg-card border border-border overflow-hidden min-w-48">
+                      <DropdownMenuItem render={<Link href={`/leads/${lead.id}`} />} className="rounded-none px-3 py-2.5 text-xs text-muted-foreground focus:bg-muted focus:text-foreground">
+                        <ExternalLink className="h-3.5 w-3.5" /> Ver detalle
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => {
+                      <DropdownMenuSeparator className="mx-0 my-0" />
+                      <DropdownMenuItem className="rounded-none px-3 py-2.5 text-xs text-muted-foreground focus:bg-muted focus:text-foreground" onClick={() => {
+                        void sileo.promise(runEnrichment(lead.id), {
+                          loading: { title: "Enriqueciendo..." },
+                          success: { title: "Enriquecimiento iniciado" },
+                          error: (err: unknown) => ({ title: "Error", description: err instanceof Error ? err.message : "" }),
+                        });
+                      }}>
+                        <Zap className="h-3.5 w-3.5" /> Enriquecer
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="rounded-none px-3 py-2.5 text-xs text-muted-foreground focus:bg-muted focus:text-foreground" onClick={() => {
+                        void sileo.promise(runScoring(lead.id), {
+                          loading: { title: "Puntuando..." },
+                          success: { title: "Puntuación iniciada" },
+                          error: (err: unknown) => ({ title: "Error", description: err instanceof Error ? err.message : "" }),
+                        });
+                      }}>
+                        <Target className="h-3.5 w-3.5" /> Puntuar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="rounded-none px-3 py-2.5 text-xs text-muted-foreground focus:bg-muted focus:text-foreground" onClick={() => {
+                        void sileo.promise(runAnalysis(lead.id), {
+                          loading: { title: "Analizando..." },
+                          success: { title: "Análisis iniciado" },
+                          error: (err: unknown) => ({ title: "Error", description: err instanceof Error ? err.message : "" }),
+                        });
+                      }}>
+                        <FileSearch className="h-3.5 w-3.5" /> Analizar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="rounded-none px-3 py-2.5 text-xs text-muted-foreground focus:bg-muted focus:text-foreground" onClick={() => {
                         void sileo.promise(runFullPipeline(lead.id), {
                           loading: { title: "Ejecutando pipeline..." },
                           success: { title: "Pipeline iniciado" },
                           error: (err: unknown) => ({ title: "Error", description: err instanceof Error ? err.message : "" }),
                         });
-                      }}><RefreshCw className="mr-2 h-3.5 w-3.5" /> Pipeline</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => {
-                        void sileo.promise(generateDraft(lead.id), {
-                          loading: { title: "Generando draft..." },
-                          success: { title: "Draft generado" },
-                          error: (err: unknown) => ({ title: "Error", description: err instanceof Error ? err.message : "" }),
-                        });
-                      }}><Mail className="mr-2 h-3.5 w-3.5" /> Generar draft</DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-red-600"><ShieldOff className="mr-2 h-3.5 w-3.5" /> Suprimir</DropdownMenuItem>
+                      }}>
+                        <RefreshCw className="h-3.5 w-3.5" /> Pipeline completo
+                      </DropdownMenuItem>
+                      {lead.email && (
+                        <>
+                          <DropdownMenuSeparator className="mx-0 my-0" />
+                          <DropdownMenuItem className="rounded-none px-3 py-2.5 text-xs text-muted-foreground focus:bg-muted focus:text-foreground" onClick={() => {
+                            void sileo.promise(generateDraft(lead.id, "email"), {
+                              loading: { title: "Generando draft..." },
+                              success: { title: "Draft generado" },
+                              error: (err: unknown) => ({ title: "Error", description: err instanceof Error ? err.message : "" }),
+                            });
+                          }}>
+                            <Mail className="h-3.5 w-3.5" /> Generar draft
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                      <DropdownMenuSeparator className="mx-0 my-0" />
+                      <DropdownMenuItem className="rounded-none px-3 py-2.5 text-xs text-red-600 focus:bg-red-50 dark:focus:bg-red-950/20 focus:text-red-600">
+                        <ShieldOff className="h-3.5 w-3.5" /> Suprimir
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </td>
