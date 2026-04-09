@@ -48,7 +48,7 @@ export function BatchReviewsSection() {
     try {
       const data = await getBatchReviews(10);
       setReviews(data);
-    } catch (err) { console.error("batch_reviews_fetch_failed", err); }
+    } catch { /* silent */ }
     setLoading(false);
   };
 

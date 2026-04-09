@@ -183,7 +183,7 @@ export function LeadMap({ cities, leads = [], territories = [], onSelectLead }: 
 
         {/* Individual lead pins */}
         {viewMode === "leads" &&
-          leads.map((lead) => (
+          (leads ?? []).map((lead) => (
             <LeadPin key={lead.id} lead={lead} onSelect={onSelectLead} />
           ))}
       </MapContainer>
