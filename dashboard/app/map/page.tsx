@@ -30,7 +30,8 @@ function MapSkeleton() {
 
 export default function MapPage() {
   const { data: cities, isLoading: citiesLoading, mutate: mutateCities } = useApi<GeoSummaryCity[]>("/dashboard/geo-summary");
-  const { data: leads, isLoading: leadsLoading, mutate: mutateLeads } = useApi<Lead[]>("/leads?page=1&page_size=200");
+  const { data: leadsData, isLoading: leadsLoading, mutate: mutateLeads } = useApi<{ items: Lead[]; total: number }>("/leads?page=1&page_size=200");
+  const leads = leadsData?.items;
   const { data: territories, isLoading: territoriesLoading, mutate: mutateTerritories } = useApi<TerritoryWithStats[]>("/territories");
 
   const loading = citiesLoading || leadsLoading || territoriesLoading;
