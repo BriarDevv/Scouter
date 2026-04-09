@@ -7,7 +7,7 @@ export function ThemedToaster() {
   const { resolved } = useTheme();
   return (
     <Toaster
-      position="top-center"
+      position="bottom-center"
       theme={resolved === "dark" ? "dark" : "light"}
       options={{ autopilot: true }}
     />
