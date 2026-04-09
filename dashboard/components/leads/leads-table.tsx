@@ -99,22 +99,16 @@ export function LeadsTable({ leads }: LeadsTableProps) {
           />
         </div>
 
-        <div className="flex items-center gap-1 overflow-x-auto">
-          {STATUS_FILTERS.map((s) => (
-            <button
-              key={s}
-              onClick={() => setStatusFilter(s)}
-              className={cn(
-                "shrink-0 rounded-lg px-2 py-1 text-[10px] font-medium transition-colors",
-                statusFilter === s
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              {s === "all" ? "Todos" : STATUS_CONFIG[s].label}
-            </button>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as LeadStatus | "all")}
+          className="rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-foreground cursor-pointer hover:bg-muted transition-colors"
+        >
+          <option value="all">Todos los estados</option>
+          {STATUS_FILTERS.filter((s) => s !== "all").map((s) => (
+            <option key={s} value={s}>{STATUS_CONFIG[s as LeadStatus].label}</option>
           ))}
-        </div>
+        </select>
       </div>
 
       {/* Table */}
