@@ -28,6 +28,7 @@ import {
   ShieldOff,
   ChevronUp,
   ChevronDown,
+  Filter,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -99,16 +100,37 @@ export function LeadsTable({ leads }: LeadsTableProps) {
           />
         </div>
 
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as LeadStatus | "all")}
-          className="rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-foreground cursor-pointer hover:bg-muted transition-colors"
-        >
-          <option value="all">Todos los estados</option>
-          {STATUS_FILTERS.filter((s) => s !== "all").map((s) => (
-            <option key={s} value={s}>{STATUS_CONFIG[s as LeadStatus].label}</option>
-          ))}
-        </select>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <button className={cn(
+                "flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-muted",
+                statusFilter !== "all" ? "bg-foreground text-background border-foreground hover:bg-foreground/80" : "bg-card text-foreground"
+              )} />
+            }
+          >
+            <Filter className="h-3 w-3" />
+            {statusFilter === "all" ? "Estado" : STATUS_CONFIG[statusFilter].label}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem
+              onClick={() => setStatusFilter("all")}
+              className={cn(statusFilter === "all" && "font-semibold")}
+            >
+              Todos los estados
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {STATUS_FILTERS.filter((s) => s !== "all").map((s) => (
+              <DropdownMenuItem
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={cn(statusFilter === s && "font-semibold")}
+              >
+                {STATUS_CONFIG[s as LeadStatus].label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Table */}
