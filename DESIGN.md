@@ -68,7 +68,7 @@ There is no brand color. Interactive emphasis uses inverted foreground/backgroun
 - **CTA buttons**: `bg-foreground text-background hover:bg-foreground/80` — black on white (light), white on black (dark).
 - **Active nav (Mote)**: `bg-foreground text-background shadow-sm` (dark: `bg-foreground shadow-none`).
 - **Active nav (other)**: `bg-muted text-foreground` (dark: `bg-white/10 text-white`).
-- **Links**: `text-foreground/70 hover:text-foreground hover:underline` — subtle until hovered.
+- **Links**: `text-muted-foreground underline decoration-border underline-offset-2 hover:text-foreground hover:decoration-foreground/30 transition-all` — always underlined with subtle border-color line, text and decoration darken on hover.
 - **Focus rings**: `ring-ring/50` — gray ring, no color accent.
 
 ### Chart Colors (Grayscale Gradient)

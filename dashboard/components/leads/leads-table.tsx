@@ -116,27 +116,27 @@ export function LeadsTable({ leads }: LeadsTableProps) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
-              <th className="text-left px-4 py-2.5 w-[220px]">
+              <th className="text-left px-4 py-2.5 w-[18%]">
                 <button onClick={() => toggleSort("business_name")} className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
                   Negocio <SortIcon field="business_name" />
                 </button>
               </th>
-              <th className="text-left px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Rubro</th>
-              <th className="text-left px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Contacto</th>
-              <th className="text-left px-3 py-2.5">
+              <th className="text-left px-3 py-2.5 w-[12%] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Rubro</th>
+              <th className="text-left px-3 py-2.5 w-[18%] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Contacto</th>
+              <th className="text-left px-3 py-2.5 w-[6%]">
                 <button onClick={() => toggleSort("score")} className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
                   Score <SortIcon field="score" />
                 </button>
               </th>
-              <th className="text-left px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Web</th>
-              <th className="text-left px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Estado</th>
-              <th className="text-left px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Ciudad</th>
-              <th className="text-left px-3 py-2.5">
+              <th className="text-left px-3 py-2.5 w-[14%] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Web</th>
+              <th className="text-left px-3 py-2.5 w-[10%] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Estado</th>
+              <th className="text-left px-3 py-2.5 w-[8%] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Ciudad</th>
+              <th className="text-left px-3 py-2.5 w-[10%]">
                 <button onClick={() => toggleSort("created_at")} className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
                   Fecha <SortIcon field="created_at" />
                 </button>
               </th>
-              <th className="w-10 px-2" />
+              <th className="w-[4%] px-2" />
             </tr>
           </thead>
           <tbody>
@@ -179,7 +179,7 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                       href={lead.website_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[10px] text-foreground/70 font-data truncate block hover:text-foreground hover:underline transition-colors"
+                      className="text-[10px] text-muted-foreground font-data truncate block hover:text-foreground underline decoration-border underline-offset-2 hover:decoration-foreground/30 transition-all"
                     >
                       {extractDomain(lead.website_url)}
                     </a>
