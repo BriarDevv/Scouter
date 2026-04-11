@@ -175,8 +175,8 @@ def run_research(db: Session, lead_id: uuid.UUID) -> LeadResearchReport | None:
                                     "confidence": 1.0,
                                 }
                             )
-            except Exception:
-                pass  # Non-critical: fall through to phone heuristic
+            except Exception:  # noqa: S110 — non-critical: fall through to phone heuristic
+                pass
 
         # WhatsApp heuristic: if lead has phone and WhatsApp not yet confirmed,
         # mark as probable (in Argentina ~90%+ businesses with phone have WhatsApp)

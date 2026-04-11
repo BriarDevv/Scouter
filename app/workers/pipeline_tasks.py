@@ -136,7 +136,7 @@ def task_enrich_lead(
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries))
+        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries)) from exc
 
 
 @celery_app.task(
@@ -244,7 +244,7 @@ def task_score_lead(
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries))
+        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries)) from exc
 
 
 @celery_app.task(
@@ -423,7 +423,7 @@ def task_analyze_lead(
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries))
+        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries)) from exc
 
 
 @celery_app.task(
@@ -550,7 +550,7 @@ def task_generate_draft(
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries))
+        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries)) from exc
 
 
 @celery_app.task(

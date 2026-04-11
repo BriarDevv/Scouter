@@ -87,7 +87,8 @@ def get_ai_health(db: Session = Depends(get_db)):
 
 @router.get("/outcomes", response_model=OutcomeAnalyticsResponse)
 def get_outcome_analytics(db: Session = Depends(get_db)):
-    """Outcome analytics: WON/LOST breakdown by quality, industry, signals. Delegates to analysis service."""
+    """Outcome analytics: WON/LOST breakdown by quality, industry, signals. Delegates to analysis
+    service."""
     from app.services.pipeline.outcome_analysis_service import (
         analyze_industry_performance,
         analyze_quality_accuracy,

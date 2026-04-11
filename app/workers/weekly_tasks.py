@@ -66,10 +66,13 @@ def task_weekly_report():
                     category="system",
                     severity="info",
                     title="Reporte semanal del equipo IA listo",
-                    message=f"Semana {week_start.strftime('%d/%m')} - {week_end.strftime('%d/%m')}: "
-                    f"{metrics.get('leads_processed', 0)} leads, "
-                    f"{metrics.get('won', 0)} WON, "
-                    f"{len(recommendations)} recomendaciones.",
+                    message=(
+                        f"Semana {week_start.strftime('%d/%m')} - "
+                        f"{week_end.strftime('%d/%m')}: "
+                        f"{metrics.get('leads_processed', 0)} leads, "
+                        f"{metrics.get('won', 0)} WON, "
+                        f"{len(recommendations)} recomendaciones."
+                    ),
                     source="weekly_report",
                 )
             except Exception:

@@ -111,7 +111,9 @@ registry.register(
 registry.register(
     ToolDefinition(
         name="list_inbound_messages",
-        description="Listar mensajes entrantes con filtros opcionales de lead y estado de clasificación",
+        description=(
+            "Listar mensajes entrantes con filtros opcionales de lead y estado de clasificación"
+        ),
         parameters=[
             ToolParameter("lead_id", "string", "UUID del lead asociado", required=False),
             ToolParameter(

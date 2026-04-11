@@ -196,5 +196,5 @@ def _reset_rate_limits() -> None:
         r = _get_redis()
         for key in r.scan_iter("wa_action_rate:*"):
             r.delete(key)
-    except Exception:
+    except Exception:  # noqa: S110 — test helper, swallow redis unavailability
         pass

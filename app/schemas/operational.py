@@ -1,4 +1,5 @@
-"""Pydantic response schemas for operational task control endpoints (rescore-all, batch pipeline)."""
+"""Pydantic response schemas for operational task control endpoints (rescore-all, batch
+pipeline)."""
 
 from pydantic import BaseModel
 

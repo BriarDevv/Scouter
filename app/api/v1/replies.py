@@ -76,7 +76,7 @@ def patch_reply_draft(
         db.commit()
         return draft
     except ReplyDraftNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("/{message_id}/draft-response/send", response_model=ReplyAssistantSendResponse)
@@ -86,17 +86,17 @@ def send_reply_draft(message_id: uuid.UUID, db: Session = Depends(get_db)):
         db.commit()
         return result
     except ReplyDraftNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ReplyDraftAlreadySentError as exc:
-        raise HTTPException(status_code=409, detail=str(exc))
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ReplyDraftAlreadySendingError as exc:
-        raise HTTPException(status_code=409, detail=str(exc))
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ReplyDraftValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except DraftRecipientMissingError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except (MailDisabledError, MailConfigurationError) as exc:
-        raise HTTPException(status_code=503, detail=str(exc))
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.get(
@@ -106,7 +106,7 @@ def get_reply_draft_send_status(message_id: uuid.UUID, db: Session = Depends(get
     try:
         return get_reply_send_status(db, message_id)
     except ReplyDraftNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("/{message_id}/draft-response/review", response_model=TaskEnqueueResponse)

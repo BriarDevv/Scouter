@@ -163,7 +163,7 @@ def _analyze_website(url: str) -> tuple[list[tuple[SignalType, str]], list[str]]
                     if emails:
                         logger.info("email_from_subpage", url=url, subpath=subpath, email=emails[0])
                         break
-            except Exception:
+            except Exception:  # noqa: S112 — subpage scan is best-effort, fall through
                 continue
 
     # Check for visible email (signal)

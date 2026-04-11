@@ -320,4 +320,4 @@ def task_research_lead(
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries))
+        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries)) from exc

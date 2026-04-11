@@ -39,12 +39,14 @@ def sync_inbound_mail(
         result = sync_inbound_messages(db, limit=limit)
         db.commit()
         return result
-    except InboundMailDisabledError:
-        raise HTTPException(status_code=503, detail="Sincronización de mail inbound deshabilitada.")
-    except InboundMailProviderError:
+    except InboundMailDisabledError as e:
+        raise HTTPException(
+            status_code=503, detail="Sincronización de mail inbound deshabilitada."
+        ) from e
+    except InboundMailProviderError as e:
         raise HTTPException(
             status_code=500, detail="Error de conexión con el servidor de mail. Revisá los logs."
-        )
+        ) from e
 
 
 @router.get("/messages", response_model=list[InboundMessageResponse])

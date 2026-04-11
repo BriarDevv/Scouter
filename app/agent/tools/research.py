@@ -215,7 +215,9 @@ def trigger_scout_investigation(db: Session, *, lead_id: str) -> dict:
 registry.register(
     ToolDefinition(
         name="get_investigation_thread",
-        description="Ver detalles de investigación de Scout: páginas visitadas, findings, tool calls",
+        description=(
+            "Ver detalles de investigación de Scout: páginas visitadas, findings, tool calls"
+        ),
         handler=get_investigation_thread,
         parameters=[
             ToolParameter(name="lead_id", type="string", description="Lead UUID", required=True),

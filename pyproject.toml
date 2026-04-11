@@ -56,11 +56,32 @@ line-length = 100
 
 [tool.ruff.lint]
 # Canonical ruleset. CI + pre-commit read this — do not re-declare select in either.
-# Baseline: F (pyflakes), W (warnings), I (isort). Stricter sets (E, N, UP, B, SIM, S)
-# are backlog — raise one at a time after running `ruff check --select <rule> --fix`
-# locally and cleaning up the results. See docs/plans/hardening for the tier-up plan.
-select = ["F", "W", "I"]
+# Tiered up from F/W/I to include UP, SIM, N, S, B, E after the autopilot
+# hardening pass cleared or scoped the violations. See docs/plans/hardening-backlog.md
+# for the remaining backlog (B904, some B008 cases) and the order to tighten further.
+select = ["F", "W", "I", "UP", "SIM", "N", "S", "B", "E"]
 ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+# Tests legitimately use assert, hardcoded test credentials, and long data literals.
+"tests/**/*.py" = [
+    "S101",   # assert is the pytest idiom
+    "S105",   # hardcoded password strings in test fixtures
+    "S106",   # hardcoded password in function arguments (test factories)
+    "S110",   # try-except-pass in negative-path tests
+    "S112",   # try-except-continue in loop-based integration tests
+    "E501",   # long literals (JSON blobs, scoring expectations)
+    "B008",   # function-call-in-default-argument (test factories / Depends)
+]
+# LLM prompt files intentionally contain multi-line prompt strings whose
+# readability matters more than the 100-char line length.
+"app/llm/prompts/*.py" = ["E501"]
+# FastAPI uses Depends() and Query()/Path()/Body() as default arguments by design.
+"app/api/**/*.py" = ["B008"]
+# FastAPI main.py uses conditional imports after middleware setup for optional
+# integrations (Prometheus, auth middleware) — the pattern is load-order-sensitive.
+# Also uses Depends() in default args for health endpoints (same pattern as api/).
+"app/main.py" = ["E402", "B008"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]

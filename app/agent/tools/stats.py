@@ -84,7 +84,9 @@ registry.register(
 registry.register(
     ToolDefinition(
         name="get_industry_breakdown",
-        description="Obtener desglose de leads por industria/rubro con scores y tasas de conversión",
+        description=(
+            "Obtener desglose de leads por industria/rubro con scores y tasas de conversión"
+        ),
         category="stats",
         handler=get_industry_breakdown,
     )

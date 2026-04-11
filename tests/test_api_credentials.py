@@ -105,7 +105,7 @@ def test_test_imap_connection_with_monkeypatch(client, monkeypatch):
 
     import imaplib
 
-    class FakeIMAP4_SSL:
+    class FakeIMAP4SSL:
         def __init__(self, *args, **kwargs):
             pass
 
@@ -118,7 +118,7 @@ def test_test_imap_connection_with_monkeypatch(client, monkeypatch):
         def logout(self):
             pass
 
-    monkeypatch.setattr(imaplib, "IMAP4_SSL", FakeIMAP4_SSL)
+    monkeypatch.setattr(imaplib, "IMAP4_SSL", FakeIMAP4SSL)
 
     resp = client.post("/api/v1/settings/test/imap")
     assert resp.status_code == 200

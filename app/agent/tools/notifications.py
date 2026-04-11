@@ -104,7 +104,9 @@ registry.register(
 registry.register(
     ToolDefinition(
         name="get_notification_counts",
-        description="Obtener resumen de conteo de notificaciones (total, por categoría, por severidad)",
+        description=(
+            "Obtener resumen de conteo de notificaciones (total, por categoría, por severidad)"
+        ),
         category="notifications",
         handler=get_notification_counts,
     )

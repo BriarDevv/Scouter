@@ -116,7 +116,9 @@ def get_pipeline_status(db: Session, *, pipeline_run_id: str | None = None, limi
 registry.register(
     ToolDefinition(
         name="run_full_pipeline",
-        description="Ejecutar el pipeline completo de enriquecimiento para un lead (requiere confirmación)",
+        description=(
+            "Ejecutar el pipeline completo de enriquecimiento para un lead (requiere confirmación)"
+        ),
         parameters=[
             ToolParameter("lead_id", "string", "UUID del lead"),
         ],

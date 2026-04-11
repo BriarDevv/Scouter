@@ -7,6 +7,13 @@ import json as _json
 from redis import ConnectionPool, Redis
 
 from app.core.config import settings as env
+from app.db.session import SessionLocal
+from app.models.task_tracking import TaskRun
+from app.services.pipeline.task_tracking_service import (
+    get_scoped_task_run,
+    is_task_stop_requested,
+    update_task_run,
+)
 
 # Module-level connection pool to avoid creating a new TCP connection per call
 _redis_pool: ConnectionPool | None = None
@@ -18,14 +25,6 @@ def _get_redis() -> Redis:
         _redis_pool = ConnectionPool.from_url(env.REDIS_URL)
     return Redis(connection_pool=_redis_pool)
 
-
-from app.db.session import SessionLocal
-from app.models.task_tracking import TaskRun
-from app.services.pipeline.task_tracking_service import (
-    get_scoped_task_run,
-    is_task_stop_requested,
-    update_task_run,
-)
 
 BATCH_PIPELINE_SCOPE_KEY = "status:new"
 BATCH_PIPELINE_REDIS_KEY = "pipeline:batch"

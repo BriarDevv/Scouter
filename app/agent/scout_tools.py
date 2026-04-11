@@ -392,7 +392,10 @@ def finish_investigation(findings: str) -> dict[str, Any]:
 SCOUT_TOOLS: dict[str, dict] = {
     "browse_page": {
         "handler": browse_page,
-        "description": "Browse a web page and get its content, title, meta, WhatsApp detection, and booking system detection.",
+        "description": (
+            "Browse a web page and get its content, title, meta, WhatsApp detection,"
+            " and booking system detection."
+        ),
         "parameters": [
             {"name": "url", "type": "string", "description": "URL to browse", "required": True}
         ],

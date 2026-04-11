@@ -71,17 +71,17 @@ def search_leads(
         "returned": len(leads),
         "leads": [
             {
-                "id": str(l.id),
-                "business_name": l.business_name,
-                "industry": l.industry,
-                "city": l.city,
-                "status": l.status.value if l.status else None,
-                "score": l.score,
-                "email": l.email,
-                "website_url": l.website_url,
-                "llm_quality": l.llm_quality,
+                "id": str(lead.id),
+                "business_name": lead.business_name,
+                "industry": lead.industry,
+                "city": lead.city,
+                "status": lead.status.value if lead.status else None,
+                "score": lead.score,
+                "email": lead.email,
+                "website_url": lead.website_url,
+                "llm_quality": lead.llm_quality,
             }
-            for l in leads
+            for lead in leads
         ],
     }
 
@@ -134,7 +134,9 @@ def count_leads_by_status(db: Session) -> dict:
 registry.register(
     ToolDefinition(
         name="search_leads",
-        description="Buscar leads con filtros opcionales (texto, estado, ciudad, industria, score mínimo)",
+        description=(
+            "Buscar leads con filtros opcionales (texto, estado, ciudad, industria, score mínimo)"
+        ),
         parameters=[
             ToolParameter(
                 "query", "string", "Texto de búsqueda (nombre, industria o ciudad)", required=False
@@ -184,7 +186,7 @@ registry.register(
 
 
 def get_lead_journey(db: Session, *, lead_id: str) -> dict:
-    """Get the full AI journey for a lead: pipeline context, corrections, delivery, investigation."""
+    """Get the full AI journey for a lead: pipeline context, corrections, delivery, investigation."""  # noqa: E501
     from app.models.investigation_thread import InvestigationThread
     from app.models.outreach_draft import OutreachDraft
     from app.models.review_correction import ReviewCorrection
@@ -266,7 +268,9 @@ def get_lead_journey(db: Session, *, lead_id: str) -> dict:
 registry.register(
     ToolDefinition(
         name="get_lead_journey",
-        description="Ver el viaje completo de un lead: pipeline, Scout, corrections, draft, delivery",
+        description=(
+            "Ver el viaje completo de un lead: pipeline, Scout, corrections, draft, delivery"
+        ),
         parameters=[
             ToolParameter("lead_id", "string", "UUID del lead"),
         ],

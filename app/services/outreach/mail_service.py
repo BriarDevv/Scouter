@@ -99,7 +99,8 @@ def ensure_outbound_mail_ready(db: Session) -> EffectiveOutboundMailConfig:
     config = get_effective_outbound_mail_config(db)
     if not config.enabled:
         raise MailDisabledError(
-            "Mail sending is disabled. Set MAIL_ENABLED=true or enable the DB override to allow delivery."
+            "Mail sending is disabled. Set MAIL_ENABLED=true or enable the DB override"
+            " to allow delivery."
         )
 
     missing_requirements: list[str] = []
@@ -231,8 +232,8 @@ def send_draft(db: Session, draft_id: uuid.UUID) -> OutreachDelivery | None:
         # Re-check state after rollback
         db.refresh(draft)
         if draft.status == DraftStatus.SENT:
-            raise DraftAlreadySentError("Draft has already been sent.")
-        raise DraftAlreadySentError("Draft send is already in progress.")
+            raise DraftAlreadySentError("Draft has already been sent.") from None
+        raise DraftAlreadySentError("Draft send is already in progress.") from None
     db.refresh(delivery)
 
     request = build_mail_send_request(

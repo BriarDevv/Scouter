@@ -79,7 +79,9 @@ def on_reply_classified(
         category=NotificationCategory.BUSINESS,
         severity=severity,
         title=title,
-        message=f"De: {from_email or 'desconocido'}. Label: {label}. Confianza: {confidence or 0:.0%}.",
+        message=(
+            f"De: {from_email or 'desconocido'}. Label: {label}. Confianza: {confidence or 0:.0%}."
+        ),
         source_kind="inbound_message",
         source_id=message_id,
         metadata={

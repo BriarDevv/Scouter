@@ -123,7 +123,9 @@ def generate_scoring_recommendations(db: Session) -> list[dict]:
         return [
             {
                 "type": "info",
-                "description": f"Datos insuficientes: {summary['total']} outcomes (necesitamos ≥50)",
+                "description": (
+                    f"Datos insuficientes: {summary['total']} outcomes (necesitamos ≥50)"
+                ),
                 "evidence": f"{summary['won']} WON, {summary['lost']} LOST",
                 "action": "Seguir acumulando outcomes",
             }
@@ -143,7 +145,10 @@ def generate_scoring_recommendations(db: Session) -> list[dict]:
                 {
                     "type": "increase_weight",
                     "signal": sig["signal"],
-                    "description": f"{sig['signal']} tiene win rate {sig['win_rate']:.0%} vs promedio {avg_win_rate:.0%}",
+                    "description": (
+                        f"{sig['signal']} tiene win rate {sig['win_rate']:.0%} "
+                        f"vs promedio {avg_win_rate:.0%}"
+                    ),
                     "evidence": f"{sig['won']} WON / {sig['total']} total",
                     "action": f"Aumentar peso de {sig['signal']} en scoring (+5 a +10 puntos)",
                 }
@@ -153,7 +158,10 @@ def generate_scoring_recommendations(db: Session) -> list[dict]:
                 {
                     "type": "decrease_weight",
                     "signal": sig["signal"],
-                    "description": f"{sig['signal']} tiene win rate {sig['win_rate']:.0%} vs promedio {avg_win_rate:.0%}",
+                    "description": (
+                        f"{sig['signal']} tiene win rate {sig['win_rate']:.0%} "
+                        f"vs promedio {avg_win_rate:.0%}"
+                    ),
                     "evidence": f"{sig['won']} WON / {sig['total']} total",
                     "action": f"Reducir peso de {sig['signal']} en scoring (-5 puntos)",
                 }
@@ -169,7 +177,9 @@ def generate_scoring_recommendations(db: Session) -> list[dict]:
                 {
                     "type": "high_value_industry",
                     "signal": ind["industry"],
-                    "description": f'Industria "{ind["industry"]}" convierte a {ind["win_rate"]:.0%}',
+                    "description": (
+                        f'Industria "{ind["industry"]}" convierte a {ind["win_rate"]:.0%}'
+                    ),
                     "evidence": f"{ind['won']} WON / {ind['total']} total",
                     "action": f'Agregar "{ind["industry"]}" a HIGH_VALUE_INDUSTRIES si no está',
                 }
@@ -191,7 +201,9 @@ def generate_scoring_recommendations(db: Session) -> list[dict]:
                     {
                         "type": "prompt_improvement",
                         "signal": cat,
-                        "description": f'Reviewer corrigio "{cat}" {count} veces en las ultimas 100 reviews',
+                        "description": (
+                            f'Reviewer corrigio "{cat}" {count} veces en las ultimas 100 reviews'
+                        ),
                         "evidence": f"{count} correcciones",
                         "action": f"Mejorar prompt del Executor para reducir errores de {cat}",
                     }

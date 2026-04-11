@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
-    SECRET_KEY: str = "change-me-to-a-random-secret-key"
+    SECRET_KEY: str = "change-me-to-a-random-secret-key"  # noqa: S105 — placeholder, enforced by validate_secret_key model validator
 
     # Database
     DATABASE_URL: str = "postgresql://scouter:changeme@localhost:5432/scouter"
@@ -163,17 +163,19 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_secret_key(self):
-        if self.SECRET_KEY == "change-me-to-a-random-secret-key":
+        if self.SECRET_KEY == "change-me-to-a-random-secret-key":  # noqa: S105
             if self.APP_ENV != "development":
                 raise ValueError(
                     "SECRET_KEY must be changed from default in non-development environments. "
-                    'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(64))"'
+                    "Generate one with: "
+                    'python -c "import secrets; print(secrets.token_urlsafe(64))"'
                 )
             import warnings
 
             warnings.warn(
                 "SECRET_KEY is still set to the default placeholder. "
-                'Generate a secure key with: python -c "import secrets; print(secrets.token_urlsafe(64))"',
+                "Generate a secure key with: "
+                'python -c "import secrets; print(secrets.token_urlsafe(64))"',
                 stacklevel=2,
             )
         return self

@@ -139,8 +139,8 @@ def generate_draft_content(
                     if pipeline_context_text
                     else correction_hints
                 )
-        except Exception:
-            pass  # Non-critical: draft generation proceeds without hints
+        except Exception:  # noqa: S110 — non-critical: draft generation proceeds without hints
+            pass
 
     # Enrich suggested angle with CommercialBrief context if available
     suggested_angle = lead.llm_suggested_angle

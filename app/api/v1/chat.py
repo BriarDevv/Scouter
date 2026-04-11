@@ -135,20 +135,37 @@ async def send_message(
                         f"data: {json.dumps({'content': event.content}, ensure_ascii=False)}\n\n"
                     )
                 elif isinstance(event, ToolStart):
-                    yield (
-                        "event: tool_start\n"
-                        f"data: {json.dumps({'tool_name': event.tool_name, 'tool_call_id': event.tool_call_id, 'arguments': event.arguments}, ensure_ascii=False)}\n\n"
+                    payload = json.dumps(
+                        {
+                            "tool_name": event.tool_name,
+                            "tool_call_id": event.tool_call_id,
+                            "arguments": event.arguments,
+                        },
+                        ensure_ascii=False,
                     )
+                    yield f"event: tool_start\ndata: {payload}\n\n"
                 elif isinstance(event, ToolResult):
-                    yield (
-                        "event: tool_result\n"
-                        f"data: {json.dumps({'tool_call_id': event.tool_call_id, 'tool_name': event.tool_name, 'result': event.result, 'error': event.error}, ensure_ascii=False)}\n\n"
+                    payload = json.dumps(
+                        {
+                            "tool_call_id": event.tool_call_id,
+                            "tool_name": event.tool_name,
+                            "result": event.result,
+                            "error": event.error,
+                        },
+                        ensure_ascii=False,
                     )
+                    yield f"event: tool_result\ndata: {payload}\n\n"
                 elif isinstance(event, ConfirmationRequired):
-                    yield (
-                        "event: confirmation_required\n"
-                        f"data: {json.dumps({'tool_name': event.tool_name, 'tool_call_id': event.tool_call_id, 'arguments': event.arguments, 'description': event.description_es}, ensure_ascii=False)}\n\n"
+                    payload = json.dumps(
+                        {
+                            "tool_name": event.tool_name,
+                            "tool_call_id": event.tool_call_id,
+                            "arguments": event.arguments,
+                            "description": event.description_es,
+                        },
+                        ensure_ascii=False,
                     )
+                    yield f"event: confirmation_required\ndata: {payload}\n\n"
                 elif isinstance(event, TurnComplete):
                     yield (
                         "event: turn_complete\n"

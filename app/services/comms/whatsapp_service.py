@@ -44,7 +44,10 @@ class CallMeBotProvider(WhatsAppProvider):
         if getattr(settings, "WHATSAPP_DRY_RUN", False):
             logger.info("whatsapp_dry_run", message=message[:100])
             return True
-        url = f"{self.BASE_URL}?phone={quote_plus(phone)}&text={quote_plus(message)}&apikey={quote_plus(api_key)}"
+        url = (
+            f"{self.BASE_URL}?phone={quote_plus(phone)}"
+            f"&text={quote_plus(message)}&apikey={quote_plus(api_key)}"
+        )
         try:
             with httpx.Client(timeout=_SEND_TIMEOUT) as client:
                 resp = client.get(url)

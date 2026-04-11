@@ -88,7 +88,7 @@ def task_review_lead(self, lead_id: str) -> dict:
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries))
+        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries)) from exc
 
 
 @celery_app.task(
@@ -158,7 +158,7 @@ def task_review_draft(self, draft_id: str) -> dict:
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries))
+        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries)) from exc
 
 
 @celery_app.task(
@@ -230,7 +230,7 @@ def task_review_inbound_message(self, message_id: str) -> dict:
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries))
+        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries)) from exc
 
 
 @celery_app.task(
@@ -317,4 +317,4 @@ def task_review_reply_assistant_draft(self, message_id: str) -> dict:
             queue=queue,
             error=str(exc),
         )
-        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries))
+        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries)) from exc

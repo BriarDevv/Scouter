@@ -111,7 +111,7 @@ def get_task_status(task_id: str, db: Session = Depends(get_db)):
                 created_at=now,
                 updated_at=now,
             )
-    except Exception:
+    except Exception:  # noqa: S110 — best-effort reconstruction from Celery state
         pass
 
     raise HTTPException(status_code=404, detail="Task not found")
@@ -123,5 +123,5 @@ def revoke_task(task_id: str):
     try:
         celery_app.control.revoke(task_id, terminate=True, signal="SIGTERM")
         return {"ok": True, "task_id": task_id, "message": "Task revocada."}
-    except Exception:
-        raise HTTPException(status_code=500, detail="No se pudo revocar la task.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="No se pudo revocar la task.") from e

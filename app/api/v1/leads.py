@@ -31,7 +31,7 @@ def create(data: LeadCreate, db: Session = Depends(get_db)):
         db.commit()
         return lead
     except ValueError as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise HTTPException(status_code=409, detail=str(e)) from e
 
 
 @router.get("", response_model=LeadListResponse)

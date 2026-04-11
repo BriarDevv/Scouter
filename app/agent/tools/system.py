@@ -29,7 +29,9 @@ def get_current_time() -> dict:
 registry.register(
     ToolDefinition(
         name="health_check",
-        description="Verificar el estado de salud del sistema (base de datos, Redis, Ollama, Celery)",
+        description=(
+            "Verificar el estado de salud del sistema (base de datos, Redis, Ollama, Celery)"
+        ),
         category="system",
         handler=health_check,
     )

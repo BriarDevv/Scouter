@@ -172,16 +172,16 @@ def _get_dashboard_stats_python(db: Session, leads: list[Lead]) -> dict:
     today = _now_utc().date()
     total_leads = len(leads)
     scored_values = [lead.score for lead in leads if lead.score is not None]
-    new_today = sum(1 for l in leads if _date_key(l.created_at) == today.isoformat())
-    qualified = sum(1 for l in leads if _reached_stage(l.status, LeadStatus.QUALIFIED))
-    approved = sum(1 for l in leads if _reached_stage(l.status, LeadStatus.APPROVED))
-    contacted = sum(1 for l in leads if _reached_stage(l.status, LeadStatus.CONTACTED))
-    opened = sum(1 for l in leads if _reached_stage(l.status, LeadStatus.OPENED))
-    replied = sum(1 for l in leads if _reached_stage(l.status, LeadStatus.REPLIED))
-    meetings = sum(1 for l in leads if _reached_stage(l.status, LeadStatus.MEETING))
-    won = sum(1 for l in leads if l.status == LeadStatus.WON)
-    lost = sum(1 for l in leads if l.status == LeadStatus.LOST)
-    suppressed = sum(1 for l in leads if l.status == LeadStatus.SUPPRESSED)
+    new_today = sum(1 for lead in leads if _date_key(lead.created_at) == today.isoformat())
+    qualified = sum(1 for lead in leads if _reached_stage(lead.status, LeadStatus.QUALIFIED))
+    approved = sum(1 for lead in leads if _reached_stage(lead.status, LeadStatus.APPROVED))
+    contacted = sum(1 for lead in leads if _reached_stage(lead.status, LeadStatus.CONTACTED))
+    opened = sum(1 for lead in leads if _reached_stage(lead.status, LeadStatus.OPENED))
+    replied = sum(1 for lead in leads if _reached_stage(lead.status, LeadStatus.REPLIED))
+    meetings = sum(1 for lead in leads if _reached_stage(lead.status, LeadStatus.MEETING))
+    won = sum(1 for lead in leads if lead.status == LeadStatus.WON)
+    lost = sum(1 for lead in leads if lead.status == LeadStatus.LOST)
+    suppressed = sum(1 for lead in leads if lead.status == LeadStatus.SUPPRESSED)
 
     closed_cycle_days = []
     for lead in leads:

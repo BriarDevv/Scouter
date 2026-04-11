@@ -146,7 +146,9 @@ def get_setup_status(db: Session) -> dict:
                 "id": "mail_out",
                 "label": "Mail de salida (SMTP)",
                 "status": "warning",
-                "detail": f"Última prueba falló: {creds.smtp_last_test_error or 'error desconocido'}",
+                "detail": (
+                    f"Última prueba falló: {creds.smtp_last_test_error or 'error desconocido'}"
+                ),
                 "action": "Probar conexión",
             }
         )
@@ -196,7 +198,9 @@ def get_setup_status(db: Session) -> dict:
                 "id": "mail_in",
                 "label": "Bandeja de entrada (IMAP)",
                 "status": "warning",
-                "detail": f"Última prueba falló: {creds.imap_last_test_error or 'error desconocido'}",
+                "detail": (
+                    f"Última prueba falló: {creds.imap_last_test_error or 'error desconocido'}"
+                ),
                 "action": "Probar conexión",
             }
         )
