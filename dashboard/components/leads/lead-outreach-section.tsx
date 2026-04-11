@@ -82,8 +82,9 @@ export function LeadOutreachSection({
                   {draft.status === "pending_review" && (
                     <>
                       <Button
+                        variant="success"
                         size="sm"
-                        className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 gap-1.5"
+                        className="rounded-xl gap-1.5"
                         onClick={() => onReviewDraft(draft.id, true)}
                         disabled={isReviewingDraftId === draft.id}
                       >

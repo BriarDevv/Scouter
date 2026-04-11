@@ -2,6 +2,7 @@
 
 import { Loader2, Play, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface PipelineControlsProps {
   pipelineStatus: "idle" | "running" | "done" | "error" | "stopping";
@@ -21,31 +22,26 @@ export function PipelineControls({
   return (
     <div className="pt-1 space-y-1.5">
       {pipelineStatus !== "running" && pipelineStatus !== "stopping" ? (
-        <button
+        <Button
           onClick={onStart}
           disabled={!celeryOk}
-          className={cn(
-            "flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all",
-            celeryOk
-              ? "bg-foreground text-background hover:bg-foreground/80 active:scale-[0.98]"
-              : "bg-muted text-muted-foreground cursor-not-allowed"
-          )}
+          size="lg"
+          className="w-full rounded-xl"
         >
           <Play className="h-4 w-4" />
           Iniciar Pipeline
-        </button>
+        </Button>
       ) : (
-        <button
+        <Button
+          variant="destructive-solid"
           onClick={onStop}
           disabled={pipelineStatus === "stopping"}
-          className={cn(
-            "flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 active:scale-[0.98] transition-all",
-            pipelineStatus === "stopping" && "opacity-70"
-          )}
+          size="lg"
+          className={cn("w-full rounded-xl", pipelineStatus === "stopping" && "opacity-70")}
         >
           <Square className="h-4 w-4" />
           {pipelineStatus === "stopping" ? "Deteniendo..." : "Detener Pipeline"}
-        </button>
+        </Button>
       )}
       {!celeryOk && (
         <p className="text-[10px] text-amber-500 text-center">

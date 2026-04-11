@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { sileo } from "sileo";
 import { SettingsSectionCard, FieldRow } from "./settings-primitives";
+import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -280,10 +281,12 @@ export function CrawlersSection() {
         {/* Toggle button */}
         <div className="mt-4 flex items-center gap-3">
           {!isRunning ? (
-            <button
+            <Button
+              variant="success"
+              size="lg"
+              className="rounded-xl"
               onClick={handleStart}
               disabled={starting || !selectedTerritoryId || !apiKeyStatus?.configured}
-              className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-40"
             >
               {starting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -291,15 +294,17 @@ export function CrawlersSection() {
                 <Power className="h-4 w-4" />
               )}
               {starting ? "Iniciando..." : "Iniciar crawl"}
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
+              variant="destructive-solid"
+              size="lg"
+              className="rounded-xl"
               onClick={handleStop}
-              className="flex items-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
             >
               <PowerOff className="h-4 w-4" />
               Detener crawl
-            </button>
+            </Button>
           )}
 
           {!apiKeyStatus?.configured && (

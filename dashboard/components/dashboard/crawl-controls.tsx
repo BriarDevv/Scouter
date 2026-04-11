@@ -2,6 +2,7 @@
 
 import { Loader2, Search, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import type { TerritoryWithStats } from "@/types";
 
 interface CrawlControlsProps {
@@ -42,27 +43,26 @@ export function CrawlControls({
         </select>
       )}
       {crawlStatus !== "running" ? (
-        <button
+        <Button
+          variant="success"
           onClick={onStart}
           disabled={!celeryOk || !selectedTerritoryId}
-          className={cn(
-            "flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all",
-            celeryOk && selectedTerritoryId
-              ? "bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.98]"
-              : "bg-muted text-muted-foreground cursor-not-allowed"
-          )}
+          size="lg"
+          className="w-full rounded-xl"
         >
           <Search className="h-4 w-4" />
           Iniciar Crawl
-        </button>
+        </Button>
       ) : (
-        <button
+        <Button
+          variant="destructive-solid"
           onClick={onStop}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 active:scale-[0.98] transition-all"
+          size="lg"
+          className="w-full rounded-xl"
         >
           <Square className="h-4 w-4" />
           Detener Crawl
-        </button>
+        </Button>
       )}
       {crawlProgress && (
         <p className={cn(

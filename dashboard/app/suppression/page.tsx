@@ -182,7 +182,8 @@ export default function SuppressionPage() {
               Cancelar
             </DialogClose>
             <Button
-              className="rounded-xl bg-red-600 text-white hover:bg-red-700"
+              variant="destructive-solid"
+              className="rounded-xl"
               onClick={() => confirmRemoveId && void handleRemove(confirmRemoveId)}
               disabled={removingId === confirmRemoveId}
             >

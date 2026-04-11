@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { sileo } from "sileo";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { useSystemHealth } from "@/lib/hooks/use-system-health";
 import { useVisibleInterval } from "@/lib/hooks/use-visible-interval";
 import { useApi } from "@/lib/hooks/use-swr-fetch";
@@ -359,28 +360,26 @@ export default function PanelPage() {
                 {/* Pipeline */}
                 <div className="space-y-2">
                   {!isRunning ? (
-                    <button
+                    <Button
                       onClick={handleStartPipeline}
                       disabled={!celeryOk}
-                      className={cn(
-                        "flex w-full items-center justify-center gap-2.5 rounded-xl px-5 py-3 text-sm font-bold transition-all",
-                        celeryOk
-                          ? "bg-foreground text-background hover:bg-foreground/80 active:scale-[0.98] shadow-sm"
-                          : "bg-muted text-muted-foreground cursor-not-allowed"
-                      )}
+                      size="lg"
+                      className="w-full rounded-xl"
                     >
                       <Play className="h-4 w-4" />
                       Iniciar Pipeline
-                    </button>
+                    </Button>
                   ) : (
-                    <button
+                    <Button
+                      variant="destructive-solid"
                       onClick={handleStopPipeline}
                       disabled={pipelineStatus === "stopping"}
-                      className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-red-600 px-5 py-3 text-sm font-bold text-white hover:bg-red-700 active:scale-[0.98] transition-all"
+                      size="lg"
+                      className="w-full rounded-xl"
                     >
                       <Square className="h-3.5 w-3.5" />
                       {pipelineStatus === "stopping" ? "Deteniendo..." : "Detener"}
-                    </button>
+                    </Button>
                   )}
                   {pipelineProgress && (
                     <div className="flex items-center gap-2">

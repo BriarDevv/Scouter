@@ -427,7 +427,7 @@ function ReadyStage({ nextPath }: { nextPath: string }) {
   return (
     <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 shadow-sm dark:bg-emerald-950/20">
       <div className="flex items-start gap-3">
-        <div className="rounded-xl bg-emerald-600 p-2 text-white">
+        <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400">
           <CheckCircle2 className="h-5 w-5" />
         </div>
         <div>

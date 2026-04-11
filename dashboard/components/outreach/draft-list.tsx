@@ -121,8 +121,9 @@ export function DraftList({
               {draft.status === "pending_review" && (
                 <div className="mt-3 flex gap-2 border-t border-border/50 pt-3">
                   <Button
+                    variant="success"
                     size="sm"
-                    className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 gap-1.5 h-8"
+                    className="rounded-xl gap-1.5 h-8"
                     onClick={(e) => { e.stopPropagation(); onReview(draft.id, true); }}
                     disabled={isReviewingDraftId === draft.id}
                   >
@@ -145,7 +146,7 @@ export function DraftList({
                 <div className="mt-3 flex gap-2 border-t border-border/50 pt-3">
                   <Button
                     size="sm"
-                    className="rounded-xl bg-blue-600 text-white hover:bg-blue-700 gap-1.5 h-8"
+                    className="rounded-xl gap-1.5 h-8"
                     onClick={(e) => { e.stopPropagation(); onSend(draft.id); }}
                     disabled={isSendingDraftId === draft.id}
                   >
