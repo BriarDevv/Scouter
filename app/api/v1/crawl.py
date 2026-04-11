@@ -7,10 +7,15 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.request_context import get_correlation_id
-from app.core.config import settings as env
 from app.crawlers.google_maps_crawler import DEFAULT_CATEGORIES
 from app.db.session import get_db
-from app.services.deploy_config_service import get_google_maps_api_key_status
+from app.services.deploy_config_service import (
+    InvalidGoogleMapsKeyError,
+    clear_google_maps_api_key,
+    get_effective_google_maps_key,
+    get_google_maps_api_key_status,
+    set_google_maps_api_key,
+)
 from app.services.pipeline.operational_task_service import (
     get_territory_crawl_status_snapshot,
     get_territory_crawl_task_run,
@@ -40,8 +45,14 @@ def start_territory_crawl(
     db: DbSession,
 ):
     """Start a crawl for all cities in a territory (async via Celery)."""
-    if not env.GOOGLE_MAPS_API_KEY:
-        raise HTTPException(status_code=400, detail="Google Maps API key no configurada.")
+    if not get_effective_google_maps_key(db):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Google Maps API key no configurada. Cargala en Configuración → "
+                "Crawlers o definí GOOGLE_MAPS_API_KEY en el .env."
+            ),
+        )
 
     # Verify territory exists
     import uuid
@@ -52,7 +63,7 @@ def start_territory_crawl(
     if not territory:
         raise HTTPException(status_code=404, detail="Territorio no encontrado.")
 
-    # Check canonical tracked state first, then fall back to legacy Redis state.
+    # Check canonical tracked state first, then fall back to legacy cached state.
     existing_task = get_territory_crawl_task_run(db, body.territory_id)
     if existing_task and existing_task.status in {"queued", "running", "retrying", "stopping"}:
         return {
@@ -136,9 +147,9 @@ def get_categories():
 
 
 @router.get("/api-key-status")
-def api_key_status():
-    """Check if Google Maps API key is configured."""
-    return get_google_maps_api_key_status()
+def api_key_status(db: DbSession):
+    """Report whether the Google Maps API key is set and where it lives (db|env)."""
+    return get_google_maps_api_key_status(db)
 
 
 class ApiKeyUpdate(BaseModel):
@@ -146,16 +157,23 @@ class ApiKeyUpdate(BaseModel):
 
 
 @router.patch("/api-key")
-def update_api_key(body: ApiKeyUpdate):
-    """Reject runtime API-key mutation for deploy-managed crawler config."""
-    _ = body  # keep backward-compatible request validation shape
-    status = get_google_maps_api_key_status()
-    raise HTTPException(
-        status_code=409,
-        detail={
-            **status,
-            "message": (
-                "GOOGLE_MAPS_API_KEY es configuración de deploy y no puede modificarse desde HTTP."
-            ),
-        },
-    )
+def update_api_key(body: ApiKeyUpdate, db: DbSession):
+    """Persist a Google Maps API key in integration_credentials (encrypted).
+
+    DB value wins over the .env fallback. The operator can replace or clear
+    the key at any time without restarting the backend.
+    """
+    try:
+        status = set_google_maps_api_key(db, body.api_key)
+    except InvalidGoogleMapsKeyError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    db.commit()
+    return status
+
+
+@router.delete("/api-key")
+def delete_api_key(db: DbSession):
+    """Clear the DB-stored Google Maps API key (env fallback still applies)."""
+    status = clear_google_maps_api_key(db)
+    db.commit()
+    return status

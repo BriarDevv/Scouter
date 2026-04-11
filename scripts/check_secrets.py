@@ -41,15 +41,10 @@ REQUIRED: list[RequiredCheck] = [
             "and save it to your password manager."
         ),
     ),
-    RequiredCheck(
-        var="GOOGLE_MAPS_API_KEY",
-        predicate=lambda v: bool(v),
-        failure_reason=(
-            "not set. The crawler relies on Google Places API (New). "
-            "Enable the API in Google Cloud Console, generate an API key, "
-            "and add it to .env as GOOGLE_MAPS_API_KEY=<your-key>."
-        ),
-    ),
+    # NOTE: GOOGLE_MAPS_API_KEY is no longer a plain env-var check because the
+    # key can now live in the integration_credentials DB row. See
+    # _check_google_maps_key() below, which does a DB-first / env-fallback
+    # check and is invoked from main() alongside the REQUIRED loop.
 ]
 
 OPTIONAL_BUT_EXPECTED: dict[str, str] = {
@@ -102,6 +97,50 @@ def _check_encrypted_rows_vs_placeholder(settings) -> str | None:
     )
 
 
+def _check_google_maps_key(settings) -> str | None:
+    """Return None if the Google Maps key is set (in env or DB), otherwise a msg.
+
+    Best-effort DB lookup. Missing DB → falls back to env-only check (same as
+    the previous behavior) so the preflight never blocks on DB hiccups.
+    """
+    env_key = settings.GOOGLE_MAPS_API_KEY or None
+
+    try:
+        from app.db.session import SessionLocal
+        from app.services.deploy_config_service import get_effective_google_maps_key
+    except Exception:
+        # Models or service can't be imported — fall back to env-only.
+        if env_key:
+            return None
+        return (
+            "GOOGLE_MAPS_API_KEY not set in .env and DB check could not run. "
+            "Either define GOOGLE_MAPS_API_KEY in .env or load the key via "
+            "Configuración → Crawlers in the dashboard once the backend is up."
+        )
+
+    try:
+        with SessionLocal() as db:
+            effective = get_effective_google_maps_key(db)
+    except Exception:
+        # DB unreachable — trust env.
+        if env_key:
+            return None
+        return (
+            "GOOGLE_MAPS_API_KEY not set in .env and the DB is unreachable so "
+            "the DB-stored key could not be verified. The crawler will not run "
+            "until at least one source has the key."
+        )
+
+    if effective:
+        return None
+
+    return (
+        "Google Maps API key is not configured. Set it via "
+        "Configuración → Crawlers in the dashboard (stored encrypted in DB) "
+        "or define GOOGLE_MAPS_API_KEY in .env as a fallback."
+    )
+
+
 def main() -> int:
     try:
         from app.core.config import settings
@@ -114,6 +153,10 @@ def main() -> int:
         value = getattr(settings, check.var, None)
         if not check.predicate(value):
             missing.append(f"  - {check.var}: {check.failure_reason}")
+
+    maps_missing = _check_google_maps_key(settings)
+    if maps_missing:
+        missing.append(f"  - GOOGLE_MAPS_API_KEY: {maps_missing}")
 
     warnings: list[str] = []
     for var, msg in OPTIONAL_BUT_EXPECTED.items():

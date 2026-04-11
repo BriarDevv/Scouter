@@ -14,6 +14,7 @@ from app.models.lead import Lead
 from app.models.lead_source import LeadSource, SourceType
 from app.models.territory import Territory
 from app.schemas.lead import LeadCreate
+from app.services.deploy_config_service import get_effective_google_maps_key
 from app.services.leads.lead_service import _compute_dedup_hash, create_lead
 from app.services.pipeline.operational_task_service import (
     build_territory_crawl_progress,
@@ -90,6 +91,30 @@ def run_territory_crawl_workflow(
 
         try:
             with SessionLocal() as db:
+                # Resolve the effective Google Maps API key up front. DB value
+                # (integration_credentials) wins over the env fallback. Fail
+                # fast and surface a clear error instead of letting the crawler
+                # silently return empty results.
+                effective_api_key = get_effective_google_maps_key(db)
+                if not effective_api_key:
+                    error = (
+                        "Google Maps API key no configurada. Cargala en "
+                        "Configuración → Crawlers o definí GOOGLE_MAPS_API_KEY "
+                        "en el .env y reiniciá el backend."
+                    )
+                    sync_progress(
+                        status="failed",
+                        error=error,
+                        finished=True,
+                        mirror_payload={"status": "error", "task_id": task_id, "error": error},
+                    )
+                    return {
+                        "status": "error",
+                        "task_id": task_id,
+                        "territory_id": territory_id,
+                        "error": error,
+                    }
+
                 territory = db.get(Territory, uuid.UUID(territory_id))
                 if not territory:
                     error = "Territorio no encontrado"
@@ -166,6 +191,7 @@ def run_territory_crawl_workflow(
                         max_results_per_category=max_results_per_category,
                         only_without_website=only_without_website,
                         target_leads=target_leads,
+                        api_key=effective_api_key,
                     )
                 except Exception as exc:
                     logger.error("crawl_city_error", city=city, error=str(exc))

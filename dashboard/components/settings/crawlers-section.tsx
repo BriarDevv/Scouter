@@ -4,10 +4,15 @@ import { useCallback, useState, useEffect } from "react";
 import { useVisibleInterval } from "@/lib/hooks/use-visible-interval";
 import {
   Key, Search, Loader2, CheckCircle2, XCircle,
-  Power, PowerOff, ChevronDown,
+  Power, PowerOff, ChevronDown, Trash2,
 } from "lucide-react";
 import { sileo } from "sileo";
-import { SettingsSectionCard, FieldRow } from "./settings-primitives";
+import {
+  SettingsSectionCard,
+  FieldRow,
+  PasswordInput,
+  SaveButton,
+} from "./settings-primitives";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 
@@ -16,8 +21,10 @@ import { apiFetch } from "@/lib/api/client";
 interface ApiKeyStatus {
   configured: boolean;
   masked: string | null;
-  managed_by: string;
+  managed_by: "db" | "env" | "none" | string;
+  source: "db" | "env" | null;
   mutable_via_api: boolean;
+  updated_at: string | null;
   instructions: string;
 }
 
@@ -53,6 +60,8 @@ const DEFAULT_CATEGORIES = [
 
 export function CrawlersSection() {
   const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus | null>(null);
+  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [savingApiKey, setSavingApiKey] = useState(false);
 
   const [territories, setTerritories] = useState<Territory[]>([]);
   const [selectedTerritoryId, setSelectedTerritoryId] = useState<string>("");
@@ -74,6 +83,52 @@ export function CrawlersSection() {
       })
       .catch(() => {});
   }, []);
+
+  const handleSaveApiKey = async () => {
+    const trimmed = apiKeyInput.trim();
+    if (!trimmed) return;
+    setSavingApiKey(true);
+    try {
+      const updated = await sileo.promise(
+        apiFetch<ApiKeyStatus>("/crawl/api-key", {
+          method: "PATCH",
+          body: JSON.stringify({ api_key: trimmed }),
+        }),
+        {
+          loading: { title: "Guardando API key…" },
+          success: { title: "Google Maps API key guardada" },
+          error: (err: unknown) => ({
+            title: "No se pudo guardar la API key",
+            description: err instanceof Error ? err.message : "Error desconocido",
+          }),
+        }
+      );
+      setApiKeyStatus(updated);
+      setApiKeyInput("");
+    } finally {
+      setSavingApiKey(false);
+    }
+  };
+
+  const handleClearApiKey = async () => {
+    setSavingApiKey(true);
+    try {
+      const updated = await sileo.promise(
+        apiFetch<ApiKeyStatus>("/crawl/api-key", { method: "DELETE" }),
+        {
+          loading: { title: "Limpiando API key…" },
+          success: { title: "API key eliminada de la DB" },
+          error: (err: unknown) => ({
+            title: "No se pudo eliminar",
+            description: err instanceof Error ? err.message : "Error desconocido",
+          }),
+        }
+      );
+      setApiKeyStatus(updated);
+    } finally {
+      setSavingApiKey(false);
+    }
+  };
 
   // Poll progress when running
   const pollCrawlStatus = useCallback(async () => {
@@ -152,24 +207,59 @@ export function CrawlersSection() {
       {/* API Key */}
       <SettingsSectionCard
         title="Google Maps API"
-        description="La API Key de Google Maps es configuración de deploy. Este panel solo muestra el estado actual."
+        description="Cargá tu API key acá (se guarda encriptada en la DB). La variable de entorno GOOGLE_MAPS_API_KEY sigue funcionando como fallback."
         icon={Key}
       >
         <div className="grid gap-0 lg:grid-cols-2 lg:gap-x-8">
           <div>
-            <FieldRow label="Origen" hint="Se administra fuera de la aplicación">
-              <div className="rounded-xl border border-border bg-muted px-3 py-2 text-sm text-foreground">
-                Variable de entorno: <span className="font-mono">GOOGLE_MAPS_API_KEY</span>
-              </div>
+            <FieldRow
+              label="API Key"
+              hint={
+                apiKeyStatus?.source === "db"
+                  ? "Origen activo: DB (se guardó desde este panel)"
+                  : apiKeyStatus?.source === "env"
+                    ? "Origen activo: variable de entorno GOOGLE_MAPS_API_KEY"
+                    : "Sin origen configurado"
+              }
+            >
+              <PasswordInput
+                value={apiKeyInput}
+                onChange={setApiKeyInput}
+                placeholder="AIzaSy..."
+                alreadySet={apiKeyStatus?.configured}
+              />
             </FieldRow>
             {apiKeyStatus?.configured && apiKeyStatus.masked && (
               <p className="mt-1 text-[10px] text-muted-foreground">
-                Actual: {apiKeyStatus.masked}
+                Actual: <span className="font-mono">{apiKeyStatus.masked}</span>
+                {apiKeyStatus.source === "db" && " (DB)"}
+                {apiKeyStatus.source === "env" && " (.env)"}
               </p>
             )}
+            <div className="mt-3 flex items-center gap-2">
+              <SaveButton
+                onClick={handleSaveApiKey}
+                saving={savingApiKey}
+                disabled={!apiKeyInput.trim()}
+              />
+              {apiKeyStatus?.source === "db" && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-xl text-muted-foreground"
+                  onClick={handleClearApiKey}
+                  disabled={savingApiKey}
+                  title="Borra la key de la DB (el fallback de .env sigue activo si existe)"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Limpiar DB
+                </Button>
+              )}
+            </div>
             <p className="mt-3 text-xs text-muted-foreground">
-              {apiKeyStatus?.instructions ??
-                "Definí GOOGLE_MAPS_API_KEY en el entorno y reiniciá la API/worker."}
+              Habilitá <span className="font-mono">Places API (New)</span> en
+              Google Cloud Console y restringí la key a esa API. Con billing
+              activado el tier gratuito de ~$200/mes cubre ~6000 búsquedas.
             </p>
           </div>
           <div className="flex items-end pb-5">

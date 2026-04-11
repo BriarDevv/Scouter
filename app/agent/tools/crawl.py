@@ -5,7 +5,7 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.agent.tool_registry import ToolDefinition, ToolParameter, registry
-from app.core.config import settings as env
+from app.services.deploy_config_service import get_effective_google_maps_key
 from app.services.pipeline.operational_task_service import (
     get_territory_crawl_status_snapshot,
     get_territory_crawl_task_run,
@@ -21,7 +21,7 @@ def start_territory_crawl(db: Session, *, territory_id: str, max_results: int = 
     except ValueError:
         return {"error": "ID de territorio inválido (debe ser UUID)"}
 
-    if not env.GOOGLE_MAPS_API_KEY:
+    if not get_effective_google_maps_key(db):
         return {"error": "Google Maps API key no configurada"}
 
     from app.models.territory import Territory

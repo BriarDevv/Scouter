@@ -25,6 +25,13 @@ def test_run_territory_crawl_workflow_persists_canonical_state(db, monkeypatch):
         "app.workflows.territory_crawl.GoogleMapsCrawler",
         lambda: FakeCrawler(),
     )
+    # Stub the effective-key resolver so the workflow doesn't short-circuit
+    # on the "no API key configured" guard. The FakeCrawler ignores the key
+    # anyway — this is just to clear the precondition.
+    monkeypatch.setattr(
+        "app.workflows.territory_crawl.get_effective_google_maps_key",
+        lambda _db: "AIzaStubForTest1234567890abcdef",
+    )
     monkeypatch.setattr(
         "app.workflows.territory_crawl.mirror_territory_crawl_state",
         lambda territory_id, payload: mirrored.append(
