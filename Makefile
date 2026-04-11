@@ -1,9 +1,9 @@
 SHELL := /usr/bin/env bash
 
-.PHONY: up down restart status logs preflight seed nuke dev-up dev-down dev-status test test-v lint typecheck migrate
+.PHONY: up down restart status logs preflight preflight-secrets seed nuke dev-up dev-down dev-status test test-v lint typecheck migrate env-backup env-restore
 
 # ─── Stack completo (infra + API + worker + dashboard) ─────────────────────
-up:
+up: preflight-secrets
 	bash scripts/scouter.sh start
 
 down:
@@ -47,8 +47,26 @@ typecheck:
 migrate:
 	.venv/bin/python -m alembic upgrade head
 
+# ─── Secrets & env file safety ────────────────────────────────────────────
+# Fails fast if SECRET_KEY / GOOGLE_MAPS_API_KEY are missing or placeholder,
+# or if DB has encrypted rows that won't decrypt with the current key.
+preflight-secrets:
+	@.venv/bin/python scripts/check_secrets.py
+
+# Timestamped snapshot of .env before any operation that might touch it.
+env-backup:
+	@bash scripts/env-backup.sh
+
+# List available backups and print restore instructions.
+env-restore:
+	@echo "Available .env backups (newest first):"
+	@ls -1t .env.backup.* 2>/dev/null || echo "  (none)"
+	@echo ""
+	@echo "To restore one, run:"
+	@echo "  cp .env.backup.YYYYMMDD-HHMMSS .env && scripts/scouter.sh restart"
+
 # ─── Solo API + Dashboard (sin Docker ni Celery) ──────────────────────────
-dev-up:
+dev-up: preflight-secrets
 	bash scripts/dev-up.sh
 
 dev-down:
