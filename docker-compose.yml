@@ -31,7 +31,10 @@ services:
     build:
       context: .
       dockerfile: infra/docker/Dockerfile
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      target: runtime
+    # Prod-ish default: no --reload, no source bind mount. For local hot-reload
+    # dev, use `docker compose -f docker-compose.yml -f docker-compose.dev.yml up`.
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     ports:
       - "127.0.0.1:8000:8000"
     env_file:
@@ -54,14 +57,12 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-    volumes:
-      - .:/app
-    working_dir: /app
 
   worker:
     build:
       context: .
       dockerfile: infra/docker/Dockerfile
+      target: runtime
     command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=3 -Q default,enrichment,scoring,research --hostname=worker-general@%h
     env_file:
       - .env
@@ -83,14 +84,12 @@ services:
       timeout: 15s
       retries: 3
       start_period: 15s
-    volumes:
-      - .:/app
-    working_dir: /app
 
   worker-llm:
     build:
       context: .
       dockerfile: infra/docker/Dockerfile
+      target: runtime
     command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=2 -Q llm,reviewer --hostname=worker-llm@%h
     env_file:
       - .env
@@ -112,14 +111,12 @@ services:
       timeout: 15s
       retries: 3
       start_period: 15s
-    volumes:
-      - .:/app
-    working_dir: /app
 
   flower:
     build:
       context: .
       dockerfile: infra/docker/Dockerfile
+      target: runtime
     command: celery -A app.workers.celery_app flower --port=5555 --basic-auth=${FLOWER_USER:-admin}:${FLOWER_PASSWORD:-changeme}
     ports:
       - "127.0.0.1:5555:5555"

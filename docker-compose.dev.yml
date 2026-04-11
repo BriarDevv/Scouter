@@ -1,0 +1,23 @@
+# Dev override: restores hot-reload + source bind mounts for local
+# iteration. Usage:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Scripts that only need postgres+redis (init.sh, import.sh, scouter.sh)
+# do not need this file — the base compose file is enough for infra.
+services:
+  api:
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/app
+    working_dir: /app
+
+  worker:
+    volumes:
+      - .:/app
+    working_dir: /app
+
+  worker-llm:
+    volumes:
+      - .:/app
+    working_dir: /app
