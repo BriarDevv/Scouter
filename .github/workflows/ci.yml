@@ -26,11 +26,11 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev]"
       - name: Lint (ruff check)
-        run: ruff check app/ tests/ --select F,W,I
+        run: ruff check app/ tests/
       - name: Format check (ruff format)
         run: ruff format --check app/ tests/
-      - name: Type check (mypy) — advisory
-        run: mypy app/ --ignore-missing-imports --no-strict --warn-return-any --warn-unused-configs || true
+      - name: Type check (mypy) — advisory until type hardening backlog closes
+        run: mypy app/ --ignore-missing-imports || true
       - name: Test (pytest)
         run: pytest -x -q --tb=short --cov=app --cov-report=term-missing --cov-fail-under=65
 

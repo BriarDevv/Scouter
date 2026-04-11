@@ -3,5 +3,5 @@ repos:
     rev: v0.9.10
     hooks:
       - id: ruff
-        args: [check, --select, "F,W,I", --fix]
+        args: [check, --fix]
       - id: ruff-format
