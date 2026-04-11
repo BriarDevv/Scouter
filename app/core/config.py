@@ -13,11 +13,12 @@ class LLMRole(StrEnum):
     AGENT = "agent"
 
 
-# Default model assignments — keep in sync with app/llm/catalog.py
+# Default model assignments — keep in sync with app/llm/catalog.py and .env.example
+_DEFAULT_LEADER = "qwen3.5:4b"
 _DEFAULT_EXECUTOR = "qwen3.5:9b"
 _DEFAULT_REVIEWER = "qwen3.5:27b"
 _DEFAULT_AGENT = "hermes3:8b"
-_DEFAULT_SUPPORTED = f"{_DEFAULT_EXECUTOR},{_DEFAULT_REVIEWER},{_DEFAULT_AGENT}"
+_DEFAULT_SUPPORTED = f"{_DEFAULT_LEADER},{_DEFAULT_EXECUTOR},{_DEFAULT_REVIEWER},{_DEFAULT_AGENT}"
 
 
 def parse_supported_models(raw_models: str) -> tuple[str, ...]:
