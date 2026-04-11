@@ -105,6 +105,20 @@ else
   WARNINGS=$((WARNINGS+1))
 fi
 
+# ── 3b. Guardia anti "cp .env.example .env" silencioso ──────────────
+# If .env ended up byte-identical to .env.example, every secret is a
+# placeholder and the backend will start but silently fail to encrypt/
+# decrypt anything. That is exactly the 2026-04-05 incident. Warn loudly.
+if [ -f .env ] && [ -f .env.example ] && diff -q .env .env.example >/dev/null 2>&1; then
+  echo "  ⚠ WARNING: .env es byte-identical a .env.example"
+  echo "    Todos los secretos son placeholders — el backend va a arrancar"
+  echo "    pero no va a poder cifrar/descifrar nada (crawlers y mail van a fallar)."
+  echo "    Restaurá desde un backup si tenés uno:"
+  echo "      make env-restore"
+  echo "    O editá .env manualmente con los valores reales."
+  WARNINGS=$((WARNINGS+1))
+fi
+
 # ── 4. Docker infra ─────────────────────────────────────────────────
 echo "→ Levantando Postgres + Redis..."
 docker compose up -d postgres redis 2>&1 | tail -2
