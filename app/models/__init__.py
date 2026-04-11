@@ -10,6 +10,7 @@ from app.models.commercial_brief import (
 )
 from app.models.conversation import Conversation, Message, ToolCall
 from app.models.inbound_mail import EmailThread, InboundMailSyncRun, InboundMessage
+from app.models.integration_credentials import IntegrationCredentials
 from app.models.investigation_thread import InvestigationThread
 from app.models.lead import Lead
 from app.models.lead_signal import LeadSignal
@@ -60,6 +61,7 @@ __all__ = [
     "Territory",
     "TelegramCredentials",
     "WhatsAppCredentials",
+    "IntegrationCredentials",
     "LeadResearchReport",
     "ResearchStatus",
     "ConfidenceLevel",
