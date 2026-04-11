@@ -15,6 +15,7 @@ If you are a human operator or developer, start with [../README.md](../README.md
 | Architecture | [architecture/adrs/ADR-002-local-llm-role-based-routing.md](architecture/adrs/ADR-002-local-llm-role-based-routing.md) | ADR-002: Local LLM-first with role-based model routing |
 | Architecture | [architecture/adrs/ADR-003-conventional-commits.md](architecture/adrs/ADR-003-conventional-commits.md) | ADR-003: Conventional commits as the single commit convention |
 | Plans | [plans/refactor-roadmap.md](plans/refactor-roadmap.md) | Active refactor roadmap |
+| Plans | [plans/hardening-backlog.md](plans/hardening-backlog.md) | Backend ruff/mypy tier-up + frontend React 19 lint backlog |
 | Agent OS | [agents/agent-os-implementation.md](agents/agent-os-implementation.md) | Agent OS implementation reference (what was built) |
 | Agent OS | [agents/hierarchy.md](agents/hierarchy.md) | Team structure, who decides what |
 | Agent OS | [agents/protocols.md](agents/protocols.md) | Communication, feedback loops, error handling |
@@ -31,6 +32,10 @@ If you are a human operator or developer, start with [../README.md](../README.md
 | Audits | [audits/scouter-full-repo-deep-audit.md](audits/scouter-full-repo-deep-audit.md) | Full repo deep audit (code, architecture, correctness, AI slop) |
 | Audits | [audits/repo-architecture-deep-audit.md](audits/repo-architecture-deep-audit.md) | Repository architecture deep audit (structure, naming, boundaries, AI navigation) |
 | Audits | [audits/repo-deep-audit.md](audits/repo-deep-audit.md) | Full repo deep audit — 5-agent parallel (backend, API, agent/LLM, frontend, tests/infra) |
+| Audits | [audits/scouter-agent-communication-learning-audit.md](audits/scouter-agent-communication-learning-audit.md) | Agent OS communication and learning loop audit |
+| Audits | [audits/scouter-full-pipeline-agent-runtime-audit.md](audits/scouter-full-pipeline-agent-runtime-audit.md) | Full pipeline agent runtime audit |
+| Audits | [audits/scouter-full-pipeline-runtime-test-report.md](audits/scouter-full-pipeline-runtime-test-report.md) | Full pipeline runtime test execution report |
+| Audits | [audits/scouter-operational-validation-audit.md](audits/scouter-operational-validation-audit.md) | Operational validation audit (runtime modes, workflows) |
 | Roadmaps | [roadmaps/scouter-ai-environment-improvement-plan.md](roadmaps/scouter-ai-environment-improvement-plan.md) | AI environment improvement plan |
 | Roadmaps | [roadmaps/scouter-full-repo-hardening-plan.md](roadmaps/scouter-full-repo-hardening-plan.md) | Full repo hardening plan (5 phases) |
 | Roadmaps | [roadmaps/repo-architecture-refactor-plan.md](roadmaps/repo-architecture-refactor-plan.md) | Architecture refactor plan (5 phases, 7.5 -> 9.5) |
