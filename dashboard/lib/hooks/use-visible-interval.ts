@@ -1,9 +1,13 @@
 "use client";
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 export function useVisibleInterval(callback: () => void, intervalMs: number) {
   const savedCallback = useRef(callback);
-  savedCallback.current = callback;
+
+  // Sync the latest callback into the ref without writing during render.
+  useEffect(() => {
+    savedCallback.current = callback;
+  }, [callback]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -18,7 +22,13 @@ export function useVisibleInterval(callback: () => void, intervalMs: number) {
     function stop() {
       if (timer) { clearInterval(timer); timer = null; }
     }
-    function onChange() { document.hidden ? stop() : start(); }
+    function onChange() {
+      if (document.hidden) {
+        stop();
+      } else {
+        start();
+      }
+    }
 
     document.addEventListener("visibilitychange", onChange);
     if (!document.hidden) start();

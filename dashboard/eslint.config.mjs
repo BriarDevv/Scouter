@@ -13,6 +13,15 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  // Playwright e2e specs are CommonJS (sibling of playwright.config.cjs).
+  // Allow require() style imports there — converting to ESM would require
+  // dashboard-wide "type": "module" which affects too much else.
+  {
+    files: ["e2e/**/*.js", "e2e/**/*.cjs"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

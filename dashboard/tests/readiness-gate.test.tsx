@@ -31,7 +31,7 @@ describe("ReadinessGate", () => {
       dashboard_unlocked: true,
       has_smtp: true,
       has_leads: true,
-    } as any);
+    } as unknown as Awaited<ReturnType<typeof getSetupReadiness>>);
 
     render(
       <ReadinessGate>
@@ -49,7 +49,7 @@ describe("ReadinessGate", () => {
       dashboard_unlocked: false,
       has_smtp: false,
       has_leads: false,
-    } as any);
+    } as unknown as Awaited<ReturnType<typeof getSetupReadiness>>);
 
     render(
       <ReadinessGate>
@@ -84,7 +84,7 @@ describe("ReadinessGate", () => {
       dashboard_unlocked: false,
       has_smtp: false,
       has_leads: false,
-    } as any);
+    } as unknown as Awaited<ReturnType<typeof getSetupReadiness>>);
 
     render(
       <ReadinessGate>
