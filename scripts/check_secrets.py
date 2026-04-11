@@ -60,13 +60,6 @@ OPTIONAL_BUT_EXPECTED: dict[str, str] = {
 }
 
 
-def _load_settings():
-    """Import settings inside the function so the script can report import errors cleanly."""
-    from app.core.config import settings
-
-    return settings
-
-
 def _check_encrypted_rows_vs_placeholder(settings) -> str | None:
     """Return an error message if DB has encrypted rows but SECRET_KEY is placeholder.
 
@@ -111,7 +104,7 @@ def _check_encrypted_rows_vs_placeholder(settings) -> str | None:
 
 def main() -> int:
     try:
-        settings = _load_settings()
+        from app.core.config import settings
     except Exception as exc:
         print(f"ERROR: failed to import app.core.config — {exc}", file=sys.stderr)
         return 1
