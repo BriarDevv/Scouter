@@ -2,7 +2,7 @@
 
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
@@ -195,7 +195,7 @@ def run_research(db: Session, lead_id: uuid.UUID) -> LeadResearchReport | None:
         report.html_metadata_json = html_meta if html_meta else None
         report.research_duration_ms = int((time.monotonic() - start) * 1000)
         report.status = ResearchStatus.COMPLETED
-        report.updated_at = datetime.now(timezone.utc)
+        report.updated_at = datetime.now(UTC)
         db.flush()
         db.refresh(report)
 

@@ -6,7 +6,7 @@ Supports deduplication, rate limiting, and multi-channel delivery (in-app + What
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import func, select, update
@@ -62,7 +62,7 @@ def create_notification(
 
     # Rate-limit guard: same type + source within window
     if source_kind and source_id:
-        cutoff = datetime.now(timezone.utc) - _RATE_LIMIT_WINDOW
+        cutoff = datetime.now(UTC) - _RATE_LIMIT_WINDOW
         recent = db.execute(
             select(func.count())
             .select_from(Notification)
@@ -199,7 +199,7 @@ def update_notification_status(
     if not notif:
         return None
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     notif.status = NotificationStatus(new_status)
     if new_status == "read":
         notif.read_at = notif.read_at or now
@@ -223,7 +223,7 @@ def bulk_update_notifications(
     category: str | None = None,
 ) -> int:
     """Bulk mark notifications. Returns count affected."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     stmt = update(Notification)
 
     if ids:

@@ -1,6 +1,6 @@
 """Operational settings service — singleton CRUD + effective value resolution."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
@@ -91,7 +91,7 @@ def update_operational_settings(db: Session, updates: dict) -> OperationalSettin
     for key, value in updates.items():
         if key in _ALLOWED_SETTINGS_FIELDS:
             setattr(row, key, value)
-    row.updated_at = datetime.now(timezone.utc)
+    row.updated_at = datetime.now(UTC)
     db.flush()
     db.refresh(row)
     logger.info("operational_settings_updated", fields=list(updates.keys()))

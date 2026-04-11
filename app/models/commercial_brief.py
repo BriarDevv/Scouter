@@ -20,14 +20,14 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 
-class BudgetTier(str, enum.Enum):
+class BudgetTier(enum.StrEnum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
     PREMIUM = "premium"
 
 
-class EstimatedScope(str, enum.Enum):
+class EstimatedScope(enum.StrEnum):
     LANDING = "landing"
     INSTITUTIONAL_WEB = "institutional_web"
     CATALOG = "catalog"
@@ -37,7 +37,7 @@ class EstimatedScope(str, enum.Enum):
     BRANDING_WEB = "branding_web"
 
 
-class ContactMethod(str, enum.Enum):
+class ContactMethod(enum.StrEnum):
     WHATSAPP = "whatsapp"
     EMAIL = "email"
     CALL = "call"
@@ -45,20 +45,20 @@ class ContactMethod(str, enum.Enum):
     MANUAL_REVIEW = "manual_review"
 
 
-class CallDecision(str, enum.Enum):
+class CallDecision(enum.StrEnum):
     YES = "yes"
     NO = "no"
     MAYBE = "maybe"
 
 
-class ContactPriority(str, enum.Enum):
+class ContactPriority(enum.StrEnum):
     IMMEDIATE = "immediate"
     HIGH = "high"
     NORMAL = "normal"
     LOW = "low"
 
 
-class BriefStatus(str, enum.Enum):
+class BriefStatus(enum.StrEnum):
     PENDING = "pending"
     GENERATED = "generated"
     REVIEWED = "reviewed"

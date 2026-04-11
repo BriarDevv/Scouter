@@ -10,20 +10,20 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 
 
-class NotificationCategory(str, enum.Enum):
+class NotificationCategory(enum.StrEnum):
     BUSINESS = "business"
     SYSTEM = "system"
     SECURITY = "security"
 
 
-class NotificationSeverity(str, enum.Enum):
+class NotificationSeverity(enum.StrEnum):
     INFO = "info"
     WARNING = "warning"
     HIGH = "high"
     CRITICAL = "critical"
 
 
-class NotificationStatus(str, enum.Enum):
+class NotificationStatus(enum.StrEnum):
     UNREAD = "unread"
     READ = "read"
     ACKNOWLEDGED = "acknowledged"

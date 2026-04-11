@@ -6,7 +6,7 @@ Secrets (bot_token) are write-only and never exposed in API responses.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 from sqlalchemy.orm import Session
@@ -79,10 +79,7 @@ def _call_telegram(token: str, method: str, payload: dict | None = None) -> dict
     """Call a Telegram Bot API method."""
     url = f"{_API_BASE.format(token=token)}/{method}"
     with httpx.Client(timeout=_SEND_TIMEOUT) as client:
-        if payload:
-            resp = client.post(url, json=payload)
-        else:
-            resp = client.get(url)
+        resp = client.post(url, json=payload) if payload else client.get(url)
         resp.raise_for_status()
         return resp.json()
 
@@ -158,7 +155,7 @@ def test_telegram(db: Session) -> dict:
     token = decrypt_safe(creds.bot_token)
     if not token:
         result = {"ok": False, "error": "No hay bot token configurado.", "bot_username": None}
-        creds.last_test_at = datetime.now(timezone.utc)
+        creds.last_test_at = datetime.now(UTC)
         creds.last_test_ok = False
         creds.last_test_error = result["error"]
         db.flush()
@@ -188,14 +185,14 @@ def test_telegram(db: Session) -> dict:
                     "error": "Bot verificado pero no se pudo enviar mensaje. Verificá el chat_id.",
                     "bot_username": bot_username,
                 }
-                creds.last_test_at = datetime.now(timezone.utc)
+                creds.last_test_at = datetime.now(UTC)
                 creds.last_test_ok = False
                 creds.last_test_error = result["error"]
                 db.flush()
                 return result
 
         result = {"ok": True, "error": None, "bot_username": bot_username}
-        creds.last_test_at = datetime.now(timezone.utc)
+        creds.last_test_at = datetime.now(UTC)
         creds.last_test_ok = True
         creds.last_test_error = None
         db.flush()
@@ -206,7 +203,7 @@ def test_telegram(db: Session) -> dict:
         if "401" in error_msg:
             error_msg = "Token inválido o bot desactivado."
         result = {"ok": False, "error": error_msg, "bot_username": None}
-        creds.last_test_at = datetime.now(timezone.utc)
+        creds.last_test_at = datetime.now(UTC)
         creds.last_test_ok = False
         creds.last_test_error = error_msg
         db.flush()

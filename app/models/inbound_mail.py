@@ -21,14 +21,14 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 
-class InboundMailClassificationStatus(str, enum.Enum):
+class InboundMailClassificationStatus(enum.StrEnum):
     PENDING = "pending"
     CLASSIFYING = "classifying"
     CLASSIFIED = "classified"
     FAILED = "failed"
 
 
-class InboundMailSyncStatus(str, enum.Enum):
+class InboundMailSyncStatus(enum.StrEnum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"

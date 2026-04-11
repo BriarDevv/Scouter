@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import html
 import imaplib
 import re
@@ -43,10 +44,8 @@ class IMAPInboundMailProvider:
                         messages.append(payload)
                 return messages
             finally:
-                try:
+                with contextlib.suppress(imaplib.IMAP4.error):
                     connection.logout()
-                except imaplib.IMAP4.error:
-                    pass
         except (OSError, imaplib.IMAP4.error) as exc:
             raise InboundMailProviderError(str(exc)) from exc
 

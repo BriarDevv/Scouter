@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
@@ -19,7 +19,7 @@ def score_lead(db: Session, lead_id: uuid.UUID) -> Lead | None:
     score = compute_score(lead)
     lead.score = score
     lead.status = LeadStatus.SCORED
-    lead.scored_at = datetime.now(timezone.utc)
+    lead.scored_at = datetime.now(UTC)
     db.flush()
     db.refresh(lead)
 

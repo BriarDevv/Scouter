@@ -10,7 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 
 
-class MessageDirection(str, enum.Enum):
+class MessageDirection(enum.StrEnum):
     INBOUND = "in"
     OUTBOUND = "out"
 

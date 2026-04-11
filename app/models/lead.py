@@ -8,7 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 
-class LeadStatus(str, enum.Enum):
+class LeadStatus(enum.StrEnum):
     NEW = "new"
     ENRICHED = "enriched"
     SCORED = "scored"
@@ -24,7 +24,7 @@ class LeadStatus(str, enum.Enum):
     SUPPRESSED = "suppressed"
 
 
-class LeadQuality(str, enum.Enum):
+class LeadQuality(enum.StrEnum):
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"

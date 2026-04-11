@@ -8,7 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 
-class ReplyAssistantSendStatus(str, enum.Enum):
+class ReplyAssistantSendStatus(enum.StrEnum):
     SENDING = "sending"
     SENT = "sent"
     FAILED = "failed"

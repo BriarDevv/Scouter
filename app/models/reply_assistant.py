@@ -20,11 +20,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 
-class ReplyAssistantDraftStatus(str, enum.Enum):
+class ReplyAssistantDraftStatus(enum.StrEnum):
     GENERATED = "generated"
 
 
-class ReplyAssistantReviewStatus(str, enum.Enum):
+class ReplyAssistantReviewStatus(enum.StrEnum):
     PENDING = "pending"
     REVIEWED = "reviewed"
     FAILED = "failed"

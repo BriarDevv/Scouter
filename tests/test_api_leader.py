@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from app.models.inbound_mail import EmailThread, InboundMailClassificationStatus, InboundMessage
 from app.models.lead import Lead, LeadStatus
@@ -10,7 +10,7 @@ from app.models.task_tracking import PipelineRun, TaskRun
 
 
 def seed_leader_data(db):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     crawler = LeadSource(name="Crawler BA", source_type=SourceType.CRAWLER)
     manual = LeadSource(name="Manual Ops", source_type=SourceType.MANUAL)

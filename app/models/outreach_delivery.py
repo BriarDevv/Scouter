@@ -8,7 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 
-class OutreachDeliveryStatus(str, enum.Enum):
+class OutreachDeliveryStatus(enum.StrEnum):
     SENDING = "sending"
     SENT = "sent"
     FAILED = "failed"

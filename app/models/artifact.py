@@ -8,7 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 
-class ArtifactType(str, enum.Enum):
+class ArtifactType(enum.StrEnum):
     SCREENSHOT = "screenshot"
     DOSSIER_PDF = "dossier_pdf"
     EXPORT = "export"

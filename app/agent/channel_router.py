@@ -121,10 +121,7 @@ def handle_channel_message(
         asyncio.run(_collect_events())
 
     # Build response
-    if confirmations:
-        response = "\n\n".join(confirmations)
-    else:
-        response = "".join(text_parts).strip()
+    response = "\n\n".join(confirmations) if confirmations else "".join(text_parts).strip()
 
     if not response:
         response = "No pude procesar tu mensaje. Intentá de nuevo."

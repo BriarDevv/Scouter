@@ -50,10 +50,7 @@ def update_setting(db: Session, *, key: str, value: str) -> dict:
         return {"error": "No hay configuración operacional guardada"}
 
     # Convert string values to appropriate types
-    if value.lower() in ("true", "false"):
-        typed_value = value.lower() == "true"
-    else:
-        typed_value = value
+    typed_value = value.lower() == "true" if value.lower() in ("true", "false") else value
 
     if hasattr(settings_obj, key):
         setattr(settings_obj, key, typed_value)

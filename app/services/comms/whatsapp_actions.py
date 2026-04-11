@@ -7,7 +7,7 @@ response string, and is wrapped in try/except (never crashes).
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from redis import Redis
 from sqlalchemy import select
@@ -124,7 +124,7 @@ def _execute_draft_status_change(
         return "El borrador no esta pendiente de revision (estado actual: " + status_val + ")."
 
     draft.status = target_status
-    draft.reviewed_at = datetime.now(timezone.utc)
+    draft.reviewed_at = datetime.now(UTC)
     db.flush()
     db.refresh(draft)
 

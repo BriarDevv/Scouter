@@ -1,7 +1,7 @@
 import os
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 import httpx
@@ -292,7 +292,7 @@ def enrich_lead(db: Session, lead_id: uuid.UUID) -> Lead | None:
         logger.info("email_extracted", lead_id=str(lead_id), email=found_emails[0])
 
     lead.status = LeadStatus.ENRICHED
-    lead.enriched_at = datetime.now(timezone.utc)
+    lead.enriched_at = datetime.now(UTC)
     db.flush()
     db.refresh(lead)
 

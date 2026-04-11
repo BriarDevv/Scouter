@@ -58,7 +58,7 @@ def test_get_scoring_recommendations_empty(client):
     resp = client.get("/api/v1/performance/recommendations")
     assert resp.status_code == 200
     data = resp.json()
-    assert isinstance(data, dict) or isinstance(data, list)
+    assert isinstance(data, (dict, list))
 
 
 def test_get_analysis_summary_empty(client):

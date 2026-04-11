@@ -17,7 +17,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 
 
-class ConversationStatus(str, enum.Enum):
+class ConversationStatus(enum.StrEnum):
     DRAFT_READY = "draft_ready"
     SENT = "sent"
     DELIVERED = "delivered"

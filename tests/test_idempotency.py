@@ -1,7 +1,7 @@
 """Tests for idempotency guards in pipeline tasks."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 from app.models.lead import Lead, LeadStatus
@@ -29,7 +29,7 @@ def test_enrich_skips_already_enriched(db):
         business_name="Test Biz",
         city="Buenos Aires",
         status=LeadStatus.ENRICHED,
-        enriched_at=datetime.now(timezone.utc),
+        enriched_at=datetime.now(UTC),
     )
     db.add(lead)
     db.commit()
@@ -50,7 +50,7 @@ def test_enrich_skip_chains_to_scoring(db):
         business_name="Chain Test Biz",
         city="Buenos Aires",
         status=LeadStatus.ENRICHED,
-        enriched_at=datetime.now(timezone.utc),
+        enriched_at=datetime.now(UTC),
     )
     db.add(lead)
     db.commit()
@@ -83,7 +83,7 @@ def test_score_skips_already_scored(db):
         city="Buenos Aires",
         status=LeadStatus.SCORED,
         score=75.0,
-        scored_at=datetime.now(timezone.utc),
+        scored_at=datetime.now(UTC),
     )
     db.add(lead)
     db.commit()
@@ -105,7 +105,7 @@ def test_score_skip_chains_to_analysis(db):
         city="Buenos Aires",
         status=LeadStatus.SCORED,
         score=75.0,
-        scored_at=datetime.now(timezone.utc),
+        scored_at=datetime.now(UTC),
     )
     db.add(lead)
     db.commit()

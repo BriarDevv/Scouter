@@ -252,7 +252,7 @@ def send_reply_assistant_draft(db: Session, message_id: uuid.UUID) -> ReplyAssis
 
 
 def _attach_send_metadata(draft: ReplyAssistantDraft) -> None:
-    setattr(draft, "_send_blocked_reason", _compute_send_blocked_reason(draft))
+    draft._send_blocked_reason = _compute_send_blocked_reason(draft)
 
 
 def attach_reply_send_metadata(draft: ReplyAssistantDraft | None) -> ReplyAssistantDraft | None:
@@ -285,9 +285,13 @@ def _compute_send_blocked_reason(draft: ReplyAssistantDraft) -> str | None:
     review = draft.review
     if review and review.status == ReplyAssistantReviewStatus.PENDING:
         return "Reply draft review is still pending."
-    if review and review.should_edit and review.reviewed_at:
-        if draft.edited_at is None or draft.edited_at <= review.reviewed_at:
-            return "Reply draft review recommends editing before sending."
+    if (
+        review
+        and review.should_edit
+        and review.reviewed_at
+        and (draft.edited_at is None or draft.edited_at <= review.reviewed_at)
+    ):
+        return "Reply draft review recommends editing before sending."
 
     recipient_email = ((inbound_message.from_email if inbound_message else None) or "").strip()
     if not recipient_email:

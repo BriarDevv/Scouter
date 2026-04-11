@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from app.models.lead import Lead, LeadStatus
 from app.models.lead_source import LeadSource, SourceType
@@ -6,7 +6,7 @@ from app.models.outreach import DraftStatus, LogAction, OutreachDraft, OutreachL
 
 
 def seed_dashboard_data(db):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     crawler = LeadSource(name="Crawler BA", source_type=SourceType.CRAWLER)
     manual = LeadSource(name="Manual", source_type=SourceType.MANUAL)

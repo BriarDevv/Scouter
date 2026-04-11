@@ -208,7 +208,7 @@ def _reply_priority_score(message: InboundMessage) -> int:
     elif message.classification_status == InboundMailClassificationStatus.FAILED.value:
         base += 5
 
-    match_boost = int((((message.thread.match_confidence if message.thread else None) or 0) * 10))
+    match_boost = int(((message.thread.match_confidence if message.thread else None) or 0) * 10)
     return base + match_boost
 
 

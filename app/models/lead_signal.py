@@ -8,7 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 
-class SignalType(str, enum.Enum):
+class SignalType(enum.StrEnum):
     NO_WEBSITE = "no_website"
     INSTAGRAM_ONLY = "instagram_only"
     OUTDATED_WEBSITE = "outdated_website"

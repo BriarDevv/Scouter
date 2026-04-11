@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -170,9 +170,9 @@ def update_draft(
         draft.status = status
 
         if status in {DraftStatus.APPROVED, DraftStatus.REJECTED}:
-            draft.reviewed_at = datetime.now(timezone.utc)
+            draft.reviewed_at = datetime.now(UTC)
         if status == DraftStatus.SENT:
-            draft.sent_at = datetime.now(timezone.utc)
+            draft.sent_at = datetime.now(UTC)
 
         action = {
             DraftStatus.APPROVED: LogAction.APPROVED,
@@ -273,7 +273,7 @@ def generate_whatsapp_draft(
 
 def send_whatsapp_draft(db: Session, draft_id: uuid.UUID) -> "OutreachDelivery":
     """Send an approved WhatsApp draft via Kapso."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from app.models.outreach_delivery import OutreachDelivery
     from app.services.comms.kapso_service import send_whatsapp_message
@@ -303,7 +303,7 @@ def send_whatsapp_draft(db: Session, draft_id: uuid.UUID) -> "OutreachDelivery":
     db.add(delivery)
 
     draft.status = DraftStatus.SENT
-    draft.sent_at = datetime.now(timezone.utc)
+    draft.sent_at = datetime.now(UTC)
 
     db.add(
         OutreachLog(

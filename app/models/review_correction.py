@@ -17,7 +17,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 
 
-class CorrectionCategory(str, enum.Enum):
+class CorrectionCategory(enum.StrEnum):
     TONE = "tone"
     CTA = "cta"
     PERSONALIZATION = "personalization"
@@ -28,7 +28,7 @@ class CorrectionCategory(str, enum.Enum):
     LANGUAGE = "language"
 
 
-class CorrectionSeverity(str, enum.Enum):
+class CorrectionSeverity(enum.StrEnum):
     CRITICAL = "critical"
     IMPORTANT = "important"
     SUGGESTION = "suggestion"

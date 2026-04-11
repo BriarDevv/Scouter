@@ -8,14 +8,14 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 
-class ResearchStatus(str, enum.Enum):
+class ResearchStatus(enum.StrEnum):
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
 
 
-class ConfidenceLevel(str, enum.Enum):
+class ConfidenceLevel(enum.StrEnum):
     CONFIRMED = "confirmed"
     PROBABLE = "probable"
     UNKNOWN = "unknown"

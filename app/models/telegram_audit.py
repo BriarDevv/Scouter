@@ -10,7 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 
 
-class TelegramDirection(str, enum.Enum):
+class TelegramDirection(enum.StrEnum):
     INBOUND = "in"
     OUTBOUND = "out"
 

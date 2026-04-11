@@ -5,7 +5,7 @@ from __future__ import annotations
 import imaplib
 import smtplib
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
@@ -62,7 +62,7 @@ def update_credentials(db: Session, updates: dict) -> MailCredentials:
             if key in _PASSWORD_FIELDS:
                 value = encrypt_if_needed(value)
             setattr(row, key, value)
-    row.updated_at = datetime.now(timezone.utc)
+    row.updated_at = datetime.now(UTC)
     db.flush()
     db.refresh(row)
     logger.info("mail_credentials_updated", fields=[k for k in updates if "password" not in k])
@@ -175,7 +175,7 @@ def test_smtp(db: Session) -> dict:
             error = _friendly_conn_error(exc)
 
     row = get_or_create(db)
-    row.smtp_last_test_at = datetime.now(timezone.utc)
+    row.smtp_last_test_at = datetime.now(UTC)
     row.smtp_last_test_ok = ok
     row.smtp_last_test_error = error
     db.flush()
@@ -215,7 +215,7 @@ def test_imap(db: Session) -> dict:
             error = _friendly_conn_error(exc)
 
     row = get_or_create(db)
-    row.imap_last_test_at = datetime.now(timezone.utc)
+    row.imap_last_test_at = datetime.now(UTC)
     row.imap_last_test_ok = ok
     row.imap_last_test_error = error
     db.flush()

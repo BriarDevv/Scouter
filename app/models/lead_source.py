@@ -8,7 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 
-class SourceType(str, enum.Enum):
+class SourceType(enum.StrEnum):
     MANUAL = "manual"
     CRAWLER = "crawler"
     IMPORT = "import"

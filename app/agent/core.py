@@ -11,7 +11,7 @@ import functools
 import time
 import uuid
 from collections.abc import AsyncGenerator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -252,7 +252,7 @@ def _save_tool_call(
         error=error,
         status=status,
         duration_ms=duration_ms,
-        completed_at=datetime.now(timezone.utc) if status in ("completed", "failed") else None,
+        completed_at=datetime.now(UTC) if status in ("completed", "failed") else None,
     )
     db.add(tc)
     db.flush()
@@ -332,7 +332,7 @@ async def run_agent_turn(
         *history,
     ]
 
-    for loop_idx in range(MAX_TOOL_LOOPS):
+    for _loop_idx in range(MAX_TOOL_LOOPS):
         # Stream response from Hermes 3
         full_response = ""
         try:

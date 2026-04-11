@@ -7,7 +7,7 @@ Provider interface designed for Twilio/Meta Business API in Etapa 2+.
 from __future__ import annotations
 
 import abc
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import quote_plus
 
 import httpx
@@ -193,14 +193,14 @@ def test_whatsapp(db: Session) -> dict:
             "error": "No hay numero de WhatsApp configurado.",
             "provider": creds.provider,
         }
-        creds.last_test_at = datetime.now(timezone.utc)
+        creds.last_test_at = datetime.now(UTC)
         creds.last_test_ok = False
         creds.last_test_error = result["error"]
         db.flush()
         return result
     if not creds.api_key:
         result = {"ok": False, "error": "No hay API key configurada.", "provider": creds.provider}
-        creds.last_test_at = datetime.now(timezone.utc)
+        creds.last_test_at = datetime.now(UTC)
         creds.last_test_ok = False
         creds.last_test_error = result["error"]
         db.flush()
@@ -209,7 +209,7 @@ def test_whatsapp(db: Session) -> dict:
     api_key = decrypt_safe(creds.api_key)
     if not api_key:
         result = {"ok": False, "error": "No se pudo descifrar la API key."}
-        creds.last_test_at = datetime.now(timezone.utc)
+        creds.last_test_at = datetime.now(UTC)
         creds.last_test_ok = False
         creds.last_test_error = result["error"]
         db.flush()
@@ -218,7 +218,7 @@ def test_whatsapp(db: Session) -> dict:
     result = provider.test_connection(creds.phone_number, api_key)
     result["provider"] = creds.provider
 
-    creds.last_test_at = datetime.now(timezone.utc)
+    creds.last_test_at = datetime.now(UTC)
     creds.last_test_ok = result["ok"]
     creds.last_test_error = result.get("error")
     db.flush()

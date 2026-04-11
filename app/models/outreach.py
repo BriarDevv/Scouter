@@ -8,7 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 
-class DraftStatus(str, enum.Enum):
+class DraftStatus(enum.StrEnum):
     PENDING_REVIEW = "pending_review"
     APPROVED = "approved"
     REJECTED = "rejected"
@@ -54,7 +54,7 @@ class OutreachDraft(Base):
     )
 
 
-class LogAction(str, enum.Enum):
+class LogAction(enum.StrEnum):
     GENERATED = "generated"
     REVIEWED = "reviewed"
     APPROVED = "approved"

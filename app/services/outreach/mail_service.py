@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -203,7 +203,7 @@ def send_draft(db: Session, draft_id: uuid.UUID) -> OutreachDelivery | None:
         )
         if last_failed and last_failed.created_at:
             cooldown = timedelta(minutes=5)
-            elapsed = datetime.now(timezone.utc) - last_failed.created_at
+            elapsed = datetime.now(UTC) - last_failed.created_at
             if elapsed < cooldown:
                 remaining = cooldown - elapsed
                 raise DraftSendRateLimitError(

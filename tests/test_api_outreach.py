@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from app.models.lead import Lead, LeadStatus
 from app.models.outreach import DraftStatus, OutreachDraft
@@ -33,7 +33,7 @@ def test_patch_draft_updates_status_and_lead(db, client):
         subject="Initial subject",
         body="Initial body",
         status=DraftStatus.PENDING_REVIEW,
-        generated_at=datetime.now(timezone.utc) - timedelta(days=1),
+        generated_at=datetime.now(UTC) - timedelta(days=1),
     )
     db.add(draft)
     db.commit()
