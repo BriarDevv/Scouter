@@ -69,6 +69,8 @@ def decrypt_safe(value: str | None) -> str | None:
 
     Tries the new PBKDF2HMAC key first. If that fails, falls back to the
     legacy SHA-256 key and auto-migrates the value to the new key on success.
+    If both derivations fail, logs an ERROR with context and returns None —
+    callers must treat None as "credential unavailable" and surface it.
     """
     if not value:
         return value
@@ -87,5 +89,18 @@ def decrypt_safe(value: str | None) -> str | None:
             logger.info("auto_migrating_encrypted_value_to_pbkdf2")
             return plaintext
         except InvalidToken:
-            logger.warning("decrypt_failed_both_keys", value_prefix=value[:10])
+            # Both derivations failed. The most common cause is a SECRET_KEY
+            # rotation or a .env reset that wiped the original key (see the
+            # 2026-04-05 incident). Surface the failure at ERROR level with
+            # enough context to distinguish this from random data corruption.
+            logger.error(
+                "decrypt_failed_both_keys",
+                ciphertext_len=len(value),
+                both_key_methods_failed=True,
+                likely_cause="SECRET_KEY rotation or .env reset",
+                remediation=(
+                    "Restore the original SECRET_KEY from a backup (make env-restore), "
+                    "or wipe the affected encrypted field and re-enter it via the UI."
+                ),
+            )
             return None
