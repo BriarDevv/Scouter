@@ -35,7 +35,7 @@ jobs:
         run: pytest -x -q --tb=short --cov=app --cov-report=term-missing --cov-fail-under=65
 
   frontend:
-    name: Frontend (typecheck + test)
+    name: Frontend (lint + typecheck + test)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -49,6 +49,8 @@ jobs:
           cache-dependency-path: dashboard/package-lock.json
       - name: Install dependencies
         run: npm ci
+      - name: Lint (eslint)
+        run: npm run lint
       - name: Type check
         run: npx tsc --noEmit
       - name: Test (vitest)
