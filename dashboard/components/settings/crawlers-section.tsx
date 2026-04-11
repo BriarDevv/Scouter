@@ -258,8 +258,14 @@ export function CrawlersSection() {
             </div>
             <p className="mt-3 text-xs text-muted-foreground">
               Habilitá <span className="font-mono">Places API (New)</span> en
-              Google Cloud Console y restringí la key a esa API. Con billing
-              activado el tier gratuito de ~$200/mes cubre ~6000 búsquedas.
+              Google Cloud Console y restringí la key a esa API. Google cambió
+              el modelo en marzo 2025: el free tier ahora es{" "}
+              <strong>10.000 requests/mes</strong> por SKU (ya no es $200/mes
+              de crédito universal). El crawler pide rating, teléfono y
+              horarios, así que probablemente te factura como{" "}
+              <span className="font-mono">Text Search Pro</span> (~$32/1000
+              requests después del cap gratuito). Verificá el SKU real en
+              Cloud Billing.
             </p>
           </div>
           <div className="flex items-end pb-5">
