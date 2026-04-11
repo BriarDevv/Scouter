@@ -37,10 +37,30 @@ interface LeadsTableProps {
   leads: Lead[];
 }
 
+type SortField = "score" | "created_at" | "business_name";
+type SortDir = "asc" | "desc";
+
 const STATUS_FILTERS: (LeadStatus | "all")[] = [
   "all", "new", "enriched", "scored", "qualified", "draft_ready",
   "approved", "contacted", "replied", "meeting", "won", "lost",
 ];
+
+function SortIcon({
+  field,
+  sortBy,
+  sortDir,
+}: {
+  field: SortField;
+  sortBy: SortField;
+  sortDir: SortDir;
+}) {
+  if (sortBy !== field) return <ChevronDown className="h-3 w-3 opacity-30" />;
+  return sortDir === "desc" ? (
+    <ChevronDown className="h-3 w-3" />
+  ) : (
+    <ChevronUp className="h-3 w-3" />
+  );
+}
 
 export function LeadsTable({ leads }: LeadsTableProps) {
   const [search, setSearch] = useState("");
@@ -58,8 +78,8 @@ export function LeadsTable({ leads }: LeadsTableProps) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [filterOpen]);
-  const [sortBy, setSortBy] = useState<"score" | "created_at" | "business_name">("score");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [sortBy, setSortBy] = useState<SortField>("score");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const filtered = useMemo(() => {
     let result = leads;
@@ -90,15 +110,10 @@ export function LeadsTable({ leads }: LeadsTableProps) {
     return result;
   }, [leads, search, statusFilter, sortBy, sortDir]);
 
-  function toggleSort(field: typeof sortBy) {
+  function toggleSort(field: SortField) {
     if (sortBy === field) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else { setSortBy(field); setSortDir("desc"); }
   }
-
-  const SortIcon = ({ field }: { field: typeof sortBy }) => {
-    if (sortBy !== field) return <ChevronDown className="h-3 w-3 opacity-30" />;
-    return sortDir === "desc" ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />;
-  };
 
   return (
     <div className="space-y-3">
@@ -150,14 +165,14 @@ export function LeadsTable({ leads }: LeadsTableProps) {
             <tr className="border-b border-border">
               <th className="text-left px-4 py-2.5 w-[18%]">
                 <button onClick={() => toggleSort("business_name")} className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
-                  Negocio <SortIcon field="business_name" />
+                  Negocio <SortIcon field="business_name" sortBy={sortBy} sortDir={sortDir} />
                 </button>
               </th>
               <th className="text-left px-3 py-2.5 w-[12%] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Rubro</th>
               <th className="text-left px-3 py-2.5 w-[18%] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Contacto</th>
               <th className="text-left px-3 py-2.5 w-[6%]">
                 <button onClick={() => toggleSort("score")} className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
-                  Score <SortIcon field="score" />
+                  Score <SortIcon field="score" sortBy={sortBy} sortDir={sortDir} />
                 </button>
               </th>
               <th className="text-left px-3 py-2.5 w-[14%] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Web</th>
@@ -165,7 +180,7 @@ export function LeadsTable({ leads }: LeadsTableProps) {
               <th className="text-left px-3 py-2.5 w-[8%] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Ciudad</th>
               <th className="text-left px-3 py-2.5 w-[10%]">
                 <button onClick={() => toggleSort("created_at")} className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
-                  Fecha <SortIcon field="created_at" />
+                  Fecha <SortIcon field="created_at" sortBy={sortBy} sortDir={sortDir} />
                 </button>
               </th>
               <th className="w-[4%] px-2" />

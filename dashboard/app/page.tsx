@@ -40,8 +40,12 @@ export default function ChatPage() {
       .finally(() => setLoadingList(false));
   }, []);
 
+  // Sync fetched conversation detail into UI state. The null-case cleanup
+  // is a legitimate setState — we want the title to clear when the user
+  // navigates to "no conversation" state.
   useEffect(() => {
     if (!activeConversationId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentTitle(null);
       return;
     }

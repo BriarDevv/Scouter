@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useMap } from "react-leaflet";
-import type { Map as LeafletMap } from "leaflet";
+import type { Layer, Map as LeafletMap } from "leaflet";
 
 interface HeatmapPoint {
   lat: number;
@@ -30,7 +30,8 @@ export function HeatmapLayer({
   useEffect(() => {
     if (!visible || points.length === 0) return;
 
-    let heatLayer: any = null;
+    // leaflet.heat augments L with `heatLayer`; the return is a dynamic L.Layer.
+    let heatLayer: Layer | null = null;
 
     async function addHeat() {
       try {

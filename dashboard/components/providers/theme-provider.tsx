@@ -29,16 +29,22 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("system");
   const [resolved, setResolved] = useState<"light" | "dark">("light");
 
+  // Hydrate theme from localStorage on mount — canonical sync of external
+  // state (storage) into React state. The setState IS the purpose of the effect.
   useEffect(() => {
     const stored = localStorage.getItem("scouter-theme") as Theme | null;
     if (stored) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setThemeState(stored);
     }
   }, []);
 
+  // Derived theme resolution + DOM class + localStorage persistence. setResolved
+  // is a valid sync of computed state (system theme or explicit).
   useEffect(() => {
     const root = document.documentElement;
     const res = theme === "system" ? getSystemTheme() : theme;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setResolved(res);
 
     root.classList.toggle("dark", res === "dark");

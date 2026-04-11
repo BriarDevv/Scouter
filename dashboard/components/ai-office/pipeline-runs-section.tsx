@@ -46,7 +46,11 @@ export function PipelineRunsSection() {
     setLoading(false);
   };
 
-  useEffect(() => { loadRuns(); }, []);
+  // Canonical data-fetch-on-mount — setRuns/setLoading is the effect's purpose.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadRuns();
+  }, []);
 
   const handleResume = async (runId: string) => {
     setResuming(runId);

@@ -52,7 +52,11 @@ export function BatchReviewsSection() {
     setLoading(false);
   };
 
-  useEffect(() => { loadReviews(); }, []);
+  // Canonical data-fetch-on-mount — setReviews/setLoading is the effect's purpose.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadReviews();
+  }, []);
 
   const toggleExpand = async (id: string) => {
     if (expandedId === id) {

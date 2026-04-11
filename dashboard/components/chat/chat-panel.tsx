@@ -41,9 +41,11 @@ export function ChatPanel() {
       .finally(() => setLoadingList(false));
   }, [isOpen]);
 
-  // Load messages when active conversation changes
+  // Load messages when active conversation changes. The null-case cleanup
+  // is a legitimate setState — clearing title when no conversation is active.
   useEffect(() => {
     if (!activeConversationId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentTitle(null);
       return;
     }
