@@ -49,7 +49,14 @@ RUN apt-get update && \
 COPY --from=builder /install /usr/local
 
 WORKDIR /app
-COPY . .
+
+# Runtime image only carries the Python package + alembic migrations +
+# the metadata files the scouter package install needs. Frontend source,
+# scripts/, infra/, Makefile and docs stay out — they are not used at
+# runtime and would bloat the image.
+COPY app ./app
+COPY alembic ./alembic
+COPY alembic.ini pyproject.toml README.md LICENSE ./
 
 RUN addgroup --system --gid 1001 appuser && \
     adduser --system --uid 1001 --ingroup appuser appuser && \
