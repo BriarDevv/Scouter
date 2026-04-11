@@ -56,7 +56,7 @@ types/
 
 | File | Purpose |
 |------|---------|
-| `lib/api/client.ts` | Every API call — uses `/api/proxy` in browser, direct URL in SSR |
+| `lib/api/client.ts` | `apiFetch()` helper + barrel re-export of 12 domain modules (`lib/api/leads.ts`, `lib/api/outreach.ts`, `lib/api/pipeline.ts`, etc.). Browser calls use `/api/proxy`, SSR uses the direct backend URL. Import from `@/lib/api/client` in either case — the barrel resolves to the right domain module. |
 | `types/index.ts` | All shared TypeScript interfaces (~800 lines) |
 | `lib/constants.ts` | Status/quality/signal configs, score thresholds |
 | `components/layout/readiness-gate.tsx` | Gates dashboard behind onboarding |
@@ -77,7 +77,14 @@ All browser API calls route through `/api/proxy/[...path]`:
 
 ## Component Library
 
-Uses **shadcn/ui with base-ui (NOT Radix)**:
-- Use `render` prop instead of `asChild` for composition
-- Base components in `components/ui/`
-- Shared dashboard components in `components/shared/`
+Uses **shadcn/ui 4.x with the `base-nova` style preset**, which ships `@base-ui/react` primitives instead of Radix:
+
+- `components.json` declares `"style": "base-nova"` (not the default `"default"` or `"new-york"`). Do not change this — it selects the base-ui primitive family.
+- `@base-ui/react` is the only primitive library. Do NOT add `@radix-ui/*` packages.
+- Use the `render` prop instead of `asChild` for composition — this is a base-ui convention.
+- `app/globals.css` imports `shadcn/tailwind.css` (a stylesheet shipped by the `shadcn` npm package) to pull in the base-nova token bundle and `tw-animate-css` data-attribute animations. Keep the import — removing it breaks `data-open:animate-in` on every primitive.
+- Base components in `components/ui/`. Add new primitives there.
+- Shared dashboard components (stat-card, status-badge, model-badge, empty-state) in `components/shared/`.
+- Feature-specific components in `components/{feature}/` (leads, outreach, dashboard, chat, map, ...).
+
+See `DESIGN.md` for the complete visual contract, including the 4 declared exceptions in § 9 (maps, toasts, animations, minor semantic exceptions).

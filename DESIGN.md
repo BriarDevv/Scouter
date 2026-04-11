@@ -179,8 +179,12 @@ Built with `@base-ui/react/button` + CVA (class-variance-authority).
 | Outline | `bg-background` | inherited | `bg-muted` | `border-border` (dark: `border-input`) | Secondary actions, toggles |
 | Secondary | `bg-secondary` | `text-secondary-foreground` | `bg-secondary/80` | transparent | Tertiary actions |
 | Ghost | transparent | inherited | `bg-muted` | none | Toolbar actions, icon buttons |
-| Destructive | `bg-destructive/10` | `text-destructive` | `bg-destructive/20` | transparent | Delete, remove actions |
+| Destructive | `bg-destructive/10` | `text-destructive` | `bg-destructive/20` | transparent | Delete, remove actions (subtle) |
+| Success | `bg-emerald-600` | `text-white` | `bg-emerald-700` | transparent | **Filled second tier**: confirm actions (approve draft, start crawl, enable feature) |
+| Destructive-solid | `bg-red-600` | `text-white` | `bg-red-700` | transparent | **Filled second tier**: confirm-destroy actions (stop pipeline, remove from suppression) |
 | Link | transparent | `text-primary` | underline | none | Inline text links |
+
+**Filled Semantic Variants (`success`, `destructive-solid`)** are the *only* places chromatic fills are allowed on CTAs. They exist to give confirm/destroy actions a stronger visual signal than the subtle `destructive` variant. All other buttons must use the monochromatic variants. If you need a new filled variant (e.g., "warning"), add it explicitly to `ui/button.tsx` with a documented semantic — **never** ship raw `<button className="bg-amber-500 text-white">`.
 
 **Sizes:**
 
@@ -424,7 +428,66 @@ The sidebar is the primary responsive mechanism:
 - CSS: `.dark` class on `<html>`, `@custom-variant dark (&:is(.dark *))` for Tailwind v4
 - All component variants define explicit dark mode overrides where needed
 
-## 9. Agent Prompt Guide
+## 9. Declared Exceptions to the Monochromatic Contract
+
+The rules in § 1 through § 8 describe the *canonical* Scouter visual language. Reality has four narrow exceptions. These are **declared** exceptions, not drift — if you find yourself introducing new colors or shadow systems that don't match any of the below, you're building a second system. Don't.
+
+### 9.1 Map Overlays
+
+Scouter's map view (`/map`) floats Leaflet tile basemaps from external providers (CartoDB Dark/Light, Esri satellite). Text and chrome that sits **on top of external tiles** cannot use Scouter's semantic tokens (`text-foreground`, `bg-background`) because the tokens don't resolve against a tile background — contrast would be unpredictable.
+
+Within `dashboard/components/map/**` (and only there), the following are permitted:
+
+- `text-white/N` and `text-black/N` with explicit opacity stops (e.g., `text-white/40`, `text-black/60`)
+- `bg-white/N`, `bg-black/N` for frosted overlay panels
+- `border-white/N`, `border-black/N` for overlay borders
+- An `isDarkMap` (or `isDark`) prop derived from the active tile provider, used to toggle between the two token families
+- A dedicated stylesheet (`map-theme.css`) for Leaflet-specific overrides
+
+Everything *outside* the `components/map/` tree **must** use semantic tokens. This is not a license to introduce `text-white/50` in a leads table — if the rule applies, the component's path will tell you.
+
+### 9.2 Toast System (sileo)
+
+The `dashboard/components/providers/themed-toaster.tsx` wraps the third-party `sileo` toaster. Sileo exposes `options.styles.title` and `options.styles.description` as className strings that get applied to elements outside Scouter's `.dark` cascade scope. This means Scouter tokens (`text-foreground`) don't resolve correctly inside a sileo toast.
+
+The approved workaround:
+
+```tsx
+styles: {
+  title: isDark ? "!text-white" : "!text-black",
+  description: isDark ? "!text-white/60" : "!text-black/50",
+}
+```
+
+Sileo is the single official toast primitive for the dashboard. Do not import additional toast libraries, and do not render your own toast components — use `sileo.success`, `sileo.error`, `sileo.promise` from pages that need notifications, and rely on `ThemedToaster` in `app/layout.tsx` to provide the mount point.
+
+If the workaround ever becomes untenable (e.g., sileo gets replaced), the replacement must be a primitive that lives in `components/ui/` or `components/providers/` and uses semantic tokens natively.
+
+### 9.3 Animation Systems
+
+Three animation mechanisms are officially supported, in priority order:
+
+| Mechanism | Use for | Example |
+|-----------|---------|---------|
+| **base-ui `data-*` attributes + Tailwind `animate-in`/`animate-out`** | 95% of component state transitions (dialog open, dropdown enter, tooltip, tabs) | `data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95` |
+| **Tailwind `transition-all` + explicit duration tokens** | Layout shifts, hover states, sidebar collapse | `transition-all duration-[350ms] ease-in-out` |
+| **Custom `@keyframes` in `globals.css`** | The single `mote-drift` glow on Mote's active nav item. Add new keyframes only when the animation cannot be expressed in Tailwind utilities. | `.mote-shimmer::after { animation: mote-drift 8s linear infinite; }` |
+
+**framer-motion** is allowed only for the chat panel slide-in (`dashboard/components/chat/chat-panel.tsx`). It exists there because the panel slides in from offscreen with spring physics that would be awkward to express in Tailwind. Do not introduce framer-motion in other components. If a new animation warrants imperative physics, discuss before adding a second framer-motion consumer.
+
+### 9.4 Minor Functional Exceptions
+
+Three micro-exceptions where chromatic color is semantically required and a primitive would be over-engineered:
+
+| Location | Exception | Reason |
+|---|---|---|
+| `dashboard/components/layout/sidebar.tsx` notification count badge | `bg-red-500 text-white` | Red is the universal "attention-required" signal. Badge is 18×18px and lives inside a 52px-wide collapsed sidebar — a primitive would be overkill. |
+| `dashboard/components/dashboard/runtime-mode-panel.tsx` + `dashboard/app/panel/page.tsx` mode selector | 3-state segmented control: `safe → bg-emerald-600`, `assisted → bg-amber-500`, `auto → bg-red-600` | Functional semantic color. Safe = green, caution = amber, risk = red. Not a CTA, it's a state display. Color is the information. |
+| `dashboard/components/shared/model-badge.tsx` model pills | `bg-cyan-50 text-cyan-700` (executor) / `bg-amber-50 text-amber-700` (reviewer) | Quick visual distinction between agent roles in dense log views. Uses the § 2 status pipeline color scale. |
+
+Any new exception requires updating this section with its location, the specific tokens used, and the reason it cannot be expressed monochromatically. If you can't justify it here, you're introducing drift.
+
+## 10. Agent Prompt Guide
 
 ### Quick Color Reference
 
