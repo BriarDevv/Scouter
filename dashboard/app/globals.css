@@ -221,9 +221,6 @@
   font-family: var(--font-heading), ui-sans-serif, system-ui, sans-serif;
   font-style: normal;
 }
-.font-body {
-  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
-}
 .font-data {
   font-family: var(--font-mono), ui-monospace, monospace;
   font-feature-settings: "tnum";

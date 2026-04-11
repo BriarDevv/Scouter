@@ -27,8 +27,8 @@ export function ModelBadge({ model, size = "sm" }: { model: string | null; size?
         "inline-flex items-center rounded font-bold font-data leading-tight",
         size === "md" ? "px-1.5 py-0.5 text-[10px]" : "px-1 py-px text-[9px]",
         isReviewer
-          ? "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300"
-          : "bg-cyan-100 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300"
+          ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300"
+          : "bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300"
       )}
       title={model}
     >

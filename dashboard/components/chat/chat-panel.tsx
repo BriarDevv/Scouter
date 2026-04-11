@@ -126,7 +126,7 @@ export function ChatPanel() {
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: 400, opacity: 0 }}
           transition={{ type: "spring", damping: 25, stiffness: 200 }}
-          className="fixed inset-y-0 right-0 z-30 flex w-[400px] flex-col border-l border-border bg-card shadow-xl"
+          className="fixed inset-y-0 right-0 z-30 flex w-[400px] flex-col border-l border-border bg-card shadow-md"
         >
           <ChatPanelHeader
             title={currentTitle}

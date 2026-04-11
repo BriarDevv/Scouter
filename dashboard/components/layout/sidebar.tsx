@@ -77,7 +77,7 @@ export function Sidebar() {
           <span className="font-heading text-base font-bold tracking-tight text-sidebar-foreground">
             Scouter
           </span>
-          <span className="rounded-md bg-muted dark:bg-white/8 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground dark:text-white/60 shrink-0">
+          <span className="rounded-md bg-muted dark:bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground dark:text-white/60 shrink-0">
             v3
           </span>
         </div>
