@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# ---------------------------------------------------------------------------
+# Audience: AI agents only. Called from skills/scouter-*/SKILL.md and
+# .claude/commands/agent-os.md via `source .venv/bin/activate && python
+# scripts/scouterctl.py <command>`. Not an operator tool — operators use
+# the Makefile or scripts/scouter.sh. See scripts/README.md § "Agent CLIs".
+# ---------------------------------------------------------------------------
 from __future__ import annotations
 
 import argparse
@@ -9,7 +15,6 @@ import time
 from dataclasses import dataclass
 from typing import Any
 from urllib import error, parse, request
-
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8000/api/v1"
 DEFAULT_TIMEOUT_SECONDS = 15.0
@@ -45,8 +50,12 @@ COMMAND_SPECS: dict[str, CommandSpec] = {
     "run-pipeline": CommandSpec("POST", "/scoring/{lead_id}/pipeline", mutating=True),
     "task-status": CommandSpec("GET", "/tasks/{task_id}/status"),
     "reply-response-draft": CommandSpec("GET", "/replies/{message_id}/draft-response"),
-    "reply-response-draft-generate": CommandSpec("POST", "/replies/{message_id}/draft-response", mutating=True),
-    "reply-response-draft-edit": CommandSpec("PATCH", "/replies/{message_id}/draft-response", mutating=True),
+    "reply-response-draft-generate": CommandSpec(
+        "POST", "/replies/{message_id}/draft-response", mutating=True
+    ),
+    "reply-response-draft-edit": CommandSpec(
+        "PATCH", "/replies/{message_id}/draft-response", mutating=True
+    ),
     "reply-response-draft-send": CommandSpec(
         "POST", "/replies/{message_id}/draft-response/send", mutating=True
     ),
@@ -61,8 +70,12 @@ COMMAND_SPECS: dict[str, CommandSpec] = {
     ),
     "review-lead": CommandSpec("POST", "/reviews/leads/{lead_id}/async", mutating=True),
     "review-draft": CommandSpec("POST", "/reviews/drafts/{draft_id}/async", mutating=True),
-    "review-reply": CommandSpec("POST", "/reviews/inbound/messages/{message_id}/async", mutating=True),
-    "review-reply-sync": CommandSpec("POST", "/reviews/inbound/messages/{message_id}", mutating=True, timeout_seconds=300),
+    "review-reply": CommandSpec(
+        "POST", "/reviews/inbound/messages/{message_id}/async", mutating=True
+    ),
+    "review-reply-sync": CommandSpec(
+        "POST", "/reviews/inbound/messages/{message_id}", mutating=True, timeout_seconds=300
+    ),
     "notifications-list": CommandSpec("GET", "/notifications"),
     "notifications-counts": CommandSpec("GET", "/notifications/counts"),
     "notification-resolve": CommandSpec("PATCH", "/notifications/{notification_id}", mutating=True),
@@ -228,7 +241,9 @@ def parse_args() -> argparse.Namespace:
     recent_replies.add_argument("--labels")
     recent_replies.add_argument("--classification-status")
 
-    important_replies = subparsers.add_parser("important-replies", aliases=["ops-important-replies"])
+    important_replies = subparsers.add_parser(
+        "important-replies", aliases=["ops-important-replies"]
+    )
     important_replies.add_argument("--limit", type=int, default=10)
     important_replies.add_argument("--hours", type=int, default=24)
 
@@ -512,7 +527,9 @@ def fetch_latest_draft_for_lead(client: APIClient, lead_id: str | None) -> dict[
     return drafts[0] if drafts else None
 
 
-def fetch_draft_for_lead(client: APIClient, lead_id: str | None, draft_id: str | None) -> dict[str, Any] | None:
+def fetch_draft_for_lead(
+    client: APIClient, lead_id: str | None, draft_id: str | None
+) -> dict[str, Any] | None:
     if not lead_id:
         return None
     if not draft_id:
@@ -655,7 +672,9 @@ def summarize_pipeline_wait_result(
     }
 
 
-def handle_notifications_list(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+def handle_notifications_list(
+    client: APIClient, args: argparse.Namespace
+) -> tuple[dict[str, Any], int]:
     params: dict[str, Any] = {"limit": args.limit}
     if args.category:
         params["category"] = args.category
@@ -671,7 +690,9 @@ def handle_notifications_list(client: APIClient, args: argparse.Namespace) -> tu
     )
 
 
-def handle_notifications_counts(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+def handle_notifications_counts(
+    client: APIClient, args: argparse.Namespace
+) -> tuple[dict[str, Any], int]:
     return client.request(
         "notifications-counts",
         path=COMMAND_SPECS["notifications-counts"].path_template,
@@ -679,7 +700,9 @@ def handle_notifications_counts(client: APIClient, args: argparse.Namespace) -> 
     )
 
 
-def handle_notification_resolve(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+def handle_notification_resolve(
+    client: APIClient, args: argparse.Namespace
+) -> tuple[dict[str, Any], int]:
     return client.request(
         "notification-resolve",
         path=COMMAND_SPECS["notification-resolve"].path_template.format(notification_id=args.id),
@@ -687,7 +710,9 @@ def handle_notification_resolve(client: APIClient, args: argparse.Namespace) -> 
     )
 
 
-def handle_notifications_mark_read(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+def handle_notifications_mark_read(
+    client: APIClient, args: argparse.Namespace
+) -> tuple[dict[str, Any], int]:
     payload: dict[str, Any] = {"action": "mark_read"}
     if args.category:
         payload["category"] = args.category
@@ -699,7 +724,9 @@ def handle_notifications_mark_read(client: APIClient, args: argparse.Namespace) 
     )
 
 
-def handle_whatsapp_status(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+def handle_whatsapp_status(
+    client: APIClient, args: argparse.Namespace
+) -> tuple[dict[str, Any], int]:
     return client.request(
         "whatsapp-status",
         path=COMMAND_SPECS["whatsapp-status"].path_template,
@@ -715,7 +742,9 @@ def handle_whatsapp_test(client: APIClient, args: argparse.Namespace) -> tuple[d
     )
 
 
-def handle_direct_command(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+def handle_direct_command(
+    client: APIClient, args: argparse.Namespace
+) -> tuple[dict[str, Any], int]:
     direct_command, method, path, params = build_request(args)
     return client.request(
         args.command,
@@ -726,7 +755,9 @@ def handle_direct_command(client: APIClient, args: argparse.Namespace) -> tuple[
     )
 
 
-def handle_performance_summary(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+def handle_performance_summary(
+    client: APIClient, args: argparse.Namespace
+) -> tuple[dict[str, Any], int]:
     try:
         industry = client.request_or_raise(
             "performance-industry",
@@ -772,7 +803,12 @@ def handle_running_tasks(client: APIClient, args: argparse.Namespace) -> tuple[d
         "retrying_count": health["retrying_count"],
         "items": health["running"] + health["retrying"],
     }
-    return make_success("running-tasks", data=data, request_meta=response["request"], status_code=response["status_code"])
+    return make_success(
+        "running-tasks",
+        data=data,
+        request_meta=response["request"],
+        status_code=response["status_code"],
+    )
 
 
 def handle_failed_tasks(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
@@ -789,10 +825,17 @@ def handle_failed_tasks(client: APIClient, args: argparse.Namespace) -> tuple[di
         "failed_count": health["failed_count"],
         "items": health["failed"],
     }
-    return make_success("failed-tasks", data=data, request_meta=response["request"], status_code=response["status_code"])
+    return make_success(
+        "failed-tasks",
+        data=data,
+        request_meta=response["request"],
+        status_code=response["status_code"],
+    )
 
 
-def handle_replies_summary(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+def handle_replies_summary(
+    client: APIClient, args: argparse.Namespace
+) -> tuple[dict[str, Any], int]:
     return client.request(
         "replies-summary",
         path=COMMAND_SPECS["replies-summary"].path_template,
@@ -801,7 +844,9 @@ def handle_replies_summary(client: APIClient, args: argparse.Namespace) -> tuple
     )
 
 
-def handle_recent_replies(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+def handle_recent_replies(
+    client: APIClient, args: argparse.Namespace
+) -> tuple[dict[str, Any], int]:
     response, exit_code = client.request(
         "recent-replies",
         path=COMMAND_SPECS["recent-replies"].path_template,
@@ -827,7 +872,9 @@ def handle_recent_replies(client: APIClient, args: argparse.Namespace) -> tuple[
     )
 
 
-def handle_important_replies(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+def handle_important_replies(
+    client: APIClient, args: argparse.Namespace
+) -> tuple[dict[str, Any], int]:
     response, exit_code = client.request(
         "important-replies",
         path=COMMAND_SPECS["recent-replies"].path_template,
@@ -847,7 +894,9 @@ def handle_important_replies(client: APIClient, args: argparse.Namespace) -> tup
     )
 
 
-def handle_positive_replies(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+def handle_positive_replies(
+    client: APIClient, args: argparse.Namespace
+) -> tuple[dict[str, Any], int]:
     labels = "interested,asked_for_quote,asked_for_meeting,asked_for_more_info"
     response, exit_code = client.request(
         "positive-replies",
@@ -888,7 +937,9 @@ def handle_quote_replies(client: APIClient, args: argparse.Namespace) -> tuple[d
     )
 
 
-def handle_meeting_replies(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+def handle_meeting_replies(
+    client: APIClient, args: argparse.Namespace
+) -> tuple[dict[str, Any], int]:
     response, exit_code = client.request(
         "meeting-replies",
         path=COMMAND_SPECS["recent-replies"].path_template,
@@ -908,7 +959,9 @@ def handle_meeting_replies(client: APIClient, args: argparse.Namespace) -> tuple
     )
 
 
-def handle_reviewer_candidates(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+def handle_reviewer_candidates(
+    client: APIClient, args: argparse.Namespace
+) -> tuple[dict[str, Any], int]:
     response, exit_code = client.request(
         "reviewer-candidates",
         path=COMMAND_SPECS["recent-replies"].path_template,
@@ -941,7 +994,9 @@ def handle_wait_task(client: APIClient, args: argparse.Namespace) -> tuple[dict[
     return make_success("wait-task", data=data)
 
 
-def handle_generate_draft(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+def handle_generate_draft(
+    client: APIClient, args: argparse.Namespace
+) -> tuple[dict[str, Any], int]:
     response, exit_code = client.request(
         "generate-draft",
         path=COMMAND_SPECS["generate-draft"].path_template.format(lead_id=args.lead_id),
@@ -980,7 +1035,12 @@ def handle_generate_draft(client: APIClient, args: argparse.Namespace) -> tuple[
             latest_draft=latest_draft,
         ),
     }
-    return make_success("generate-draft", data=data, request_meta=response["request"], status_code=response["status_code"])
+    return make_success(
+        "generate-draft",
+        data=data,
+        request_meta=response["request"],
+        status_code=response["status_code"],
+    )
 
 
 def handle_reply_response_draft_review(
@@ -993,7 +1053,9 @@ def handle_reply_response_draft_review(
 
     response, exit_code = client.request(
         "reply-response-draft-review",
-        path=COMMAND_SPECS["reply-response-draft-review"].path_template.format(message_id=args.message_id),
+        path=COMMAND_SPECS["reply-response-draft-review"].path_template.format(
+            message_id=args.message_id
+        ),
         method="POST",
     )
     if exit_code != 0 or not args.wait:
@@ -1088,7 +1150,9 @@ def handle_reply_response_draft_edit(
         )
     return client.request(
         "reply-response-draft-edit",
-        path=COMMAND_SPECS["reply-response-draft-edit"].path_template.format(message_id=args.message_id),
+        path=COMMAND_SPECS["reply-response-draft-edit"].path_template.format(
+            message_id=args.message_id
+        ),
         method="PATCH",
         payload=payload,
     )
@@ -1099,7 +1163,9 @@ def handle_reply_response_draft_send(
 ) -> tuple[dict[str, Any], int]:
     response, exit_code = client.request(
         "reply-response-draft-send",
-        path=COMMAND_SPECS["reply-response-draft-send"].path_template.format(message_id=args.message_id),
+        path=COMMAND_SPECS["reply-response-draft-send"].path_template.format(
+            message_id=args.message_id
+        ),
         method="POST",
     )
     if exit_code != 0:
@@ -1170,7 +1236,12 @@ def handle_run_pipeline(client: APIClient, args: argparse.Namespace) -> tuple[di
             latest_draft=latest_draft,
         ),
     }
-    return make_success("run-pipeline", data=data, request_meta=response["request"], status_code=response["status_code"])
+    return make_success(
+        "run-pipeline",
+        data=data,
+        request_meta=response["request"],
+        status_code=response["status_code"],
+    )
 
 
 def handle_review_lead(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
@@ -1207,7 +1278,12 @@ def handle_review_lead(client: APIClient, args: argparse.Namespace) -> tuple[dic
             "result": (wait_data.get("final") or {}).get("result"),
         },
     }
-    return make_success("review-lead", data=data, request_meta=response["request"], status_code=response["status_code"])
+    return make_success(
+        "review-lead",
+        data=data,
+        request_meta=response["request"],
+        status_code=response["status_code"],
+    )
 
 
 def handle_review_draft(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
@@ -1244,7 +1320,12 @@ def handle_review_draft(client: APIClient, args: argparse.Namespace) -> tuple[di
             "result": (wait_data.get("final") or {}).get("result"),
         },
     }
-    return make_success("review-draft", data=data, request_meta=response["request"], status_code=response["status_code"])
+    return make_success(
+        "review-draft",
+        data=data,
+        request_meta=response["request"],
+        status_code=response["status_code"],
+    )
 
 
 def handle_review_reply(client: APIClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
@@ -1256,7 +1337,9 @@ def handle_review_reply(client: APIClient, args: argparse.Namespace) -> tuple[di
     if args.sync:
         response, exit_code = client.request(
             "review-reply",
-            path=COMMAND_SPECS["review-reply-sync"].path_template.format(message_id=args.message_id),
+            path=COMMAND_SPECS["review-reply-sync"].path_template.format(
+                message_id=args.message_id
+            ),
             method="POST",
             timeout_seconds=COMMAND_SPECS["review-reply-sync"].timeout_seconds,
         )
@@ -1279,7 +1362,12 @@ def handle_review_reply(client: APIClient, args: argparse.Namespace) -> tuple[di
                 "recommended_action": response["data"].get("recommended_action"),
             },
         }
-        return make_success("review-reply", data=data, request_meta=response["request"], status_code=response["status_code"])
+        return make_success(
+            "review-reply",
+            data=data,
+            request_meta=response["request"],
+            status_code=response["status_code"],
+        )
 
     response, exit_code = client.request(
         "review-reply",
@@ -1302,7 +1390,12 @@ def handle_review_reply(client: APIClient, args: argparse.Namespace) -> tuple[di
                 "current_step": response["data"].get("current_step"),
             },
         }
-        return make_success("review-reply", data=data, request_meta=response["request"], status_code=response["status_code"])
+        return make_success(
+            "review-reply",
+            data=data,
+            request_meta=response["request"],
+            status_code=response["status_code"],
+        )
 
     try:
         wait_data = wait_for_task(
@@ -1338,7 +1431,12 @@ def handle_review_reply(client: APIClient, args: argparse.Namespace) -> tuple[di
             "result": result,
         },
     }
-    return make_success("review-reply", data=data, request_meta=response["request"], status_code=response["status_code"])
+    return make_success(
+        "review-reply",
+        data=data,
+        request_meta=response["request"],
+        status_code=response["status_code"],
+    )
 
 
 def main() -> int:

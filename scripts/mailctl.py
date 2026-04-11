@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# ---------------------------------------------------------------------------
+# Audience: AI agents only. Called from skills/scouter-mail/SKILL.md via
+# `source .venv/bin/activate && python scripts/mailctl.py --data-only --compact
+# <command>`. Draft management CLI: recent-drafts, draft-detail, send-status,
+# send-draft. Not an operator tool. See scripts/README.md § "Agent CLIs".
+# ---------------------------------------------------------------------------
 from __future__ import annotations
 
 import argparse
@@ -8,7 +14,6 @@ import sys
 from dataclasses import dataclass
 from typing import Any
 from urllib import error, parse, request
-
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8000/api/v1"
 DEFAULT_TIMEOUT_SECONDS = 20.0

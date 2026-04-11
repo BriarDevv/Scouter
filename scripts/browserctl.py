@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+# ---------------------------------------------------------------------------
+# Audience: Scout agent. Called from skills/scouter-browser/SKILL.md via
+# `python3 scripts/browserctl.py inspect-url|inspect-business-site ...`.
+# Returns grounded JSON (title, meta, h1, CTAs, social links, phones, emails,
+# optional screenshots) suitable for LLM consumption. Auto re-execs under
+# .venv/bin/python3 if playwright is missing from the current interpreter.
+# Not an operator tool. See scripts/README.md § "Agent CLIs".
+# NOTE: path-sensitive — SCRIPT_PATH.parent.parent must resolve to the repo
+# root (for .venv discovery). Do not move without updating that calculation.
+# ---------------------------------------------------------------------------
 from __future__ import annotations
 
 import argparse
@@ -49,6 +59,7 @@ def ensure_playwright_runtime() -> None:
 
     try:
         import playwright.sync_api  # noqa: F401
+
         return
     except ModuleNotFoundError:
         venv_python = WORKSPACE_ROOT / ".venv" / "bin" / "python3"
@@ -68,6 +79,7 @@ ensure_playwright_runtime()
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
+
 EMAIL_RE = re.compile(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", re.IGNORECASE)
 
 
@@ -105,7 +117,9 @@ def parse_args() -> argparse.Namespace:
     )
     inspect_business_site.add_argument("--lead-id", required=True)
     inspect_business_site.add_argument("--screenshot", action="store_true")
-    inspect_business_site.add_argument("--links-limit", type=int, default=DEFAULT_IMPORTANT_LINKS_LIMIT)
+    inspect_business_site.add_argument(
+        "--links-limit", type=int, default=DEFAULT_IMPORTANT_LINKS_LIMIT
+    )
 
     return parser.parse_args()
 
@@ -227,7 +241,9 @@ def normalize_phone(raw: str) -> str | None:
     return raw.strip()
 
 
-def extract_contact_signals(text: str, anchors: list[dict[str, str]], forms: list[dict[str, Any]]) -> dict[str, Any]:
+def extract_contact_signals(
+    text: str, anchors: list[dict[str, str]], forms: list[dict[str, Any]]
+) -> dict[str, Any]:
     anchor_emails = [
         parse.unquote(anchor["href"].split(":", 1)[1])
         for anchor in anchors
@@ -244,7 +260,9 @@ def extract_contact_signals(text: str, anchors: list[dict[str, str]], forms: lis
     phone_lines = [
         line
         for line in text.splitlines()
-        if any(keyword in line.lower() for keyword in ("phone", "tel", "call", "whatsapp", "contact"))
+        if any(
+            keyword in line.lower() for keyword in ("phone", "tel", "call", "whatsapp", "contact")
+        )
     ]
     line_phone_matches = [
         normalized
@@ -336,11 +354,15 @@ def guess_page_type(
     contact_signals: dict[str, Any],
 ) -> dict[str, Any]:
     lower_text = visible_text.lower()
-    hard_hits = sum(contains_keyword_token(lower_text, keyword) for keyword in ("cart", "checkout")) + sum(
+    hard_hits = sum(
+        contains_keyword_token(lower_text, keyword) for keyword in ("cart", "checkout")
+    ) + sum(
         any(contains_keyword_token(anchor["href"], keyword) for keyword in ("cart", "checkout"))
         for anchor in anchors
     )
-    soft_hits = sum(contains_keyword_token(lower_text, keyword) for keyword in ECOMMERCE_KEYWORDS) + sum(
+    soft_hits = sum(
+        contains_keyword_token(lower_text, keyword) for keyword in ECOMMERCE_KEYWORDS
+    ) + sum(
         any(
             contains_keyword_token(f"{anchor.get('text', '')} {anchor['href']}", keyword)
             for keyword in ECOMMERCE_KEYWORDS
@@ -351,8 +373,7 @@ def guess_page_type(
     internal_non_hash_links = [
         anchor
         for anchor in anchors
-        if anchor["href"].startswith(final_url.rstrip("/"))
-        or anchor["href"].startswith("/")
+        if anchor["href"].startswith(final_url.rstrip("/")) or anchor["href"].startswith("/")
     ]
     hash_links = [anchor for anchor in anchors if "#" in anchor["href"]]
     basic_one_page_likely = (
@@ -443,7 +464,9 @@ def inspect_url(
         browser = playwright.chromium.launch(headless=True)
         context = browser.new_context(ignore_https_errors=True)
         page = context.new_page()
-        navigation_response = page.goto(input_url, wait_until="domcontentloaded", timeout=timeout_ms)
+        navigation_response = page.goto(
+            input_url, wait_until="domcontentloaded", timeout=timeout_ms
+        )
         try:
             page.wait_for_load_state("networkidle", timeout=min(timeout_ms, 5000))
         except PlaywrightTimeoutError:
@@ -464,7 +487,9 @@ def inspect_url(
         if screenshot:
             directory = Path(screenshot_dir).expanduser()
             directory.mkdir(parents=True, exist_ok=True, mode=0o700)
-            safe_name = re.sub(r"[^a-zA-Z0-9._-]+", "-", parse.urlparse(final_url).netloc or "site").strip("-")
+            safe_name = re.sub(
+                r"[^a-zA-Z0-9._-]+", "-", parse.urlparse(final_url).netloc or "site"
+            ).strip("-")
             screenshot_path = str(
                 directory / f"{safe_name or 'site'}-{time.strftime('%Y%m%d_%H%M%S')}.png"
             )
