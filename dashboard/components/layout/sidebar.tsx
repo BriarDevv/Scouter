@@ -30,15 +30,15 @@ const NAV_ITEMS = [
   { href: "/",            label: "Mote",        icon: Sparkles },
   { href: "/panel",       label: "Panel",       icon: LayoutDashboard },
   { href: "/leads",       label: "Leads",       icon: Users },
+  { href: "/map",         label: "Mapa",        icon: MapPin },
   { href: "/outreach",    label: "Outreach",    icon: Mail },
   { href: "/responses",   label: "Respuestas",  icon: Inbox },
   { href: "/performance", label: "Rendimiento", icon: BarChart3 },
-  { href: "/map",         label: "Mapa",        icon: MapPin },
   { href: "/suppression", label: "Supresión",   icon: ShieldOff },
-  { href: "/ai-office",   label: "AI Office",   icon: Brain },
 ];
 
 const BOTTOM_NAV_ITEMS = [
+  { href: "/ai-office",    label: "AI Office",      icon: Brain,       badge: false },
   { href: "/notifications", label: "Notificaciones", icon: Bell,        badge: true },
   { href: "/security",      label: "Seguridad",      icon: ShieldAlert, badge: false },
 ];
