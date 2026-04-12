@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { MessageCircle, Zap } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CheckCircle2, Loader2, MessageCircle, Wifi, XCircle, Zap } from "lucide-react";
 import { sileo } from "sileo";
 import {
   SettingsSectionCard,
   FieldRow,
   TextInput,
   PasswordInput,
-  SaveButton,
+  SectionFooter,
   Toggle,
+  StatusPill,
   ConnectionTestBadge,
   TestButton,
 } from "./settings-primitives";
@@ -20,6 +21,8 @@ import {
   testWhatsApp,
   updateOperationalSettings,
   testKapsoConnection,
+  getKapsoApiKeyStatus,
+  updateKapsoApiKey,
 } from "@/lib/api/client";
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -92,64 +95,38 @@ export function WhatsAppSection({ data, onSaved }: WhatsAppSectionProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <SettingsSectionCard
         title="Credenciales WhatsApp"
-        description="Configuracion del proveedor de mensajeria WhatsApp para alertas y notificaciones."
         icon={MessageCircle}
+        action={
+          <StatusPill
+            label={data.api_key_set ? "Configurada" : "No configurada"}
+            tone={data.api_key_set ? "positive" : "warning"}
+          />
+        }
       >
-        <div className="mb-5">
-          <p className="mb-2 text-xs font-medium text-muted-foreground">Proveedor</p>
-          <div className="flex flex-wrap gap-2">
-            <span className="rounded-xl border border-foreground bg-foreground px-4 py-2 text-sm font-medium text-background">
-              {data.provider || "CallMeBot"}
-            </span>
-          </div>
-        </div>
+        <FieldRow label="Número de teléfono">
+          <TextInput
+            value={form.phone_number}
+            onChange={set("phone_number")}
+            placeholder="+5491112345678"
+          />
+        </FieldRow>
+        <FieldRow label="API Key">
+          <PasswordInput
+            value={form.api_key}
+            onChange={set("api_key")}
+            alreadySet={data.api_key_set}
+            placeholder="API key de CallMeBot"
+          />
+        </FieldRow>
 
-        <div className="grid gap-0 lg:grid-cols-2 lg:gap-x-8">
-          <div>
-            <FieldRow label="Numero de telefono" hint="Formato internacional, ej: +5491112345678">
-              <TextInput
-                value={form.phone_number}
-                onChange={set("phone_number")}
-                placeholder="+5491112345678"
-              />
-            </FieldRow>
-          </div>
-          <div>
-            <FieldRow
-              label="API Key"
-              hint="Dejar vacio para mantener la clave actual"
-            >
-              <PasswordInput
-                value={form.api_key}
-                onChange={set("api_key")}
-                alreadySet={data.api_key_set}
-                placeholder="API key de CallMeBot"
-              />
-            </FieldRow>
-            <FieldRow label="Estado de la API key">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
-                    data.api_key_set
-                      ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700"
-                      : "bg-amber-50 dark:bg-amber-950/30 text-amber-700"
-                  }`}
-                >
-                  {data.api_key_set ? "Configurada" : "No configurada"}
-                </span>
-              </div>
-            </FieldRow>
-          </div>
-        </div>
-
-        <div className="mt-4 rounded-2xl bg-muted p-4">
+        <div className="mt-4 rounded-xl border border-border/60 bg-muted/30 p-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="mb-2 text-xs font-medium text-muted-foreground">
-                Ultimo test de conexion
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Último test de conexión
               </p>
               <ConnectionTestBadge
                 lastAt={lastTest.at}
@@ -162,12 +139,11 @@ export function WhatsAppSection({ data, onSaved }: WhatsAppSectionProps) {
         </div>
       </SettingsSectionCard>
 
-      <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-4">
-        <p className="text-xs text-muted-foreground">
-          La API key se guarda de forma segura. Dejar el campo vacio mantiene la clave actual.
-        </p>
-        <SaveButton onClick={handleSave} saving={saving} />
-      </div>
+      <SectionFooter
+        updatedAt={data.updated_at}
+        onSave={handleSave}
+        saving={saving}
+      />
     </div>
   );
 }
@@ -206,22 +182,15 @@ export function HermesWhatsAppSection({ data, onSaved }: HermesWhatsAppProps) {
   };
 
   return (
-    <SettingsSectionCard
-      title="Agente Mote"
-      description="Agente IA que responde mensajes de WhatsApp automaticamente."
-      icon={MessageCircle}
-    >
-      <FieldRow
-        label="Agente Mote"
-        hint="Responde mensajes con IA"
-      >
+    <SettingsSectionCard title="Agente Mote" icon={MessageCircle}>
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
         <Toggle
           checked={enabled}
           onChange={handleToggle}
           label={enabled ? "Activo" : "Inactivo"}
           disabled={saving}
         />
-      </FieldRow>
+      </div>
     </SettingsSectionCard>
   );
 }
@@ -235,9 +204,18 @@ interface KapsoOutreachSectionProps {
 
 export function KapsoOutreachSection({ data, onSaved }: KapsoOutreachSectionProps) {
   const [enabled, setEnabled] = useState(data.whatsapp_outreach_enabled ?? false);
+  const [apiKey, setApiKey] = useState("");
+  const [apiKeySet, setApiKeySet] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingKey, setSavingKey] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ status: string; message: string } | null>(null);
+
+  useEffect(() => {
+    getKapsoApiKeyStatus()
+      .then((status) => setApiKeySet(status.configured))
+      .catch(() => {});
+  }, []);
 
   const handleToggle = async (value: boolean) => {
     setEnabled(value);
@@ -261,6 +239,28 @@ export function KapsoOutreachSection({ data, onSaved }: KapsoOutreachSectionProp
     }
   };
 
+  const handleSaveKey = async () => {
+    if (!apiKey.trim()) return;
+    setSavingKey(true);
+    try {
+      const result = await sileo.promise(
+        updateKapsoApiKey(apiKey),
+        {
+          loading: { title: "Guardando API key de Kapso..." },
+          success: { title: "API key de Kapso guardada" },
+          error: (err: unknown) => ({
+            title: "Error al guardar API key",
+            description: err instanceof Error ? err.message : "Error desconocido.",
+          }),
+        }
+      );
+      setApiKeySet(result.configured);
+      setApiKey("");
+    } finally {
+      setSavingKey(false);
+    }
+  };
+
   const handleTest = async () => {
     setTesting(true);
     setTestResult(null);
@@ -268,9 +268,9 @@ export function KapsoOutreachSection({ data, onSaved }: KapsoOutreachSectionProp
       const result = await testKapsoConnection();
       setTestResult(result);
       if (result.status === "ok") {
-        sileo.success({ title: "Kapso: conexion exitosa" });
+        sileo.success({ title: "Kapso: conexión exitosa" });
       } else {
-        sileo.error({ title: "Kapso: fallo la conexion", description: result.message });
+        sileo.error({ title: "Kapso: falló la conexión", description: result.message });
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error de red";
@@ -282,37 +282,45 @@ export function KapsoOutreachSection({ data, onSaved }: KapsoOutreachSectionProp
   };
 
   return (
-    <SettingsSectionCard
-      title="WhatsApp Outreach (Kapso)"
-      description="Genera y envia borradores de outreach por WhatsApp usando la API de Kapso."
-      icon={MessageCircle}
-    >
-      <div className="grid gap-0 lg:grid-cols-2 lg:gap-x-8">
-        {/* Left: toggle + status */}
-        <div>
-          <FieldRow
-            label="Outreach por WhatsApp"
-            hint="Habilita la generacion de drafts de outreach para el canal WhatsApp"
-          >
+    <div className="space-y-4">
+      <SettingsSectionCard
+        title="Outreach por WhatsApp (Kapso)"
+        icon={MessageCircle}
+        action={
+          <StatusPill
+            label={apiKeySet ? "API key configurada" : "Sin API key"}
+            tone={apiKeySet ? "positive" : "warning"}
+          />
+        }
+      >
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
             <Toggle
               checked={enabled}
               onChange={handleToggle}
-              label={enabled ? "Activo" : "Inactivo"}
+              label={enabled ? "Outreach activo" : "Outreach inactivo"}
               disabled={saving}
             />
+          </div>
+
+          <FieldRow label="API Key de Kapso">
+            <PasswordInput
+              value={apiKey}
+              onChange={setApiKey}
+              alreadySet={apiKeySet}
+              placeholder="API key de Kapso"
+            />
           </FieldRow>
-        </div>
 
-        {/* Right: connection test */}
-        <div className="space-y-4">
-          <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <Zap className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-              <p className="font-medium text-sm text-foreground">Conexion Kapso</p>
-            </div>
-
+          <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
             <div className="flex items-start justify-between gap-4">
               <div>
+                <div className="mb-1.5 flex items-center gap-2">
+                  <Zap className="h-3.5 w-3.5 text-foreground" />
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Conexión Kapso
+                  </p>
+                </div>
                 {testResult ? (
                   <div className="flex items-center gap-1.5">
                     {testResult.status === "ok" ? (
@@ -322,7 +330,9 @@ export function KapsoOutreachSection({ data, onSaved }: KapsoOutreachSectionProp
                     )}
                     <span
                       className={`text-xs font-medium ${
-                        testResult.status === "ok" ? "text-emerald-700" : "text-rose-700"
+                        testResult.status === "ok"
+                          ? "text-emerald-700 dark:text-emerald-300"
+                          : "text-rose-700 dark:text-rose-300"
                       }`}
                     >
                       {testResult.message}
@@ -336,27 +346,25 @@ export function KapsoOutreachSection({ data, onSaved }: KapsoOutreachSectionProp
                 type="button"
                 onClick={handleTest}
                 disabled={testing}
-                className="flex w-fit items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium text-foreground/80 transition hover:border-border disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted active:translate-y-px disabled:opacity-50"
               >
                 {testing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <Wifi className="h-4 w-4" />
+                  <Wifi className="h-3.5 w-3.5" />
                 )}
-                Testear conexion
+                Testear conexión
               </button>
             </div>
           </div>
-
-          <p className="text-[10px] text-muted-foreground/60">
-            La API key de Kapso se configura en el archivo .env del servidor
-          </p>
         </div>
-      </div>
-    </SettingsSectionCard>
+      </SettingsSectionCard>
+
+      <SectionFooter
+        updatedAt={data.updated_at}
+        onSave={handleSaveKey}
+        saving={savingKey}
+      />
+    </div>
   );
 }
-
-// ─── Imports for KapsoOutreachSection ────────────────────────────────
-
-import { Loader2, CheckCircle2, XCircle, Wifi } from "lucide-react";
