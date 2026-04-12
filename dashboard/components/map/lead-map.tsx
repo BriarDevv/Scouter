@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { cn } from "@/lib/utils";
 import {
   MapContainer,
   TileLayer,
@@ -57,6 +58,31 @@ function loadTileKey(): TileKey {
   return "dark";
 }
 
+const MAP_VIEW_KEY = "scouter-map-view";
+
+function PersistMapView() {
+  const map = useMap();
+
+  useEffect(() => {
+    const saved = sessionStorage.getItem(MAP_VIEW_KEY);
+    if (saved) {
+      try {
+        const { lat, lng, zoom } = JSON.parse(saved);
+        map.setView([lat, lng], zoom, { animate: false });
+      } catch {}
+    }
+
+    const onMove = () => {
+      const c = map.getCenter();
+      sessionStorage.setItem(MAP_VIEW_KEY, JSON.stringify({ lat: c.lat, lng: c.lng, zoom: map.getZoom() }));
+    };
+    map.on("moveend", onMove);
+    return () => { map.off("moveend", onMove); };
+  }, [map]);
+
+  return null;
+}
+
 function FitToLeads({ leads, active }: { leads: Lead[]; active: boolean }) {
   const map = useMap();
   const fitted = useRef(false);
@@ -67,6 +93,11 @@ function FitToLeads({ leads, active }: { leads: Lead[]; active: boolean }) {
       return;
     }
     if (fitted.current) return;
+    // Skip auto-fit if restoring a saved position
+    if (sessionStorage.getItem(MAP_VIEW_KEY)) {
+      fitted.current = true;
+      return;
+    }
     const points = leads
       .filter((l) => l.latitude !== null && l.longitude !== null)
       .map((l) => [l.latitude!, l.longitude!] as [number, number]);
@@ -122,6 +153,7 @@ export function LeadMap({ cities, leads = [], territories = [], onSelectLead }: 
         zoomControl={false}
       >
         <ZoomControl position="bottomright" />
+        <PersistMapView />
         <FitToLeads leads={leads} active={viewMode === "leads"} />
 
         <TileLayer
@@ -189,13 +221,7 @@ export function LeadMap({ cities, leads = [], territories = [], onSelectLead }: 
       </MapContainer>
 
       {/* ── Layer controls (top-left) ─────────────────────────── */}
-      <div
-        className={`absolute left-3 top-3 z-[1000] flex items-center gap-1.5 rounded-xl border backdrop-blur-md px-2 py-1.5 shadow-lg transition-colors ${
-          isDark
-            ? "border-white/10 bg-black/60"
-            : "border-black/10 bg-white/80"
-        }`}
-      >
+      <div className="absolute left-3 top-3 z-[1000] flex items-center gap-1.5 rounded-xl border border-border bg-card/90 backdrop-blur-md px-2 py-1.5 shadow-lg">
         {(["dark", "light", "satellite"] as TileKey[]).map((key) => (
           <button
             key={key}
@@ -203,36 +229,30 @@ export function LeadMap({ cities, leads = [], territories = [], onSelectLead }: 
             className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all ${
               tileKey === key
                 ? "bg-foreground text-background shadow-sm"
-                : isDark
-                  ? "text-white/60 hover:text-white hover:bg-white/10"
-                  : "text-black/50 hover:text-black hover:bg-black/5"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
           >
             {key === "dark" ? "Oscuro" : key === "light" ? "Claro" : "Satelite"}
           </button>
         ))}
-        <div className={`mx-1 h-4 w-px ${isDark ? "bg-white/20" : "bg-black/10"}`} />
+        <div className="mx-1 h-4 w-px bg-border" />
         <button
           onClick={() => setViewMode(viewMode === "leads" ? "cities" : "leads")}
           className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all ${
             viewMode === "leads"
               ? "bg-foreground text-background shadow-sm"
-              : isDark
-                ? "text-white/60 hover:text-white hover:bg-white/10"
-                : "text-black/50 hover:text-black hover:bg-black/5"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted"
           }`}
         >
           {viewMode === "leads" ? "Negocios" : "Ciudades"}
         </button>
-        <div className={`mx-1 h-4 w-px ${isDark ? "bg-white/20" : "bg-black/10"}`} />
+        <div className="mx-1 h-4 w-px bg-border" />
         <button
           onClick={() => setShowHeat((p) => !p)}
           className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all ${
             showHeat
               ? "bg-orange-500/80 text-white shadow-sm"
-              : isDark
-                ? "text-white/60 hover:text-white hover:bg-white/10"
-                : "text-black/50 hover:text-black hover:bg-black/5"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted"
           }`}
         >
           Calor
@@ -242,9 +262,7 @@ export function LeadMap({ cities, leads = [], territories = [], onSelectLead }: 
           className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all ${
             showTerritories
               ? "bg-emerald-500/80 text-white shadow-sm"
-              : isDark
-                ? "text-white/60 hover:text-white hover:bg-white/10"
-                : "text-black/50 hover:text-black hover:bg-black/5"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted"
           }`}
         >
           Territorios
@@ -252,28 +270,22 @@ export function LeadMap({ cities, leads = [], territories = [], onSelectLead }: 
       </div>
 
       {/* ── Legend (bottom-right, above zoom) ──────────────────── */}
-      <div
-        className={`absolute right-3 bottom-20 z-[1000] rounded-xl border backdrop-blur-md px-3 py-2 shadow-lg transition-colors ${
-          isDark
-            ? "border-white/10 bg-black/60"
-            : "border-black/10 bg-white/80"
-        }`}
-      >
-        <p className={`mb-1.5 text-[10px] font-semibold uppercase tracking-wider ${isDark ? "text-white/50" : "text-black/40"}`}>
+      <div className={cn("absolute bottom-3 z-[1000] rounded-xl border border-border bg-card/90 backdrop-blur-md px-3 py-2 shadow-lg transition-[right] duration-300", sidebarOpen ? "right-[21rem]" : "right-3")}>
+        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           {viewMode === "leads" ? "Score del lead" : "Score promedio"}
         </p>
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(34,197,94,0.5)]" />
-            <span className={`text-[11px] ${isDark ? "text-white/70" : "text-black/60"}`}>&ge; 70 — Alto</span>
+            <span className="text-[11px] text-muted-foreground">&ge; 70 — Alto</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="inline-block h-2.5 w-2.5 rounded-full bg-yellow-500 shadow-[0_0_6px_rgba(234,179,8,0.5)]" />
-            <span className={`text-[11px] ${isDark ? "text-white/70" : "text-black/60"}`}>&ge; 40 — Medio</span>
+            <span className="text-[11px] text-muted-foreground">&ge; 40 — Medio</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.5)]" />
-            <span className={`text-[11px] ${isDark ? "text-white/70" : "text-black/60"}`}>&lt; 40 — Bajo</span>
+            <span className="text-[11px] text-muted-foreground">&lt; 40 — Bajo</span>
           </div>
         </div>
       </div>
@@ -282,7 +294,6 @@ export function LeadMap({ cities, leads = [], territories = [], onSelectLead }: 
         cities={cities}
         open={sidebarOpen}
         onToggle={() => setSidebarOpen((prev) => !prev)}
-        isDarkMap={isDark}
       />
     </div>
   );
