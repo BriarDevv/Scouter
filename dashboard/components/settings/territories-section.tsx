@@ -172,7 +172,7 @@ export function TerritoriesSection() {
               <div
                 key={t.id}
                 className={cn(
-                  "flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 transition-colors",
+                  "flex items-center gap-3 rounded-xl border border-border/60 bg-card px-4 py-3 transition-colors hover:border-border",
                   editing === t.id && "ring-2 ring-ring/30"
                 )}
               >
@@ -211,7 +211,7 @@ export function TerritoriesSection() {
 
         {!isEditorOpen && (
           <div className="mt-4">
-            <Button variant="outline" size="sm" className="rounded-xl" onClick={startCreate}>
+            <Button variant="outline" size="sm" className="rounded-lg" onClick={startCreate}>
               <Plus className="mr-1.5 h-3.5 w-3.5" />
               Nuevo territorio
             </Button>
@@ -296,7 +296,7 @@ export function TerritoriesSection() {
               </div>
             </FieldRow>
             <div className="flex items-center gap-2 justify-end">
-              <Button variant="outline" size="sm" className="rounded-xl" onClick={cancel}>Cancelar</Button>
+              <Button variant="outline" size="sm" className="rounded-lg" onClick={cancel}>Cancelar</Button>
               <SaveButton onClick={handleSave} saving={saving} />
             </div>
           </div>

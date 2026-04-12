@@ -139,6 +139,16 @@
   }
 }
 
+/* ── Stable scrollbar gutter ──────────────────────────── */
+/* The page-level scroll container uses `flex-1 overflow-y-auto`.
+   Without `scrollbar-gutter: stable` the content jumps ~8px to
+   the side when content grows from "fits viewport" to "needs scroll",
+   because the scrollbar steals space from the available width. This
+   reserves the gutter unconditionally so layout stays stable. */
+.flex-1.overflow-y-auto {
+  scrollbar-gutter: stable;
+}
+
 /* ── Custom scrollbar ─────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 8px;

@@ -15,8 +15,8 @@ export function ThemedToaster() {
         autopilot: true,
         fill: isDark ? "#2b2b2b" : "#ffffff",
         styles: {
-          title: isDark ? "!text-white" : "!text-black",
-          description: isDark ? "!text-white/60" : "!text-black/50",
+          title: isDark ? "!text-white !text-center" : "!text-black !text-center",
+          description: isDark ? "!text-white/60 !text-center" : "!text-black/50 !text-center",
         },
       }}
     />
