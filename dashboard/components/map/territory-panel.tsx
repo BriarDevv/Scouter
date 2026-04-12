@@ -40,14 +40,14 @@ interface TerritoryPanelProps {
 const AVAILABLE_CITIES = Object.keys(CITY_COORDS).sort();
 
 const DEFAULT_COLORS = [
-  "#6366f1",
-  "#ec4899",
-  "#f97316",
-  "#22c55e",
-  "#06b6d4",
-  "#8b5cf6",
-  "#ef4444",
-  "#eab308",
+  "#ffffff",
+  "#d4d4d4",
+  "#a3a3a3",
+  "#737373",
+  "#525252",
+  "#404040",
+  "#262626",
+  "#171717",
 ];
 
 interface FormState {
