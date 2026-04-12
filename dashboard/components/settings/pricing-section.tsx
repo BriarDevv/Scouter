@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { DollarSign, RotateCcw } from "lucide-react";
 import { sileo } from "sileo";
+import { cn } from "@/lib/utils";
+import { SectionFooter, SettingsSectionCard } from "./settings-primitives";
 import { updateOperationalSettings } from "@/lib/api/client";
 import type { OperationalSettings } from "@/types";
 
@@ -23,10 +26,10 @@ const DEFAULT_MATRIX: Record<string, { min: number; max: number }> = {
 const SCOPE_LABELS: Record<string, string> = {
   landing: "Landing page",
   institutional_web: "Web institucional",
-  catalog: "Catalogo",
+  catalog: "Catálogo",
   ecommerce: "E-commerce",
-  redesign: "Rediseno",
-  automation: "Automatizacion / IA",
+  redesign: "Rediseño",
+  automation: "Automatización / IA",
   branding_web: "Branding + Web",
 };
 
@@ -45,107 +48,125 @@ export function PricingSection({ data, onSaved }: PricingSectionProps) {
   );
   const [saving, setSaving] = useState(false);
 
-  const handleChange = (scope: string, field: "min" | "max", value: string) => {
-    const num = parseInt(value, 10);
-    if (isNaN(num) || num < 0) return;
-    setMatrix((prev) => ({
-      ...prev,
-      [scope]: { ...prev[scope], [field]: num },
-    }));
-  };
+  const handleChange = useCallback(
+    (scope: string, field: "min" | "max", value: string) => {
+      const num = parseInt(value, 10);
+      if (isNaN(num) || num < 0) return;
+      setMatrix((prev) => ({
+        ...prev,
+        [scope]: { ...prev[scope], [field]: num },
+      }));
+    },
+    []
+  );
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const updated = await updateOperationalSettings({
-        pricing_matrix: JSON.stringify(matrix),
-      });
+      const updated = await sileo.promise(
+        updateOperationalSettings({ pricing_matrix: JSON.stringify(matrix) }),
+        {
+          loading: { title: "Guardando matriz de precios…" },
+          success: { title: "Matriz de precios guardada" },
+          error: (err: unknown) => ({
+            title: "Error al guardar",
+            description: err instanceof Error ? err.message : "Error desconocido",
+          }),
+        }
+      );
       onSaved(updated);
-      sileo.success({ title: "Matriz de precios guardada" });
-    } catch (err) {
-      sileo.error({
-        title: "Error al guardar",
-        description: err instanceof Error ? err.message : "Error desconocido",
-      });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleReset = () => {
-    setMatrix(DEFAULT_MATRIX);
-  };
+  const handleReset = () => setMatrix(DEFAULT_MATRIX);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-medium">Matriz de Precios</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Rangos de presupuesto estimado por tipo de proyecto (USD)
-          </p>
-        </div>
-        <div className="flex gap-2">
+      <SettingsSectionCard
+        title="Matriz de precios"
+        description="Rangos de presupuesto estimado por tipo de proyecto (USD). Mote usa estos valores cuando arma propuestas."
+        icon={DollarSign}
+        action={
           <button
+            type="button"
             onClick={handleReset}
-            className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
+            <RotateCcw className="h-3.5 w-3.5" />
             Resetear
           </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="rounded-lg bg-foreground text-background px-3 py-1.5 text-xs font-medium hover:bg-foreground/90 transition-colors disabled:opacity-50"
-          >
-            {saving ? "Guardando..." : "Guardar"}
-          </button>
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-border overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border bg-muted/30">
-              <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">
-                Tipo de proyecto
-              </th>
-              <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">
-                Min (USD)
-              </th>
-              <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">
-                Max (USD)
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {Object.entries(matrix).map(([scope, range]) => (
-              <tr key={scope} className="border-b border-border/50 last:border-0">
-                <td className="px-4 py-2 text-foreground">
-                  {SCOPE_LABELS[scope] || scope}
-                </td>
-                <td className="px-4 py-2">
-                  <input
-                    type="number"
-                    min={0}
-                    value={range.min}
-                    onChange={(e) => handleChange(scope, "min", e.target.value)}
-                    className="w-24 rounded-md border border-border bg-background px-2 py-1 text-sm"
-                  />
-                </td>
-                <td className="px-4 py-2">
-                  <input
-                    type="number"
-                    min={0}
-                    value={range.max}
-                    onChange={(e) => handleChange(scope, "max", e.target.value)}
-                    className="w-24 rounded-md border border-border bg-background px-2 py-1 text-sm"
-                  />
-                </td>
+        }
+      >
+        <div className="overflow-hidden rounded-xl border border-border/60">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/30">
+                <th className="px-4 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Tipo de proyecto
+                </th>
+                <th className="px-4 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Mín (USD)
+                </th>
+                <th className="px-4 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Máx (USD)
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {Object.entries(matrix).map(([scope, range], idx, arr) => (
+                <tr
+                  key={scope}
+                  className={cn(
+                    "transition-colors hover:bg-muted/40",
+                    idx !== arr.length - 1 && "border-b border-border/60"
+                  )}
+                >
+                  <td className="px-4 py-2 text-xs text-foreground">
+                    {SCOPE_LABELS[scope] || scope}
+                  </td>
+                  <td className="px-4 py-2">
+                    <PriceInput
+                      value={range.min}
+                      onChange={(v) => handleChange(scope, "min", v)}
+                    />
+                  </td>
+                  <td className="px-4 py-2">
+                    <PriceInput
+                      value={range.max}
+                      onChange={(v) => handleChange(scope, "max", v)}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </SettingsSectionCard>
+      <SectionFooter
+        updatedAt={data.updated_at}
+        onSave={handleSave}
+        saving={saving}
+      />
     </div>
+  );
+}
+
+function PriceInput({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <input
+      type="number"
+      min={0}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-24 rounded-lg border border-border bg-muted/40 px-2.5 py-1 font-data text-xs text-foreground outline-none transition-colors focus:border-ring focus:bg-card focus:ring-3 focus:ring-ring/30 dark:bg-input/30"
+    />
   );
 }
