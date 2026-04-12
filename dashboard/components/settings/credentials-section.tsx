@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { KeyRound } from "lucide-react";
 import { sileo } from "sileo";
 import {

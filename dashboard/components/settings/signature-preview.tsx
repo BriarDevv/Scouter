@@ -1,7 +1,6 @@
 "use client";
 
 import { CalendarDays, ExternalLink, Globe } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 export interface SignaturePreviewProps {
   brandName: string;

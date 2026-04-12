@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored third-party scripts (minified, not our code)
+    "lib/vendor/**",
   ]),
   // Playwright e2e specs are CommonJS (sibling of playwright.config.cjs).
   // Allow require() style imports there — converting to ESM would require

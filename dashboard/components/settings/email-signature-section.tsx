@@ -5,7 +5,6 @@ import { PenLine } from "lucide-react";
 import {
   FieldRow,
   SectionFooter,
-  SectionSubheading,
   SettingsSectionCard,
   TextInput,
   ToggleListItem,

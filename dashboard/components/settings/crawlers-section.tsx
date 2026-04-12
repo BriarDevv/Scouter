@@ -1,21 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  CheckCircle2,
   ChevronDown,
   Key,
-  Loader2,
-  Power,
-  PowerOff,
   Search,
   Trash2,
-  XCircle,
 } from "lucide-react";
 import { sileo } from "sileo";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { useVisibleInterval } from "@/lib/hooks/use-visible-interval";
 import { apiFetch } from "@/lib/api/client";
 import {
   FieldRow,
@@ -24,7 +17,6 @@ import {
   Select,
   SettingsSectionCard,
   StatusPill,
-  Toggle,
 } from "./settings-primitives";
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -77,8 +69,7 @@ export function CrawlersSection() {
   const [territories, setTerritories] = useState<Territory[]>([]);
   const [selectedTerritoryId, setSelectedTerritoryId] = useState<string>("");
   const [selectedCats, setSelectedCats] = useState<string[]>([]);
-  const [progress, setProgress] = useState<CrawlProgress>({ status: "idle" });
-  const [starting, setStarting] = useState(false);
+  const [progress] = useState<CrawlProgress>({ status: "idle" });
 
   useEffect(() => {
     apiFetch<ApiKeyStatus>("/crawl/api-key-status")
@@ -147,11 +138,6 @@ export function CrawlersSection() {
 
   const selectedTerritory = territories.find((t) => t.id === selectedTerritoryId);
   const isRunning = progress.status === "running";
-  const isDone = progress.status === "done";
-  const isError = progress.status === "error";
-  const progressPct = progress.total_cities
-    ? ((progress.current_city_idx ?? 0) / progress.total_cities) * 100
-    : 0;
 
   return (
     <div className="space-y-6">
@@ -297,30 +283,6 @@ export function CrawlersSection() {
         </div>
 
       </SettingsSectionCard>
-    </div>
-  );
-}
-
-function StatBox({
-  label,
-  value,
-  highlight,
-}: {
-  label: string;
-  value: number;
-  highlight?: boolean;
-}) {
-  return (
-    <div className="rounded-lg border border-border/60 bg-card p-2.5 text-center">
-      <p
-        className={cn(
-          "font-data text-base font-semibold tracking-tight",
-          highlight ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"
-        )}
-      >
-        {value}
-      </p>
-      <p className="text-[10px] text-muted-foreground">{label}</p>
     </div>
   );
 }

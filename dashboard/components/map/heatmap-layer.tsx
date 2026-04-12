@@ -43,8 +43,8 @@ export function HeatmapLayer({
           (p) => [p.lat, p.lng, p.intensity] as [number, number, number]
         );
 
-        // @ts-ignore -- leaflet.heat augments L at runtime
-        heatLayer = L.heatLayer(heatData, {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        heatLayer = (L as any).heatLayer(heatData, {
           radius,
           blur,
           maxZoom,
