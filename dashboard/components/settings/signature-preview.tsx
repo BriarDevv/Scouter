@@ -1,71 +1,118 @@
 "use client";
 
-import { ExternalLink, Globe } from "lucide-react";
+import { CalendarDays, ExternalLink, Globe } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-interface SignaturePreviewProps {
-  form: {
-    signature_name: string;
-    signature_role: string;
-    signature_company: string;
-    portfolio_url: string;
-    website_url: string;
-    calendar_url: string;
-    signature_cta: string;
-    default_closing_line: string;
-    signature_include_portfolio: boolean;
-  };
+export interface SignaturePreviewProps {
+  brandName: string;
+  signerName: string;
+  signerRole: string;
+  signerCompany: string;
+  portfolioUrl: string;
+  websiteUrl: string;
+  calendarUrl: string;
+  cta: string;
+  closingLine: string;
+  includePortfolio: boolean;
 }
 
-export function SignaturePreview({ form }: SignaturePreviewProps) {
-  const hasContent = form.signature_name || form.signature_role || form.signature_company;
-  if (!hasContent) {
-    return (
-      <div className="flex items-center justify-center rounded-2xl border border-dashed border-border bg-muted p-8">
-        <p className="text-sm text-muted-foreground">
-          Completá los datos para ver la preview
-        </p>
-      </div>
-    );
-  }
+function BrandAvatar({ name }: { name: string }) {
+  const initials =
+    name
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase() ?? "")
+      .join("") || "?";
+
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-      <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        Preview de firma
-      </p>
-      <div className="border-t border-border pt-4 font-mono text-sm text-foreground/80">
-        {form.default_closing_line && (
-          <p className="mb-3 text-muted-foreground">{form.default_closing_line}</p>
-        )}
-        {form.signature_name && (
-          <p className="font-semibold text-foreground">{form.signature_name}</p>
-        )}
-        {form.signature_role && <p className="text-muted-foreground">{form.signature_role}</p>}
-        {form.signature_company && <p className="text-muted-foreground">{form.signature_company}</p>}
-        {(form.website_url || form.portfolio_url) && (
-          <div className="mt-2 flex flex-col gap-0.5 text-xs text-muted-foreground">
-            {form.website_url && (
-              <span className="flex items-center gap-1">
-                <Globe className="h-3 w-3" />
-                {form.website_url}
-              </span>
-            )}
-            {form.signature_include_portfolio && form.portfolio_url && (
-              <span className="flex items-center gap-1">
-                <ExternalLink className="h-3 w-3" />
-                Portfolio: {form.portfolio_url}
-              </span>
-            )}
-            {form.calendar_url && (
-              <span className="flex items-center gap-1 text-muted-foreground">
-                {form.calendar_url}
-              </span>
-            )}
+    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-sm font-semibold text-foreground font-heading select-none">
+      {initials}
+    </div>
+  );
+}
+
+export function SignaturePreview({
+  brandName,
+  signerName,
+  signerRole,
+  signerCompany,
+  portfolioUrl,
+  websiteUrl,
+  calendarUrl,
+  cta,
+  closingLine,
+  includePortfolio,
+}: SignaturePreviewProps) {
+  const hasName = signerName.trim().length > 0;
+  const hasRole = signerRole.trim().length > 0;
+  const hasCompany = signerCompany.trim().length > 0;
+  const hasCta = cta.trim().length > 0;
+  const hasClosing = closingLine.trim().length > 0;
+  const hasWeb = websiteUrl.trim().length > 0;
+  const hasCal = calendarUrl.trim().length > 0;
+  const hasPort = includePortfolio && portfolioUrl.trim().length > 0;
+  const hasAnyLink = hasWeb || hasCal || hasPort;
+
+  const displayName = hasName ? signerName : "Tu nombre";
+  const displayRole = hasRole ? signerRole : "Tu cargo";
+  const displayCompany = hasCompany
+    ? signerCompany
+    : brandName.trim() || "Tu empresa";
+
+  return (
+    <div className="space-y-4">
+      <div className="min-w-0 space-y-3">
+          <div className="flex items-start gap-3">
+            <BrandAvatar name={brandName || displayName} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-heading text-sm font-semibold leading-tight text-foreground">
+                {displayName}
+              </p>
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                {[displayRole, displayCompany].filter(Boolean).join(" · ")}
+              </p>
+            </div>
           </div>
-        )}
-        {form.signature_cta && (
-          <p className="mt-3 italic text-muted-foreground">{form.signature_cta}</p>
-        )}
-      </div>
+
+          {hasClosing && (
+            <p className="border-t border-border/60 pt-3 text-xs leading-relaxed text-foreground/80">
+              {closingLine}
+            </p>
+          )}
+
+          {hasCta && (
+            <p className="text-xs font-medium text-foreground">{cta}</p>
+          )}
+        </div>
+
+      {hasAnyLink && (
+          <div className="flex flex-col gap-1.5 border-t border-border/60 pt-3">
+            {hasWeb && (
+              <div className="flex min-w-0 items-center gap-1.5">
+                <Globe className="h-3 w-3 shrink-0 text-muted-foreground/60" />
+                <span className="truncate font-data text-[11px] text-muted-foreground">
+                  {websiteUrl}
+                </span>
+              </div>
+            )}
+            {hasCal && (
+              <div className="flex min-w-0 items-center gap-1.5">
+                <CalendarDays className="h-3 w-3 shrink-0 text-muted-foreground/60" />
+                <span className="truncate font-data text-[11px] text-muted-foreground">
+                  {calendarUrl}
+                </span>
+              </div>
+            )}
+            {hasPort && (
+              <div className="flex min-w-0 items-center gap-1.5">
+                <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground/60" />
+                <span className="truncate font-data text-[11px] text-muted-foreground">
+                  {portfolioUrl}
+                </span>
+              </div>
+            )}
+        </div>
+      )}
     </div>
   );
 }
