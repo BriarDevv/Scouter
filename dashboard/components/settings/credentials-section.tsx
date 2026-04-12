@@ -9,7 +9,7 @@ import {
   TextInput,
   PasswordInput,
   Toggle,
-  SaveButton,
+  SectionFooter,
   ProviderPicker,
   ConnectionTestBadge,
   TestButton,
@@ -142,7 +142,8 @@ export function CredentialsSection({ data, onSaved }: CredentialsSectionProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch [&>section]:h-full">
       <SettingsSectionCard
         title="Credenciales SMTP"
         description="Servidor de salida de correo. Las contraseñas se guardan en DB y nunca se exponen por API."
@@ -152,63 +153,61 @@ export function CredentialsSection({ data, onSaved }: CredentialsSectionProps) {
           <p className="mb-2 text-xs font-medium text-muted-foreground">Proveedor</p>
           <ProviderPicker value={smtpProvider} onChange={applySmtpPreset} />
         </div>
-        <div className="grid gap-0 lg:grid-cols-2 lg:gap-x-8">
-          <div>
-            <FieldRow label="Servidor SMTP">
-              <TextInput
-                value={smtpForm.smtp_host}
-                onChange={setSmtp("smtp_host")}
-                placeholder="smtp.gmail.com"
-              />
-            </FieldRow>
-            <FieldRow label="Puerto">
-              <TextInput
-                value={smtpForm.smtp_port}
-                onChange={setSmtp("smtp_port")}
-                placeholder="587"
-                type="number"
-              />
-            </FieldRow>
-            <FieldRow label="SSL/TLS">
-              <Toggle
-                checked={smtpForm.smtp_ssl}
-                onChange={setSmtp("smtp_ssl") as (v: boolean) => void}
-                label={smtpForm.smtp_ssl ? "SSL activo" : "Sin SSL"}
-              />
-            </FieldRow>
-            <FieldRow label="STARTTLS">
-              <Toggle
-                checked={smtpForm.smtp_starttls}
-                onChange={setSmtp("smtp_starttls") as (v: boolean) => void}
-                label={smtpForm.smtp_starttls ? "STARTTLS activo" : "Sin STARTTLS"}
-              />
-            </FieldRow>
+        <FieldRow label="Servidor SMTP">
+          <TextInput
+            value={smtpForm.smtp_host}
+            onChange={setSmtp("smtp_host")}
+            placeholder="smtp.gmail.com"
+          />
+        </FieldRow>
+        <FieldRow label="Puerto">
+          <TextInput
+            value={smtpForm.smtp_port}
+            onChange={setSmtp("smtp_port")}
+            placeholder="587"
+            type="number"
+          />
+        </FieldRow>
+        <FieldRow label="Usuario / Email">
+          <TextInput
+            value={smtpForm.smtp_username}
+            onChange={setSmtp("smtp_username")}
+            placeholder="vos@gmail.com"
+            type="email"
+          />
+        </FieldRow>
+        <FieldRow
+          label="Contraseña"
+          hint="Dejar vacío para mantener la contraseña actual"
+        >
+          <PasswordInput
+            value={smtpForm.smtp_password}
+            onChange={setSmtp("smtp_password")}
+            alreadySet={data.smtp_password_set}
+          />
+        </FieldRow>
+        <div className="grid grid-cols-2 gap-x-4 py-2.5">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-foreground/80">SSL/TLS</label>
+            <Toggle
+              checked={smtpForm.smtp_ssl}
+              onChange={setSmtp("smtp_ssl") as (v: boolean) => void}
+              label={smtpForm.smtp_ssl ? "SSL activo" : "Sin SSL"}
+            />
           </div>
-          <div>
-            <FieldRow label="Usuario / Email">
-              <TextInput
-                value={smtpForm.smtp_username}
-                onChange={setSmtp("smtp_username")}
-                placeholder="vos@gmail.com"
-                type="email"
-              />
-            </FieldRow>
-            <FieldRow
-              label="Contraseña"
-              hint="Dejar vacío para mantener la contraseña actual"
-            >
-              <PasswordInput
-                value={smtpForm.smtp_password}
-                onChange={setSmtp("smtp_password")}
-                alreadySet={data.smtp_password_set}
-              />
-            </FieldRow>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-foreground/80">STARTTLS</label>
+            <Toggle
+              checked={smtpForm.smtp_starttls}
+              onChange={setSmtp("smtp_starttls") as (v: boolean) => void}
+              label={smtpForm.smtp_starttls ? "STARTTLS activo" : "Sin STARTTLS"}
+            />
           </div>
         </div>
-        <div className="mt-4 rounded-2xl bg-muted p-4">
+        <div className="mt-4 rounded-xl border border-border/60 bg-muted/30 p-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="mb-2 text-xs font-medium text-muted-foreground">
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Último test de conexión
               </p>
               <ConnectionTestBadge
@@ -231,56 +230,50 @@ export function CredentialsSection({ data, onSaved }: CredentialsSectionProps) {
           <p className="mb-2 text-xs font-medium text-muted-foreground">Proveedor</p>
           <ProviderPicker value={imapProvider} onChange={applyImapPreset} />
         </div>
-        <div className="grid gap-0 lg:grid-cols-2 lg:gap-x-8">
-          <div>
-            <FieldRow label="Servidor IMAP">
-              <TextInput
-                value={imapForm.imap_host}
-                onChange={setImap("imap_host")}
-                placeholder="imap.gmail.com"
-              />
-            </FieldRow>
-            <FieldRow label="Puerto">
-              <TextInput
-                value={imapForm.imap_port}
-                onChange={setImap("imap_port")}
-                placeholder="993"
-                type="number"
-              />
-            </FieldRow>
-            <FieldRow label="SSL/TLS">
-              <Toggle
-                checked={imapForm.imap_ssl}
-                onChange={setImap("imap_ssl") as (v: boolean) => void}
-                label={imapForm.imap_ssl ? "SSL activo" : "Sin SSL"}
-              />
-            </FieldRow>
-          </div>
-          <div>
-            <FieldRow label="Usuario / Email">
-              <TextInput
-                value={imapForm.imap_username}
-                onChange={setImap("imap_username")}
-                placeholder="vos@gmail.com"
-                type="email"
-              />
-            </FieldRow>
-            <FieldRow
-              label="Contraseña"
-              hint="Dejar vacío para mantener la contraseña actual"
-            >
-              <PasswordInput
-                value={imapForm.imap_password}
-                onChange={setImap("imap_password")}
-                alreadySet={data.imap_password_set}
-              />
-            </FieldRow>
-          </div>
-        </div>
-        <div className="mt-4 rounded-2xl bg-muted p-4">
+        <FieldRow label="Servidor IMAP">
+          <TextInput
+            value={imapForm.imap_host}
+            onChange={setImap("imap_host")}
+            placeholder="imap.gmail.com"
+          />
+        </FieldRow>
+        <FieldRow label="Puerto">
+          <TextInput
+            value={imapForm.imap_port}
+            onChange={setImap("imap_port")}
+            placeholder="993"
+            type="number"
+          />
+        </FieldRow>
+        <FieldRow label="Usuario / Email">
+          <TextInput
+            value={imapForm.imap_username}
+            onChange={setImap("imap_username")}
+            placeholder="vos@gmail.com"
+            type="email"
+          />
+        </FieldRow>
+        <FieldRow
+          label="Contraseña"
+          hint="Dejar vacío para mantener la contraseña actual"
+        >
+          <PasswordInput
+            value={imapForm.imap_password}
+            onChange={setImap("imap_password")}
+            alreadySet={data.imap_password_set}
+          />
+        </FieldRow>
+        <FieldRow label="SSL/TLS">
+          <Toggle
+            checked={imapForm.imap_ssl}
+            onChange={setImap("imap_ssl") as (v: boolean) => void}
+            label={imapForm.imap_ssl ? "SSL activo" : "Sin SSL"}
+          />
+        </FieldRow>
+        <div className="mt-4 rounded-xl border border-border/60 bg-muted/30 p-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="mb-2 text-xs font-medium text-muted-foreground">
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Último test de conexión
               </p>
               <ConnectionTestBadge
@@ -293,13 +286,13 @@ export function CredentialsSection({ data, onSaved }: CredentialsSectionProps) {
           </div>
         </div>
       </SettingsSectionCard>
-
-      <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-4">
-        <p className="text-xs text-muted-foreground">
-          Las contraseñas se guardan de forma segura. Dejar el campo vacío mantiene la contraseña actual.
-        </p>
-        <SaveButton onClick={handleSave} saving={saving} />
       </div>
+
+      <SectionFooter
+        updatedAt={data.updated_at}
+        onSave={handleSave}
+        saving={saving}
+      />
     </div>
   );
 }
