@@ -1,28 +1,29 @@
 export type TabId =
   | "setup"
-  | "brand"
-  | "mail_out"
-  | "mail_in"
-  | "rules"
-  | "pricing"
-  | "credentials"
-  | "notifications"
+  | "identity"
+  | "email"
   | "whatsapp"
   | "telegram"
-  | "territories"
-  | "crawlers";
+  | "ai"
+  | "notifications"
+  | "data";
+
+export type EmailSubTab =
+  | "mail"
+  | "credentials"
+  | "signature"
+  | "rules";
+export type DataSubTab = "territories" | "crawlers" | "pricing";
+export type WhatsAppSubTab = "alerts" | "outreach" | "agent";
+export type TelegramSubTab = "bot" | "agent";
 
 export const TABS: Array<{ id: TabId; label: string }> = [
   { id: "setup", label: "Inicio" },
-  { id: "brand", label: "Marca / Firma" },
-  { id: "mail_out", label: "Mail de salida" },
-  { id: "mail_in", label: "Bandeja de entrada" },
-  { id: "rules", label: "Reglas" },
-  { id: "pricing", label: "Precios" },
-  { id: "credentials", label: "Credenciales" },
-  { id: "notifications", label: "Notificaciones" },
+  { id: "identity", label: "Identidad" },
+  { id: "email", label: "Email" },
   { id: "whatsapp", label: "WhatsApp" },
   { id: "telegram", label: "Telegram" },
-  { id: "territories", label: "Territorios" },
-  { id: "crawlers", label: "Crawlers" },
+  { id: "ai", label: "IA" },
+  { id: "notifications", label: "Notificaciones" },
+  { id: "data", label: "Datos" },
 ];
