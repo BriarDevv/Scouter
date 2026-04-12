@@ -46,14 +46,28 @@ def patch_mail_credentials(body: MailCredentialsUpdate, db: DbSession):
 
 @router.post("/test/smtp", response_model=ConnectionTestResult)
 def test_smtp_connection(db: DbSession):
-    """Test SMTP connectivity using current effective config (DB > env)."""
-    return test_smtp(db)
+    """Test SMTP connectivity using current effective config (DB > env).
+
+    Persists the test outcome (smtp_last_test_at/ok/error) so the setup
+    checklist reflects the latest state without the operator having to
+    save credentials again.
+    """
+    result = test_smtp(db)
+    db.commit()
+    return result
 
 
 @router.post("/test/imap", response_model=ConnectionTestResult)
 def test_imap_connection(db: DbSession):
-    """Test IMAP connectivity using current effective config (DB > env)."""
-    return test_imap(db)
+    """Test IMAP connectivity using current effective config (DB > env).
+
+    Persists the test outcome (imap_last_test_at/ok/error) so the setup
+    checklist reflects the latest state without the operator having to
+    save credentials again.
+    """
+    result = test_imap(db)
+    db.commit()
+    return result
 
 
 @router.post("/test/kapso")
