@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { sileo } from "sileo";
 import { runFullPipeline, runEnrichment, runScoring, runAnalysis, generateDraft } from "@/lib/api/client";
+import { listBriefs } from "@/lib/api/research";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
@@ -15,7 +16,7 @@ import {
 import { StatusBadge, ScoreBadge } from "@/components/shared/status-badge";
 import { RelativeTime } from "@/components/shared/relative-time";
 import { extractDomain, truncate } from "@/lib/formatters";
-import type { Lead, LeadStatus } from "@/types";
+import type { Lead, LeadStatus, CommercialBrief } from "@/types";
 import { STATUS_CONFIG } from "@/lib/constants";
 import {
   Search,
@@ -30,6 +31,7 @@ import {
   Zap,
   Target,
   FileSearch,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -62,11 +64,47 @@ function SortIcon({
   );
 }
 
+const BUDGET_LABELS: Record<string, string> = {
+  low: "Bajo", medium: "Medio", high: "Alto", premium: "Premium",
+};
+const SCOPE_LABELS: Record<string, string> = {
+  landing: "Landing", institutional_web: "Web institucional", catalog: "Catálogo",
+  ecommerce: "E-commerce", redesign: "Rediseño", automation: "Automatización",
+  branding_web: "Branding + Web",
+};
+const PRIORITY_LABELS: Record<string, string> = {
+  immediate: "Inmediata", high: "Alta", normal: "Normal", low: "Baja",
+};
+const CONTACT_LABELS: Record<string, string> = {
+  whatsapp: "WhatsApp", email: "Email", call: "Llamada",
+  demo_first: "Demo primero", manual_review: "Revisión manual",
+};
+
 export function LeadsTable({ leads }: LeadsTableProps) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<LeadStatus | "all">("all");
   const [filterOpen, setFilterOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
+  const [briefView, setBriefView] = useState(false);
+  const [briefsMap, setBriefsMap] = useState<Map<string, CommercialBrief>>(new Map());
+  const [briefsLoading, setBriefsLoading] = useState(false);
+
+  const toggleBriefView = useCallback(async () => {
+    if (!briefView && briefsMap.size === 0) {
+      setBriefsLoading(true);
+      try {
+        const briefs = await listBriefs({ limit: 500 });
+        const map = new Map<string, CommercialBrief>();
+        for (const b of briefs) map.set(b.lead_id, b);
+        setBriefsMap(map);
+      } catch {
+        // silently fail — brief columns will show "—"
+      } finally {
+        setBriefsLoading(false);
+      }
+    }
+    setBriefView((v) => !v);
+  }, [briefView, briefsMap.size]);
 
   useEffect(() => {
     if (!filterOpen) return;
@@ -129,6 +167,20 @@ export function LeadsTable({ leads }: LeadsTableProps) {
           />
         </div>
 
+        <button
+          onClick={toggleBriefView}
+          disabled={briefsLoading}
+          className={cn(
+            "flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors cursor-pointer outline-none",
+            briefView
+              ? "border-foreground/20 bg-foreground text-background"
+              : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+          )}
+        >
+          <FileText className="h-3.5 w-3.5" />
+          Brief
+        </button>
+
         <div className="relative" ref={filterRef}>
           <button
             onClick={() => setFilterOpen(!filterOpen)}
@@ -168,26 +220,46 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                   Negocio <SortIcon field="business_name" sortBy={sortBy} sortDir={sortDir} />
                 </button>
               </th>
-              <th className="text-left px-3 py-2.5 w-[12%] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Rubro</th>
-              <th className="text-left px-3 py-2.5 w-[18%] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Contacto</th>
-              <th className="text-left px-3 py-2.5 w-[6%]">
-                <button onClick={() => toggleSort("score")} className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
-                  Score <SortIcon field="score" sortBy={sortBy} sortDir={sortDir} />
-                </button>
-              </th>
-              <th className="text-left px-3 py-2.5 w-[14%] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Web</th>
-              <th className="text-left px-3 py-2.5 w-[10%] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Estado</th>
-              <th className="text-left px-3 py-2.5 w-[8%] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Ciudad</th>
-              <th className="text-left px-3 py-2.5 w-[10%]">
-                <button onClick={() => toggleSort("created_at")} className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
-                  Fecha <SortIcon field="created_at" sortBy={sortBy} sortDir={sortDir} />
-                </button>
-              </th>
+              {briefView ? (
+                <>
+                  <th className="text-left px-3 py-2.5 w-[8%]">
+                    <button onClick={() => toggleSort("score")} className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
+                      Score <SortIcon field="score" sortBy={sortBy} sortDir={sortDir} />
+                    </button>
+                  </th>
+                  <th className="text-left px-3 py-2.5 w-[10%] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Budget</th>
+                  <th className="text-left px-3 py-2.5 w-[16%] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Rango USD</th>
+                  <th className="text-left px-3 py-2.5 w-[14%] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Scope</th>
+                  <th className="text-left px-3 py-2.5 w-[10%] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Prioridad</th>
+                  <th className="text-left px-3 py-2.5 w-[12%] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Contacto rec.</th>
+                  <th className="text-left px-3 py-2.5 w-[8%] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Estado</th>
+                </>
+              ) : (
+                <>
+                  <th className="text-left px-3 py-2.5 w-[12%] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Rubro</th>
+                  <th className="text-left px-3 py-2.5 w-[18%] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Contacto</th>
+                  <th className="text-left px-3 py-2.5 w-[6%]">
+                    <button onClick={() => toggleSort("score")} className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
+                      Score <SortIcon field="score" sortBy={sortBy} sortDir={sortDir} />
+                    </button>
+                  </th>
+                  <th className="text-left px-3 py-2.5 w-[14%] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Web</th>
+                  <th className="text-left px-3 py-2.5 w-[10%] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Estado</th>
+                  <th className="text-left px-3 py-2.5 w-[8%] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Ciudad</th>
+                  <th className="text-left px-3 py-2.5 w-[10%]">
+                    <button onClick={() => toggleSort("created_at")} className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
+                      Fecha <SortIcon field="created_at" sortBy={sortBy} sortDir={sortDir} />
+                    </button>
+                  </th>
+                </>
+              )}
               <th className="w-[4%] px-2" />
             </tr>
           </thead>
           <tbody>
-            {filtered.map((lead) => (
+            {filtered.map((lead) => {
+              const brief = briefsMap.get(lead.id);
+              return (
               <tr
                 key={lead.id}
                 className="border-b border-border/40 last:border-0 hover:bg-muted/40 transition-colors"
@@ -199,57 +271,83 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                     </p>
                   </Link>
                 </td>
-                <td className="px-3 py-2.5 text-xs text-muted-foreground">{lead.industry || "—"}</td>
-                <td className="px-3 py-2.5">
-                  <div className="space-y-0.5">
-                    {lead.email && (
-                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-data truncate">
-                        <Mail className="h-2.5 w-2.5 shrink-0" />
-                        <span className="truncate">{lead.email}</span>
+                {briefView ? (
+                  <>
+                    <td className="px-3 py-2.5"><ScoreBadge score={brief?.opportunity_score ?? lead.score} /></td>
+                    <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                      {brief?.budget_tier ? BUDGET_LABELS[brief.budget_tier] ?? brief.budget_tier : "—"}
+                    </td>
+                    <td className="px-3 py-2.5 text-[10px] font-data text-muted-foreground">
+                      {brief?.estimated_budget_min != null && brief?.estimated_budget_max != null
+                        ? `$${brief.estimated_budget_min.toLocaleString()} – $${brief.estimated_budget_max.toLocaleString()}`
+                        : "—"}
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                      {brief?.estimated_scope ? SCOPE_LABELS[brief.estimated_scope] ?? brief.estimated_scope : "—"}
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                      {brief?.contact_priority ? PRIORITY_LABELS[brief.contact_priority] ?? brief.contact_priority : "—"}
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                      {brief?.recommended_contact_method ? CONTACT_LABELS[brief.recommended_contact_method] ?? brief.recommended_contact_method : "—"}
+                    </td>
+                    <td className="px-3 py-2.5"><StatusBadge status={lead.status} /></td>
+                  </>
+                ) : (
+                  <>
+                    <td className="px-3 py-2.5 text-xs text-muted-foreground">{lead.industry || "—"}</td>
+                    <td className="px-3 py-2.5">
+                      <div className="space-y-0.5">
+                        {lead.email && (
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-data truncate">
+                            <Mail className="h-2.5 w-2.5 shrink-0" />
+                            <span className="truncate">{lead.email}</span>
+                          </div>
+                        )}
+                        {lead.phone && (
+                          <div className="flex items-center gap-1 text-[10px] font-data text-muted-foreground truncate">
+                            <Phone className="h-2.5 w-2.5 shrink-0" />
+                            <span className="truncate">{lead.phone}</span>
+                          </div>
+                        )}
+                        {!lead.email && !lead.phone && (
+                          <span className="text-[10px] text-muted-foreground/40">—</span>
+                        )}
                       </div>
-                    )}
-                    {lead.phone && (
-                      <div className="flex items-center gap-1 text-[10px] font-data text-muted-foreground truncate">
-                        <Phone className="h-2.5 w-2.5 shrink-0" />
-                        <span className="truncate">{lead.phone}</span>
-                      </div>
-                    )}
-                    {!lead.email && !lead.phone && (
-                      <span className="text-[10px] text-muted-foreground/40">—</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-3 py-2.5"><ScoreBadge score={lead.score} /></td>
-                <td className="px-3 py-2.5">
-                  {lead.website_url ? (
-                    <a
-                      href={lead.website_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[10px] text-muted-foreground font-data truncate block hover:text-foreground underline decoration-border underline-offset-2 hover:decoration-foreground/30 transition-all"
-                    >
-                      {extractDomain(lead.website_url)}
-                    </a>
-                  ) : (
-                    <span className="text-[10px] text-muted-foreground/40">—</span>
-                  )}
-                </td>
-                <td className="px-3 py-2.5"><StatusBadge status={lead.status} /></td>
-                <td className="px-3 py-2.5 text-xs text-muted-foreground">
-                  {lead.city ? (
-                    <a
-                      href={lead.google_maps_url || (lead.latitude && lead.longitude ? `https://www.google.com/maps?q=${lead.latitude},${lead.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([lead.business_name, lead.city].filter(Boolean).join(", "))}`)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:text-foreground underline decoration-border underline-offset-2 hover:decoration-foreground/30 transition-all"
-                    >
-                      {lead.city}
-                    </a>
-                  ) : "—"}
-                </td>
-                <td className="px-3 py-2.5 text-[10px] text-muted-foreground font-data">
-                  <RelativeTime date={lead.created_at} />
-                </td>
+                    </td>
+                    <td className="px-3 py-2.5"><ScoreBadge score={lead.score} /></td>
+                    <td className="px-3 py-2.5">
+                      {lead.website_url ? (
+                        <a
+                          href={lead.website_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-muted-foreground font-data truncate block hover:text-foreground underline decoration-border underline-offset-2 hover:decoration-foreground/30 transition-all"
+                        >
+                          {extractDomain(lead.website_url)}
+                        </a>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground/40">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5"><StatusBadge status={lead.status} /></td>
+                    <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                      {lead.city ? (
+                        <a
+                          href={lead.google_maps_url || (lead.latitude && lead.longitude ? `https://www.google.com/maps?q=${lead.latitude},${lead.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([lead.business_name, lead.city].filter(Boolean).join(", "))}`)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:text-foreground underline decoration-border underline-offset-2 hover:decoration-foreground/30 transition-all"
+                        >
+                          {lead.city}
+                        </a>
+                      ) : "—"}
+                    </td>
+                    <td className="px-3 py-2.5 text-[10px] text-muted-foreground font-data">
+                      <RelativeTime date={lead.created_at} />
+                    </td>
+                  </>
+                )}
                 <td className="px-2 py-2.5">
                   <DropdownMenu>
                     <DropdownMenuTrigger render={
@@ -320,7 +418,8 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                   </DropdownMenu>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
 
