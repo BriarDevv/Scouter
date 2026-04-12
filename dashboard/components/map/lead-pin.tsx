@@ -43,30 +43,49 @@ export function LeadPin({ lead, onSelect }: LeadPinProps) {
       eventHandlers={{ click: () => onSelect?.(lead) }}
     >
       <Popup>
-        <div style={{ minWidth: 200, fontFamily: "system-ui, sans-serif" }}>
-          <p style={{ margin: 0, fontWeight: 700, fontSize: 13 }}>{lead.business_name}</p>
+        <div className="map-popup-content">
+          <p className="popup-title">{lead.business_name}</p>
           {lead.industry && (
-            <p style={{ margin: "2px 0 0", fontSize: 11, opacity: 0.6 }}>{lead.industry}</p>
+            <p className="popup-subtitle">{lead.industry}</p>
           )}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, fontSize: 11 }}>
+          <div className="popup-stats">
             {lead.score !== null && (
-              <span style={{ fontFamily: "monospace", fontWeight: 600, color }}>
+              <span className="popup-score" style={{ color }}>
                 {lead.score} pts
               </span>
             )}
-            {lead.rating !== null && <span>&#9733; {lead.rating}</span>}
-            {lead.review_count !== null && <span>{lead.review_count} rese\u00f1as</span>}
+            {lead.rating !== null && <span className="popup-detail">★ {lead.rating}</span>}
+            {lead.review_count !== null && <span className="popup-detail">{lead.review_count} reseñas</span>}
           </div>
           {lead.address && (
-            <p style={{ margin: "4px 0 0", fontSize: 11, opacity: 0.55, lineHeight: 1.35 }}>
+            <a
+              href={lead.google_maps_url || `https://www.google.com/maps?q=${lead.latitude},${lead.longitude}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="popup-link popup-address"
+            >
               {lead.address}
-            </p>
+            </a>
           )}
-          {lead.phone && (
-            <p style={{ margin: "2px 0 0", fontSize: 11, fontFamily: "monospace", opacity: 0.5 }}>
-              {lead.phone}
-            </p>
+          {lead.website_url && (
+            <a
+              href={lead.website_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="popup-link popup-web"
+            >
+              {lead.website_url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}
+            </a>
           )}
+          <div className="popup-contact">
+            {lead.email && (
+              <a href={`mailto:${lead.email}`} className="popup-link popup-email">{lead.email}</a>
+            )}
+            {lead.phone && (
+              <a href={`tel:${lead.phone}`} className="popup-link popup-phone">{lead.phone}</a>
+            )}
+          </div>
+          <a href={`/leads/${lead.id}`} className="popup-cta">Ver lead</a>
         </div>
       </Popup>
     </Marker>
