@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import dynamic from "next/dynamic";
 import { MapPin, RefreshCw } from "lucide-react";
 import {
@@ -34,10 +34,17 @@ export default function MapPage() {
   const leads = leadsData?.items;
   const { data: territories, isLoading: territoriesLoading, mutate: mutateTerritories } = useApi<TerritoryWithStats[]>("/territories");
 
+  const [refreshing, setRefreshing] = useState(false);
   const loading = citiesLoading || leadsLoading || territoriesLoading;
+  const spinning = loading || refreshing;
 
   const loadData = useCallback(async () => {
-    await Promise.all([mutateCities(), mutateLeads(), mutateTerritories()]);
+    setRefreshing(true);
+    try {
+      await Promise.all([mutateCities(), mutateLeads(), mutateTerritories()]);
+    } finally {
+      setRefreshing(false);
+    }
   }, [mutateCities, mutateLeads, mutateTerritories]);
 
   async function handleCreateTerritory(data: {
@@ -62,26 +69,21 @@ export default function MapPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-1rem)] flex-col">
+    <div className="flex h-[calc(100vh-0.5rem)] flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border bg-card px-6 py-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted dark:bg-muted">
-            <MapPin className="h-5 w-5 text-foreground" />
-          </div>
-          <div>
-            <h1 className="font-heading text-lg font-bold text-foreground">Mapa de Leads</h1>
-            <p className="text-xs text-muted-foreground">
-              {(leads ?? []).length} negocios con ubicacion &middot; {(cities ?? []).length} ciudades
-            </p>
-          </div>
+      <div className="flex items-center justify-between px-8 py-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground font-heading">Mapa</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            <span className="font-data">{(leads ?? []).length}</span> negocios con ubicación · <span className="font-data">{(cities ?? []).length}</span> ciudades
+          </p>
         </div>
         <button
           onClick={() => void loadData()}
-          disabled={loading}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50 transition-colors"
+          disabled={spinning}
+          className="flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50 transition-colors"
         >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+          <RefreshCw className={`h-3.5 w-3.5 ${spinning ? "animate-spin" : ""}`} />
           Actualizar
         </button>
       </div>
