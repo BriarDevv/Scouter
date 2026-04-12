@@ -37,13 +37,13 @@ export function HeatmapLayer({
       try {
         const L = await import("leaflet");
         // @ts-expect-error leaflet.heat adds L.heatLayer
-        await import("leaflet.heat");
+        await import("@/lib/vendor/leaflet-heat");
 
         const heatData = points.map(
           (p) => [p.lat, p.lng, p.intensity] as [number, number, number]
         );
 
-        // @ts-expect-error leaflet.heat augments L
+        // @ts-ignore -- leaflet.heat augments L at runtime
         heatLayer = L.heatLayer(heatData, {
           radius,
           blur,
