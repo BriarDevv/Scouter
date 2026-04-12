@@ -9,7 +9,7 @@ import {
   FieldRow,
   TextInput,
   Toggle,
-  SaveButton,
+  SectionFooter,
   useSave,
 } from "./settings-primitives";
 import type { MailSettings, OperationalSettings } from "@/types";
@@ -50,86 +50,90 @@ export function MailInboundSection({ data, mailData, onSaved }: MailInboundSecti
   const { save, saving } = useSave(getData, onSaved);
 
   return (
-    <SettingsSectionCard
-      title="Bandeja de entrada"
-      description="Configuración del canal de lectura de inbox. Credenciales IMAP en la pestaña Credenciales."
-      icon={Mail}
-    >
-      <div className="mb-4 flex flex-wrap gap-2">
-        <StatusPill
-          label={mailData.inbound.ready ? "IMAP listo" : "IMAP no listo"}
-          tone={mailData.inbound.ready ? "positive" : "warning"}
-        />
-        {mailData.inbound.account && (
-          <StatusPill label={mailData.inbound.account} tone="neutral" />
-        )}
-      </div>
-      <FieldRow label="Habilitar sync de inbox">
-        <Toggle
-          checked={form.mail_inbound_sync_enabled}
-          onChange={set("mail_inbound_sync_enabled") as (v: boolean) => void}
-          label={form.mail_inbound_sync_enabled ? "Habilitado" : "Deshabilitado"}
-        />
-      </FieldRow>
-      <FieldRow label="Mailbox" hint="Override del campo MAIL_IMAP_MAILBOX">
-        <TextInput
-          value={form.mail_inbound_mailbox}
-          onChange={set("mail_inbound_mailbox")}
-          placeholder={mailData.inbound.mailbox}
-        />
-      </FieldRow>
-      <FieldRow label="Límite de sync">
-        <TextInput
-          value={form.mail_inbound_sync_limit}
-          onChange={set("mail_inbound_sync_limit")}
-          placeholder={String(mailData.inbound.sync_limit)}
-          type="number"
-        />
-      </FieldRow>
-      <FieldRow label="Timeout (seg)">
-        <TextInput
-          value={form.mail_inbound_timeout_seconds}
-          onChange={set("mail_inbound_timeout_seconds")}
-          placeholder={String(mailData.inbound.timeout_seconds)}
-          type="number"
-        />
-      </FieldRow>
-      <FieldRow label="Criterio de búsqueda IMAP">
-        <TextInput
-          value={form.mail_inbound_search_criteria}
-          onChange={set("mail_inbound_search_criteria")}
-          placeholder={mailData.inbound.search_criteria}
-        />
-      </FieldRow>
-      {mailData.inbound.last_sync && (
-        <div className="mt-4 rounded-2xl border border-border bg-muted/70 p-4">
-          <p className="mb-3 text-xs font-medium text-muted-foreground">
-            Última sync persistida
-          </p>
-          <div className="grid grid-cols-3 gap-2 text-sm">
-            {(
-              [
-                ["Fetched", mailData.inbound.last_sync.counts.fetched],
-                ["New", mailData.inbound.last_sync.counts.new],
-                ["Matched", mailData.inbound.last_sync.counts.matched],
-              ] as [string, number][]
-            ).map(([k, v]) => (
-              <div key={k} className="rounded-xl bg-card px-3 py-2">
-                <p className="text-xs text-muted-foreground">{k}</p>
-                <p className="font-semibold text-foreground">{v}</p>
-              </div>
-            ))}
-          </div>
-          {mailData.inbound.last_sync.at && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              <RelativeTime date={mailData.inbound.last_sync.at} />
-            </p>
+    <div className="space-y-4">
+      <SettingsSectionCard
+        title="Bandeja de entrada"
+        description="Configuración del canal de lectura de inbox. Credenciales IMAP en la pestaña Credenciales."
+        icon={Mail}
+      >
+        <div className="mb-4 flex flex-wrap gap-2">
+          <StatusPill
+            label={mailData.inbound.ready ? "IMAP listo" : "IMAP no listo"}
+            tone={mailData.inbound.ready ? "positive" : "warning"}
+          />
+          {mailData.inbound.account && (
+            <StatusPill label={mailData.inbound.account} tone="neutral" />
           )}
         </div>
-      )}
-      <div className="mt-4 flex justify-end">
-        <SaveButton onClick={save} saving={saving} />
-      </div>
-    </SettingsSectionCard>
+        <FieldRow label="Habilitar sync de inbox">
+          <Toggle
+            checked={form.mail_inbound_sync_enabled}
+            onChange={set("mail_inbound_sync_enabled") as (v: boolean) => void}
+            label={form.mail_inbound_sync_enabled ? "Habilitado" : "Deshabilitado"}
+          />
+        </FieldRow>
+        <FieldRow label="Mailbox" hint="Override del campo MAIL_IMAP_MAILBOX">
+          <TextInput
+            value={form.mail_inbound_mailbox}
+            onChange={set("mail_inbound_mailbox")}
+            placeholder={mailData.inbound.mailbox}
+          />
+        </FieldRow>
+        <FieldRow label="Límite de sync">
+          <TextInput
+            value={form.mail_inbound_sync_limit}
+            onChange={set("mail_inbound_sync_limit")}
+            placeholder={String(mailData.inbound.sync_limit)}
+            type="number"
+          />
+        </FieldRow>
+        <FieldRow label="Timeout (seg)">
+          <TextInput
+            value={form.mail_inbound_timeout_seconds}
+            onChange={set("mail_inbound_timeout_seconds")}
+            placeholder={String(mailData.inbound.timeout_seconds)}
+            type="number"
+          />
+        </FieldRow>
+        <FieldRow label="Criterio de búsqueda IMAP">
+          <TextInput
+            value={form.mail_inbound_search_criteria}
+            onChange={set("mail_inbound_search_criteria")}
+            placeholder={mailData.inbound.search_criteria}
+          />
+        </FieldRow>
+        {mailData.inbound.last_sync && (
+          <div className="mt-4 rounded-xl border border-border/60 bg-muted/30 p-4">
+            <p className="mb-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Última sync persistida
+            </p>
+            <div className="grid grid-cols-3 gap-2 text-sm">
+              {(
+                [
+                  ["Fetched", mailData.inbound.last_sync.counts.fetched],
+                  ["New", mailData.inbound.last_sync.counts.new],
+                  ["Matched", mailData.inbound.last_sync.counts.matched],
+                ] as [string, number][]
+              ).map(([k, v]) => (
+                <div key={k} className="rounded-lg border border-border/60 bg-card px-3 py-2">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{k}</p>
+                  <p className="font-data text-sm font-semibold text-foreground">{v}</p>
+                </div>
+              ))}
+            </div>
+            {mailData.inbound.last_sync.at && (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                <RelativeTime date={mailData.inbound.last_sync.at} />
+              </p>
+            )}
+          </div>
+        )}
+      </SettingsSectionCard>
+      <SectionFooter
+        updatedAt={data.updated_at}
+        onSave={save}
+        saving={saving}
+      />
+    </div>
   );
 }

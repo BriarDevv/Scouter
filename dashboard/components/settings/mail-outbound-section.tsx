@@ -8,7 +8,7 @@ import {
   FieldRow,
   TextInput,
   Toggle,
-  SaveButton,
+  SectionFooter,
   useSave,
 } from "./settings-primitives";
 import type { MailSettings, OperationalSettings } from "@/types";
@@ -49,71 +49,75 @@ export function MailOutboundSection({ data, mailData, onSaved }: MailOutboundSec
   const { save, saving } = useSave(getData, onSaved);
 
   return (
-    <SettingsSectionCard
-      title="Mail de salida"
-      description="Configuración operativa del canal de envío. Credenciales SMTP en la pestaña Credenciales."
-      icon={Mail}
-    >
-      <div className="mb-4 flex flex-wrap gap-2">
-        <StatusPill
-          label={mailData.outbound.ready ? "SMTP listo" : "SMTP no listo"}
-          tone={mailData.outbound.ready ? "positive" : "warning"}
-        />
-        {mailData.outbound.missing_requirements.length > 0 && (
+    <div className="space-y-4">
+      <SettingsSectionCard
+        title="Mail de salida"
+        description="Configuración operativa del canal de envío. Credenciales SMTP en la pestaña Credenciales."
+        icon={Mail}
+      >
+        <div className="mb-4 flex flex-wrap gap-2">
           <StatusPill
-            label={`Falta: ${mailData.outbound.missing_requirements.join(", ")}`}
-            tone="danger"
+            label={mailData.outbound.ready ? "SMTP listo" : "SMTP no listo"}
+            tone={mailData.outbound.ready ? "positive" : "warning"}
           />
-        )}
-      </div>
-      <FieldRow label="Habilitar envío de mail">
-        <Toggle
-          checked={form.mail_enabled}
-          onChange={set("mail_enabled") as (v: boolean) => void}
-          label={form.mail_enabled ? "Habilitado" : "Deshabilitado"}
-        />
-      </FieldRow>
-      <FieldRow label="From Email" hint="Override del campo MAIL_FROM_EMAIL">
-        <TextInput
-          value={form.mail_from_email}
-          onChange={set("mail_from_email")}
-          placeholder={mailData.outbound.from_email ?? "Usa valor de .env"}
-          type="email"
-        />
-      </FieldRow>
-      <FieldRow label="From Name">
-        <TextInput
-          value={form.mail_from_name}
-          onChange={set("mail_from_name")}
-          placeholder={mailData.outbound.from_name}
-        />
-      </FieldRow>
-      <FieldRow label="Reply-To">
-        <TextInput
-          value={form.mail_reply_to}
-          onChange={set("mail_reply_to")}
-          placeholder={mailData.outbound.reply_to ?? "Sin reply-to"}
-          type="email"
-        />
-      </FieldRow>
-      <FieldRow label="Timeout de envío (seg)">
-        <TextInput
-          value={form.mail_send_timeout_seconds}
-          onChange={set("mail_send_timeout_seconds")}
-          placeholder={String(mailData.outbound.send_timeout_seconds)}
-          type="number"
-        />
-      </FieldRow>
-      <FieldRow label="Requerir aprobación de drafts">
-        <Toggle
-          checked={form.require_approved_drafts}
-          onChange={set("require_approved_drafts") as (v: boolean) => void}
-          label={form.require_approved_drafts ? "Solo drafts aprobados" : "Sin restricción"}
-        />
-      </FieldRow>
-      <div className="mt-4 flex justify-end">
-        <SaveButton onClick={save} saving={saving} />
-      </div>
-    </SettingsSectionCard>
+          {mailData.outbound.missing_requirements.length > 0 && (
+            <StatusPill
+              label={`Falta: ${mailData.outbound.missing_requirements.join(", ")}`}
+              tone="danger"
+            />
+          )}
+        </div>
+        <FieldRow label="Habilitar envío de mail">
+          <Toggle
+            checked={form.mail_enabled}
+            onChange={set("mail_enabled") as (v: boolean) => void}
+            label={form.mail_enabled ? "Habilitado" : "Deshabilitado"}
+          />
+        </FieldRow>
+        <FieldRow label="From Email" hint="Override del campo MAIL_FROM_EMAIL">
+          <TextInput
+            value={form.mail_from_email}
+            onChange={set("mail_from_email")}
+            placeholder={mailData.outbound.from_email ?? "Usa valor de .env"}
+            type="email"
+          />
+        </FieldRow>
+        <FieldRow label="From Name">
+          <TextInput
+            value={form.mail_from_name}
+            onChange={set("mail_from_name")}
+            placeholder={mailData.outbound.from_name}
+          />
+        </FieldRow>
+        <FieldRow label="Reply-To">
+          <TextInput
+            value={form.mail_reply_to}
+            onChange={set("mail_reply_to")}
+            placeholder={mailData.outbound.reply_to ?? "Sin reply-to"}
+            type="email"
+          />
+        </FieldRow>
+        <FieldRow label="Timeout de envío (seg)">
+          <TextInput
+            value={form.mail_send_timeout_seconds}
+            onChange={set("mail_send_timeout_seconds")}
+            placeholder={String(mailData.outbound.send_timeout_seconds)}
+            type="number"
+          />
+        </FieldRow>
+        <FieldRow label="Requerir aprobación de drafts">
+          <Toggle
+            checked={form.require_approved_drafts}
+            onChange={set("require_approved_drafts") as (v: boolean) => void}
+            label={form.require_approved_drafts ? "Solo drafts aprobados" : "Sin restricción"}
+          />
+        </FieldRow>
+      </SettingsSectionCard>
+      <SectionFooter
+        updatedAt={data.updated_at}
+        onSave={save}
+        saving={saving}
+      />
+    </div>
   );
 }
