@@ -5,9 +5,11 @@ import { BellRing } from "lucide-react";
 import {
   SettingsSectionCard,
   FieldRow,
+  SectionSubheading,
   TextInput,
   Toggle,
-  SaveButton,
+  SectionFooter,
+  Select,
   useSave,
 } from "./settings-primitives";
 import type { OperationalSettings } from "@/types";
@@ -53,84 +55,87 @@ export function NotificationsSection({ data, onSaved }: NotificationsSectionProp
   const { save, saving } = useSave(getData, onSaved);
 
   return (
-    <div className="space-y-6">
-      <SettingsSectionCard
-        title="Notificaciones"
-        description="Configura las alertas y notificaciones del sistema. Recibe avisos cuando se detectan leads de alto puntaje u otros eventos importantes."
-        icon={BellRing}
-      >
-        <div className="grid gap-0 lg:grid-cols-2 lg:gap-x-8">
-          <div>
-            <FieldRow label="Notificaciones habilitadas" hint="Activar o desactivar todas las notificaciones del sistema">
-              <Toggle
-                checked={form.notifications_enabled}
-                onChange={set("notifications_enabled") as (v: boolean) => void}
-                label={form.notifications_enabled ? "Habilitadas" : "Deshabilitadas"}
-              />
-            </FieldRow>
-            <FieldRow label="Umbral de score para alertas" hint="Recibir alerta cuando un lead supere este puntaje (0-100)">
-              <TextInput
-                value={form.notification_score_threshold}
-                onChange={set("notification_score_threshold")}
-                placeholder="70"
-                type="number"
-                disabled={!form.notifications_enabled}
-              />
-            </FieldRow>
-            <FieldRow label="Alertas WhatsApp" hint="Enviar alertas de alta prioridad por WhatsApp">
-              <Toggle
-                checked={form.whatsapp_alerts_enabled}
-                onChange={set("whatsapp_alerts_enabled") as (v: boolean) => void}
-                label={form.whatsapp_alerts_enabled ? "Habilitadas" : "Deshabilitadas"}
-              />
-            </FieldRow>
-            <FieldRow label="Alertas Telegram" hint="Enviar alertas de alta prioridad por Telegram Bot">
-              <Toggle
-                checked={form.telegram_alerts_enabled}
-                onChange={set("telegram_alerts_enabled") as (v: boolean) => void}
-                label={form.telegram_alerts_enabled ? "Habilitadas" : "Deshabilitadas"}
-              />
-            </FieldRow>
+    <div className="space-y-4">
+      <SettingsSectionCard title="Notificaciones" icon={BellRing}>
+        <div className="space-y-5">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
+            <Toggle
+              checked={form.notifications_enabled}
+              onChange={set("notifications_enabled") as (v: boolean) => void}
+              label={form.notifications_enabled ? "Notificaciones habilitadas" : "Notificaciones deshabilitadas"}
+            />
           </div>
-          <div>
-            <FieldRow label="Severidad mínima" hint="Solo enviar notificaciones con esta severidad o superior">
-              <select
-                value={form.whatsapp_min_severity}
-                onChange={(e) => set("whatsapp_min_severity")(e.target.value)}
-                disabled={!form.notifications_enabled}
-                className="w-full rounded-xl border border-border bg-muted px-3 py-2 text-sm text-foreground outline-none focus:border-border focus:bg-card disabled:opacity-50"
-              >
-                <option value="info">Info</option>
-                <option value="warning">Warning</option>
-                <option value="high">High</option>
-                <option value="critical">Critical</option>
-              </select>
-            </FieldRow>
-            <FieldRow label="Categorías de notificaciones" hint="Seleccionar qué categorías de eventos generan notificaciones">
-              <div className="space-y-3 pt-1">
-                <Toggle
-                  checked={form.notification_categories_business}
-                  onChange={set("notification_categories_business") as (v: boolean) => void}
-                  label="Negocios (leads, outreach, respuestas)"
-                />
-                <Toggle
-                  checked={form.notification_categories_system}
-                  onChange={set("notification_categories_system") as (v: boolean) => void}
-                  label="Sistema (errores, sincronización, tareas)"
-                />
-                <Toggle
-                  checked={form.notification_categories_security}
-                  onChange={set("notification_categories_security") as (v: boolean) => void}
-                  label="Seguridad (accesos, credenciales, alertas)"
-                />
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <SectionSubheading>Canales</SectionSubheading>
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
+                  <Toggle
+                    checked={form.whatsapp_alerts_enabled}
+                    onChange={set("whatsapp_alerts_enabled") as (v: boolean) => void}
+                    label="WhatsApp"
+                  />
+                  <Toggle
+                    checked={form.telegram_alerts_enabled}
+                    onChange={set("telegram_alerts_enabled") as (v: boolean) => void}
+                    label="Telegram"
+                  />
+                </div>
               </div>
-            </FieldRow>
+              <div className="space-y-2">
+                <SectionSubheading>Categorías</SectionSubheading>
+                <div className="flex flex-col gap-3 rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
+                  <Toggle
+                    checked={form.notification_categories_business}
+                    onChange={set("notification_categories_business") as (v: boolean) => void}
+                    label="Negocios (leads, outreach, respuestas)"
+                  />
+                  <Toggle
+                    checked={form.notification_categories_system}
+                    onChange={set("notification_categories_system") as (v: boolean) => void}
+                    label="Sistema (errores, sincronización, tareas)"
+                  />
+                  <Toggle
+                    checked={form.notification_categories_security}
+                    onChange={set("notification_categories_security") as (v: boolean) => void}
+                    label="Seguridad (accesos, credenciales, alertas)"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <FieldRow label="Umbral de score">
+                <TextInput
+                  value={form.notification_score_threshold}
+                  onChange={set("notification_score_threshold")}
+                  placeholder="70"
+                  type="number"
+                  disabled={!form.notifications_enabled}
+                />
+              </FieldRow>
+              <FieldRow label="Severidad mínima">
+                <Select
+                  value={form.whatsapp_min_severity}
+                  onChange={set("whatsapp_min_severity") as (v: string) => void}
+                  disabled={!form.notifications_enabled}
+                >
+                  <option value="info">Info</option>
+                  <option value="warning">Warning</option>
+                  <option value="high">High</option>
+                  <option value="critical">Critical</option>
+                </Select>
+              </FieldRow>
+            </div>
           </div>
-        </div>
-        <div className="mt-4 flex justify-end">
-          <SaveButton onClick={save} saving={saving} />
         </div>
       </SettingsSectionCard>
+      <SectionFooter
+        updatedAt={data.updated_at}
+        onSave={save}
+        saving={saving}
+      />
     </div>
   );
 }
