@@ -8,8 +8,9 @@ import {
   FieldRow,
   TextInput,
   PasswordInput,
-  SaveButton,
+  SectionFooter,
   Toggle,
+  StatusPill,
   ConnectionTestBadge,
   TestButton,
 } from "./settings-primitives";
@@ -88,92 +89,96 @@ export function TelegramSection({ data, onSaved }: TelegramSectionProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <SettingsSectionCard
         title="Credenciales Telegram"
-        description="Configuracion del bot de Telegram para alertas y notificaciones."
         icon={Send}
+        action={
+          <StatusPill
+            label={data.bot_token_set ? "Configurado" : "No configurado"}
+            tone={data.bot_token_set ? "positive" : "warning"}
+          />
+        }
       >
         {/* Setup guide */}
-        <div className="mb-5 rounded-xl border border-blue-500/20 bg-blue-50 dark:bg-blue-950/20 p-4 space-y-2">
-          <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">
-            Como configurar tu bot de Telegram
+        <div className="mb-5 space-y-2 rounded-xl border border-border/60 bg-muted/30 p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Cómo configurar tu bot
           </p>
-          <ol className="list-decimal ml-4 space-y-1 text-[11px] text-blue-600 dark:text-blue-400/80">
+          <ol className="ml-4 list-decimal space-y-1 text-[11px] text-muted-foreground">
             <li>
-              Abri <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="font-semibold underline">@BotFather</a> en Telegram
+              Abrí{" "}
+              <a
+                href="https://t.me/BotFather"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-foreground underline decoration-border underline-offset-2 transition-colors hover:decoration-foreground/40"
+              >
+                @BotFather
+              </a>{" "}
+              en Telegram
             </li>
-            <li>Manda <code className="rounded bg-blue-100 dark:bg-blue-900/40 px-1">/newbot</code> y segui las instrucciones</li>
-            <li>Copia el <strong>token</strong> que te da y pegalo abajo</li>
-            <li>Mandate <code className="rounded bg-blue-100 dark:bg-blue-900/40 px-1">/start</code> al bot desde tu cuenta</li>
             <li>
-              Obtene tu chat_id mandando un mensaje al bot y visitando:{" "}
+              Mandá{" "}
+              <code className="rounded bg-muted px-1 font-data text-foreground">/newbot</code>{" "}
+              y seguí las instrucciones
+            </li>
+            <li>
+              Copiá el <strong className="text-foreground">token</strong> y pegalo abajo
+            </li>
+            <li>
+              Mandate{" "}
+              <code className="rounded bg-muted px-1 font-data text-foreground">/start</code>{" "}
+              al bot desde tu cuenta
+            </li>
+            <li>
+              Obtené tu chat_id visitando:{" "}
               <button
-                onClick={() => handleCopy(`https://api.telegram.org/bot<TOKEN>/getUpdates`)}
-                className="inline-flex items-center gap-1 font-mono text-blue-500 hover:text-blue-400"
+                type="button"
+                onClick={() =>
+                  handleCopy("https://api.telegram.org/bot<TOKEN>/getUpdates")
+                }
+                className="inline-flex items-center gap-1 font-data text-foreground underline decoration-border underline-offset-2 transition-colors hover:decoration-foreground/40"
               >
                 /getUpdates
-                {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+                {copied ? (
+                  <Check className="h-3 w-3 text-emerald-500" />
+                ) : (
+                  <Copy className="h-3 w-3" />
+                )}
               </button>
             </li>
           </ol>
         </div>
 
-        <div className="grid gap-0 lg:grid-cols-2 lg:gap-x-8">
-          <div>
-            <FieldRow label="Username del bot" hint="Sin @, ej: ScouterBot">
-              <TextInput
-                value={form.bot_username}
-                onChange={set("bot_username")}
-                placeholder="ScouterBot"
-              />
-            </FieldRow>
-            <FieldRow label="Chat ID" hint="Tu ID de chat personal o de grupo para recibir alertas">
-              <TextInput
-                value={form.chat_id}
-                onChange={set("chat_id")}
-                placeholder="123456789"
-              />
-            </FieldRow>
-          </div>
-          <div>
-            <FieldRow
-              label="Bot Token"
-              hint="Dejar vacio para mantener el token actual"
-            >
-              <PasswordInput
-                value={form.bot_token}
-                onChange={set("bot_token")}
-                alreadySet={data.bot_token_set}
-                placeholder="4839574812:AAFDxxx..."
-              />
-            </FieldRow>
-            <FieldRow label="Estado del token">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
-                    data.bot_token_set
-                      ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700"
-                      : "bg-amber-50 dark:bg-amber-950/30 text-amber-700"
-                  }`}
-                >
-                  {data.bot_token_set ? "Configurado" : "No configurado"}
-                </span>
-                {data.bot_username && (
-                  <span className="text-xs text-muted-foreground">
-                    @{data.bot_username}
-                  </span>
-                )}
-              </div>
-            </FieldRow>
-          </div>
-        </div>
+        <FieldRow label="Username del bot">
+          <TextInput
+            value={form.bot_username}
+            onChange={set("bot_username")}
+            placeholder="ScouterBot"
+          />
+        </FieldRow>
+        <FieldRow label="Chat ID">
+          <TextInput
+            value={form.chat_id}
+            onChange={set("chat_id")}
+            placeholder="123456789"
+          />
+        </FieldRow>
+        <FieldRow label="Bot Token">
+          <PasswordInput
+            value={form.bot_token}
+            onChange={set("bot_token")}
+            alreadySet={data.bot_token_set}
+            placeholder="4839574812:AAFDxxx..."
+          />
+        </FieldRow>
 
-        <div className="mt-4 rounded-2xl bg-muted p-4">
+        <div className="mt-4 rounded-xl border border-border/60 bg-muted/30 p-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="mb-2 text-xs font-medium text-muted-foreground">
-                Ultimo test de conexion
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Último test de conexión
               </p>
               <ConnectionTestBadge
                 lastAt={lastTest.at}
@@ -186,12 +191,11 @@ export function TelegramSection({ data, onSaved }: TelegramSectionProps) {
         </div>
       </SettingsSectionCard>
 
-      <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-4">
-        <p className="text-xs text-muted-foreground">
-          El bot token se guarda de forma segura. Dejar el campo vacio mantiene el token actual.
-        </p>
-        <SaveButton onClick={handleSave} saving={saving} />
-      </div>
+      <SectionFooter
+        updatedAt={data.updated_at}
+        onSave={handleSave}
+        saving={saving}
+      />
     </div>
   );
 }
@@ -230,22 +234,15 @@ export function HermesTelegramSection({ data, onSaved }: HermesTelegramProps) {
   };
 
   return (
-    <SettingsSectionCard
-      title="Agente Mote"
-      description="Agente IA que responde mensajes de Telegram automaticamente."
-      icon={Send}
-    >
-      <FieldRow
-        label="Agente Mote"
-        hint="Responde mensajes con IA"
-      >
+    <SettingsSectionCard title="Agente Mote" icon={Send}>
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
         <Toggle
           checked={enabled}
           onChange={handleToggle}
           label={enabled ? "Activo" : "Inactivo"}
           disabled={saving}
         />
-      </FieldRow>
+      </div>
     </SettingsSectionCard>
   );
 }
