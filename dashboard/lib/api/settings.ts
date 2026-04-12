@@ -97,6 +97,27 @@ export async function testKapsoConnection(): Promise<{ status: string; message: 
   return apiFetch("/settings/test/kapso", { method: "POST" });
 }
 
+export async function getKapsoApiKeyStatus(): Promise<{
+  configured: boolean;
+  masked: string | null;
+  source: string | null;
+  updated_at: string | null;
+}> {
+  return apiFetch("/settings/kapso-credentials");
+}
+
+export async function updateKapsoApiKey(apiKey: string): Promise<{
+  configured: boolean;
+  masked: string | null;
+  source: string | null;
+  updated_at: string | null;
+}> {
+  return apiFetch("/settings/kapso-credentials", {
+    method: "PATCH",
+    body: JSON.stringify({ api_key: apiKey }),
+  });
+}
+
 // ─── Telegram ──────────────────────────────────────────
 
 export async function getTelegramCredentials(): Promise<TelegramCredentials> {

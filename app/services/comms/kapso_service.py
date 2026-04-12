@@ -32,11 +32,29 @@ def _messages_url() -> str:
     return f"{base}/{_API_VERSION}/{settings.KAPSO_PHONE_NUMBER_ID}/messages"
 
 
+def _get_api_key() -> str:
+    """Return the effective Kapso API key (DB > env).
+
+    Falls back to env when no DB session is available (e.g. Celery workers).
+    """
+    try:
+        from app.db.session import SessionLocal
+        from app.services.deploy_config_service import get_effective_kapso_api_key
+
+        with SessionLocal() as db:
+            key = get_effective_kapso_api_key(db)
+            if key:
+                return key
+    except Exception:
+        logger.debug("kapso_db_key_lookup_failed", exc_info=True)
+    if settings.KAPSO_API_KEY:
+        return settings.KAPSO_API_KEY
+    raise KapsoError("KAPSO_API_KEY not configured")
+
+
 def _headers() -> dict[str, str]:
-    if not settings.KAPSO_API_KEY:
-        raise KapsoError("KAPSO_API_KEY not configured")
     return {
-        "X-API-Key": settings.KAPSO_API_KEY,
+        "X-API-Key": _get_api_key(),
         "Content-Type": "application/json",
     }
 

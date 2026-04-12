@@ -31,6 +31,14 @@ class IntegrationCredentials(Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # Kapso WhatsApp Business API — consumed by app/services/comms/kapso_service.py
+    # Stored encrypted; read via get_effective_kapso_api_key() which falls
+    # back to settings.KAPSO_API_KEY (env) when the DB row is empty.
+    kapso_api_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    kapso_api_key_updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),

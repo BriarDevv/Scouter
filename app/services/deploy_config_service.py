@@ -34,6 +34,9 @@ _GOOGLE_MAPS_KEY_PREFIX = "AIza"
 _GOOGLE_MAPS_KEY_MIN_LEN = 30
 _GOOGLE_MAPS_KEY_MAX_LEN = 100
 
+_KAPSO_KEY_MIN_LEN = 10
+_KAPSO_KEY_MAX_LEN = 500
+
 
 def _get_or_create(db: Session) -> IntegrationCredentials:
     row = db.get(IntegrationCredentials, _SINGLETON_ID)
@@ -140,3 +143,64 @@ def clear_google_maps_api_key(db: Session) -> dict[str, object]:
     db.refresh(row)
     logger.info("google_maps_api_key_cleared")
     return get_google_maps_api_key_status(db)
+
+
+# ── Kapso API key ─────────────────────────────────────────────────────
+
+
+def get_effective_kapso_api_key(db: Session) -> str | None:
+    """Return the Kapso API key the system should use. DB wins over env."""
+    row = _get_or_create(db)
+    if row.kapso_api_key:
+        decrypted = decrypt_safe(row.kapso_api_key)
+        if decrypted:
+            return decrypted
+    return settings.KAPSO_API_KEY or None
+
+
+def get_kapso_api_key_status(db: Session) -> dict[str, object]:
+    """Return the state of the Kapso API key for the settings UI."""
+    row = _get_or_create(db)
+    db_key = decrypt_safe(row.kapso_api_key) if row.kapso_api_key else None
+    env_key = settings.KAPSO_API_KEY or None
+
+    if db_key:
+        source = "db"
+        active = db_key
+    elif env_key:
+        source = "env"
+        active = env_key
+    else:
+        source = None
+        active = None
+
+    return {
+        "configured": bool(active),
+        "masked": f"...{active[-4:]}" if active and len(active) > 4 else None,
+        "source": source,
+        "updated_at": (
+            row.kapso_api_key_updated_at.isoformat() if row.kapso_api_key_updated_at else None
+        ),
+    }
+
+
+class InvalidKapsoKeyError(ValueError):
+    """Raised when a proposed Kapso API key fails format validation."""
+
+
+def set_kapso_api_key(db: Session, key: str) -> dict[str, object]:
+    """Persist an encrypted Kapso API key in integration_credentials."""
+    stripped = key.strip()
+    if not stripped:
+        raise InvalidKapsoKeyError("API key vacía")
+    if len(stripped) < _KAPSO_KEY_MIN_LEN or len(stripped) > _KAPSO_KEY_MAX_LEN:
+        raise InvalidKapsoKeyError(
+            f"Longitud fuera de rango ({_KAPSO_KEY_MIN_LEN}-{_KAPSO_KEY_MAX_LEN})"
+        )
+    row = _get_or_create(db)
+    row.kapso_api_key = encrypt_if_needed(stripped)
+    row.kapso_api_key_updated_at = datetime.now(UTC)
+    db.flush()
+    db.refresh(row)
+    logger.info("kapso_api_key_updated", source="db")
+    return get_kapso_api_key_status(db)

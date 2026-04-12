@@ -10,6 +10,7 @@ from app.schemas.operational_settings import (
     CredentialStatusItem,
 )
 from app.schemas.settings import LLMSettingsResponse, MailSettingsResponse
+from app.services.deploy_config_service import get_effective_kapso_api_key
 from app.services.settings.settings_service import get_llm_settings, get_mail_settings
 from app.services.settings.setup_status_service import get_setup_status
 
@@ -36,7 +37,7 @@ def setup_status(db: DbSession):
 
 
 @router.get("/credentials", response_model=CredentialsStatusResponse)
-def credentials_status():
+def credentials_status(db: DbSession):
     """Return presence-only status for secret env vars. Values never exposed."""
     smtp_items = [
         CredentialStatusItem(
@@ -89,5 +90,5 @@ def credentials_status():
         imap=imap_items,
         all_smtp_ready=all(item.set for item in smtp_items if item.required),
         all_imap_ready=all(item.set for item in imap_items if item.required),
-        kapso_api_key=bool(env.KAPSO_API_KEY),
+        kapso_api_key=bool(get_effective_kapso_api_key(db)),
     )

@@ -2,6 +2,7 @@ from typing import Annotated
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from app.core.config import settings as app_settings
 from app.db.session import get_db
@@ -9,6 +10,12 @@ from app.schemas.mail_credentials import (
     ConnectionTestResult,
     MailCredentialsResponse,
     MailCredentialsUpdate,
+)
+from app.services.deploy_config_service import (
+    InvalidKapsoKeyError,
+    get_effective_kapso_api_key,
+    get_kapso_api_key_status,
+    set_kapso_api_key,
 )
 from app.services.outreach.mail_credentials_service import (
     get_or_create as get_creds,
@@ -71,14 +78,15 @@ def test_imap_connection(db: DbSession):
 
 
 @router.post("/test/kapso")
-def test_kapso_connection():
-    """Test Kapso API connectivity."""
-    if not app_settings.KAPSO_API_KEY:
-        return {"status": "error", "message": "KAPSO_API_KEY no configurada en .env"}
+def test_kapso_connection(db: DbSession):
+    """Test Kapso API connectivity using effective key (DB > env)."""
+    effective_key = get_effective_kapso_api_key(db)
+    if not effective_key:
+        return {"status": "error", "message": "KAPSO_API_KEY no configurada"}
     try:
         resp = httpx.get(
             f"{app_settings.KAPSO_BASE_URL}/whatsapp_messages",
-            headers={"X-API-Key": app_settings.KAPSO_API_KEY},
+            headers={"X-API-Key": effective_key},
             timeout=10,
         )
         if resp.status_code in (401, 403):
@@ -88,3 +96,27 @@ def test_kapso_connection():
         return {"status": "error", "message": "No se pudo conectar a Kapso"}
     except Exception as exc:
         return {"status": "error", "message": f"Error de conexión: {exc}"}
+
+
+# ── Kapso API key ─────────────────────────────────────────────────────
+
+
+class KapsoApiKeyUpdate(BaseModel):
+    api_key: str
+
+
+@router.get("/kapso-credentials")
+def get_kapso_credentials(db: DbSession):
+    """Return Kapso API key status (never exposes raw key)."""
+    return get_kapso_api_key_status(db)
+
+
+@router.patch("/kapso-credentials")
+def patch_kapso_credentials(body: KapsoApiKeyUpdate, db: DbSession):
+    """Persist a Kapso API key encrypted in DB. DB value wins over .env."""
+    try:
+        status = set_kapso_api_key(db, body.api_key)
+    except InvalidKapsoKeyError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    db.commit()
+    return status
