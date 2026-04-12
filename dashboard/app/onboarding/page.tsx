@@ -23,7 +23,9 @@ import { BrandSection } from "@/components/settings/brand-section";
 import { CredentialsSection } from "@/components/settings/credentials-section";
 import { MailInboundSection } from "@/components/settings/mail-inbound-section";
 import { MailOutboundSection } from "@/components/settings/mail-outbound-section";
-import { RulesSection } from "@/components/settings/rules-section";
+import { EmailSignatureSection } from "@/components/settings/email-signature-section";
+import { AutomationRulesSection } from "@/components/settings/automation-rules-section";
+import { EmailRulesSection } from "@/components/settings/email-rules-section";
 import { WhatsAppSection } from "@/components/settings/whatsapp-section";
 import { TelegramSection } from "@/components/settings/telegram-section";
 import {
@@ -227,7 +229,10 @@ export default function OnboardingPage() {
               <CredentialsSection data={credsData} onSaved={handleSavedCreds} />
             )}
             {activeStep === "mail_out" && (
-              <MailOutboundSection data={opData} mailData={mailData} onSaved={handleSavedOps} />
+              <div className="space-y-6">
+                <MailOutboundSection data={opData} mailData={mailData} onSaved={handleSavedOps} />
+                <EmailSignatureSection data={opData} onSaved={handleSavedOps} />
+              </div>
             )}
             {activeStep === "mail_in" && (
               <MailInboundSection data={opData} mailData={mailData} onSaved={handleSavedOps} />
@@ -235,7 +240,12 @@ export default function OnboardingPage() {
             {activeStep === "telegram" && tgData && (
               <TelegramSection data={tgData} onSaved={handleSavedTg} />
             )}
-            {activeStep === "rules" && <RulesSection data={opData} onSaved={handleSavedOps} />}
+            {activeStep === "rules" && (
+              <div className="space-y-6">
+                <EmailRulesSection data={opData} onSaved={handleSavedOps} />
+                <AutomationRulesSection data={opData} onSaved={handleSavedOps} />
+              </div>
+            )}
             {activeStep === "done" && <ReadyStage nextPath={nextPath} />}
 
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-5 py-4 shadow-sm">
