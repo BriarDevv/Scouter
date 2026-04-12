@@ -12,7 +12,7 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import type { Lead } from "@/types";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft, RefreshCw, Mail, MessageCircle, CheckCircle, ShieldCheck, Loader2,
 } from "lucide-react";
@@ -42,13 +42,14 @@ export function LeadDetailHeader({
   onGenerateWhatsAppDraft,
   onApproveLead,
 }: LeadDetailHeaderProps) {
+  const router = useRouter();
   return (
     <div className="flex items-start justify-between">
       <div className="space-y-2">
         <div className="flex items-center gap-3">
-          <Link href="/leads" className="flex items-center justify-center h-7 w-7 rounded-lg hover:bg-muted transition-colors shrink-0">
+          <button onClick={() => router.back()} className="flex items-center justify-center h-7 w-7 rounded-lg hover:bg-muted transition-colors shrink-0">
             <ArrowLeft className="h-4 w-4 text-muted-foreground" />
-          </Link>
+          </button>
           <h1 className="text-2xl font-semibold text-foreground font-heading">{lead.business_name}</h1>
           <StatusBadge status={lead.status} />
           <QualityBadge quality={lead.quality} />
