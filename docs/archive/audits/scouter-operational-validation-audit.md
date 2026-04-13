@@ -1,3 +1,5 @@
+> **ARCHIVED:** This document has been superseded. See [architecture/audit.md](../../architecture/audit.md) for the current version.
+
 # Scouter Operational Validation Audit
 
 **Date:** 2026-04-05

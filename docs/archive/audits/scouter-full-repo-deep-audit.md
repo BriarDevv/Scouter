@@ -1,3 +1,5 @@
+> **ARCHIVED:** This document has been superseded. See [architecture/audit.md](../../architecture/audit.md) for the current version.
+
 # Scouter Full Repo Deep Audit
 
 **Date:** 2026-04-06 (third pass — fresh full audit with 3 parallel Opus agents + manual deep read)
