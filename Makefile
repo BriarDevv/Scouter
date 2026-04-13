@@ -1,6 +1,6 @@
 SHELL := /usr/bin/env bash
 
-.PHONY: up down restart status logs preflight preflight-secrets seed nuke dev-up dev-down dev-status test test-v lint typecheck migrate env-backup env-restore
+.PHONY: up down restart status logs preflight preflight-secrets seed nuke dev-up dev-down dev-status test test-v lint typecheck migrate env-backup env-restore validate lint-fe typecheck-fe test-fe sync-proxy sync-enums
 
 # ─── Stack completo (infra + API + worker + dashboard) ─────────────────────
 up: preflight-secrets
@@ -74,3 +74,24 @@ dev-down:
 
 dev-status:
 	bash scripts/dev-status.sh
+
+# ─── Frontend targets ────────────────────────────────────────────────────
+lint-fe:
+	cd dashboard && npm run lint
+
+typecheck-fe:
+	cd dashboard && npx tsc --noEmit
+
+test-fe:
+	cd dashboard && npx vitest run
+
+# ─── Codegen & sync ─────────────────────────────────────────────────────
+sync-enums:
+	.venv/bin/python scripts/sync-enums.py
+
+sync-proxy:
+	.venv/bin/python scripts/sync-proxy-allowlist.py
+
+# ─── Full validation (all checks) ────────────────────────────────────────
+validate: preflight-secrets sync-enums lint typecheck test sync-proxy
+	cd dashboard && npx tsc --noEmit && npm run lint
