@@ -1,6 +1,6 @@
 """Shared test-data seeding helpers used across inbound mail test modules."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 
 def create_sent_delivery(
@@ -13,6 +13,9 @@ def create_sent_delivery(
     from app.models.lead import Lead, LeadStatus
     from app.models.outreach import DraftStatus, OutreachDraft
     from app.models.outreach_delivery import OutreachDelivery, OutreachDeliveryStatus
+
+    # Use a recent timestamp so subject-fallback matching (30-day window) works
+    recent = datetime.now(UTC) - timedelta(days=2)
 
     lead = Lead(
         business_name="Inbound Lead",
@@ -28,7 +31,7 @@ def create_sent_delivery(
         subject=subject,
         body="Draft body",
         status=DraftStatus.SENT,
-        sent_at=datetime(2026, 3, 13, 10, 0, tzinfo=UTC),
+        sent_at=recent,
     )
     db.add(draft)
     db.flush()
@@ -41,7 +44,7 @@ def create_sent_delivery(
         recipient_email=recipient_email,
         subject_snapshot=subject,
         status=OutreachDeliveryStatus.SENT,
-        sent_at=datetime(2026, 3, 13, 10, 0, tzinfo=UTC),
+        sent_at=recent,
     )
     db.add(delivery)
     db.commit()
@@ -73,6 +76,6 @@ def message_payload(
         subject=subject,
         body_text=body_text,
         body_snippet=body_text[:80],
-        received_at=datetime(2026, 3, 13, 11, 0, tzinfo=UTC),
+        received_at=datetime.now(UTC) - timedelta(days=1),
         raw_metadata={"uid": provider_message_id},
     )

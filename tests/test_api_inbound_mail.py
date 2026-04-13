@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from helpers import create_sent_delivery, message_payload
 
@@ -10,6 +10,7 @@ from app.models.reply_assistant_send import ReplyAssistantSend, ReplyAssistantSe
 
 def _create_sent_reply_send(db, *, recipient_email: str = "owner@example.com"):
     lead, draft, delivery = create_sent_delivery(db, recipient_email=recipient_email)
+    recent = datetime.now(UTC) - timedelta(days=1)
     thread = EmailThread(
         lead_id=lead.id,
         draft_id=draft.id,
@@ -20,7 +21,7 @@ def _create_sent_reply_send(db, *, recipient_email: str = "owner@example.com"):
         thread_key="thread-reply-send-key",
         matched_via="message_id",
         match_confidence=1.0,
-        last_message_at=datetime(2026, 3, 13, 11, 0, tzinfo=UTC),
+        last_message_at=recent,
     )
     db.add(thread)
     db.flush()
@@ -43,7 +44,7 @@ def _create_sent_reply_send(db, *, recipient_email: str = "owner@example.com"):
         subject="Re: Approved subject",
         body_text="Hola, gracias.",
         body_snippet="Hola, gracias.",
-        received_at=datetime(2026, 3, 13, 11, 0, tzinfo=UTC),
+        received_at=recent,
         raw_metadata_json={"uid": "reply-origin-001"},
         classification_status=InboundMailClassificationStatus.PENDING.value,
     )
@@ -83,7 +84,7 @@ def _create_sent_reply_send(db, *, recipient_email: str = "owner@example.com"):
         body_snapshot="Gracias por responder.",
         in_reply_to="reply-origin-001@example.com",
         references_raw="out-123 reply-origin-001@example.com",
-        sent_at=datetime(2026, 3, 13, 12, 0, tzinfo=UTC),
+        sent_at=recent,
     )
     db.add(reply_send)
     db.commit()
