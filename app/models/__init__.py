@@ -9,6 +9,7 @@ from app.models.commercial_brief import (
     EstimatedScope,
 )
 from app.models.conversation import Conversation, Message, ToolCall
+from app.models.dead_letter import DeadLetterTask
 from app.models.inbound_mail import EmailThread, InboundMailSyncRun, InboundMessage
 from app.models.integration_credentials import IntegrationCredentials
 from app.models.investigation_thread import InvestigationThread
@@ -85,4 +86,5 @@ __all__ = [
     "ConversationStatus",
     "OutcomeSnapshot",
     "WeeklyReport",
+    "DeadLetterTask",
 ]
