@@ -294,6 +294,31 @@ def on_brief_generated(
     )
 
 
+def on_territory_saturated(
+    db: Session,
+    *,
+    territory_id: uuid.UUID,
+    territory_name: str,
+    dup_ratio: float,
+) -> None:
+    """Emit notification when a territory becomes saturated."""
+    _emit(
+        db,
+        type="territory_saturated",
+        category=NotificationCategory.BUSINESS,
+        severity=NotificationSeverity.WARNING,
+        title=f"Territorio saturado — {territory_name}",
+        message=(
+            f"Ratio de duplicados: {dup_ratio:.0%}. "
+            "El territorio entrara en periodo de enfriamiento."
+        ),
+        source_kind="territory",
+        source_id=territory_id,
+        metadata={"territory_name": territory_name, "dup_ratio": dup_ratio},
+        dedup_key=f"territory_saturated:{territory_id}",
+    )
+
+
 def on_repeated_failures(
     db: Session,
     *,

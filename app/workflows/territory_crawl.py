@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from structlog.contextvars import bound_contextvars
@@ -243,6 +244,33 @@ def run_territory_crawl_workflow(
                 progress["leads_created"] = total_created
                 progress["leads_skipped"] = total_dup
                 sync_progress(current_step="crawling")
+
+            # Update territory crawl stats
+            with SessionLocal() as db:
+                territory = db.get(Territory, uuid.UUID(territory_id))
+                if territory:
+                    dup_ratio = total_dup / max(total_found, 1)
+                    territory.last_crawled_at = datetime.now(UTC)
+                    territory.last_dup_ratio = dup_ratio
+                    territory.crawl_count = (territory.crawl_count or 0) + 1
+                    if dup_ratio > 0.8 and (territory.last_dup_ratio or 0) > 0.8:
+                        territory.is_saturated = True
+                    db.commit()
+
+                    if territory.is_saturated:
+                        try:
+                            from app.services.notifications.notification_emitter import (
+                                on_territory_saturated,
+                            )
+
+                            on_territory_saturated(
+                                db,
+                                territory_id=territory.id,
+                                territory_name=territory_name,
+                                dup_ratio=dup_ratio,
+                            )
+                        except Exception:
+                            logger.debug("territory_saturated_notification_failed", exc_info=True)
 
             progress["status"] = "done"
             result = {
