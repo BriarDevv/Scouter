@@ -97,47 +97,53 @@ def _check_encrypted_rows_vs_placeholder(settings) -> str | None:
     )
 
 
-def _check_google_maps_key(settings) -> str | None:
-    """Return None if the Google Maps key is set (in env or DB), otherwise a msg.
+def _check_google_maps_key(settings) -> tuple[str | None, bool]:
+    """Return (message, is_blocking).
 
-    Best-effort DB lookup. Missing DB → falls back to env-only check (same as
-    the previous behavior) so the preflight never blocks on DB hiccups.
+    message is None when the key is confirmed available.  When the DB is
+    unreachable the key *may* be stored there, so we return a non-blocking
+    warning instead of a hard failure — avoids the chicken-and-egg where the
+    preflight runs before Docker (and therefore PostgreSQL) is up.
     """
     env_key = settings.GOOGLE_MAPS_API_KEY or None
 
     try:
         from app.db.session import SessionLocal
-        from app.services.deploy_config_service import get_effective_google_maps_key
+        from app.services.deploy.deploy_config_service import get_effective_google_maps_key
     except Exception:
         # Models or service can't be imported — fall back to env-only.
         if env_key:
-            return None
+            return None, False
         return (
             "GOOGLE_MAPS_API_KEY not set in .env and DB check could not run. "
-            "Either define GOOGLE_MAPS_API_KEY in .env or load the key via "
-            "Configuración → Crawlers in the dashboard once the backend is up."
+            "If the key is stored in the DB it will be available once the "
+            "backend starts. Otherwise set it via Configuración → Crawlers.",
+            False,
         )
 
     try:
         with SessionLocal() as db:
             effective = get_effective_google_maps_key(db)
     except Exception:
-        # DB unreachable — trust env.
+        # DB unreachable — the key may be stored there already.
         if env_key:
-            return None
+            return None, False
         return (
-            "GOOGLE_MAPS_API_KEY not set in .env and the DB is unreachable so "
-            "the DB-stored key could not be verified. The crawler will not run "
-            "until at least one source has the key."
+            "GOOGLE_MAPS_API_KEY not set in .env and the DB is unreachable. "
+            "If the key is stored in the DB it will be available once "
+            "PostgreSQL starts.",
+            False,
         )
 
     if effective:
-        return None
+        return None, False
 
+    # DB is reachable and the key is genuinely missing — block.
     return (
         "Google Maps API key is not configured. Set it via "
         "Configuración → Crawlers in the dashboard (stored encrypted in DB) "
-        "or define GOOGLE_MAPS_API_KEY in .env as a fallback."
+        "or define GOOGLE_MAPS_API_KEY in .env as a fallback.",
+        True,
     )
 
 
@@ -149,16 +155,18 @@ def main() -> int:
         return 1
 
     missing: list[str] = []
+    warnings: list[str] = []
+
     for check in REQUIRED:
         value = getattr(settings, check.var, None)
         if not check.predicate(value):
             missing.append(f"  - {check.var}: {check.failure_reason}")
 
-    maps_missing = _check_google_maps_key(settings)
-    if maps_missing:
-        missing.append(f"  - GOOGLE_MAPS_API_KEY: {maps_missing}")
-
-    warnings: list[str] = []
+    maps_msg, maps_blocking = _check_google_maps_key(settings)
+    if maps_msg and maps_blocking:
+        missing.append(f"  - GOOGLE_MAPS_API_KEY: {maps_msg}")
+    elif maps_msg:
+        warnings.append(f"  - GOOGLE_MAPS_API_KEY: {maps_msg}")
     for var, msg in OPTIONAL_BUT_EXPECTED.items():
         if not getattr(settings, var, None):
             warnings.append(f"  - {var}: {msg}")
