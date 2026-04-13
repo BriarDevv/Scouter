@@ -97,6 +97,17 @@ def task_scheduled_crawl(self):
                     )
 
             logger.info("scheduled_crawl_dispatched", count=dispatched)
+
+            # Check if auto-pipeline is enabled and dispatch batch processing
+            from app.models.settings import OperationalSettings
+
+            ops = db.query(OperationalSettings).first()
+            if ops and ops.auto_pipeline_enabled:
+                from app.workers.batch_tasks import task_batch_pipeline
+
+                task_batch_pipeline.delay()
+                logger.info("auto_batch_pipeline_dispatched_after_crawl")
+
             return {"status": "ok", "territories_dispatched": dispatched}
     except Exception as exc:
         raise self.retry(exc=exc, countdown=60) from exc
