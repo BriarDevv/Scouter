@@ -11,6 +11,7 @@ If you are a human operator or developer, start with [../README.md](../README.md
 | --- | --- | --- |
 | Architecture | [architecture/audit.md](architecture/audit.md) | Current-state architecture assessment |
 | Architecture | [architecture/target.md](architecture/target.md) | Target architecture direction |
+| Architecture | [../DESIGN.md](../DESIGN.md) | Visual tokens, component rules, agent prompt guide |
 | Architecture | [architecture/adrs/ADR-001-postgresql-testcontainers.md](architecture/adrs/ADR-001-postgresql-testcontainers.md) | ADR-001: PostgreSQL for all tests via testcontainers |
 | Architecture | [architecture/adrs/ADR-002-local-llm-role-based-routing.md](architecture/adrs/ADR-002-local-llm-role-based-routing.md) | ADR-002: Local LLM-first with role-based model routing |
 | Architecture | [architecture/adrs/ADR-003-conventional-commits.md](architecture/adrs/ADR-003-conventional-commits.md) | ADR-003: Conventional commits as the single commit convention |
@@ -26,20 +27,10 @@ If you are a human operator or developer, start with [../README.md](../README.md
 | Agent OS | [agents/whatsapp-outreach-strategy.md](agents/whatsapp-outreach-strategy.md) | WhatsApp template strategy + Closer flow |
 | Agent OS | [agents/context.md](agents/context.md) | Operator and agent runtime context |
 | Operations | [operations/local-dev-wsl.md](operations/local-dev-wsl.md) | Local WSL and runtime workflow |
+| Operations | [operations/install.md](operations/install.md) | From-scratch installation guide |
+| Operations | [operations/scouter-operational-runbook.md](operations/scouter-operational-runbook.md) | Daily operator runbook |
 | Operations | [operations/security-backlog.md](operations/security-backlog.md) | Deferred security backlog |
 | Product | [product/proposal.md](product/proposal.md) | Product and positioning context |
-| Audits | [audits/scouter-ai-environment-audit.md](audits/scouter-ai-environment-audit.md) | AI environment audit and scorecard |
-| Audits | [audits/scouter-full-repo-deep-audit.md](audits/scouter-full-repo-deep-audit.md) | Full repo deep audit (code, architecture, correctness, AI slop) |
-| Audits | [audits/repo-architecture-deep-audit.md](audits/repo-architecture-deep-audit.md) | Repository architecture deep audit (structure, naming, boundaries, AI navigation) |
-| Audits | [audits/repo-deep-audit.md](audits/repo-deep-audit.md) | Full repo deep audit — 5-agent parallel (backend, API, agent/LLM, frontend, tests/infra) |
-| Audits | [audits/scouter-agent-communication-learning-audit.md](audits/scouter-agent-communication-learning-audit.md) | Agent OS communication and learning loop audit |
-| Audits | [audits/scouter-full-pipeline-agent-runtime-audit.md](audits/scouter-full-pipeline-agent-runtime-audit.md) | Full pipeline agent runtime audit |
-| Audits | [audits/scouter-full-pipeline-runtime-test-report.md](audits/scouter-full-pipeline-runtime-test-report.md) | Full pipeline runtime test execution report |
-| Audits | [audits/scouter-operational-validation-audit.md](audits/scouter-operational-validation-audit.md) | Operational validation audit (runtime modes, workflows) |
-| Roadmaps | [roadmaps/scouter-ai-environment-improvement-plan.md](roadmaps/scouter-ai-environment-improvement-plan.md) | AI environment improvement plan |
-| Roadmaps | [roadmaps/scouter-full-repo-hardening-plan.md](roadmaps/scouter-full-repo-hardening-plan.md) | Full repo hardening plan (5 phases) |
-| Roadmaps | [roadmaps/repo-architecture-refactor-plan.md](roadmaps/repo-architecture-refactor-plan.md) | Architecture refactor plan (5 phases, 7.5 -> 9.5) |
-| Roadmaps | [roadmaps/repo-hardening-plan.md](roadmaps/repo-hardening-plan.md) | Repo hardening plan (6 phases, 6.5 -> 9.0) |
 
 ## Start Here By Goal
 
