@@ -1,10 +1,16 @@
+"""Inbound mail service — orchestrates sync, persistence and query operations.
+
+Sub-module layout:
+- mail_helpers      : normalisation utilities (message IDs, emails, subjects)
+- message_dedup     : deduplication key builder
+- thread_matcher    : delivery/thread matching logic
+- classification_dispatch : auto-classification dispatch
+"""
+
 from __future__ import annotations
 
-import hashlib
-import re
 import uuid
-from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -22,15 +28,23 @@ from app.models.inbound_mail import (
     InboundMessage,
 )
 from app.models.outreach import LogAction, OutreachLog
-from app.models.outreach_delivery import OutreachDelivery, OutreachDeliveryStatus
 from app.models.reply_assistant import ReplyAssistantDraft
-from app.models.reply_assistant_send import ReplyAssistantSend, ReplyAssistantSendStatus
+from app.services.inbox.classification_dispatch import dispatch_classification
+from app.services.inbox.mail_helpers import normalize_email, normalize_message_id
+from app.services.inbox.message_dedup import build_dedupe_key
+from app.services.inbox.thread_matcher import (
+    build_reply_log_detail,
+    match_delivery,
+    resolve_thread,
+)
 
 logger = get_logger(__name__)
 
-SUBJECT_PREFIX_RE = re.compile(r"^(?:(?:re|fw|fwd)\s*:\s*)+", re.IGNORECASE)
-BRACKETED_TAG_RE = re.compile(r"\[\w+\]", re.IGNORECASE)
-MESSAGE_ID_RE = re.compile(r"<([^>]+)>")
+# ---------------------------------------------------------------------------
+# Backward-compatible aliases so existing callers that import private names
+# from this module continue to work (notably reply_send_service).
+# ---------------------------------------------------------------------------
+_normalize_message_id = normalize_message_id
 
 
 class InboundMailServiceError(RuntimeError):
@@ -41,38 +55,17 @@ class InboundMailDisabledError(InboundMailServiceError):
     """Raised when inbound sync is disabled."""
 
 
-@dataclass(frozen=True)
-class DeliveryMatch:
-    delivery: OutreachDelivery | None
-    matched_via: str
-    match_confidence: float
-    reply_send: ReplyAssistantSend | None = None
-
-    @property
-    def lead_id(self) -> uuid.UUID | None:
-        if self.delivery:
-            return self.delivery.lead_id
-        return self.reply_send.lead_id if self.reply_send else None
-
-    @property
-    def draft_id(self) -> uuid.UUID | None:
-        return self.delivery.draft_id if self.delivery else None
-
-    @property
-    def delivery_id(self) -> uuid.UUID | None:
-        return self.delivery.id if self.delivery else None
-
-    @property
-    def thread_id(self) -> uuid.UUID | None:
-        return self.reply_send.thread_id if self.reply_send else None
-
-
 def get_inbound_provider() -> IMAPInboundMailProvider:
     if settings.MAIL_INBOUND_PROVIDER.lower() != "imap":
         raise InboundMailProviderError(
             f"Unsupported MAIL_INBOUND_PROVIDER {settings.MAIL_INBOUND_PROVIDER!r}."
         )
     return IMAPInboundMailProvider()
+
+
+# ---------------------------------------------------------------------------
+# Query helpers
+# ---------------------------------------------------------------------------
 
 
 def list_inbound_messages(
@@ -165,6 +158,11 @@ def get_inbound_sync_status(db: Session) -> InboundMailSyncRun | None:
     return db.execute(stmt).scalars().first()
 
 
+# ---------------------------------------------------------------------------
+# Sync orchestration
+# ---------------------------------------------------------------------------
+
+
 def sync_inbound_messages(db: Session, *, limit: int | None = None) -> InboundMailSyncRun:
     if not settings.MAIL_INBOUND_ENABLED:
         raise InboundMailDisabledError(
@@ -198,13 +196,8 @@ def sync_inbound_messages(db: Session, *, limit: int | None = None) -> InboundMa
             else:
                 sync_run.unmatched_count += 1
 
-            from app.services.settings.operational_settings_service import get_cached_settings
-
-            ops = get_cached_settings(db)
-            if persisted_message and ops.auto_classify_inbound:
-                from app.services.inbox.reply_classification_service import classify_inbound_message
-
-                classify_inbound_message(db, persisted_message.id)
+            if persisted_message:
+                dispatch_classification(db, persisted_message)
 
         sync_run.status = InboundMailSyncStatus.COMPLETED.value
         sync_run.error = None
@@ -244,7 +237,7 @@ def sync_inbound_messages(db: Session, *, limit: int | None = None) -> InboundMa
 def _persist_inbound_message(
     db: Session, payload: InboundMailMessage
 ) -> tuple[InboundMessage | None, str]:
-    dedupe_key = _build_dedupe_key(payload)
+    dedupe_key = build_dedupe_key(payload)
     existing = (
         db.execute(select(InboundMessage).where(InboundMessage.dedupe_key == dedupe_key))
         .scalars()
@@ -253,8 +246,8 @@ def _persist_inbound_message(
     if existing:
         return None, "deduplicated"
 
-    match = _match_delivery(db, payload)
-    thread = _resolve_thread(db, payload, match)
+    match = match_delivery(db, payload)
+    thread = resolve_thread(db, payload, match)
     message = InboundMessage(
         dedupe_key=dedupe_key,
         thread_id=thread.id if thread else None,
@@ -264,10 +257,10 @@ def _persist_inbound_message(
         provider=payload.provider,
         provider_mailbox=payload.provider_mailbox,
         provider_message_id=payload.provider_message_id,
-        message_id=_normalize_message_id(payload.message_id),
-        in_reply_to=_normalize_message_id(payload.in_reply_to),
+        message_id=normalize_message_id(payload.message_id),
+        in_reply_to=normalize_message_id(payload.in_reply_to),
         references_raw=payload.references_raw,
-        from_email=_normalize_email(payload.from_email),
+        from_email=normalize_email(payload.from_email),
         from_name=payload.from_name,
         to_email=payload.to_email,
         subject=payload.subject,
@@ -301,7 +294,7 @@ def _persist_inbound_message(
                 draft_id=match.draft_id,
                 action=LogAction.REPLIED,
                 actor="system",
-                detail=_build_reply_log_detail(payload),
+                detail=build_reply_log_detail(payload),
             )
         )
 
@@ -326,305 +319,3 @@ def _persist_inbound_message(
         classification_status=message.classification_status,
     )
     return message, "matched" if (match.delivery or match.reply_send) else "unmatched"
-
-
-def _resolve_thread(db: Session, payload: InboundMailMessage, match: DeliveryMatch) -> EmailThread:
-    if match.thread_id:
-        thread = db.get(EmailThread, match.thread_id)
-        if thread:
-            _merge_thread_match(thread, payload, match, _resolve_external_thread_id(payload))
-            db.flush()
-            return thread
-
-    external_thread_id = _resolve_external_thread_id(payload)
-    thread_key = _build_thread_key(payload, match, external_thread_id)
-
-    stmt = select(EmailThread).where(
-        EmailThread.provider == payload.provider,
-        EmailThread.provider_mailbox == payload.provider_mailbox,
-        EmailThread.thread_key == thread_key,
-    )
-    thread = db.execute(stmt).scalars().first()
-    if thread:
-        _merge_thread_match(thread, payload, match, external_thread_id)
-        db.flush()
-        return thread
-
-    thread = EmailThread(
-        lead_id=match.lead_id,
-        draft_id=match.draft_id,
-        delivery_id=match.delivery_id,
-        provider=payload.provider,
-        provider_mailbox=payload.provider_mailbox,
-        external_thread_id=external_thread_id,
-        thread_key=thread_key,
-        matched_via=match.matched_via,
-        match_confidence=match.match_confidence,
-        last_message_at=payload.received_at,
-    )
-    db.add(thread)
-    db.flush()
-    return thread
-
-
-def _merge_thread_match(
-    thread: EmailThread,
-    payload: InboundMailMessage,
-    match: DeliveryMatch,
-    external_thread_id: str | None,
-) -> None:
-    if external_thread_id and not thread.external_thread_id:
-        thread.external_thread_id = external_thread_id
-    if payload.received_at and (
-        thread.last_message_at is None or payload.received_at > thread.last_message_at
-    ):
-        thread.last_message_at = payload.received_at
-    if match.delivery and (
-        thread.match_confidence is None or match.match_confidence >= thread.match_confidence
-    ):
-        thread.lead_id = match.lead_id
-        thread.draft_id = match.draft_id
-        thread.delivery_id = match.delivery_id
-        thread.matched_via = match.matched_via
-        thread.match_confidence = match.match_confidence
-    elif match.reply_send and (
-        thread.match_confidence is None or match.match_confidence >= thread.match_confidence
-    ):
-        thread.lead_id = match.lead_id
-        thread.matched_via = match.matched_via
-        thread.match_confidence = match.match_confidence
-
-
-def _match_delivery(db: Session, payload: InboundMailMessage) -> DeliveryMatch:
-    in_reply_to = _normalize_message_id(payload.in_reply_to)
-    references = _extract_reference_ids(payload.references_raw)
-
-    direct_candidates = [candidate for candidate in [in_reply_to] if candidate]
-    if direct_candidates:
-        delivery = _find_delivery_by_message_ids(db, direct_candidates)
-        if delivery:
-            return DeliveryMatch(delivery=delivery, matched_via="message_id", match_confidence=1.0)
-        reply_send = _find_reply_send_by_message_ids(db, direct_candidates)
-        if reply_send:
-            return DeliveryMatch(
-                delivery=None,
-                reply_send=reply_send,
-                matched_via="message_id",
-                match_confidence=1.0,
-            )
-
-    if references:
-        delivery = _find_delivery_by_message_ids(db, references)
-        if delivery:
-            return DeliveryMatch(delivery=delivery, matched_via="references", match_confidence=0.9)
-        reply_send = _find_reply_send_by_message_ids(db, references)
-        if reply_send:
-            return DeliveryMatch(
-                delivery=None,
-                reply_send=reply_send,
-                matched_via="references",
-                match_confidence=0.9,
-            )
-
-    fallback_delivery = _find_delivery_by_subject_fallback(db, payload)
-    if fallback_delivery:
-        return DeliveryMatch(
-            delivery=fallback_delivery,
-            matched_via="subject_fallback",
-            match_confidence=0.3,
-        )
-
-    return DeliveryMatch(
-        delivery=None, reply_send=None, matched_via="unmatched", match_confidence=0.0
-    )
-
-
-def _find_delivery_by_message_ids(db: Session, message_ids: list[str]) -> OutreachDelivery | None:
-    normalized_ids = [message_id for message_id in message_ids if message_id]
-    if not normalized_ids:
-        return None
-    stmt = (
-        select(OutreachDelivery)
-        .where(
-            OutreachDelivery.provider_message_id.is_not(None),
-            OutreachDelivery.provider_message_id.in_(normalized_ids),
-        )
-        .order_by(OutreachDelivery.sent_at.desc(), OutreachDelivery.created_at.desc())
-    )
-    deliveries = list(db.execute(stmt).scalars().all())
-    if not deliveries:
-        return None
-    by_message_id = {
-        _normalize_message_id(delivery.provider_message_id): delivery for delivery in deliveries
-    }
-    for candidate in normalized_ids:
-        delivery = by_message_id.get(candidate)
-        if delivery:
-            return delivery
-    return None
-
-
-def _find_reply_send_by_message_ids(
-    db: Session, message_ids: list[str]
-) -> ReplyAssistantSend | None:
-    normalized_ids = [message_id for message_id in message_ids if message_id]
-    if not normalized_ids:
-        return None
-    stmt = (
-        select(ReplyAssistantSend)
-        .where(
-            ReplyAssistantSend.provider_message_id.is_not(None),
-            ReplyAssistantSend.provider_message_id.in_(normalized_ids),
-            ReplyAssistantSend.status == ReplyAssistantSendStatus.SENT,
-        )
-        .order_by(ReplyAssistantSend.sent_at.desc(), ReplyAssistantSend.created_at.desc())
-    )
-    sends = list(db.execute(stmt).scalars().all())
-    if not sends:
-        return None
-    by_message_id = {_normalize_message_id(send.provider_message_id): send for send in sends}
-    for candidate in normalized_ids:
-        reply_send = by_message_id.get(candidate)
-        if reply_send:
-            return reply_send
-    return None
-
-
-def _find_delivery_by_subject_fallback(
-    db: Session, payload: InboundMailMessage
-) -> OutreachDelivery | None:
-    from_email = _normalize_email(payload.from_email)
-    raw_subject = (payload.subject or "").strip()
-    normalized_subject = _normalize_subject(payload.subject)
-    if not from_email or not normalized_subject:
-        return None
-
-    # CC-8: Require the inbound subject starts with a reply prefix (Re:/Fwd:)
-    if not SUBJECT_PREFIX_RE.search(raw_subject):
-        return None
-
-    stmt = (
-        select(OutreachDelivery)
-        .where(
-            OutreachDelivery.recipient_email == from_email,
-            OutreachDelivery.status == OutreachDeliveryStatus.SENT,
-            OutreachDelivery.sent_at >= (datetime.now(UTC) - timedelta(days=30)),
-        )
-        .options(selectinload(OutreachDelivery.draft))
-        .order_by(
-            OutreachDelivery.sent_at.desc(),
-            OutreachDelivery.created_at.desc(),
-        )
-        .limit(10)
-    )
-    deliveries = list(db.execute(stmt).scalars().all())
-    for delivery in deliveries:
-        if _normalize_subject(delivery.subject_snapshot) == normalized_subject:
-            return delivery
-    return None
-
-
-def _build_reply_log_detail(payload: InboundMailMessage) -> str:
-    sender = _normalize_email(payload.from_email) or "contacto desconocido"
-    snippet = payload.body_snippet or payload.subject or "Respuesta recibida"
-    return f"Reply recibida de {sender} — {snippet}"
-
-
-def _build_thread_key(
-    payload: InboundMailMessage, match: DeliveryMatch, external_thread_id: str | None
-) -> str:
-    if match.delivery_id:
-        return f"delivery:{match.delivery_id}"
-    if external_thread_id:
-        return f"message:{external_thread_id}"
-    normalized_subject = _normalize_subject(payload.subject)
-    from_email = _normalize_email(payload.from_email)
-    if from_email and normalized_subject:
-        month_bucket = payload.received_at.strftime("%Y-%m") if payload.received_at else "unknown"
-        return f"subject:{from_email}:{normalized_subject}:{month_bucket}"
-    return f"unmatched:{_build_dedupe_key(payload)}"
-
-
-def _resolve_external_thread_id(payload: InboundMailMessage) -> str | None:
-    return (
-        _normalize_message_id(payload.in_reply_to)
-        or (
-            _extract_reference_ids(payload.references_raw)[0]
-            if _extract_reference_ids(payload.references_raw)
-            else None
-        )
-        or _normalize_message_id(payload.message_id)
-        or payload.provider_message_id
-    )
-
-
-def _build_dedupe_key(payload: InboundMailMessage) -> str:
-    provider = payload.provider.lower()
-    mailbox = payload.provider_mailbox.lower()
-    if payload.provider_message_id:
-        return f"{provider}:{mailbox}:provider:{payload.provider_message_id}"
-
-    message_id = _normalize_message_id(payload.message_id)
-    if message_id:
-        return f"{provider}:{mailbox}:message:{message_id}"
-
-    digest_source = "|".join(
-        [
-            provider,
-            mailbox,
-            _normalize_email(payload.from_email) or "",
-            _normalize_subject(payload.subject) or "",
-            payload.received_at.isoformat() if payload.received_at else "",
-            (payload.body_snippet or payload.body_text or "")[:160],
-        ]
-    )
-    digest = hashlib.sha256(digest_source.encode("utf-8")).hexdigest()
-    return f"{provider}:{mailbox}:fallback:{digest}"
-
-
-def _extract_reference_ids(raw_references: str | None) -> list[str]:
-    if not raw_references:
-        return []
-    matches = [match.strip() for match in MESSAGE_ID_RE.findall(raw_references)]
-    if matches:
-        normalized_matches: list[str] = []
-        for match in matches:
-            normalized = _normalize_message_id(match)
-            if normalized:
-                normalized_matches.append(normalized)
-        return normalized_matches
-    normalized_tokens: list[str] = []
-    for token in raw_references.split():
-        normalized = _normalize_message_id(token)
-        if normalized:
-            normalized_tokens.append(normalized)
-    return normalized_tokens
-
-
-def _normalize_message_id(value: str | None) -> str | None:
-    if not value:
-        return None
-    normalized = value.strip()
-    if normalized.startswith("<") and normalized.endswith(">"):
-        normalized = normalized[1:-1]
-    normalized = normalized.strip()
-    return normalized or None
-
-
-def _normalize_email(value: str | None) -> str | None:
-    if not value:
-        return None
-    normalized = value.strip().lower()
-    return normalized or None
-
-
-def _normalize_subject(value: str | None) -> str | None:
-    if not value:
-        return None
-    normalized = value.strip()
-    # Strip bracketed noise tags like [EXTERNAL], [SPAM], etc.
-    normalized = BRACKETED_TAG_RE.sub("", normalized)
-    # Strip reply/forward prefixes (Re:, Fwd:, FW:, RE:, etc.)
-    normalized = SUBJECT_PREFIX_RE.sub("", normalized)
-    normalized = re.sub(r"\s+", " ", normalized).strip().lower()
-    return normalized or None
