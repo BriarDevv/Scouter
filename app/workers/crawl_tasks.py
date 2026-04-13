@@ -1,6 +1,9 @@
 """Celery tasks for territory crawling."""
 
 import uuid
+from datetime import UTC, datetime, timedelta
+
+from sqlalchemy import or_
 
 from app.core.logging import get_logger
 from app.db.session import SessionLocal
@@ -65,7 +68,18 @@ def task_scheduled_crawl(self):
 
     try:
         with SessionLocal() as db:
-            territories = db.query(Territory).filter(Territory.is_active.is_(True)).all()
+            territories = (
+                db.query(Territory)
+                .filter(
+                    Territory.is_active == True,  # noqa: E712
+                    Territory.is_saturated == False,  # noqa: E712
+                    or_(
+                        Territory.last_crawled_at == None,  # noqa: E711
+                        Territory.last_crawled_at < datetime.now(UTC) - timedelta(days=3),
+                    ),
+                )
+                .all()
+            )
             if not territories:
                 logger.info("scheduled_crawl_no_active_territories")
                 return {"status": "skipped", "reason": "no_active_territories"}
