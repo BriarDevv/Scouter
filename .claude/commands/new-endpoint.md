@@ -22,7 +22,7 @@ The user will provide: endpoint path, HTTP method, purpose, and request/response
 ## Conventions
 
 - UUID primary keys with `default=uuid.uuid4`
-- Endpoints use `Depends(get_session)` for DB access
+- Endpoints use `Depends(get_db)` for DB access
 - POST returns `status_code=201` with `response_model=XxxResponse`
 - Async tasks: queue via Celery `.delay()`, track with `queue_task_run()`, return `TaskEnqueueResponse`
 - Logging: `logger.info("event_name", resource_id=id)` — structured, no f-strings
