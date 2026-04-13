@@ -16,7 +16,12 @@ if TYPE_CHECKING:
 import httpx
 import structlog
 from pydantic import BaseModel, ValidationError
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from tenacity import (
+    retry,
+    retry_if_exception,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from app.core.config import settings
 from app.core.logging import get_logger
@@ -260,12 +265,16 @@ def _record_public_invocation(
         )
 
 
+def _is_retryable(exc: BaseException) -> bool:
+    if isinstance(exc, httpx.TimeoutException | httpx.ConnectError | ConnectionError | OSError):
+        return True
+    return isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code >= 500
+
+
 @retry(
     stop=stop_after_attempt(settings.OLLAMA_MAX_RETRIES),
     wait=wait_exponential(multiplier=1, min=2, max=30),
-    retry=retry_if_exception_type(
-        (httpx.TimeoutException, httpx.ConnectError, ConnectionError, OSError)
-    ),
+    retry=retry_if_exception(lambda e: _is_retryable(e)),
     reraise=True,
 )
 def _chat_completion(
