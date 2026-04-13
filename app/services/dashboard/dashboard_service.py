@@ -528,6 +528,48 @@ def get_ai_health_summary(db: Session) -> dict:
     }
 
 
+def get_pipeline_throughput(db: Session) -> dict:
+    """Pipeline throughput metrics for the last 24 hours."""
+    from app.models.task_tracking import PipelineRun
+
+    cutoff = _now_utc() - timedelta(hours=24)
+
+    # Pipelines completed in last 24h
+    completed = (
+        db.query(sa_func.count(PipelineRun.id))
+        .filter(
+            PipelineRun.status == "succeeded",
+            PipelineRun.finished_at >= cutoff,
+        )
+        .scalar()
+        or 0
+    )
+
+    failed = (
+        db.query(sa_func.count(PipelineRun.id))
+        .filter(
+            PipelineRun.status == "failed",
+            PipelineRun.finished_at >= cutoff,
+        )
+        .scalar()
+        or 0
+    )
+
+    # Lead inventory by status
+    inventory = {}
+    for status in LeadStatus:
+        count = db.query(sa_func.count(Lead.id)).filter(Lead.status == status.value).scalar() or 0
+        if count > 0:
+            inventory[status.value] = count
+
+    return {
+        "completed_24h": completed,
+        "failed_24h": failed,
+        "failure_rate": round(failed / max(completed + failed, 1), 3),
+        "lead_inventory": inventory,
+    }
+
+
 def get_investigation_detail(db: Session, lead_id: uuid.UUID) -> dict | None:
     """Return Scout investigation thread for a lead, or None if not found."""
     from app.models.investigation_thread import InvestigationThread
