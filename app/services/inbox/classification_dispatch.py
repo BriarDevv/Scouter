@@ -10,6 +10,14 @@ from app.models.inbound_mail import InboundMessage
 logger = get_logger(__name__)
 
 
+_AUTO_REPLY_DRAFT_LABELS = {
+    "interested",
+    "asked_for_quote",
+    "asked_for_meeting",
+    "positive",
+}
+
+
 def dispatch_classification(db: Session, message: InboundMessage) -> None:
     """Auto-classify *message* if operational settings allow it.
 
@@ -24,4 +32,29 @@ def dispatch_classification(db: Session, message: InboundMessage) -> None:
 
     from app.services.inbox.reply_classification_service import classify_inbound_message
 
-    classify_inbound_message(db, message.id)
+    classified = classify_inbound_message(db, message.id)
+
+    # Auto-generate reply draft for actionable labels when auto pipeline is on
+    if (
+        classified
+        and ops.auto_pipeline_enabled
+        and classified.classification_label in _AUTO_REPLY_DRAFT_LABELS
+    ):
+        try:
+            from app.services.inbox.reply_response_service import (
+                generate_reply_assistant_draft,
+            )
+
+            generate_reply_assistant_draft(db, classified.id)
+            logger.info(
+                "auto_reply_draft_generated",
+                inbound_message_id=str(classified.id),
+                label=classified.classification_label,
+            )
+        except Exception as exc:
+            logger.warning(
+                "auto_reply_draft_generation_failed",
+                inbound_message_id=str(classified.id),
+                label=classified.classification_label,
+                error=str(exc),
+            )
