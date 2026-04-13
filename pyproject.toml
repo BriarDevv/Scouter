@@ -92,9 +92,12 @@ pythonpath = [".", "tests"]
 
 [tool.mypy]
 python_version = "3.12"
-# Non-strict by current repo reality (~818 errors in strict would block CI).
-# CI runs `mypy app/ --ignore-missing-imports` and must match this config.
-# Type hardening is backlog — tighten incrementally per module.
+# CI runs two mypy steps:
+#   1. Full scan (advisory, || true) — tracks total error count.
+#   2. Strict subset (hard fail) — the following modules MUST stay clean:
+#        app/core/  app/db/  app/data/  app/mail/  app/crawlers/
+#        app/schemas/  app/models/  app/llm/
+#      (100 source files.)  Add more modules as they are cleaned up.
 ignore_missing_imports = true
 warn_return_any = true
 warn_unused_configs = true

@@ -29,8 +29,20 @@ jobs:
         run: ruff check app/ tests/
       - name: Format check (ruff format)
         run: ruff format --check app/ tests/
-      - name: Type check (mypy) — advisory until type hardening backlog closes
+      - name: Type check (mypy) — advisory, ~115 errors remain across 43 files
         run: mypy app/ --ignore-missing-imports || true
+      - name: Type check (mypy strict subset) — these modules MUST stay clean
+        run: >-
+          mypy
+          app/core/
+          app/db/
+          app/data/
+          app/mail/
+          app/crawlers/
+          app/schemas/
+          app/models/
+          app/llm/
+          --ignore-missing-imports
       - name: Test (pytest)
         run: pytest -x -q --tb=short --cov=app --cov-report=term-missing --cov-fail-under=65
 
@@ -55,3 +67,25 @@ jobs:
         run: npx tsc --noEmit
       - name: Test (vitest)
         run: npx vitest run --reporter=verbose
+
+  e2e:
+    name: E2E (Playwright)
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: Run E2E tests
+        run: npx playwright test
+        continue-on-error: true
