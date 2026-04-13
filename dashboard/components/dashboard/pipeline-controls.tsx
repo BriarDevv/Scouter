@@ -4,8 +4,10 @@ import { Loader2, Play, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
+export type PipelineStatus = "idle" | "running" | "done" | "error" | "stopping";
+
 interface PipelineControlsProps {
-  pipelineStatus: "idle" | "running" | "done" | "error" | "stopping";
+  pipelineStatus: PipelineStatus;
   pipelineProgress: string | null;
   celeryOk: boolean;
   onStart: () => void;
@@ -19,9 +21,11 @@ export function PipelineControls({
   onStart,
   onStop,
 }: PipelineControlsProps) {
+  const isRunning = pipelineStatus === "running" || pipelineStatus === "stopping";
+
   return (
-    <div className="pt-1 space-y-1.5">
-      {pipelineStatus !== "running" && pipelineStatus !== "stopping" ? (
+    <div className="space-y-2">
+      {!isRunning ? (
         <Button
           onClick={onStart}
           disabled={!celeryOk}
@@ -37,25 +41,22 @@ export function PipelineControls({
           onClick={onStop}
           disabled={pipelineStatus === "stopping"}
           size="lg"
-          className={cn("w-full rounded-xl", pipelineStatus === "stopping" && "opacity-70")}
+          className="w-full rounded-xl"
         >
-          <Square className="h-4 w-4" />
-          {pipelineStatus === "stopping" ? "Deteniendo..." : "Detener Pipeline"}
+          <Square className="h-3.5 w-3.5" />
+          {pipelineStatus === "stopping" ? "Deteniendo..." : "Detener"}
         </Button>
       )}
-      {!celeryOk && (
-        <p className="text-[10px] text-amber-500 text-center">
-          Celery debe estar corriendo
-        </p>
-      )}
       {pipelineProgress && (
-        <p className={cn(
-          "text-[10px] text-center",
-          pipelineStatus === "running" ? "text-foreground" : pipelineStatus === "done" ? "text-emerald-500" : "text-muted-foreground"
-        )}>
-          {pipelineStatus === "running" && <Loader2 className="inline h-3 w-3 animate-spin mr-1" />}
-          {pipelineProgress}
-        </p>
+        <div className="flex items-center gap-2">
+          {isRunning && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground shrink-0" />}
+          <span className={cn(
+            "text-[10px] font-medium truncate font-data",
+            pipelineStatus === "done" ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
+          )}>
+            {pipelineProgress}
+          </span>
+        </div>
       )}
     </div>
   );
