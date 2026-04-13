@@ -3,6 +3,7 @@
 from app.core.config import LLMRole, parse_supported_models
 
 DEFAULT_SUPPORTED_MODELS = (
+    "qwen3.5:4b",
     "qwen3.5:9b",
     "qwen3.5:27b",
     "hermes3:8b",
