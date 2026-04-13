@@ -1,10 +1,10 @@
-from app.llm.client import (
-    _ChatCompletion,
-    evaluate_lead_quality_structured,
+from app.llm.client import _ChatCompletion
+from app.llm.invocation_metadata import clear_last_invocation, pop_last_invocation
+from app.llm.invocations.lead import evaluate_lead_quality_structured
+from app.llm.invocations.research import (
     generate_commercial_brief_structured,
     review_commercial_brief_structured,
 )
-from app.llm.invocation_metadata import clear_last_invocation, pop_last_invocation
 from app.llm.types import LLMInvocationStatus
 from app.models.lead import Lead
 from app.models.llm_invocation import LLMInvocation

@@ -7,7 +7,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.logging import get_logger
-from app.llm.client import review_reply_assistant_draft as llm_review_reply_assistant_draft
+from app.llm.invocations.reply import (
+    review_reply_assistant_draft as llm_review_reply_assistant_draft,
+)
 from app.llm.resolver import resolve_model_for_role
 from app.llm.roles import LLMRole
 from app.models.inbound_mail import InboundMessage

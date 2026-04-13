@@ -190,7 +190,7 @@ def task_research_lead(
             # Generate dossier from research data
             if report.status.value == "completed":
                 try:
-                    from app.llm.client import generate_dossier
+                    from app.llm.invocations.research import generate_dossier
 
                     lead = db.get(Lead, uuid.UUID(lead_id))
                     if lead and report:

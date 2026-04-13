@@ -5,7 +5,7 @@ import re
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
-from app.llm.client import generate_outreach_draft as llm_generate
+from app.llm.invocations.outreach import generate_outreach_draft as llm_generate
 from app.llm.roles import LLMRole
 from app.models.lead import Lead
 from app.services.settings.operational_settings_service import get_brand_context
@@ -181,7 +181,7 @@ WA_CHAR_LIMIT = 300
 
 def generate_whatsapp_draft_content(lead: Lead, db: Session | None = None) -> str:
     """Generate WhatsApp message body via EXECUTOR model. Returns body string."""
-    from app.llm.client import generate_whatsapp_draft as llm_wa_generate
+    from app.llm.invocations.outreach import generate_whatsapp_draft as llm_wa_generate
 
     brand_ctx = get_brand_context(db) if db is not None else None
     result = llm_wa_generate(

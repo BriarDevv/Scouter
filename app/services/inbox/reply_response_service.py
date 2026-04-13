@@ -7,7 +7,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core.logging import get_logger
-from app.llm.client import generate_reply_assistant_draft as llm_generate_reply_assistant_draft
+from app.llm.invocations.reply import (
+    generate_reply_assistant_draft as llm_generate_reply_assistant_draft,
+)
 from app.llm.resolver import resolve_model_for_role
 from app.llm.roles import LLMRole
 from app.models.inbound_mail import InboundMessage

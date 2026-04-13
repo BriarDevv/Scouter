@@ -8,19 +8,21 @@ from app.llm.client import (
     _call_ollama_chat,
     _ChatCompletion,
     _extract_json,
-    classify_inbound_reply,
-    evaluate_lead_quality,
-    generate_dossier,
-    generate_outreach_draft,
-    generate_reply_assistant_draft,
-    generate_whatsapp_draft,
-    review_inbound_reply,
-    review_lead,
-    review_outreach_draft,
-    review_reply_assistant_draft,
-    summarize_business,
 )
 from app.llm.invocation_metadata import clear_last_invocation, pop_last_invocation
+from app.llm.invocations.lead import evaluate_lead_quality, review_lead, summarize_business
+from app.llm.invocations.outreach import (
+    generate_outreach_draft,
+    generate_whatsapp_draft,
+    review_outreach_draft,
+)
+from app.llm.invocations.reply import (
+    classify_inbound_reply,
+    generate_reply_assistant_draft,
+    review_inbound_reply,
+    review_reply_assistant_draft,
+)
+from app.llm.invocations.research import generate_dossier
 from app.llm.roles import LLMRole
 
 

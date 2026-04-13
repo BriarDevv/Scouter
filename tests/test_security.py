@@ -1,12 +1,11 @@
 """Security-focused tests for prompt injection defense and concurrency guards."""
 
-from app.llm.client import (
-    _call_ollama_chat,
-    _ChatCompletion,
+from app.llm.client import _call_ollama_chat, _ChatCompletion
+from app.llm.invocations.lead import summarize_business
+from app.llm.invocations.reply import (
     classify_inbound_reply,
     generate_reply_assistant_draft,
     review_inbound_reply,
-    summarize_business,
 )
 from app.llm.roles import LLMRole
 

@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
-from app.llm.client import evaluate_lead_quality_structured, summarize_business
+from app.llm.invocations.lead import evaluate_lead_quality_structured, summarize_business
 from app.llm.roles import LLMRole
 from app.models.lead import Lead
 from app.workflows.outreach_draft_generation import (
@@ -140,7 +140,7 @@ def run_high_value_lane_inline(db: Session, lead_id: uuid.UUID) -> HighValueLane
     # Review the brief if one was generated
     if result.brief_generated:
         try:
-            from app.llm.client import review_commercial_brief_structured
+            from app.llm.invocations.research import review_commercial_brief_structured
             from app.llm.roles import LLMRole
             from app.models.commercial_brief import BriefStatus
 

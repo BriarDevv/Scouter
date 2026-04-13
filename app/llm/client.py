@@ -6,7 +6,7 @@ Uses /api/chat with system/user message separation for prompt injection defense.
 import json
 import re
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -23,40 +23,6 @@ from app.core.logging import get_logger
 from app.db.session import SessionLocal
 from app.llm.contracts import StructuredInvocationResult, TextInvocationResult
 from app.llm.invocation_metadata import LLMInvocationMetadata, record_invocation
-from app.llm.invocations.lead import (
-    evaluate_lead_quality,
-    evaluate_lead_quality_structured,
-    review_lead,
-    review_lead_structured,
-    summarize_business,
-    summarize_business_structured,
-)
-from app.llm.invocations.outreach import (
-    generate_outreach_draft,
-    generate_outreach_draft_structured,
-    generate_whatsapp_draft,
-    generate_whatsapp_draft_structured,
-    review_outreach_draft,
-    review_outreach_draft_structured,
-)
-from app.llm.invocations.reply import (
-    classify_inbound_reply,
-    classify_inbound_reply_structured,
-    generate_reply_assistant_draft,
-    generate_reply_assistant_draft_structured,
-    review_inbound_reply,
-    review_inbound_reply_structured,
-    review_reply_assistant_draft,
-    review_reply_assistant_draft_structured,
-)
-from app.llm.invocations.research import (
-    generate_commercial_brief,
-    generate_commercial_brief_structured,
-    generate_dossier,
-    generate_dossier_structured,
-    review_commercial_brief,
-    review_commercial_brief_structured,
-)
 from app.llm.prompt_registry import PromptDefinition
 from app.llm.resolver import normalize_role, resolve_model_for_role
 from app.llm.roles import LLMRole
@@ -66,34 +32,9 @@ from app.models.llm_invocation import LLMInvocation
 __all__ = [
     "LLMError",
     "LLMParseError",
-    "classify_inbound_reply",
-    "classify_inbound_reply_structured",
-    "evaluate_lead_quality",
-    "evaluate_lead_quality_structured",
-    "generate_commercial_brief",
-    "generate_commercial_brief_structured",
-    "generate_dossier",
-    "generate_dossier_structured",
-    "generate_outreach_draft",
-    "generate_outreach_draft_structured",
-    "generate_reply_assistant_draft",
-    "generate_reply_assistant_draft_structured",
-    "generate_whatsapp_draft",
-    "generate_whatsapp_draft_structured",
+    "PromptDefinition",
     "invoke_structured",
     "invoke_text",
-    "review_commercial_brief",
-    "review_commercial_brief_structured",
-    "review_inbound_reply",
-    "review_inbound_reply_structured",
-    "review_lead",
-    "review_lead_structured",
-    "review_outreach_draft",
-    "review_outreach_draft_structured",
-    "review_reply_assistant_draft",
-    "review_reply_assistant_draft_structured",
-    "summarize_business",
-    "summarize_business_structured",
 ]
 
 logger = get_logger(__name__)
@@ -119,7 +60,8 @@ def _extract_json(text: str) -> dict:
     # Try direct parse first
     text = text.strip()
     try:
-        return json.loads(text)
+        result: dict = json.loads(text)
+        return result
     except json.JSONDecodeError:
         pass
 
@@ -127,7 +69,8 @@ def _extract_json(text: str) -> dict:
     match = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", text, re.DOTALL)
     if match:
         try:
-            return json.loads(match.group(1).strip())
+            result = json.loads(match.group(1).strip())
+            return result
         except json.JSONDecodeError:
             pass
 
@@ -136,7 +79,8 @@ def _extract_json(text: str) -> dict:
     end = text.rfind("}")
     if start != -1 and end != -1 and end > start:
         try:
-            return json.loads(text[start : end + 1])
+            result = json.loads(text[start : end + 1])
+            return result
         except json.JSONDecodeError:
             pass
 
@@ -167,7 +111,7 @@ def _timeout_for_role(role: LLMRole | str) -> float:
     return float(settings.OLLAMA_TIMEOUT)
 
 
-def _normalize_tags(tags: dict[str, object] | None) -> dict[str, str]:
+def _normalize_tags(tags: Mapping[str, object] | None) -> dict[str, str]:
     if not tags:
         return {}
     return {str(key): str(value) for key, value in tags.items() if value is not None}
@@ -241,7 +185,7 @@ def _record_public_invocation(
     model: str | None = None,
     target_type: str | None = None,
     target_id: str | None = None,
-    tags: dict[str, object] | None = None,
+    tags: Mapping[str, object] | None = None,
     persist: bool = False,
     error: str | None = None,
 ) -> None:

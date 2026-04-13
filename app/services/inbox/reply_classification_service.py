@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session, joinedload
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.llm.client import LLMError
-from app.llm.client import classify_inbound_reply as llm_classify_inbound_reply
 from app.llm.invocation_metadata import clear_last_invocation, peek_last_invocation
+from app.llm.invocations.reply import classify_inbound_reply as llm_classify_inbound_reply
 from app.llm.resolver import resolve_model_for_role
 from app.llm.roles import LLMRole
 from app.models.inbound_mail import InboundMailClassificationStatus, InboundMessage
