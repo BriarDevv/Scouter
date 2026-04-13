@@ -1,35 +1,9 @@
 // ─── Lead Types ────────────────────────────────────────
 
-export type LeadStatus =
-  | "new"
-  | "enriched"
-  | "scored"
-  | "qualified"
-  | "draft_ready"
-  | "approved"
-  | "contacted"
-  | "opened"
-  | "replied"
-  | "meeting"
-  | "won"
-  | "lost"
-  | "suppressed";
-
-export type SignalType =
-  | "no_website"
-  | "instagram_only"
-  | "outdated_website"
-  | "no_custom_domain"
-  | "no_visible_email"
-  | "no_ssl"
-  | "weak_seo"
-  | "no_mobile_friendly"
-  | "slow_load"
-  | "has_website"
-  | "has_custom_domain"
-  | "website_error";
-
-export type LeadQuality = "high" | "medium" | "low" | "unknown";
+// Enum types are generated from Python StrEnums — see scripts/sync-enums.py
+import type { LeadStatus, LeadQuality, SignalType } from "./generated-enums";
+export type { LeadStatus, LeadQuality, SignalType } from "./generated-enums";
+export { LEAD_STATUS_VALUES, LEAD_QUALITY_VALUES, SIGNAL_TYPE_VALUES } from "./generated-enums";
 
 export interface LeadSignal {
   id: string;
