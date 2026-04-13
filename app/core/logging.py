@@ -1,6 +1,10 @@
+from __future__ import annotations
+
 import logging
 import re
 import sys
+from collections.abc import MutableMapping
+from typing import Any
 
 import structlog
 
@@ -12,7 +16,9 @@ _SENSITIVE_KEY_RE = re.compile(
 )
 
 
-def _scrub_sensitive_keys(logger: object, method_name: str, event_dict: dict) -> dict:
+def _scrub_sensitive_keys(
+    logger: object, method_name: str, event_dict: MutableMapping[str, Any]
+) -> MutableMapping[str, Any]:
     """Remove values of keys that look like secrets from log events."""
     for key in list(event_dict):
         if _SENSITIVE_KEY_RE.search(key):
@@ -44,4 +50,4 @@ def setup_logging() -> None:
 
 
 def get_logger(name: str) -> structlog.stdlib.BoundLogger:
-    return structlog.get_logger(name)
+    return structlog.get_logger(name)  # type: ignore[no-any-return]
