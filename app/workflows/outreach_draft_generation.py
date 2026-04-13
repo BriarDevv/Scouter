@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
 from app.models.commercial_brief import CommercialBrief
-from app.models.lead import Lead
+from app.models.lead import Lead, LeadStatus
 from app.models.outreach import DraftStatus, OutreachDraft
 from app.services.outreach.outreach_service import generate_outreach_draft, generate_whatsapp_draft
 from app.services.settings.operational_settings_service import get_cached_settings
@@ -83,6 +83,8 @@ def run_outreach_draft_generation_workflow(
     if brief and brief.recommended_contact_method:
         method = brief.recommended_contact_method.value
         if method in ("call", "manual_review"):
+            lead.status = LeadStatus.QUALIFIED
+            db.commit()
             return OutreachDraftWorkflowResult(
                 status="skipped",
                 lead_id=lead_id_str,
@@ -107,8 +109,8 @@ def run_outreach_draft_generation_workflow(
                 )
 
     if not should_generate_outreach_email_draft(lead):
-        if whatsapp_draft_id:
-            db.commit()
+        lead.status = LeadStatus.QUALIFIED
+        db.commit()
         return OutreachDraftWorkflowResult(
             status="skipped",
             lead_id=lead_id_str,

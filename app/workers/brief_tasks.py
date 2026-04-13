@@ -229,6 +229,12 @@ def task_review_brief(
                     lead_id=lead_id,
                 )
             elif pipeline_uuid and not is_approved:
+                from app.models.lead import Lead, LeadStatus
+
+                lead = db.get(Lead, uuid.UUID(lead_id))
+                if lead:
+                    lead.status = LeadStatus.QUALIFIED
+                    db.commit()
                 logger.info(
                     "draft_skipped_brief_rejected",
                     lead_id=lead_id,
