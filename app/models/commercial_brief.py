@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import enum
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     JSON,
@@ -18,6 +21,10 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.lead import Lead
+    from app.models.research_report import LeadResearchReport
 
 
 class BudgetTier(enum.StrEnum):
@@ -124,9 +131,9 @@ class CommercialBrief(Base):
     )
 
     # Relationships
-    lead: Mapped["Lead"] = relationship(  # noqa: F821
+    lead: Mapped[Lead] = relationship(  # noqa: F821
         "Lead", back_populates="commercial_briefs"
     )
-    research_report: Mapped["LeadResearchReport"] = relationship(  # noqa: F821
+    research_report: Mapped[LeadResearchReport] = relationship(  # noqa: F821
         "LeadResearchReport"
     )

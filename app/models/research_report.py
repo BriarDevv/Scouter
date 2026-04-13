@@ -1,11 +1,17 @@
+from __future__ import annotations
+
 import enum
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Integer, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.lead import Lead
 
 
 class ResearchStatus(enum.StrEnum):
@@ -75,6 +81,6 @@ class LeadResearchReport(Base):
     )
 
     # Relationships
-    lead: Mapped["Lead"] = relationship(  # noqa: F821
+    lead: Mapped[Lead] = relationship(  # noqa: F821
         "Lead", back_populates="research_reports"
     )

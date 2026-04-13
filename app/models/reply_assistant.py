@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import enum
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     JSON,
@@ -18,6 +21,13 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.inbound_mail import EmailThread, InboundMessage
+    from app.models.lead import Lead
+    from app.models.outreach import OutreachDraft
+    from app.models.outreach_delivery import OutreachDelivery
+    from app.models.reply_assistant_send import ReplyAssistantSend
 
 
 class ReplyAssistantDraftStatus(enum.StrEnum):
@@ -93,26 +103,26 @@ class ReplyAssistantDraft(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    inbound_message: Mapped["InboundMessage"] = relationship(  # noqa: F821
+    inbound_message: Mapped[InboundMessage] = relationship(  # noqa: F821
         "InboundMessage", back_populates="reply_assistant_draft"
     )
-    thread: Mapped["EmailThread | None"] = relationship(  # noqa: F821
+    thread: Mapped[EmailThread | None] = relationship(  # noqa: F821
         "EmailThread", back_populates="reply_assistant_drafts"
     )
-    lead: Mapped["Lead | None"] = relationship("Lead", back_populates="reply_assistant_drafts")  # noqa: F821
-    related_delivery: Mapped["OutreachDelivery | None"] = relationship(  # noqa: F821
+    lead: Mapped[Lead | None] = relationship("Lead", back_populates="reply_assistant_drafts")  # noqa: F821
+    related_delivery: Mapped[OutreachDelivery | None] = relationship(  # noqa: F821
         "OutreachDelivery", back_populates="reply_assistant_drafts"
     )
-    related_outbound_draft: Mapped["OutreachDraft | None"] = relationship(  # noqa: F821
+    related_outbound_draft: Mapped[OutreachDraft | None] = relationship(  # noqa: F821
         "OutreachDraft", back_populates="reply_assistant_drafts"
     )
-    review: Mapped["ReplyAssistantReview | None"] = relationship(  # noqa: F821
+    review: Mapped[ReplyAssistantReview | None] = relationship(  # noqa: F821
         "ReplyAssistantReview",
         back_populates="draft",
         cascade="all, delete-orphan",
         uselist=False,
     )
-    sends: Mapped[list["ReplyAssistantSend"]] = relationship(  # noqa: F821
+    sends: Mapped[list[ReplyAssistantSend]] = relationship(  # noqa: F821
         "ReplyAssistantSend",
         back_populates="draft",
         cascade="all, delete-orphan",
@@ -199,7 +209,7 @@ class ReplyAssistantReview(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    draft: Mapped["ReplyAssistantDraft"] = relationship(
+    draft: Mapped[ReplyAssistantDraft] = relationship(
         "ReplyAssistantDraft",
         back_populates="review",
     )

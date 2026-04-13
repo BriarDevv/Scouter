@@ -89,6 +89,7 @@ def test_services_domain_packages_do_not_cross_import_each_other():
         "app/services/comms/whatsapp_actions.py: imports outreach",
         "app/services/inbox/inbound_mail_service.py: imports notifications",
         "app/services/inbox/inbound_mail_service.py: imports settings",
+        "app/services/inbox/classification_dispatch.py: imports settings",
         "app/services/inbox/reply_classification_service.py: imports notifications",
         "app/services/inbox/reply_classification_service.py: imports settings",
         "app/services/inbox/reply_draft_review_service.py: imports settings",
@@ -114,6 +115,8 @@ def test_services_domain_packages_do_not_cross_import_each_other():
         "app/services/dashboard/ai_office_service.py: imports comms",
         "app/services/outreach/generator.py: imports settings",
         "app/services/settings/setup_service.py: imports dashboard",
+        "app/services/reviews/review_service.py: imports settings",
+        "app/services/comms/kapso_service.py: imports deploy",
     }
 
     for domain in sorted(domain_dirs):
@@ -205,13 +208,13 @@ def test_conftest_uses_postgresql():
 
 def test_alembic_migrations_apply_cleanly():
     """Verify all Alembic migrations apply to a fresh PostgreSQL database."""
-    import os
+    import os  # noqa: I001 — local alembic/ dir causes isort oscillation
 
-    from alembic.config import Config
     from sqlalchemy import create_engine as sa_create_engine
     from sqlalchemy import inspect as sa_inspect
 
     from alembic import command
+    from alembic.config import Config
 
     db_url = os.environ["DATABASE_URL"]
     fresh_engine = sa_create_engine(db_url)

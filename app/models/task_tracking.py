@@ -1,10 +1,16 @@
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, DateTime, ForeignKey, Index, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.lead import Lead
 
 
 class PipelineRun(Base):
@@ -33,8 +39,8 @@ class PipelineRun(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    lead: Mapped["Lead"] = relationship("Lead", back_populates="pipeline_runs")  # noqa: F821
-    tasks: Mapped[list["TaskRun"]] = relationship(
+    lead: Mapped[Lead] = relationship("Lead", back_populates="pipeline_runs")  # noqa: F821
+    tasks: Mapped[list[TaskRun]] = relationship(
         "TaskRun", back_populates="pipeline_run", cascade="all, delete-orphan"
     )
 
@@ -75,5 +81,5 @@ class TaskRun(Base):
         nullable=True,
     )
 
-    lead: Mapped["Lead | None"] = relationship("Lead")  # noqa: F821
+    lead: Mapped[Lead | None] = relationship("Lead")  # noqa: F821
     pipeline_run: Mapped[PipelineRun | None] = relationship("PipelineRun", back_populates="tasks")

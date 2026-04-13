@@ -72,7 +72,7 @@ class GoogleMapsCrawler(BaseCrawler):
     def source_name(self) -> str:
         return "google_maps"
 
-    def crawl(
+    def crawl(  # type: ignore[override]
         self,
         city: str,
         zone: str | None = None,
@@ -212,5 +212,6 @@ class GoogleMapsCrawler(BaseCrawler):
             error_msg = error_data.get("error", {}).get("message", resp.text[:200])
             raise RuntimeError(f"Places API error ({resp.status_code}): {error_msg}")
 
-        data = resp.json()
-        return data.get("places", [])
+        data: dict = resp.json()
+        places: list[dict] = data.get("places", [])
+        return places

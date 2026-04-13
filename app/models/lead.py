@@ -1,11 +1,27 @@
+from __future__ import annotations
+
 import enum
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, Enum, Float, ForeignKey, Index, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.artifact import Artifact
+    from app.models.commercial_brief import CommercialBrief
+    from app.models.inbound_mail import EmailThread, InboundMessage
+    from app.models.lead_signal import LeadSignal
+    from app.models.lead_source import LeadSource
+    from app.models.outreach import OutreachDraft
+    from app.models.outreach_delivery import OutreachDelivery
+    from app.models.reply_assistant import ReplyAssistantDraft
+    from app.models.reply_assistant_send import ReplyAssistantSend
+    from app.models.research_report import LeadResearchReport
+    from app.models.task_tracking import PipelineRun
 
 
 class LeadStatus(enum.StrEnum):
@@ -90,38 +106,38 @@ class Lead(Base):
     scored_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationships
-    source: Mapped["LeadSource"] = relationship("LeadSource", back_populates="leads")  # noqa: F821
-    signals: Mapped[list["LeadSignal"]] = relationship(  # noqa: F821
+    source: Mapped[LeadSource] = relationship("LeadSource", back_populates="leads")  # noqa: F821
+    signals: Mapped[list[LeadSignal]] = relationship(  # noqa: F821
         "LeadSignal", back_populates="lead", cascade="all, delete-orphan"
     )
-    outreach_drafts: Mapped[list["OutreachDraft"]] = relationship(  # noqa: F821
+    outreach_drafts: Mapped[list[OutreachDraft]] = relationship(  # noqa: F821
         "OutreachDraft", back_populates="lead", cascade="all, delete-orphan"
     )
-    outreach_deliveries: Mapped[list["OutreachDelivery"]] = relationship(  # noqa: F821
+    outreach_deliveries: Mapped[list[OutreachDelivery]] = relationship(  # noqa: F821
         "OutreachDelivery", back_populates="lead", cascade="all, delete-orphan"
     )
-    email_threads: Mapped[list["EmailThread"]] = relationship(  # noqa: F821
+    email_threads: Mapped[list[EmailThread]] = relationship(  # noqa: F821
         "EmailThread", back_populates="lead"
     )
-    inbound_messages: Mapped[list["InboundMessage"]] = relationship(  # noqa: F821
+    inbound_messages: Mapped[list[InboundMessage]] = relationship(  # noqa: F821
         "InboundMessage", back_populates="lead"
     )
-    reply_assistant_drafts: Mapped[list["ReplyAssistantDraft"]] = relationship(  # noqa: F821
+    reply_assistant_drafts: Mapped[list[ReplyAssistantDraft]] = relationship(  # noqa: F821
         "ReplyAssistantDraft", back_populates="lead"
     )
-    reply_assistant_sends: Mapped[list["ReplyAssistantSend"]] = relationship(  # noqa: F821
+    reply_assistant_sends: Mapped[list[ReplyAssistantSend]] = relationship(  # noqa: F821
         "ReplyAssistantSend", back_populates="lead"
     )
-    pipeline_runs: Mapped[list["PipelineRun"]] = relationship(  # noqa: F821
+    pipeline_runs: Mapped[list[PipelineRun]] = relationship(  # noqa: F821
         "PipelineRun", back_populates="lead", cascade="all, delete-orphan"
     )
-    research_reports: Mapped[list["LeadResearchReport"]] = relationship(  # noqa: F821
+    research_reports: Mapped[list[LeadResearchReport]] = relationship(  # noqa: F821
         "LeadResearchReport", back_populates="lead", cascade="all, delete-orphan"
     )
-    artifacts: Mapped[list["Artifact"]] = relationship(  # noqa: F821
+    artifacts: Mapped[list[Artifact]] = relationship(  # noqa: F821
         "Artifact", back_populates="lead", cascade="all, delete-orphan"
     )
-    commercial_briefs: Mapped[list["CommercialBrief"]] = relationship(  # noqa: F821
+    commercial_briefs: Mapped[list[CommercialBrief]] = relationship(  # noqa: F821
         "CommercialBrief", back_populates="lead", cascade="all, delete-orphan"
     )
 

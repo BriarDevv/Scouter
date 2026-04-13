@@ -1,11 +1,17 @@
+from __future__ import annotations
+
 import enum
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, Enum, Float, ForeignKey, Index, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.lead import Lead
 
 
 class SignalType(enum.StrEnum):
@@ -39,4 +45,4 @@ class LeadSignal(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
-    lead: Mapped["Lead"] = relationship("Lead", back_populates="signals")  # noqa: F821
+    lead: Mapped[Lead] = relationship("Lead", back_populates="signals")  # noqa: F821

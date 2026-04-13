@@ -98,7 +98,8 @@ def classify_inbound_reply(
     )
     if result.parsed is None:
         raise get_client_module().LLMError(result.error or "Inbound reply classification failed")
-    return result.parsed.model_dump()
+    data: dict = result.parsed.model_dump()
+    return data
 
 
 def _review_inbound_reply_fallback() -> InboundReplyReviewResult:
@@ -201,7 +202,8 @@ def review_inbound_reply(
     )
     if result.parsed is None:
         return _review_inbound_reply_fallback().model_dump()
-    return result.parsed.model_dump()
+    data: dict = result.parsed.model_dump()
+    return data
 
 
 def _reply_assistant_draft_fallback(subject: str | None) -> ReplyAssistantDraftResult:
@@ -320,7 +322,8 @@ def generate_reply_assistant_draft(
     )
     if result.parsed is None:
         return _reply_assistant_draft_fallback(subject).model_dump()
-    return result.parsed.model_dump()
+    data: dict = result.parsed.model_dump()
+    return data
 
 
 def _review_reply_assistant_draft_fallback() -> ReplyAssistantDraftReviewResult:
@@ -444,4 +447,5 @@ def review_reply_assistant_draft(
     )
     if result.parsed is None:
         return _review_reply_assistant_draft_fallback().model_dump()
-    return result.parsed.model_dump()
+    data: dict = result.parsed.model_dump()
+    return data

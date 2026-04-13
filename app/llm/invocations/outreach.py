@@ -105,7 +105,8 @@ def generate_outreach_draft(
     )
     if result.parsed is None:
         return _outreach_draft_fallback(business_name).model_dump()
-    return result.parsed.model_dump()
+    data: dict = result.parsed.model_dump()
+    return data
 
 
 def _review_outreach_draft_fallback() -> OutreachDraftReviewResult:
@@ -192,7 +193,8 @@ def review_outreach_draft(
     )
     if result.parsed is None:
         return _review_outreach_draft_fallback().model_dump()
-    return result.parsed.model_dump()
+    data: dict = result.parsed.model_dump()
+    return data
 
 
 def _whatsapp_draft_fallback(business_name: str) -> WhatsAppDraftResult:
@@ -266,4 +268,5 @@ def generate_whatsapp_draft(
     )
     if result.parsed is None:
         return _whatsapp_draft_fallback(business_name).model_dump()
-    return result.parsed.model_dump()
+    data: dict = result.parsed.model_dump()
+    return data

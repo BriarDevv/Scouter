@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import enum
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     JSON,
@@ -19,6 +22,13 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.lead import Lead
+    from app.models.outreach import OutreachDraft
+    from app.models.outreach_delivery import OutreachDelivery
+    from app.models.reply_assistant import ReplyAssistantDraft
+    from app.models.reply_assistant_send import ReplyAssistantSend
 
 
 class InboundMailClassificationStatus(enum.StrEnum):
@@ -70,20 +80,20 @@ class EmailThread(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    lead: Mapped["Lead | None"] = relationship("Lead", back_populates="email_threads")  # noqa: F821
-    draft: Mapped["OutreachDraft | None"] = relationship(  # noqa: F821
+    lead: Mapped[Lead | None] = relationship("Lead", back_populates="email_threads")  # noqa: F821
+    draft: Mapped[OutreachDraft | None] = relationship(  # noqa: F821
         "OutreachDraft", back_populates="email_threads"
     )
-    delivery: Mapped["OutreachDelivery | None"] = relationship(  # noqa: F821
+    delivery: Mapped[OutreachDelivery | None] = relationship(  # noqa: F821
         "OutreachDelivery", back_populates="email_threads"
     )
-    messages: Mapped[list["InboundMessage"]] = relationship(
+    messages: Mapped[list[InboundMessage]] = relationship(
         "InboundMessage", back_populates="thread", order_by="InboundMessage.received_at.desc()"
     )
-    reply_assistant_drafts: Mapped[list["ReplyAssistantDraft"]] = relationship(  # noqa: F821
+    reply_assistant_drafts: Mapped[list[ReplyAssistantDraft]] = relationship(  # noqa: F821
         "ReplyAssistantDraft", back_populates="thread"
     )
-    reply_assistant_sends: Mapped[list["ReplyAssistantSend"]] = relationship(  # noqa: F821
+    reply_assistant_sends: Mapped[list[ReplyAssistantSend]] = relationship(  # noqa: F821
         "ReplyAssistantSend", back_populates="thread"
     )
 
@@ -151,21 +161,21 @@ class InboundMessage(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    thread: Mapped["EmailThread | None"] = relationship("EmailThread", back_populates="messages")
-    lead: Mapped["Lead | None"] = relationship("Lead", back_populates="inbound_messages")  # noqa: F821
-    draft: Mapped["OutreachDraft | None"] = relationship(  # noqa: F821
+    thread: Mapped[EmailThread | None] = relationship("EmailThread", back_populates="messages")
+    lead: Mapped[Lead | None] = relationship("Lead", back_populates="inbound_messages")  # noqa: F821
+    draft: Mapped[OutreachDraft | None] = relationship(  # noqa: F821
         "OutreachDraft", back_populates="inbound_messages"
     )
-    delivery: Mapped["OutreachDelivery | None"] = relationship(  # noqa: F821
+    delivery: Mapped[OutreachDelivery | None] = relationship(  # noqa: F821
         "OutreachDelivery", back_populates="inbound_messages"
     )
-    reply_assistant_draft: Mapped["ReplyAssistantDraft | None"] = relationship(  # noqa: F821
+    reply_assistant_draft: Mapped[ReplyAssistantDraft | None] = relationship(  # noqa: F821
         "ReplyAssistantDraft",
         back_populates="inbound_message",
         cascade="all, delete-orphan",
         uselist=False,
     )
-    reply_assistant_sends: Mapped[list["ReplyAssistantSend"]] = relationship(  # noqa: F821
+    reply_assistant_sends: Mapped[list[ReplyAssistantSend]] = relationship(  # noqa: F821
         "ReplyAssistantSend", back_populates="inbound_message"
     )
 

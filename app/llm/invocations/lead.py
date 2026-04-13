@@ -78,7 +78,8 @@ def summarize_business(
     )
     if result.parsed is None:
         return _business_summary_fallback(business_name, industry, city).summary
-    return result.parsed.summary
+    summary: str = result.parsed.summary
+    return summary
 
 
 def _lead_quality_fallback() -> LeadQualityResult:
@@ -147,7 +148,8 @@ def evaluate_lead_quality(
     )
     if result.parsed is None:
         return _lead_quality_fallback().model_dump()
-    return result.parsed.model_dump()
+    data: dict = result.parsed.model_dump()
+    return data
 
 
 def _lead_review_fallback() -> LeadReviewResult:
@@ -227,4 +229,5 @@ def review_lead(
     )
     if result.parsed is None:
         return _lead_review_fallback().model_dump()
-    return result.parsed.model_dump()
+    data: dict = result.parsed.model_dump()
+    return data

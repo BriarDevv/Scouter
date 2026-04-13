@@ -1,11 +1,20 @@
+from __future__ import annotations
+
 import enum
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text, Uuid, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.inbound_mail import EmailThread, InboundMessage
+    from app.models.lead import Lead
+    from app.models.outreach import OutreachDraft
+    from app.models.reply_assistant import ReplyAssistantDraft
 
 
 class OutreachDeliveryStatus(enum.StrEnum):
@@ -57,16 +66,16 @@ class OutreachDelivery(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    lead: Mapped["Lead"] = relationship("Lead", back_populates="outreach_deliveries")  # noqa: F821
-    draft: Mapped["OutreachDraft"] = relationship(  # noqa: F821
+    lead: Mapped[Lead] = relationship("Lead", back_populates="outreach_deliveries")  # noqa: F821
+    draft: Mapped[OutreachDraft] = relationship(  # noqa: F821
         "OutreachDraft", back_populates="deliveries"
     )
-    email_threads: Mapped[list["EmailThread"]] = relationship(  # noqa: F821
+    email_threads: Mapped[list[EmailThread]] = relationship(  # noqa: F821
         "EmailThread", back_populates="delivery"
     )
-    inbound_messages: Mapped[list["InboundMessage"]] = relationship(  # noqa: F821
+    inbound_messages: Mapped[list[InboundMessage]] = relationship(  # noqa: F821
         "InboundMessage", back_populates="delivery"
     )
-    reply_assistant_drafts: Mapped[list["ReplyAssistantDraft"]] = relationship(  # noqa: F821
+    reply_assistant_drafts: Mapped[list[ReplyAssistantDraft]] = relationship(  # noqa: F821
         "ReplyAssistantDraft", back_populates="related_delivery"
     )

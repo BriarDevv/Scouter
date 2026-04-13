@@ -1,11 +1,19 @@
+from __future__ import annotations
+
 import enum
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text, Uuid, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.inbound_mail import EmailThread, InboundMessage
+    from app.models.lead import Lead
+    from app.models.reply_assistant import ReplyAssistantDraft
 
 
 class ReplyAssistantSendStatus(enum.StrEnum):
@@ -79,16 +87,16 @@ class ReplyAssistantSend(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    draft: Mapped["ReplyAssistantDraft"] = relationship(  # noqa: F821
+    draft: Mapped[ReplyAssistantDraft] = relationship(  # noqa: F821
         "ReplyAssistantDraft",
         back_populates="sends",
     )
-    inbound_message: Mapped["InboundMessage"] = relationship(  # noqa: F821
+    inbound_message: Mapped[InboundMessage] = relationship(  # noqa: F821
         "InboundMessage",
         back_populates="reply_assistant_sends",
     )
-    thread: Mapped["EmailThread | None"] = relationship(  # noqa: F821
+    thread: Mapped[EmailThread | None] = relationship(  # noqa: F821
         "EmailThread",
         back_populates="reply_assistant_sends",
     )
-    lead: Mapped["Lead | None"] = relationship("Lead", back_populates="reply_assistant_sends")  # noqa: F821
+    lead: Mapped[Lead | None] = relationship("Lead", back_populates="reply_assistant_sends")  # noqa: F821

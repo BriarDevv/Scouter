@@ -105,7 +105,8 @@ def generate_dossier(
     )
     if result.parsed is None:
         return _dossier_fallback(business_name, city).model_dump()
-    return result.parsed.model_dump()
+    data: dict = result.parsed.model_dump()
+    return data
 
 
 def _commercial_brief_fallback() -> CommercialBriefResult:

@@ -7,6 +7,7 @@ Crawlers are responsible for discovering leads from public sources.
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Any
 
 import httpx
 from bs4 import BeautifulSoup
@@ -69,7 +70,7 @@ class BaseCrawler(ABC):
             return client.get(url)
 
     @abstractmethod
-    def crawl(self, **kwargs) -> list[RawLead]:
+    def crawl(self, **kwargs: Any) -> list[RawLead]:
         """Execute the crawl and return discovered leads."""
         ...
 
@@ -91,7 +92,7 @@ class ExampleDirectoryCrawler(BaseCrawler):
     def source_name(self) -> str:
         return "example_directory"
 
-    def crawl(self, url: str, max_pages: int = 5) -> list[RawLead]:
+    def crawl(self, url: str, max_pages: int = 5) -> list[RawLead]:  # type: ignore[override]
         leads: list[RawLead] = []
 
         for page in range(1, max_pages + 1):
@@ -140,7 +141,9 @@ class ExampleDirectoryCrawler(BaseCrawler):
             # Try to extract other fields
             website_el = card.select_one("a[href*='http']")
             if website_el:
-                lead.website_url = website_el.get("href")
+                href = website_el.get("href")
+                if isinstance(href, str):
+                    lead.website_url = href
 
             phone_el = card.select_one(".phone, [href^='tel:']")
             if phone_el:

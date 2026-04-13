@@ -128,15 +128,15 @@ def scrape_instagram_bio_link(instagram_url: str) -> str | None:
         return None
 
     # Check external_url field
-    external_url = user.get("external_url")
+    external_url: str | None = user.get("external_url")
     if external_url and _is_real_website(external_url):
         logger.info("ig_scrape_found", username=username, website=external_url)
         return external_url
 
     # Check bio_links array
-    bio_links = user.get("bio_links", [])
+    bio_links: list[dict] = user.get("bio_links", [])
     for link in bio_links:
-        url = link.get("url", "")
+        url: str = link.get("url", "")
         if url and _is_real_website(url):
             logger.info("ig_scrape_found", username=username, website=url)
             return url

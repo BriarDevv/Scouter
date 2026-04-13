@@ -1,11 +1,17 @@
+from __future__ import annotations
+
 import enum
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Index, Integer, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.lead import Lead
 
 
 class ArtifactType(enum.StrEnum):
@@ -34,4 +40,4 @@ class Artifact(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
-    lead: Mapped["Lead"] = relationship("Lead", back_populates="artifacts")  # noqa: F821
+    lead: Mapped[Lead] = relationship("Lead", back_populates="artifacts")  # noqa: F821

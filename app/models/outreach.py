@@ -1,11 +1,20 @@
+from __future__ import annotations
+
 import enum
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Index, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.inbound_mail import EmailThread, InboundMessage
+    from app.models.lead import Lead
+    from app.models.outreach_delivery import OutreachDelivery
+    from app.models.reply_assistant import ReplyAssistantDraft
 
 
 class DraftStatus(enum.StrEnum):
@@ -36,20 +45,20 @@ class OutreachDraft(Base):
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    lead: Mapped["Lead"] = relationship("Lead", back_populates="outreach_drafts")  # noqa: F821
-    logs: Mapped[list["OutreachLog"]] = relationship(
+    lead: Mapped[Lead] = relationship("Lead", back_populates="outreach_drafts")  # noqa: F821
+    logs: Mapped[list[OutreachLog]] = relationship(
         "OutreachLog", back_populates="draft", cascade="all, delete-orphan"
     )
-    deliveries: Mapped[list["OutreachDelivery"]] = relationship(  # noqa: F821
+    deliveries: Mapped[list[OutreachDelivery]] = relationship(  # noqa: F821
         "OutreachDelivery", back_populates="draft", cascade="all, delete-orphan"
     )
-    email_threads: Mapped[list["EmailThread"]] = relationship(  # noqa: F821
+    email_threads: Mapped[list[EmailThread]] = relationship(  # noqa: F821
         "EmailThread", back_populates="draft"
     )
-    inbound_messages: Mapped[list["InboundMessage"]] = relationship(  # noqa: F821
+    inbound_messages: Mapped[list[InboundMessage]] = relationship(  # noqa: F821
         "InboundMessage", back_populates="draft"
     )
-    reply_assistant_drafts: Mapped[list["ReplyAssistantDraft"]] = relationship(  # noqa: F821
+    reply_assistant_drafts: Mapped[list[ReplyAssistantDraft]] = relationship(  # noqa: F821
         "ReplyAssistantDraft", back_populates="related_outbound_draft"
     )
 

@@ -1,4 +1,11 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from app.llm.roles import LLMRole
+
+if TYPE_CHECKING:
+    from app.core.config import Settings
 
 
 def normalize_role(role: LLMRole | str) -> LLMRole:
@@ -7,7 +14,7 @@ def normalize_role(role: LLMRole | str) -> LLMRole:
     return LLMRole(role)
 
 
-def resolve_model_for_role(role: LLMRole | str, config=None) -> str | None:
+def resolve_model_for_role(role: LLMRole | str, config: Settings | None = None) -> str | None:
     if config is None:
         from app.core.config import settings
 

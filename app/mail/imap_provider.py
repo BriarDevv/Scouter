@@ -7,9 +7,10 @@ import re
 import shlex
 from datetime import UTC, datetime
 from email import message_from_bytes
-from email.message import Message
+from email.message import EmailMessage
 from email.policy import default as default_policy
 from email.utils import getaddresses, parseaddr, parsedate_to_datetime
+from typing import cast
 
 from app.core.config import settings
 from app.mail.inbound_provider import InboundMailMessage, InboundMailProviderError
@@ -50,14 +51,17 @@ class IMAPInboundMailProvider:
             raise InboundMailProviderError(str(exc)) from exc
 
     def _connect(self) -> imaplib.IMAP4:
+        host = settings.MAIL_IMAP_HOST
+        if host is None:
+            raise InboundMailProviderError("MAIL_IMAP_HOST must be set before connecting")
         if settings.MAIL_IMAP_SSL:
             return imaplib.IMAP4_SSL(
-                settings.MAIL_IMAP_HOST,
+                host,
                 settings.MAIL_IMAP_PORT,
                 timeout=settings.MAIL_INBOUND_TIMEOUT,
             )
         return imaplib.IMAP4(
-            settings.MAIL_IMAP_HOST,
+            host,
             settings.MAIL_IMAP_PORT,
             timeout=settings.MAIL_INBOUND_TIMEOUT,
         )
@@ -73,7 +77,7 @@ class IMAPInboundMailProvider:
     def _search_message_uids(self, connection: imaplib.IMAP4) -> list[str]:
         criteria = settings.MAIL_IMAP_SEARCH_CRITERIA.strip() or "ALL"
         search_terms = shlex.split(criteria)
-        status, data = connection.uid("search", None, *search_terms)
+        status, data = connection.uid("search", None, *search_terms)  # type: ignore[arg-type]  # imaplib stubs don't accept None charset
         if status != "OK":
             raise InboundMailProviderError("Unable to search mailbox.")
         if not data or not data[0]:
@@ -102,7 +106,7 @@ class IMAPInboundMailProvider:
         if not raw_message:
             return None
 
-        message = message_from_bytes(raw_message, policy=default_policy)
+        message = cast(EmailMessage, message_from_bytes(raw_message, policy=default_policy))
         body_text = self._extract_body_text(message)
         body_snippet = self._build_snippet(body_text)
         from_name, from_email = parseaddr(message.get("From", ""))
@@ -144,7 +148,7 @@ class IMAPInboundMailProvider:
             return None
 
     @classmethod
-    def _extract_body_text(cls, message: Message) -> str | None:
+    def _extract_body_text(cls, message: EmailMessage) -> str | None:
         if message.is_multipart():
             plain_parts: list[str] = []
             html_parts: list[str] = []
