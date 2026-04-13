@@ -95,10 +95,16 @@ def run_batch_pipeline_workflow(
                 lead_ids = [lead.id for lead in leads]
 
                 if not leads:
-                    territories = db.query(Territory).all()
-                    territory_info = (
-                        (str(territories[0].id), territories[0].name) if territories else None
+                    territory = (
+                        db.query(Territory)
+                        .filter(
+                            Territory.is_active == True,  # noqa: E712
+                            Territory.is_saturated == False,  # noqa: E712
+                        )
+                        .order_by(Territory.last_crawled_at.asc().nullsfirst())
+                        .first()
                     )
+                    territory_info = (str(territory.id), territory.name) if territory else None
 
             if not lead_ids:
                 if not territory_info or crawl_rounds >= 3:
