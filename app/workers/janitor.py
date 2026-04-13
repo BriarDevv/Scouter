@@ -7,6 +7,7 @@ from sqlalchemy import select
 from app.core.logging import get_logger
 from app.db.session import SessionLocal
 from app.models.task_tracking import PipelineRun, TaskRun
+from app.services.notifications.notification_emitter import on_repeated_failures
 from app.workers.celery_app import celery_app
 
 logger = get_logger(__name__)
@@ -151,6 +152,19 @@ def sweep_stale_tasks(session_factory=None) -> dict:
 
         if task_count or pipeline_count or orphan_count or batch_review_count:
             db.commit()
+
+        if task_count > 3:
+            total_stale = task_count + pipeline_count + orphan_count
+            on_repeated_failures(
+                db,
+                failure_type="pipeline_health",
+                count=total_stale,
+                detail=(
+                    f"Janitor sweep: {task_count} stale tasks, "
+                    f"{pipeline_count} stale pipelines, "
+                    f"{orphan_count} orphaned pipelines marked failed."
+                ),
+            )
 
     result = {
         "tasks_failed": task_count,

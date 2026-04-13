@@ -4,6 +4,7 @@ import uuid
 
 from app.core.logging import get_logger
 from app.db.session import SessionLocal
+from app.services.notifications.notification_emitter import on_repeated_failures
 from app.services.pipeline.task_tracking_service import (
     bind_tracking_context,
     clear_tracking_context,
@@ -61,6 +62,12 @@ def _track_failure(
                 error=error,
                 current_step=current_step,
                 pipeline_run_id=pipeline_run_id,
+            )
+            on_repeated_failures(
+                db,
+                failure_type=task_name,
+                count=task.max_retries + 1,
+                detail=f"Task exhausted all retries. Step: {current_step}. Error: {error[:200]}",
             )
         else:
             mark_task_retrying(
