@@ -1,21 +1,13 @@
 import { NextRequest } from "next/server";
 
+import { ALLOWED_PREFIXES } from "@/lib/generated-proxy-prefixes";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const BACKEND_API_BASE =
   process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
 const SERVER_API_KEY = process.env.API_KEY || "";
-
-/** Allowed API path prefixes — requests outside this list get 403. */
-const ALLOWED_PREFIXES = [
-  "ai-office/", "briefs/", "chat/", "crawl/",
-  "dashboard/", "enrichment/", "leader/", "leads/",
-  "mail/", "notifications/", "outreach/", "performance/",
-  "pipelines/", "replies/", "reviews/", "scoring/",
-  "settings/", "setup/", "suppression/", "tasks/",
-  "telegram/", "territories/", "whatsapp/",
-];
 
 function isAllowedPath(pathname: string): boolean {
   // Block path traversal attempts
