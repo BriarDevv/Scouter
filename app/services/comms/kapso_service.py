@@ -11,6 +11,7 @@ Two main operations:
 from __future__ import annotations
 
 import httpx
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from app.core.config import settings
 from app.core.logging import get_logger
@@ -59,6 +60,11 @@ def _headers() -> dict[str, str]:
     }
 
 
+@retry(
+    stop=stop_after_attempt(2),
+    wait=wait_exponential(min=1, max=10),
+    retry=retry_if_exception_type((httpx.TimeoutException, httpx.ConnectError)),
+)
 def _post(payload: dict) -> dict:
     """Send a message via Kapso and return the parsed response."""
     url = _messages_url()
