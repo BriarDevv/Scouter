@@ -23,7 +23,8 @@ def _request_task_id(request) -> str:
 @celery_app.task(
     name="app.workers.tasks.task_crawl_territory",
     bind=True,
-    max_retries=0,
+    max_retries=1,
+    default_retry_delay=60,
 )
 def task_crawl_territory(
     self,
@@ -37,44 +38,51 @@ def task_crawl_territory(
     """Thin Celery wrapper around the territory crawl workflow."""
     task_id = _request_task_id(self.request)
     queue = _queue_name(self.request, "default")
-    return run_territory_crawl_workflow(
-        task_id=task_id,
-        territory_id=territory_id,
-        categories=categories,
-        only_without_website=only_without_website,
-        max_results_per_category=max_results_per_category,
-        target_leads=target_leads,
-        correlation_id=correlation_id,
-        queue=queue,
-    )
+    try:
+        return run_territory_crawl_workflow(
+            task_id=task_id,
+            territory_id=territory_id,
+            categories=categories,
+            only_without_website=only_without_website,
+            max_results_per_category=max_results_per_category,
+            target_leads=target_leads,
+            correlation_id=correlation_id,
+            queue=queue,
+        )
+    except Exception as exc:
+        raise self.retry(exc=exc, countdown=60) from exc
 
 
 @celery_app.task(
     name="app.workers.crawl_tasks.task_scheduled_crawl",
     bind=True,
-    max_retries=0,
+    max_retries=1,
+    default_retry_delay=60,
 )
 def task_scheduled_crawl(self):
     """Celery Beat task: crawl all active territories on schedule."""
     from app.models.territory import Territory
 
-    with SessionLocal() as db:
-        territories = db.query(Territory).filter(Territory.is_active.is_(True)).all()
-        if not territories:
-            logger.info("scheduled_crawl_no_active_territories")
-            return {"status": "skipped", "reason": "no_active_territories"}
+    try:
+        with SessionLocal() as db:
+            territories = db.query(Territory).filter(Territory.is_active.is_(True)).all()
+            if not territories:
+                logger.info("scheduled_crawl_no_active_territories")
+                return {"status": "skipped", "reason": "no_active_territories"}
 
-        dispatched = 0
-        for t in territories:
-            try:
-                task_crawl_territory.delay(str(t.id))
-                dispatched += 1
-            except Exception as exc:
-                logger.warning(
-                    "scheduled_crawl_dispatch_failed",
-                    territory_id=str(t.id),
-                    error=str(exc),
-                )
+            dispatched = 0
+            for t in territories:
+                try:
+                    task_crawl_territory.delay(str(t.id))
+                    dispatched += 1
+                except Exception as exc:
+                    logger.warning(
+                        "scheduled_crawl_dispatch_failed",
+                        territory_id=str(t.id),
+                        error=str(exc),
+                    )
 
-        logger.info("scheduled_crawl_dispatched", count=dispatched)
-        return {"status": "ok", "territories_dispatched": dispatched}
+            logger.info("scheduled_crawl_dispatched", count=dispatched)
+            return {"status": "ok", "territories_dispatched": dispatched}
+    except Exception as exc:
+        raise self.retry(exc=exc, countdown=60) from exc
