@@ -298,6 +298,19 @@ def _persist_inbound_message(
             )
         )
 
+    # Auto-advance lead from CONTACTED to REPLIED on inbound match
+    if match.lead_id and match.delivery_id:
+        from app.models.lead import Lead, LeadStatus
+
+        lead = db.get(Lead, match.lead_id)
+        if lead and lead.status == LeadStatus.CONTACTED:
+            lead.status = LeadStatus.REPLIED
+            logger.info(
+                "lead_auto_advanced_to_replied",
+                lead_id=str(lead.id),
+                delivery_id=str(match.delivery_id),
+            )
+
     try:
         db.commit()
     except IntegrityError:
