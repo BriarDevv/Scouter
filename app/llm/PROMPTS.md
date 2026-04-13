@@ -3,7 +3,7 @@
 Quick reference for all registered prompts in the Scouter LLM system.
 
 **Registry:** `app/llm/prompt_registry.py`
-**Templates:** `app/llm/prompts.py` (664 lines)
+**Templates:** `app/llm/prompts/` (directory: lead.py, outreach.py, reply.py, research.py, review.py, system.py)
 **Contracts:** `app/llm/contracts.py` (Pydantic response schemas)
 
 ## Registered Prompts
@@ -28,7 +28,7 @@ Quick reference for all registered prompts in the Scouter LLM system.
 
 | Location | Prompt ID | Role | Purpose |
 |----------|-----------|------|---------|
-| `app/llm/prompts.py` | `CLOSER_RESPONSE_SYSTEM` | Agent (Mote) | WhatsApp closer conversation |
+| `app/llm/prompts/system.py` | `CLOSER_RESPONSE_SYSTEM` | Agent (Mote) | WhatsApp closer conversation |
 | `app/agent/scout_prompts.py` | `SCOUT_SYSTEM_PROMPT` | Agent (Scout) | Investigation protocol |
 | `app/workers/weekly_tasks.py` | `weekly_synthesis` | Executor | Weekly report natural language synthesis |
 
@@ -53,7 +53,7 @@ Persisted to `review_corrections` table, aggregated for prompt improvement recom
 
 ## Adding a New Prompt
 
-1. Add system + data templates to `app/llm/prompts.py`
+1. Add system + data templates to the appropriate file in `app/llm/prompts/`
 2. Add Pydantic contract to `app/llm/contracts.py`
 3. Register `PromptDefinition` in `app/llm/prompt_registry.py`
 4. Create invocation function in `app/llm/client.py` or `app/llm/invocations/`
