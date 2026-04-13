@@ -8,7 +8,7 @@ import { formatPercent } from "@/lib/formatters";
 import { CHART_TOOLTIP_STYLE } from "@/lib/constants";
 import type { IndustryBreakdown } from "@/types";
 
-const CONVERSION_COLORS = ["#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444"];
+const CONVERSION_COLORS = ["oklch(0.25 0 0)", "oklch(0.40 0 0)", "oklch(0.55 0 0)", "oklch(0.70 0 0)", "oklch(0.85 0 0)"];
 
 export function IndustryConversionChart({ data }: { data: IndustryBreakdown[] }) {
   const sorted = [...data].sort((a, b) => b.conversion_rate - a.conversion_rate);

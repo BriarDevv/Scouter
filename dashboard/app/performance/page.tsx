@@ -209,8 +209,8 @@ export default function PerformancePage() {
         <div className="space-y-6">
           <SectionHeader title="Tendencias" subtitle="Evolucion ultimos 30 dias" className="mb-4" />
           <div className="grid gap-6 lg:grid-cols-2">
-            <AreaChartCard title="Leads Nuevos" data={timeSeries ?? []} dataKey="leads" color="#8b5cf6" gradientId="perfLeads" />
-            <AreaChartCard title="Conversiones" data={timeSeries ?? []} dataKey="conversions" color="#22c55e" gradientId="perfConv" />
+            <AreaChartCard title="Leads Nuevos" data={timeSeries ?? []} dataKey="leads" color="oklch(0.40 0 0)" gradientId="perfLeads" />
+            <AreaChartCard title="Conversiones" data={timeSeries ?? []} dataKey="conversions" color="oklch(0.55 0 0)" gradientId="perfConv" />
           </div>
         </div>
       )}
