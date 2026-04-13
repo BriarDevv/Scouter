@@ -487,7 +487,178 @@ Three micro-exceptions where chromatic color is semantically required and a prim
 
 Any new exception requires updating this section with its location, the specific tokens used, and the reason it cannot be expressed monochromatically. If you can't justify it here, you're introducing drift.
 
-## 10. Agent Prompt Guide
+## 10. Loading, Skeleton & Error States
+
+Every data-driven view must handle four states: **loading**, **empty**, **error**, and **loaded**. Skipping any of these creates a jarring user experience. Use the existing shared primitives — do not build ad-hoc loaders.
+
+### Skeleton Pattern
+
+Use the `Skeleton` component from `components/shared/skeleton.tsx` for initial page/section loads. Skeletons replace the content area with pulsing placeholder shapes that mirror the final layout.
+
+**Base primitive:**
+
+```tsx
+import { Skeleton } from "@/components/shared/skeleton";
+
+// Text line (default)
+<Skeleton className="h-4 w-3/4" />
+
+// Circle (avatars, dots)
+<Skeleton variant="circle" className="h-10 w-10" />
+
+// Card-shaped (large containers)
+<Skeleton variant="card" className="h-40 w-full" />
+```
+
+The `Skeleton` base classes are `animate-pulse rounded-lg bg-muted`. The `variant` prop adjusts the radius: `circle` uses `rounded-full`, `card` uses `rounded-2xl`.
+
+**Pre-built composites** (use these for common patterns instead of assembling from scratch):
+
+| Component | Import | Usage |
+|-----------|--------|-------|
+| `SkeletonStatCard` | `@/components/shared/skeleton` | Dashboard stat cards — matches `StatCard` dimensions |
+| `SkeletonTable` | `@/components/shared/skeleton` | Data tables — accepts `rows` prop (default 5) |
+| `SkeletonCard` | `@/components/shared/skeleton` | Generic card with title + 3 text lines |
+
+**Building custom skeletons** — mirror the final layout with `animate-pulse` wrappers:
+
+```tsx
+<div className="animate-pulse space-y-3">
+  <Skeleton className="h-4 w-3/4" />
+  <Skeleton className="h-4 w-1/2" />
+  <Skeleton className="h-4 w-2/3" />
+</div>
+```
+
+**Do:** Match skeleton dimensions to the real content they replace.
+**Don't:** Use a single full-width bar as a skeleton for a complex card — it looks lazy and causes layout shift.
+
+### Loading Spinner Pattern
+
+For **action-triggered** loading (button clicks, form submissions, inline refreshes), use the `Loader2` icon from `lucide-react` with `animate-spin`:
+
+```tsx
+import { Loader2 } from "lucide-react";
+
+// Inside a button
+<Button disabled={saving}>
+  {saving ? (
+    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Guardando...</>
+  ) : (
+    "Guardar"
+  )}
+</Button>
+
+// Inline status indicator
+<span className="text-xs text-muted-foreground flex items-center gap-1">
+  <Loader2 className="h-3 w-3 animate-spin" /> Cargando...
+</span>
+```
+
+**Do:** Disable the trigger button while loading to prevent double-submissions. Show the spinner *inside* the button, replacing the label.
+**Don't:** Use full-page skeleton loaders for button-triggered actions — skeletons are for initial data fetches, spinners are for user-initiated actions.
+
+### Error State Pattern
+
+Use the `ErrorBoundaryContent` component from `components/shared/error-boundary-content.tsx` for route-level errors (Next.js `error.tsx` files). For inline/section-level API errors, use the destructive alert pattern:
+
+**Route-level error (error.tsx):**
+
+```tsx
+import ErrorBoundaryContent from "@/components/shared/error-boundary-content";
+
+export default function Error({ error, reset }: { error: Error; reset: () => void }) {
+  return <ErrorBoundaryContent error={error} reset={reset} />;
+}
+```
+
+The `ErrorBoundaryContent` renders a centered card with `border-destructive/40 bg-destructive/10`, a Spanish error message, and a "Reintentar" button.
+
+**Inline API error:**
+
+```tsx
+<div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 dark:bg-rose-950/30 px-3 py-2 text-sm text-rose-700">
+  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+  <span>{error.message}</span>
+</div>
+```
+
+**Do:** Always provide a recovery action (retry button, refresh link).
+**Don't:** Show raw error messages or stack traces to the user — log them with `console.error` and display a human-readable Spanish message.
+
+### Empty State Pattern
+
+Use the `EmptyState` component from `components/shared/empty-state.tsx` when a query returns zero results:
+
+```tsx
+import { EmptyState } from "@/components/shared/empty-state";
+import { Inbox } from "lucide-react";
+
+<EmptyState
+  icon={Inbox}
+  title="Sin resultados"
+  description="No se encontraron elementos con los filtros actuales."
+>
+  <Button variant="outline" size="sm" onClick={clearFilters}>
+    Limpiar filtros
+  </Button>
+</EmptyState>
+```
+
+The `EmptyState` renders a centered layout with a `h-14 w-14 rounded-2xl bg-muted` icon box, a semibold title (`font-heading`), a muted description, and an optional `children` slot for action buttons.
+
+**Do:** Provide a contextual action in `children` (clear filters, create first item, etc.).
+**Don't:** Leave an empty state without guidance — every empty state should tell the user what to do next.
+
+### 10.1 Dark Mode Edge Cases
+
+Dark mode in Scouter uses CSS variables that auto-switch between light and dark values (defined in `globals.css`). Most components need zero `dark:` overrides. However, four edge cases require explicit attention:
+
+**Transparent white borders:**
+
+Dark mode borders use transparent white instead of opaque gray. This ensures borders adapt naturally to any background lightness:
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--border` | `oklch(1 0 0 / 10%)` | Card borders, dividers, container edges |
+| `--input` | `oklch(1 0 0 / 15%)` | Input field borders — slightly more visible for affordance |
+
+Use `border-border` and `border-input` in your classes. The CSS variables handle the light/dark switch automatically.
+
+**Don't** use opaque gray borders in dark mode (`border-gray-700`, `border-neutral-600`, etc.). They look muddy against the OKLCH dark backgrounds and don't adapt if background lightness changes.
+
+**Destructive color adjustment:**
+
+The destructive red is lighter in dark mode for legibility against dark backgrounds:
+
+| Mode | OKLCH | Approx. Hex |
+|------|-------|-------------|
+| Light | `oklch(0.577 0.245 27.325)` | `#DC2626` |
+| Dark | `oklch(0.704 0.191 22.216)` | `#F87171` |
+
+This is handled by the `--destructive` CSS variable. Use `text-destructive` or `bg-destructive` — never hardcode red hex values.
+
+**When to use `dark:` prefix vs CSS variables:**
+
+| Approach | When to use |
+|----------|-------------|
+| CSS variables (`text-foreground`, `bg-card`, `border-border`) | **Default.** Handles 95% of cases. Variables auto-switch between modes. |
+| `dark:` prefix (`dark:bg-blue-950/40`, `dark:text-blue-300`) | **Component-level overrides** for semantic color badges that use Tailwind color scales directly (e.g., status pipeline badges). |
+
+**Rule:** Prefer CSS variables — they auto-switch and require zero maintenance. Use `dark:` only for components that apply Tailwind color scale classes directly (e.g., `bg-emerald-50 dark:bg-emerald-950/30`), because those colors live outside the CSS variable system.
+
+**Semantic badge pattern** (the most common `dark:` use case):
+
+```tsx
+// Light background + dark background, light text + dark text
+<span className="bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300">
+  Enriched
+</span>
+```
+
+Always pair a `dark:bg-COLOR-950/40` with `dark:text-COLOR-300` for legible contrast on dark backgrounds.
+
+## 11. Agent Prompt Guide
 
 ### Quick Color Reference
 
