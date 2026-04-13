@@ -90,6 +90,10 @@ celery_app.conf.update(
             "task": "app.workers.auto_pipeline_tasks.task_auto_process_new_leads",
             "schedule": crontab(minute="*/30"),  # every 30 minutes
         },
+        "sync-inbound-mail": {
+            "task": "app.workers.inbox_tasks.task_sync_inbound_mail",
+            "schedule": crontab(minute="*/15"),  # every 15 minutes
+        },
     },
 )
 
@@ -98,6 +102,7 @@ import app.workers.auto_pipeline_tasks  # noqa: E402, F401 — register auto pip
 import app.workers.batch_tasks  # noqa: E402, F401 — register batch tasks
 import app.workers.brief_tasks  # noqa: E402, F401 — register brief tasks
 import app.workers.crawl_tasks  # noqa: E402, F401 — register crawl tasks
+import app.workers.inbox_tasks  # noqa: E402, F401 — register inbox sync beat task
 import app.workers.janitor  # noqa: E402, F401 — register janitor beat task
 import app.workers.pipeline_tasks  # noqa: E402, F401 — register pipeline tasks
 import app.workers.research_tasks  # noqa: E402, F401 — register research tasks
