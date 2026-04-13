@@ -27,7 +27,7 @@ The Agent OS runs 4 AI roles through a pipeline with accumulated context, struct
 | --- | --- |
 | Architecture review or structural refactor | [docs/architecture/audit.md](docs/architecture/audit.md) -> [docs/architecture/target.md](docs/architecture/target.md) -> [docs/plans/refactor-roadmap.md](docs/plans/refactor-roadmap.md) |
 | Backend feature or bugfix | `app/api/`, `app/services/`, `app/workflows/`, `app/workers/`, relevant tests |
-| Frontend feature or bugfix | [dashboard/README.md](dashboard/README.md), then `dashboard/app/`, `dashboard/components/`, `dashboard/lib/api/client.ts`, `dashboard/types/index.ts` |
+| Frontend feature or bugfix | [DESIGN.md](DESIGN.md), [dashboard/README.md](dashboard/README.md), then source |
 | Async workflow work | `app/workflows/`, `app/workers/tasks.py`, `app/services/operational_task_service.py`, `app/services/task_tracking_service.py` |
 | AI / agent work | `app/llm/`, `app/agent/`, and only then [SOUL.md](SOUL.md) / [IDENTITY.md](IDENTITY.md) if persona or prompt wiring is relevant |
 | Agent OS understanding | [docs/agents/hierarchy.md](docs/agents/hierarchy.md) -> [docs/agents/protocols.md](docs/agents/protocols.md) -> [docs/agents/identities.md](docs/agents/identities.md) |
@@ -58,6 +58,10 @@ The Agent OS runs 4 AI roles through a pipeline with accumulated context, struct
 - Do not move [SOUL.md](SOUL.md) or [IDENTITY.md](IDENTITY.md) unless you have a strong tooling reason.
 - Treat `docs/archive/` as historical context, not as instruction priority.
 - Update `docs/README.md` when you add or rename canonical documentation.
+- **Deferred imports**: ~15 service functions use imports inside function bodies
+  (not at the top of the file) to avoid circular dependencies. Do not move these
+  to the top of the file — it will cause circular import crashes. Look for the
+  pattern `from app.services.xxx import yyy` inside function bodies.
 
 ## Commit Conventions
 
@@ -103,6 +107,7 @@ Conventional commits make the repo navigable by `git log --oneline`. Each commit
 | [docs/architecture/target.md](docs/architecture/target.md) | Target architecture direction |
 | [docs/plans/refactor-roadmap.md](docs/plans/refactor-roadmap.md) | Incremental refactor sequence |
 | [docs/agents/context.md](docs/agents/context.md) | Secondary operator and agent context |
+| [DESIGN.md](DESIGN.md) | Design system — tokens, components, do/don't rules for frontend |
 | [SOUL.md](SOUL.md) | Runtime persona asset for Mote |
 | [IDENTITY.md](IDENTITY.md) | Runtime identity asset for Mote |
 
