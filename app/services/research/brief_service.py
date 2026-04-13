@@ -45,6 +45,26 @@ def get_pricing_matrix(db: Session) -> dict:
     return DEFAULT_PRICING_MATRIX
 
 
+def get_brief_for_lead(db: Session, lead_id: uuid.UUID) -> CommercialBrief | None:
+    """Return the commercial brief for a specific lead, or None."""
+    return db.query(CommercialBrief).filter_by(lead_id=lead_id).first()
+
+
+def list_briefs(
+    db: Session,
+    budget_tier: str | None = None,
+    contact_priority: str | None = None,
+    limit: int = 50,
+) -> list[CommercialBrief]:
+    """List commercial briefs with optional filters."""
+    query = db.query(CommercialBrief)
+    if budget_tier:
+        query = query.filter(CommercialBrief.budget_tier == budget_tier)
+    if contact_priority:
+        query = query.filter(CommercialBrief.contact_priority == contact_priority)
+    return query.order_by(CommercialBrief.created_at.desc()).limit(limit).all()
+
+
 def create_or_get_brief(db: Session, lead_id: uuid.UUID) -> CommercialBrief:
     """Return existing brief for lead or create a new PENDING one (race-safe)."""
     brief = db.query(CommercialBrief).filter_by(lead_id=lead_id).first()
@@ -80,7 +100,7 @@ def generate_brief(db: Session, lead_id: uuid.UUID) -> CommercialBrief | None:
         pricing = get_pricing_matrix(db)
 
         # Call LLM to generate brief
-        from app.llm.client import generate_commercial_brief_structured
+        from app.llm.invocations.research import generate_commercial_brief_structured
         from app.llm.roles import LLMRole
 
         llm_result = generate_commercial_brief_structured(

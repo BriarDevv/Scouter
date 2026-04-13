@@ -6,9 +6,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models.artifact import Artifact, ArtifactType
 from app.models.lead import Lead, LeadStatus
-from app.models.research_report import LeadResearchReport
 from app.schemas.lead import (
     LeadCreate,
     LeadDetailResponse,
@@ -18,7 +16,14 @@ from app.schemas.lead import (
     LeadStatusUpdate,
 )
 from app.schemas.research import ResearchReportResponse
-from app.services.leads.lead_service import create_lead, get_lead, list_leads, update_lead_status
+from app.services.leads.lead_service import (
+    create_lead,
+    get_lead,
+    list_lead_names,
+    list_leads,
+    query_leads_for_export,
+    update_lead_status,
+)
 
 router = APIRouter(prefix="/leads", tags=["leads"])
 
@@ -63,12 +68,7 @@ def export_leads(
         export_leads_xlsx,
     )
 
-    query = db.query(Lead)
-    if status:
-        query = query.filter(Lead.status == status)
-    if quality:
-        query = query.filter(Lead.llm_quality == quality)
-    leads = query.order_by(Lead.created_at.desc()).yield_per(100)
+    leads = query_leads_for_export(db, status=status, quality=quality)
 
     if format == "json":
         data = export_leads_json(leads)
@@ -99,7 +99,7 @@ def list_names(
     db: Session = Depends(get_db),
 ):
     """Return a lightweight list of {id, business_name} for all leads."""
-    rows = db.query(Lead.id, Lead.business_name).order_by(Lead.business_name).limit(limit).all()
+    rows = list_lead_names(db, limit=limit)
     return [LeadNameResponse(id=row.id, business_name=row.business_name) for row in rows]
 
 
@@ -129,11 +129,14 @@ def patch_status(
 @router.get("/{lead_id}/research", response_model=ResearchReportResponse)
 def get_research_report(lead_id: uuid.UUID, db: Session = Depends(get_db)):
     """Get research report for a lead."""
-    lead = db.get(Lead, lead_id)
-    if not lead:
-        raise HTTPException(status_code=404, detail="Lead not found")
-    report = db.query(LeadResearchReport).filter_by(lead_id=lead_id).first()
-    if not report:
+    from app.services.research.research_service import get_research_report_for_lead
+
+    report = get_research_report_for_lead(db, lead_id)
+    if report is None:
+        # Distinguish lead-not-found from report-not-found
+        lead = get_lead(db, lead_id)
+        if not lead:
+            raise HTTPException(status_code=404, detail="Lead not found")
         raise HTTPException(status_code=404, detail="Research report not found")
     return ResearchReportResponse.model_validate(report)
 
@@ -157,19 +160,11 @@ def get_lead_screenshot(lead_id: uuid.UUID, db: Session = Depends(get_db)):
     """Serve the screenshot image for a lead."""
     from pathlib import Path
 
-    lead = db.get(Lead, lead_id)
+    from app.services.research.research_service import get_lead_screenshot_artifact
+
+    lead, artifact = get_lead_screenshot_artifact(db, lead_id)
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
-
-    artifact = (
-        db.query(Artifact)
-        .filter(
-            Artifact.lead_id == lead_id,
-            Artifact.artifact_type == ArtifactType.SCREENSHOT,
-        )
-        .order_by(Artifact.created_at.desc())
-        .first()
-    )
     if not artifact:
         raise HTTPException(status_code=404, detail="No screenshot available")
 

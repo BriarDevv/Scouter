@@ -13,6 +13,38 @@ from app.models.research_report import ConfidenceLevel, LeadResearchReport, Rese
 logger = get_logger(__name__)
 
 
+def get_research_report_for_lead(db: Session, lead_id: uuid.UUID) -> LeadResearchReport | None:
+    """Return the research report for a lead, or None if not found."""
+    lead = db.get(Lead, lead_id)
+    if not lead:
+        return None
+    return db.query(LeadResearchReport).filter_by(lead_id=lead_id).first()
+
+
+def get_lead_screenshot_artifact(db: Session, lead_id: uuid.UUID):
+    """Return the latest screenshot artifact for a lead, or None.
+
+    Returns a tuple of (lead, artifact) or (None, None) if lead not found,
+    or (lead, None) if no screenshot exists.
+    """
+    from app.models.artifact import Artifact, ArtifactType
+
+    lead = db.get(Lead, lead_id)
+    if not lead:
+        return None, None
+
+    artifact = (
+        db.query(Artifact)
+        .filter(
+            Artifact.lead_id == lead_id,
+            Artifact.artifact_type == ArtifactType.SCREENSHOT,
+        )
+        .order_by(Artifact.created_at.desc())
+        .first()
+    )
+    return lead, artifact
+
+
 def create_or_get_report(db: Session, lead_id: uuid.UUID) -> LeadResearchReport:
     """Get existing report or create a new one (race-safe)."""
     report = db.query(LeadResearchReport).filter_by(lead_id=lead_id).first()

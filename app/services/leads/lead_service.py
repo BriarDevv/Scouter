@@ -99,6 +99,30 @@ def list_leads(
     return list(leads), total
 
 
+def query_leads_for_export(
+    db: Session,
+    status: str | None = None,
+    quality: str | None = None,
+) -> list[Lead]:
+    """Return leads matching export filters, ordered by newest first."""
+    query = select(Lead)
+    if status:
+        query = query.where(Lead.status == status)
+    if quality:
+        query = query.where(Lead.llm_quality == quality)
+    query = query.order_by(Lead.created_at.desc())
+    return list(db.execute(query).scalars().yield_per(100))
+
+
+def list_lead_names(db: Session, limit: int = 5000) -> list[Lead]:
+    """Return lightweight (id, business_name) rows for all leads."""
+    return list(
+        db.execute(
+            select(Lead.id, Lead.business_name).order_by(Lead.business_name).limit(limit)
+        ).all()
+    )
+
+
 def update_lead(db: Session, lead_id: uuid.UUID, data: LeadUpdate) -> Lead | None:
     lead = db.get(Lead, lead_id)
     if not lead:

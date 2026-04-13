@@ -1,11 +1,9 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models.investigation_thread import InvestigationThread
 from app.schemas.dashboard import (
     CityBreakdownResponse,
     IndustryBreakdownResponse,
@@ -20,8 +18,10 @@ from app.schemas.performance import (
     SignalCorrelationItem,
 )
 from app.services.dashboard.dashboard_service import (
+    get_ai_health_summary,
     get_city_breakdown,
     get_industry_breakdown,
+    get_investigation_detail,
     get_source_performance,
 )
 
@@ -49,40 +49,7 @@ def source(db: Session = Depends(get_db)):
 @router.get("/ai-health", response_model=AIHealthResponse)
 def get_ai_health(db: Session = Depends(get_db)):
     """AI health metrics: approval rate, fallback rate, avg latency, invocation count (24h)."""
-    from datetime import UTC, datetime, timedelta
-
-    from app.models.llm_invocation import LLMInvocation
-
-    since = datetime.now(UTC) - timedelta(hours=24)
-
-    total = (
-        db.query(func.count(LLMInvocation.id)).filter(LLMInvocation.created_at >= since).scalar()
-        or 0
-    )
-    succeeded = (
-        db.query(func.count(LLMInvocation.id))
-        .filter(LLMInvocation.created_at >= since, LLMInvocation.status == "succeeded")
-        .scalar()
-        or 0
-    )
-    fallbacks = (
-        db.query(func.count(LLMInvocation.id))
-        .filter(LLMInvocation.created_at >= since, LLMInvocation.fallback_used.is_(True))
-        .scalar()
-        or 0
-    )
-    avg_latency = (
-        db.query(func.avg(LLMInvocation.latency_ms))
-        .filter(LLMInvocation.created_at >= since, LLMInvocation.latency_ms.isnot(None))
-        .scalar()
-    )
-
-    return {
-        "approval_rate": round(succeeded / max(total, 1), 2),
-        "fallback_rate": round(fallbacks / max(total, 1), 2),
-        "avg_latency_ms": round(avg_latency) if avg_latency else None,
-        "invocations_24h": total,
-    }
+    return get_ai_health_summary(db)
 
 
 @router.get("/outcomes", response_model=OutcomeAnalyticsResponse)
@@ -144,24 +111,7 @@ def get_analysis_summary(db: Session = Depends(get_db)):
 @router.get("/investigations/{lead_id}", response_model=InvestigationDetailResponse)
 def get_investigation(lead_id: uuid.UUID, db: Session = Depends(get_db)):
     """Return Scout investigation thread for a lead."""
-    thread = (
-        db.query(InvestigationThread)
-        .filter_by(lead_id=lead_id)
-        .order_by(InvestigationThread.created_at.desc())
-        .first()
-    )
-    if not thread:
+    result = get_investigation_detail(db, lead_id)
+    if not result:
         raise HTTPException(status_code=404, detail="No investigation found for this lead")
-
-    return {
-        "id": str(thread.id),
-        "lead_id": str(thread.lead_id),
-        "agent_model": thread.agent_model,
-        "tool_calls": thread.tool_calls_json,
-        "pages_visited": thread.pages_visited_json,
-        "findings": thread.findings_json,
-        "loops_used": thread.loops_used,
-        "duration_ms": thread.duration_ms,
-        "error": thread.error,
-        "created_at": thread.created_at.isoformat() if thread.created_at else None,
-    }
+    return result

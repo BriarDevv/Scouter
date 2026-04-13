@@ -1,3 +1,4 @@
+import uuid
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import case, select
@@ -489,3 +490,66 @@ def _source_performance_python(leads: list[Lead]) -> list[dict]:
 
 def get_recent_activity(db: Session, limit: int = 20) -> list[OutreachLog]:
     return _load_logs(db)[:limit]
+
+
+def get_ai_health_summary(db: Session) -> dict:
+    """Return AI health metrics for the dashboard (last 24 hours)."""
+    from app.models.llm_invocation import LLMInvocation
+
+    since = _now_utc() - timedelta(hours=24)
+
+    total = (
+        db.query(sa_func.count(LLMInvocation.id)).filter(LLMInvocation.created_at >= since).scalar()
+        or 0
+    )
+    succeeded = (
+        db.query(sa_func.count(LLMInvocation.id))
+        .filter(LLMInvocation.created_at >= since, LLMInvocation.status == "succeeded")
+        .scalar()
+        or 0
+    )
+    fallbacks = (
+        db.query(sa_func.count(LLMInvocation.id))
+        .filter(LLMInvocation.created_at >= since, LLMInvocation.fallback_used.is_(True))
+        .scalar()
+        or 0
+    )
+    avg_latency = (
+        db.query(sa_func.avg(LLMInvocation.latency_ms))
+        .filter(LLMInvocation.created_at >= since, LLMInvocation.latency_ms.isnot(None))
+        .scalar()
+    )
+
+    return {
+        "approval_rate": round(succeeded / max(total, 1), 2),
+        "fallback_rate": round(fallbacks / max(total, 1), 2),
+        "avg_latency_ms": round(avg_latency) if avg_latency else None,
+        "invocations_24h": total,
+    }
+
+
+def get_investigation_detail(db: Session, lead_id: uuid.UUID) -> dict | None:
+    """Return Scout investigation thread for a lead, or None if not found."""
+    from app.models.investigation_thread import InvestigationThread
+
+    thread = (
+        db.query(InvestigationThread)
+        .filter_by(lead_id=lead_id)
+        .order_by(InvestigationThread.created_at.desc())
+        .first()
+    )
+    if not thread:
+        return None
+
+    return {
+        "id": str(thread.id),
+        "lead_id": str(thread.lead_id),
+        "agent_model": thread.agent_model,
+        "tool_calls": thread.tool_calls_json,
+        "pages_visited": thread.pages_visited_json,
+        "findings": thread.findings_json,
+        "loops_used": thread.loops_used,
+        "duration_ms": thread.duration_ms,
+        "error": thread.error,
+        "created_at": thread.created_at.isoformat() if thread.created_at else None,
+    }

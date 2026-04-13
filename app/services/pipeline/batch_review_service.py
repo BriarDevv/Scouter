@@ -20,6 +20,69 @@ from app.models.lead import Lead
 logger = get_logger(__name__)
 
 
+def list_batch_reviews(db: Session, limit: int = 10) -> list[dict]:
+    """List batch reviews with proposal counts, newest first."""
+    from sqlalchemy.orm import joinedload
+
+    reviews = (
+        db.query(BatchReview)
+        .options(joinedload(BatchReview.proposals))
+        .order_by(BatchReview.created_at.desc())
+        .limit(min(limit, 50))
+        .all()
+    )
+    return [
+        {
+            "id": str(r.id),
+            "trigger_reason": r.trigger_reason,
+            "batch_size": r.batch_size,
+            "status": r.status,
+            "reviewer_verdict": r.reviewer_verdict,
+            "strategy_brief": r.strategy_brief,
+            "proposals_count": len(r.proposals),
+            "proposals_pending": sum(1 for p in r.proposals if p.status == "pending"),
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in reviews
+    ]
+
+
+def get_batch_review_detail(db: Session, review_id: uuid.UUID) -> dict | None:
+    """Get batch review detail with proposals, or None if not found."""
+    review = db.get(BatchReview, review_id)
+    if not review:
+        return None
+
+    return {
+        "id": str(review.id),
+        "trigger_reason": review.trigger_reason,
+        "batch_size": review.batch_size,
+        "period_start": review.period_start.isoformat() if review.period_start else None,
+        "period_end": review.period_end.isoformat() if review.period_end else None,
+        "status": review.status,
+        "executor_draft": review.executor_draft,
+        "reviewer_verdict": review.reviewer_verdict,
+        "reviewer_notes": review.reviewer_notes,
+        "strategy_brief": review.strategy_brief,
+        "metrics_json": review.metrics_json,
+        "created_at": review.created_at.isoformat() if review.created_at else None,
+        "proposals": [
+            {
+                "id": str(p.id),
+                "category": p.category,
+                "description": p.description,
+                "impact": p.impact,
+                "confidence": p.confidence,
+                "evidence_summary": p.evidence_summary,
+                "status": p.status,
+                "approved_by": p.approved_by,
+                "applied_at": p.applied_at.isoformat() if p.applied_at else None,
+            }
+            for p in review.proposals
+        ],
+    }
+
+
 def check_review_threshold(db: Session) -> str | None:
     """Check if evidence thresholds are met for a batch review.
 
