@@ -69,6 +69,26 @@ def _track_failure(
                 count=task.max_retries + 1,
                 detail=f"Task exhausted all retries. Step: {current_step}. Error: {error[:200]}",
             )
+            # Insert dead letter record for permanently failed tasks
+            try:
+                from app.models.dead_letter import DeadLetterTask
+
+                dead_letter = DeadLetterTask(
+                    task_name=task_name,
+                    lead_id=uuid.UUID(lead_id) if lead_id else None,
+                    pipeline_run_id=pipeline_run_id,
+                    step=current_step,
+                    error=error[:2000] if error else None,
+                    payload={
+                        "task_id": task_id,
+                        "correlation_id": correlation_id,
+                        "queue": queue,
+                        "max_retries": task.max_retries,
+                    },
+                )
+                db.add(dead_letter)
+            except Exception:
+                logger.warning("dead_letter_insert_failed", task_id=task_id)
         else:
             mark_task_retrying(
                 db,
