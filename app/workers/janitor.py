@@ -260,6 +260,38 @@ def sweep_stuck_research_reports(db) -> int:
     return count
 
 
+def _check_pipeline_inactive(db) -> None:
+    """Alert if pipeline has been idle despite pending leads."""
+    from app.models.lead import Lead, LeadStatus
+
+    cutoff = datetime.now(UTC) - timedelta(minutes=60)
+    recent_runs = (
+        db.query(PipelineRun)
+        .filter(
+            PipelineRun.finished_at >= cutoff,
+            PipelineRun.status == "succeeded",
+        )
+        .count()
+    )
+
+    pending_leads = db.query(Lead).filter(Lead.status == LeadStatus.NEW.value).count()
+
+    if recent_runs == 0 and pending_leads > 0:
+        from app.services.notifications.notification_emitter import _emit
+
+        _emit(
+            db,
+            type="pipeline_inactive",
+            category="system",
+            severity="warning",
+            title="Pipeline inactivo",
+            message=(
+                f"No hay pipeline runs en la ultima hora pero hay {pending_leads} leads pendientes."
+            ),
+            dedup_key="pipeline_inactive",
+        )
+
+
 def sweep_stale_tasks(session_factory=None) -> dict:
     """Find tasks and pipelines stuck in active status and mark them failed."""
     cutoff = datetime.now(UTC) - STALE_THRESHOLD
@@ -389,6 +421,9 @@ def sweep_stale_tasks(session_factory=None) -> dict:
 
         # Sweep zombie leads (E3-3)
         zombie_result = sweep_zombie_leads(db)
+
+        # Check for pipeline inactivity (E4-3)
+        _check_pipeline_inactive(db)
 
         if (
             task_count
