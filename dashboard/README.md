@@ -28,6 +28,10 @@ npx tsc --noEmit     # Type check
 | `/settings` | Configuration — brand, credentials, channels, rules |
 | `/responses` | Inbound reply classification |
 | `/notifications` | System notifications |
+| `/map` | Territory heatmap and lead distribution |
+| `/suppression` | Suppression list management |
+| `/activity` | Activity timeline and audit log |
+| `/security` | Security settings |
 
 ## Structure
 
@@ -57,7 +61,7 @@ types/
 | File | Purpose |
 |------|---------|
 | `lib/api/client.ts` | `apiFetch()` helper + barrel re-export of 12 domain modules (`lib/api/leads.ts`, `lib/api/outreach.ts`, `lib/api/pipeline.ts`, etc.). Browser calls use `/api/proxy`, SSR uses the direct backend URL. Import from `@/lib/api/client` in either case — the barrel resolves to the right domain module. |
-| `types/index.ts` | All shared TypeScript interfaces (~800 lines) |
+| `types/index.ts` | Barrel re-export of 12 domain type files (~1135 lines total) |
 | `lib/constants.ts` | Status/quality/signal configs, score thresholds |
 | `components/layout/readiness-gate.tsx` | Gates dashboard behind onboarding |
 | `app/layout.tsx` | Root layout with theme, sidebar, readiness gate |
@@ -68,6 +72,7 @@ All browser API calls route through `/api/proxy/[...path]`:
 - Injects `API_KEY` server-side (never exposed to browser)
 - Path allowlist prevents SSRF (23 allowed prefixes)
 - `API_BASE_URL` = `/api/proxy` in browser, direct backend URL in SSR
+- **Important:** When adding new backend API paths, also add the path prefix to the `ALLOWED_PREFIXES` array in `app/api/proxy/[...path]/route.ts`. Missing prefixes cause silent 403 errors.
 
 ## Tailwind CSS v4
 
