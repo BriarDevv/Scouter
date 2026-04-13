@@ -2,8 +2,8 @@ from app.models.lead import Lead
 from app.models.task_tracking import TaskRun
 from app.services.pipeline.operational_task_service import BATCH_PIPELINE_SCOPE_KEY
 from app.services.pipeline.task_tracking_service import get_task_run
+from app.workers.batch_tasks import task_batch_pipeline
 from app.workers.pipeline_tasks import task_generate_draft
-from app.workers.tasks import task_batch_pipeline
 from app.workflows.batch_pipeline import run_batch_pipeline_workflow
 
 

@@ -20,7 +20,7 @@ def test_review_lead_endpoint_uses_reviewer_payload(client, db, monkeypatch):
     db.commit()
 
     monkeypatch.setattr(
-        "app.services.review_service.llm_review_lead",
+        "app.services.reviews.review_service.llm_review_lead",
         lambda **kwargs: {
             "verdict": "priority",
             "confidence": "high",
@@ -30,7 +30,7 @@ def test_review_lead_endpoint_uses_reviewer_payload(client, db, monkeypatch):
         },
     )
     monkeypatch.setattr(
-        "app.services.review_service.resolve_model_for_role", lambda role: "qwen3.5:27b"
+        "app.services.reviews.review_service.resolve_model_for_role", lambda role: "qwen3.5:27b"
     )
 
     resp = client.post(f"/api/v1/reviews/leads/{lead.id}")
@@ -63,7 +63,7 @@ def test_review_draft_endpoint_uses_reviewer_payload(client, db, monkeypatch):
     db.commit()
 
     monkeypatch.setattr(
-        "app.services.review_service.llm_review_outreach_draft",
+        "app.services.reviews.review_service.llm_review_outreach_draft",
         lambda **kwargs: {
             "verdict": "revise",
             "confidence": "medium",
@@ -76,7 +76,7 @@ def test_review_draft_endpoint_uses_reviewer_payload(client, db, monkeypatch):
         },
     )
     monkeypatch.setattr(
-        "app.services.review_service.resolve_model_for_role", lambda role: "qwen3.5:27b"
+        "app.services.reviews.review_service.resolve_model_for_role", lambda role: "qwen3.5:27b"
     )
 
     resp = client.post(f"/api/v1/reviews/drafts/{draft.id}")
@@ -216,7 +216,7 @@ def test_review_inbound_message_endpoint_uses_reviewer_payload(client, db, monke
     db.commit()
 
     monkeypatch.setattr(
-        "app.services.review_service.llm_review_inbound_reply",
+        "app.services.reviews.review_service.llm_review_inbound_reply",
         lambda **kwargs: {
             "verdict": "reply_now",
             "confidence": "high",
@@ -227,7 +227,7 @@ def test_review_inbound_message_endpoint_uses_reviewer_payload(client, db, monke
         },
     )
     monkeypatch.setattr(
-        "app.services.review_service.resolve_model_for_role", lambda role: "qwen3.5:27b"
+        "app.services.reviews.review_service.resolve_model_for_role", lambda role: "qwen3.5:27b"
     )
 
     resp = client.post(f"/api/v1/reviews/inbound/messages/{message.id}")

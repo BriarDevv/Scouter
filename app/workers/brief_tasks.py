@@ -163,7 +163,7 @@ def task_review_brief(
                 tracker.succeed(result)
                 return result
 
-            from app.llm.client import review_commercial_brief_structured
+            from app.llm.invocations.research import review_commercial_brief_structured
             from app.llm.roles import LLMRole
 
             review_result = review_commercial_brief_structured(
@@ -221,7 +221,7 @@ def task_review_brief(
             # Chain to draft generation only if brief was approved
             is_approved = review_payload.approved if review_payload else False
             if pipeline_uuid and is_approved:
-                from app.workers.tasks import task_generate_draft
+                from app.workers.pipeline_tasks import task_generate_draft
 
                 task_generate_draft.delay(lead_id, pipeline_run_id)
                 logger.info(

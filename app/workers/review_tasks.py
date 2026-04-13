@@ -15,7 +15,7 @@ from app.services.inbox.reply_draft_review_service import (
 from app.services.pipeline.task_tracking_service import (
     tracked_task_step,
 )
-from app.services.review_service import (
+from app.services.reviews.review_service import (
     review_draft_with_reviewer,
     review_inbound_message_with_reviewer,
     review_lead_with_reviewer,

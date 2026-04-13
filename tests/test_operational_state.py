@@ -30,7 +30,7 @@ from app.services.pipeline.operational_task_service import (
     should_stop_operational_task,
 )
 from app.services.pipeline.task_tracking_service import get_task_run, request_task_stop
-from app.workers.tasks import task_rescore_all
+from app.workers.batch_tasks import task_rescore_all
 
 
 def test_start_batch_pipeline_creates_canonical_task_run(db, monkeypatch):
@@ -41,7 +41,7 @@ def test_start_batch_pipeline_creates_canonical_task_run(db, monkeypatch):
         captured["kwargs"] = kwargs
         return SimpleNamespace(id="batch-task-001")
 
-    monkeypatch.setattr("app.workers.tasks.task_batch_pipeline.delay", fake_delay)
+    monkeypatch.setattr("app.workers.batch_tasks.task_batch_pipeline.delay", fake_delay)
 
     payload = start_batch_pipeline(
         request=SimpleNamespace(state=SimpleNamespace(correlation_id="corr-batch-001")),
@@ -111,7 +111,7 @@ def test_start_territory_crawl_creates_canonical_task_run(db, monkeypatch):
         captured["kwargs"] = kwargs
         return SimpleNamespace(id="crawl-task-001")
 
-    monkeypatch.setattr("app.workers.tasks.task_crawl_territory.delay", fake_delay)
+    monkeypatch.setattr("app.workers.crawl_tasks.task_crawl_territory.delay", fake_delay)
 
     payload = start_territory_crawl(
         body=TerritoryCrawlRequest(territory_id=str(territory.id)),
@@ -364,7 +364,7 @@ def test_start_rescore_all_creates_canonical_task_run(db, monkeypatch):
         captured["kwargs"] = kwargs
         return SimpleNamespace(id="rescore-task-001")
 
-    monkeypatch.setattr("app.workers.tasks.task_rescore_all.delay", fake_delay)
+    monkeypatch.setattr("app.workers.batch_tasks.task_rescore_all.delay", fake_delay)
 
     payload = rescore_all_leads(
         request=SimpleNamespace(state=SimpleNamespace(correlation_id="corr-rescore-001")),

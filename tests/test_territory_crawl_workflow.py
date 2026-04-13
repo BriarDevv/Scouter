@@ -1,5 +1,5 @@
 from app.services.pipeline.task_tracking_service import get_task_run
-from app.workers.tasks import task_crawl_territory
+from app.workers.crawl_tasks import task_crawl_territory
 from app.workflows.territory_crawl import run_territory_crawl_workflow
 
 

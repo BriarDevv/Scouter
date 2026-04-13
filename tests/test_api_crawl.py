@@ -10,7 +10,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.v1.crawl import ApiKeyUpdate, api_key_status, delete_api_key, update_api_key
-from app.services.deploy_config_service import get_effective_google_maps_key
+from app.services.deploy.deploy_config_service import get_effective_google_maps_key
 
 
 def test_status_reports_env_when_db_empty_and_env_set(db: Session, monkeypatch):
