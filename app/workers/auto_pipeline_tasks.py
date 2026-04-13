@@ -29,6 +29,13 @@ def task_auto_process_new_leads(self):
             logger.info("auto_pipeline_disabled_skipping")
             return {"status": "skipped", "reason": "auto_pipeline_disabled"}
 
+        from app.workers.metrics import get_queue_depths
+
+        depths = get_queue_depths()
+        if depths.get("active", 0) + depths.get("reserved", 0) > 50:
+            logger.info("auto_pipeline_skipped_backpressure", queue_depth=depths)
+            return {"status": "skipped", "reason": "backpressure", "queue_depth": depths}
+
         cutoff = datetime.now(UTC) - timedelta(minutes=_MIN_AGE_MINUTES)
         leads = (
             db.query(Lead)
