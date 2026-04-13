@@ -1,3 +1,5 @@
+> **ARCHIVED:** This document has been superseded. See [plans/refactor-roadmap.md](../../plans/refactor-roadmap.md) for the current version.
+
 # Scouter Full Repo Hardening Plan
 
 **Date:** 2026-04-06 (v3 — after third full audit)

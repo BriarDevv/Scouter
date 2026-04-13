@@ -1,3 +1,5 @@
+> **ARCHIVED:** This document has been superseded. See [plans/refactor-roadmap.md](../../plans/refactor-roadmap.md) for the current version.
+
 # Scouter AI Environment Improvement Plan
 
 **Date:** 2026-04-04
