@@ -98,6 +98,32 @@ def task_scheduled_crawl(self):
 
             logger.info("scheduled_crawl_dispatched", count=dispatched)
 
+            # Check if all territories are saturated (E4-4)
+            all_active = db.query(Territory).filter(Territory.is_active == True).count()  # noqa: E712
+            all_saturated = (
+                db.query(Territory)
+                .filter(
+                    Territory.is_active == True,  # noqa: E712
+                    Territory.is_saturated == True,  # noqa: E712
+                )
+                .count()
+            )
+            if all_active > 0 and all_saturated == all_active:
+                from app.services.notifications.notification_emitter import _emit
+
+                _emit(
+                    db,
+                    type="all_territories_saturated",
+                    category="system",
+                    severity="critical",
+                    title="Todos los territorios saturados",
+                    message=(
+                        f"Los {all_active} territorios activos estan saturados."
+                        " Considerar expandir."
+                    ),
+                    dedup_key="all_territories_saturated",
+                )
+
             # Check if auto-pipeline is enabled and dispatch batch processing
             from app.models.settings import OperationalSettings
 
