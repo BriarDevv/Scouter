@@ -11,3 +11,5 @@ Recommended read order:
 
 [SOUL.md](SOUL.md) and [IDENTITY.md](IDENTITY.md) are runtime assets for the Mote agent.
 Only read them when working on agent persona or prompt wiring.
+
+Task scaffolds available in `.codex/commands/`.
