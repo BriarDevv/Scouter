@@ -9,6 +9,12 @@ export default defineConfig({
     setupFiles: ['./tests/setup.ts'],
     globals: true,
     include: ['tests/**/*.test.ts', 'tests/**/*.test.tsx'],
+    coverage: {
+      provider: 'v8',
+      thresholds: {
+        lines: 25,
+      },
+    },
   },
   resolve: {
     alias: {
