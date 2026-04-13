@@ -25,7 +25,7 @@ from app.services.dashboard.leader_service import (
     list_top_leads,
 )
 
-router = APIRouter(prefix="/leader", tags=["leader"])
+router = APIRouter(prefix="/overview", tags=["overview"])
 
 
 @router.get("/overview", response_model=LeaderOverviewResponse)

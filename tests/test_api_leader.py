@@ -293,7 +293,7 @@ def seed_leader_data(db):
 def test_leader_overview_and_top_leads(client, db):
     seed_leader_data(db)
 
-    overview_resp = client.get("/api/v1/leader/overview")
+    overview_resp = client.get("/api/v1/overview/overview")
     assert overview_resp.status_code == 200
     overview = overview_resp.json()
     assert overview["total_leads"] == 5
@@ -311,13 +311,13 @@ def test_leader_overview_and_top_leads(client, db):
     assert overview["performance_highlights"]["top_city"] == "CABA"
     assert overview["performance_highlights"]["top_source"] == "Crawler BA"
 
-    top_resp = client.get("/api/v1/leader/top-leads?limit=2")
+    top_resp = client.get("/api/v1/overview/top-leads?limit=2")
     assert top_resp.status_code == 200
     top_leads = top_resp.json()
     assert [item["business_name"] for item in top_leads] == ["Atlas AI", "Beacon Foods"]
     assert [item["quality"] for item in top_leads] == ["high", "high"]
 
-    filtered_resp = client.get("/api/v1/leader/top-leads?status=qualified")
+    filtered_resp = client.get("/api/v1/overview/top-leads?status=qualified")
     assert filtered_resp.status_code == 200
     filtered = filtered_resp.json()
     assert len(filtered) == 1
@@ -327,14 +327,14 @@ def test_leader_overview_and_top_leads(client, db):
 def test_leader_recent_drafts_pipelines_and_activity(client, db):
     seed_leader_data(db)
 
-    drafts_resp = client.get("/api/v1/leader/recent-drafts?limit=5")
+    drafts_resp = client.get("/api/v1/overview/recent-drafts?limit=5")
     assert drafts_resp.status_code == 200
     drafts = drafts_resp.json()
     assert drafts[0]["lead_name"] == "Cometa Health"
     assert drafts[0]["status"] == "pending_review"
     assert drafts[1]["lead_name"] == "Delta Services"
 
-    pipeline_resp = client.get("/api/v1/leader/recent-pipelines?limit=5")
+    pipeline_resp = client.get("/api/v1/overview/recent-pipelines?limit=5")
     assert pipeline_resp.status_code == 200
     pipelines = pipeline_resp.json()
     assert pipelines[0]["lead_name"] == "Delta Services"
@@ -342,7 +342,7 @@ def test_leader_recent_drafts_pipelines_and_activity(client, db):
     assert pipelines[1]["lead_name"] == "Echo Retail"
     assert pipelines[1]["status"] == "failed"
 
-    activity_resp = client.get("/api/v1/leader/activity?limit=5")
+    activity_resp = client.get("/api/v1/overview/activity?limit=5")
     assert activity_resp.status_code == 200
     activity = activity_resp.json()
     assert len(activity) == 3
@@ -356,7 +356,7 @@ def test_leader_recent_drafts_pipelines_and_activity(client, db):
 def test_leader_task_health(client, db):
     seed_leader_data(db)
 
-    health_resp = client.get("/api/v1/leader/task-health?limit=5")
+    health_resp = client.get("/api/v1/overview/task-health?limit=5")
     assert health_resp.status_code == 200
     health = health_resp.json()
     assert health["running_count"] == 1
@@ -370,7 +370,7 @@ def test_leader_task_health(client, db):
 def test_leader_reply_summary_and_lists(client, db):
     seed_leader_data(db)
 
-    summary_resp = client.get("/api/v1/leader/replies/summary?hours=24")
+    summary_resp = client.get("/api/v1/overview/replies/summary?hours=24")
     assert summary_resp.status_code == 200
     summary = summary_resp.json()
     assert summary["total_recent_replies"] == 3
@@ -384,13 +384,13 @@ def test_leader_reply_summary_and_lists(client, db):
     assert summary["failed_classification"] == 0
     assert summary["unmatched_replies"] == 1
 
-    recent_resp = client.get("/api/v1/leader/replies?limit=5&hours=24")
+    recent_resp = client.get("/api/v1/overview/replies?limit=5&hours=24")
     assert recent_resp.status_code == 200
     recent = recent_resp.json()
     assert len(recent) == 3
     assert recent[0]["classification_status"] == "pending"
 
-    important_resp = client.get("/api/v1/leader/replies?important_only=true&limit=5&hours=24")
+    important_resp = client.get("/api/v1/overview/replies?important_only=true&limit=5&hours=24")
     assert important_resp.status_code == 200
     important = important_resp.json()
     assert [item["classification_label"] for item in important[:2]] == [
@@ -398,13 +398,13 @@ def test_leader_reply_summary_and_lists(client, db):
         "needs_human_review",
     ]
 
-    reviewer_resp = client.get("/api/v1/leader/replies?needs_reviewer=true&limit=5&hours=24")
+    reviewer_resp = client.get("/api/v1/overview/replies?needs_reviewer=true&limit=5&hours=24")
     assert reviewer_resp.status_code == 200
     reviewer_items = reviewer_resp.json()
     assert len(reviewer_items) == 1
     assert reviewer_items[0]["classification_label"] == "needs_human_review"
 
-    quote_resp = client.get("/api/v1/leader/replies?labels=asked_for_quote&limit=5&hours=24")
+    quote_resp = client.get("/api/v1/overview/replies?labels=asked_for_quote&limit=5&hours=24")
     assert quote_resp.status_code == 200
     quote_items = quote_resp.json()
     assert len(quote_items) == 1
