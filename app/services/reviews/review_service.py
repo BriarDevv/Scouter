@@ -3,9 +3,9 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
-from app.llm.client import review_inbound_reply as llm_review_inbound_reply
-from app.llm.client import review_lead as llm_review_lead
-from app.llm.client import review_outreach_draft as llm_review_outreach_draft
+from app.llm.invocations.lead import review_lead as llm_review_lead
+from app.llm.invocations.outreach import review_outreach_draft as llm_review_outreach_draft
+from app.llm.invocations.reply import review_inbound_reply as llm_review_inbound_reply
 from app.llm.resolver import resolve_model_for_role
 from app.llm.roles import LLMRole
 from app.models.inbound_mail import InboundMessage
@@ -65,6 +65,51 @@ def _persist_corrections(
             count=count,
         )
     return count
+
+
+def get_corrections_summary(db: Session, days: int = 30) -> list[dict]:
+    """Aggregate reviewer corrections by category for the last N days.
+
+    Returns top correction categories with count and recent examples.
+    """
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy import func
+
+    since = datetime.now(UTC) - timedelta(days=days)
+
+    rows = (
+        db.query(
+            ReviewCorrection.category,
+            func.count(ReviewCorrection.id).label("count"),
+        )
+        .filter(ReviewCorrection.created_at >= since)
+        .group_by(ReviewCorrection.category)
+        .order_by(func.count(ReviewCorrection.id).desc())
+        .all()
+    )
+
+    result = []
+    for category, count in rows:
+        recent = (
+            db.query(ReviewCorrection.issue)
+            .filter(
+                ReviewCorrection.category == category,
+                ReviewCorrection.created_at >= since,
+            )
+            .order_by(ReviewCorrection.created_at.desc())
+            .limit(3)
+            .all()
+        )
+        result.append(
+            {
+                "category": category.value if hasattr(category, "value") else category,
+                "count": count,
+                "recent_examples": [r[0] for r in recent],
+            }
+        )
+
+    return result
 
 
 def review_lead_with_reviewer(db: Session, lead_id: uuid.UUID) -> dict | None:

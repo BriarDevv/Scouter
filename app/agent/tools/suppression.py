@@ -6,13 +6,13 @@ from sqlalchemy.orm import Session
 
 from app.agent.tool_registry import ToolDefinition, ToolParameter, registry
 from app.schemas.suppression import SuppressionCreate
-from app.services.suppression_service import (
+from app.services.suppression.suppression_service import (
     add_to_suppression_list,
 )
-from app.services.suppression_service import (
+from app.services.suppression.suppression_service import (
     list_suppression as _list_suppression,
 )
-from app.services.suppression_service import (
+from app.services.suppression.suppression_service import (
     remove_from_suppression as _remove_from_suppression,
 )
 

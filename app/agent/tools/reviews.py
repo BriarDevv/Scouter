@@ -5,10 +5,10 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.agent.tool_registry import ToolDefinition, ToolParameter, registry
-from app.services.review_service import (
+from app.services.reviews.review_service import (
     review_draft_with_reviewer as _review_draft,
 )
-from app.services.review_service import (
+from app.services.reviews.review_service import (
     review_lead_with_reviewer as _review_lead,
 )
 

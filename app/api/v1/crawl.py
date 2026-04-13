@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.api.request_context import get_correlation_id
 from app.crawlers.google_maps_crawler import DEFAULT_CATEGORIES
 from app.db.session import get_db
-from app.services.deploy_config_service import (
+from app.services.deploy.deploy_config_service import (
     InvalidGoogleMapsKeyError,
     clear_google_maps_api_key,
     get_effective_google_maps_key,
@@ -81,7 +81,7 @@ def start_territory_crawl(
         }
 
     # Launch Celery task
-    from app.workers.tasks import task_crawl_territory
+    from app.workers.crawl_tasks import task_crawl_territory
 
     correlation_id = get_correlation_id(request)
     result = task_crawl_territory.delay(

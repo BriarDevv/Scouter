@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.schemas.suppression import SuppressionCreate, SuppressionResponse
-from app.services.suppression_service import (
+from app.services.suppression.suppression_service import (
     add_to_suppression_list,
     list_suppression,
     remove_from_suppression,

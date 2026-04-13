@@ -23,7 +23,7 @@ from app.services.pipeline.task_tracking_service import (
     queue_task_run,
     request_task_stop,
 )
-from app.workers.tasks import task_analyze_lead, task_full_pipeline
+from app.workers.pipeline_tasks import task_analyze_lead, task_full_pipeline
 
 router = APIRouter(prefix="/scoring", tags=["scoring"])
 DbSession = Annotated[Session, Depends(get_db)]
@@ -32,7 +32,7 @@ DbSession = Annotated[Session, Depends(get_db)]
 @router.post("/rescore-all", response_model=TaskQueuedResponse)
 def rescore_all_leads(request: Request, db: DbSession):
     """Re-score all leads. Useful after scoring weight changes."""
-    from app.workers.tasks import task_rescore_all
+    from app.workers.batch_tasks import task_rescore_all
 
     existing = get_rescore_all_task_run(db)
     if existing and existing.status in {"queued", "running", "retrying", "stopping"}:

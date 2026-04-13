@@ -10,7 +10,7 @@ from app.schemas.operational_settings import (
     CredentialStatusItem,
 )
 from app.schemas.settings import LLMSettingsResponse, MailSettingsResponse
-from app.services.deploy_config_service import get_effective_kapso_api_key
+from app.services.deploy.deploy_config_service import get_effective_kapso_api_key
 from app.services.settings.settings_service import get_llm_settings, get_mail_settings
 from app.services.settings.setup_status_service import get_setup_status
 

@@ -11,7 +11,7 @@ from app.schemas.mail_credentials import (
     MailCredentialsResponse,
     MailCredentialsUpdate,
 )
-from app.services.deploy_config_service import (
+from app.services.deploy.deploy_config_service import (
     InvalidKapsoKeyError,
     get_effective_kapso_api_key,
     get_kapso_api_key_status,

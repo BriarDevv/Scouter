@@ -13,7 +13,7 @@ from app.schemas.territory import (
     TerritoryUpdate,
     TerritoryWithStats,
 )
-from app.services.territory_service import (
+from app.services.territories.territory_service import (
     _get_leads_in_cities,
     create_territory,
     delete_territory,

@@ -182,7 +182,7 @@ def start_batch_pipeline(request: Request, db: DbSession):
             "progress": legacy,
         }
 
-    from app.workers.tasks import task_batch_pipeline
+    from app.workers.batch_tasks import task_batch_pipeline
 
     correlation_id = get_correlation_id(request)
     result = task_batch_pipeline.delay(

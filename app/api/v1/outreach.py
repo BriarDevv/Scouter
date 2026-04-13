@@ -34,7 +34,7 @@ from app.services.outreach.outreach_service import (
     update_draft,
 )
 from app.services.pipeline.task_tracking_service import queue_task_run
-from app.workers.tasks import task_generate_draft
+from app.workers.pipeline_tasks import task_generate_draft
 
 router = APIRouter(prefix="/outreach", tags=["outreach"])
 

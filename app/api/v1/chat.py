@@ -24,7 +24,7 @@ from app.schemas.chat import (
     SendMessageRequest,
     ToolCallResponse,
 )
-from app.services.chat_service import (
+from app.services.chat.chat_service import (
     create_conversation,
     delete_conversation,
     generate_title,

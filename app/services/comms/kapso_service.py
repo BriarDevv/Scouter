@@ -39,7 +39,7 @@ def _get_api_key() -> str:
     """
     try:
         from app.db.session import SessionLocal
-        from app.services.deploy_config_service import get_effective_kapso_api_key
+        from app.services.deploy.deploy_config_service import get_effective_kapso_api_key
 
         with SessionLocal() as db:
             key = get_effective_kapso_api_key(db)

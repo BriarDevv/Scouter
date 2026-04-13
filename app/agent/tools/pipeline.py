@@ -14,7 +14,7 @@ from app.services.pipeline.task_tracking_service import (
 def run_full_pipeline(db: Session, *, lead_id: str) -> dict:
     """Run the full enrichment pipeline for a lead."""
     from app.services.pipeline.task_tracking_service import create_pipeline_run, queue_task_run
-    from app.workers.tasks import task_enrich_lead
+    from app.workers.pipeline_tasks import task_enrich_lead
 
     try:
         lead_uuid = uuid.UUID(lead_id)
@@ -54,7 +54,7 @@ def run_batch_pipeline(db: Session) -> dict:
         return {"message": "No hay leads nuevos para procesar", "count": 0}
 
     from app.services.pipeline.task_tracking_service import create_pipeline_run, queue_task_run
-    from app.workers.tasks import task_enrich_lead
+    from app.workers.pipeline_tasks import task_enrich_lead
 
     started = 0
     for lead_id in new_leads:

@@ -5,19 +5,19 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.agent.tool_registry import ToolDefinition, ToolParameter, registry
-from app.services.territory_service import (
+from app.services.territories.territory_service import (
     create_territory as _create,
 )
-from app.services.territory_service import (
+from app.services.territories.territory_service import (
     delete_territory as _delete,
 )
-from app.services.territory_service import (
+from app.services.territories.territory_service import (
     get_territory_with_stats,
 )
-from app.services.territory_service import (
+from app.services.territories.territory_service import (
     list_territories as _list,
 )
-from app.services.territory_service import (
+from app.services.territories.territory_service import (
     update_territory as _update,
 )
 

@@ -5,7 +5,7 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.agent.tool_registry import ToolDefinition, ToolParameter, registry
-from app.services.deploy_config_service import get_effective_google_maps_key
+from app.services.deploy.deploy_config_service import get_effective_google_maps_key
 from app.services.pipeline.operational_task_service import (
     get_territory_crawl_status_snapshot,
     get_territory_crawl_task_run,
@@ -46,7 +46,7 @@ def start_territory_crawl(db: Session, *, territory_id: str, max_results: int = 
             "progress": legacy,
         }
 
-    from app.workers.tasks import task_crawl_territory
+    from app.workers.crawl_tasks import task_crawl_territory
 
     correlation_id = str(uuid.uuid4())
     task = task_crawl_territory.delay(

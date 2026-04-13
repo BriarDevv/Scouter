@@ -7,9 +7,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.db.session import SessionLocal
 from app.models.lead_source import LeadSource, SourceType
+from app.models.territory import Territory
 from app.schemas.lead import LeadCreate
 from app.services.leads.lead_service import create_lead
-from app.models.territory import Territory
 
 SAMPLE_LEADS = [
     {
@@ -57,7 +57,9 @@ def main():
         # Create a manual source (idempotent)
         source = db.query(LeadSource).filter(LeadSource.name == "seed_data").first()
         if source is None:
-            source = LeadSource(name="seed_data", source_type=SourceType.MANUAL, description="Initial seed data")
+            source = LeadSource(
+                name="seed_data", source_type=SourceType.MANUAL, description="Initial seed data"
+            )
             db.add(source)
             db.commit()
             db.refresh(source)
@@ -76,8 +78,19 @@ def main():
                 "name": "CABA",
                 "description": "Ciudad Autonoma de Buenos Aires",
                 "color": "#8b5cf6",
-                "cities": ["Buenos Aires", "Palermo", "Recoleta", "Belgrano", "Caballito",
-                           "Villa Urquiza", "Flores", "Barracas", "Almagro", "Villa Crespo", "Boedo"],
+                "cities": [
+                    "Buenos Aires",
+                    "Palermo",
+                    "Recoleta",
+                    "Belgrano",
+                    "Caballito",
+                    "Villa Urquiza",
+                    "Flores",
+                    "Barracas",
+                    "Almagro",
+                    "Villa Crespo",
+                    "Boedo",
+                ],
             },
             {
                 "name": "GBA Norte",

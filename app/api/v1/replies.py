@@ -38,7 +38,7 @@ from app.services.outreach.mail_service import (
     MailDisabledError,
 )
 from app.services.pipeline.task_tracking_service import queue_task_run
-from app.workers.tasks import task_review_reply_assistant_draft
+from app.workers.review_tasks import task_review_reply_assistant_draft
 
 router = APIRouter(prefix="/replies", tags=["reply-assistant"])
 
