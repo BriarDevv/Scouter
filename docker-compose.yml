@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-scouter}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
@@ -17,6 +18,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     ports:
       - "127.0.0.1:6379:6379"
     volumes:
@@ -32,6 +34,7 @@ services:
       context: .
       dockerfile: infra/docker/Dockerfile
       target: runtime
+    restart: unless-stopped
     # Prod-ish default: no --reload, no source bind mount. For local hot-reload
     # dev, use `docker compose -f docker-compose.yml -f docker-compose.dev.yml up`.
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
@@ -63,6 +66,7 @@ services:
       context: .
       dockerfile: infra/docker/Dockerfile
       target: runtime
+    restart: unless-stopped
     command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=3 -Q default,enrichment,scoring,research --hostname=worker-general@%h
     env_file:
       - .env
@@ -90,6 +94,7 @@ services:
       context: .
       dockerfile: infra/docker/Dockerfile
       target: runtime
+    restart: unless-stopped
     command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=2 -Q llm,reviewer --hostname=worker-llm@%h
     env_file:
       - .env
@@ -117,6 +122,7 @@ services:
       context: .
       dockerfile: infra/docker/Dockerfile
       target: runtime
+    restart: unless-stopped
     command: celery -A app.workers.celery_app flower --port=5555 --basic-auth=${FLOWER_USER:-admin}:${FLOWER_PASSWORD:-changeme}
     ports:
       - "127.0.0.1:5555:5555"
@@ -133,6 +139,7 @@ services:
     build:
       context: ./dashboard
       dockerfile: Dockerfile
+    restart: unless-stopped
     ports:
       - "127.0.0.1:3000:3000"
     environment:
