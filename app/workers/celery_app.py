@@ -86,10 +86,15 @@ celery_app.conf.update(
             "task": "app.workers.crawl_tasks.task_scheduled_crawl",
             "schedule": crontab(day_of_week="1,4", hour=8, minute=0),  # Mon+Thu 8am
         },
+        "auto-process-new-leads": {
+            "task": "app.workers.auto_pipeline_tasks.task_auto_process_new_leads",
+            "schedule": crontab(minute="*/30"),  # every 30 minutes
+        },
     },
 )
 
 celery_app.autodiscover_tasks(["app.workers"])
+import app.workers.auto_pipeline_tasks  # noqa: E402, F401 — register auto pipeline beat task
 import app.workers.batch_tasks  # noqa: E402, F401 — register batch tasks
 import app.workers.brief_tasks  # noqa: E402, F401 — register brief tasks
 import app.workers.crawl_tasks  # noqa: E402, F401 — register crawl tasks

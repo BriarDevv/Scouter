@@ -82,6 +82,7 @@ _ALLOWED_SETTINGS_FIELDS = {
     "runtime_mode",
     "pricing_matrix",
     "low_resource_mode",
+    "auto_pipeline_enabled",
 }
 
 
@@ -105,6 +106,7 @@ _RUNTIME_MODE_PRESETS = {
         "reply_assistant_enabled": False,
         "reviewer_enabled": False,
         "whatsapp_outreach_enabled": False,
+        "auto_pipeline_enabled": False,
     },
     "assisted": {
         "require_approved_drafts": True,
@@ -112,6 +114,7 @@ _RUNTIME_MODE_PRESETS = {
         "reply_assistant_enabled": True,
         "reviewer_enabled": True,
         "whatsapp_outreach_enabled": False,
+        "auto_pipeline_enabled": False,
     },
     "auto": {
         "require_approved_drafts": False,
@@ -119,6 +122,7 @@ _RUNTIME_MODE_PRESETS = {
         "reply_assistant_enabled": True,
         "reviewer_enabled": True,
         "whatsapp_outreach_enabled": True,
+        "auto_pipeline_enabled": True,
     },
 }
 

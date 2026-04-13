@@ -94,6 +94,11 @@ class OperationalSettings(Base):
     # ── Runtime mode (safe | assisted | auto)
     runtime_mode: Mapped[str] = mapped_column(String, default="safe", nullable=False)
 
+    # ── Auto pipeline trigger
+    auto_pipeline_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
+
     # ── Resource mode — overrides LOW_RESOURCE_MODE env var when set
     low_resource_mode: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
