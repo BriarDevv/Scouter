@@ -11,8 +11,15 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_ex
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.crawlers.base_crawler import BaseCrawler, RawLead
+from app.data.cities_ar import get_coords
 
 logger = get_logger(__name__)
+
+# Argentina region bias — hardcoded until Territory.country_code lands.
+# TODO: parametrize per-territory when Territory gains country_code/bbox columns.
+_DEFAULT_REGION_CODE = "AR"
+_DEFAULT_LOCATION_BIAS_RADIUS_M = 15000
+_COUNTRY_MARKERS = ("argentina",)
 
 # Categories relevant for web development services — ordered by prospect value
 DEFAULT_CATEGORIES = [
@@ -98,7 +105,7 @@ class GoogleMapsCrawler(BaseCrawler):
             logger.info("google_maps_search", query=query)
 
             try:
-                results = self._search_text(key, query, max_results_per_category)
+                results = self._search_text(key, query, max_results_per_category, city=city)
             except Exception as exc:
                 logger.error("google_maps_search_error", query=query, error=str(exc))
                 continue
@@ -108,6 +115,18 @@ class GoogleMapsCrawler(BaseCrawler):
                 if place_id in seen_ids:
                     continue
                 seen_ids.add(place_id)
+
+                # Post-filter: reject places whose formatted address does not
+                # match the expected country. Guards against ambiguous queries
+                # like "CABA" returning US businesses.
+                formatted = (place.get("formattedAddress") or "").lower()
+                if formatted and not any(marker in formatted for marker in _COUNTRY_MARKERS):
+                    logger.debug(
+                        "google_maps_foreign_filtered",
+                        place_id=place_id,
+                        formatted_address=place.get("formattedAddress"),
+                    )
+                    continue
 
                 display_name = place.get("displayName", {})
                 name = display_name.get("text", "").strip()
@@ -190,13 +209,30 @@ class GoogleMapsCrawler(BaseCrawler):
         wait=wait_exponential(min=1, max=10),
         retry=retry_if_exception_type((httpx.TimeoutException, httpx.ConnectError)),
     )
-    def _search_text(self, api_key: str, query: str, max_results: int) -> list[dict]:
-        """Call Places API (New) Text Search."""
-        body = {
+    def _search_text(
+        self,
+        api_key: str,
+        query: str,
+        max_results: int,
+        city: str | None = None,
+    ) -> list[dict]:
+        """Call Places API (New) Text Search with country + location anchoring."""
+        body: dict = {
             "textQuery": query,
             "languageCode": "es",
+            "regionCode": _DEFAULT_REGION_CODE,
             "maxResultCount": min(max_results, 20),  # API max is 20
         }
+
+        # Location bias from known city coords — prevents "CABA" from matching
+        # US businesses when Google Places sees it as free text.
+        if city and (coords := get_coords(city)):
+            body["locationBias"] = {
+                "circle": {
+                    "center": {"latitude": coords[0], "longitude": coords[1]},
+                    "radius": _DEFAULT_LOCATION_BIAS_RADIUS_M,
+                }
+            }
 
         with httpx.Client(timeout=15) as client:
             resp = client.post(
