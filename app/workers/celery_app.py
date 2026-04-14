@@ -106,6 +106,10 @@ celery_app.conf.update(
             "task": "app.workers.janitor.task_drain_dead_letter",
             "schedule": 3600.0,  # every hour — replays failed pipeline tasks
         },
+        "check-followup": {
+            "task": "app.workers.followup_tasks.task_check_followup",
+            "schedule": crontab(minute=0, hour="*/6"),  # every 6 hours
+        },
     },
 )
 
@@ -114,6 +118,7 @@ import app.workers.auto_pipeline_tasks  # noqa: E402, F401 — register auto pip
 import app.workers.batch_tasks  # noqa: E402, F401 — register batch tasks
 import app.workers.brief_tasks  # noqa: E402, F401 — register brief tasks
 import app.workers.crawl_tasks  # noqa: E402, F401 — register crawl tasks
+import app.workers.followup_tasks  # noqa: E402, F401 — register followup beat task
 import app.workers.growth_tasks  # noqa: E402, F401 — register growth snapshot beat task
 import app.workers.inbox_tasks  # noqa: E402, F401 — register inbox sync beat task
 import app.workers.janitor  # noqa: E402, F401 — register janitor beat task

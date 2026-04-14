@@ -122,6 +122,12 @@ class OperationalSettings(Base):
     # None means unlimited.
     daily_usd_budget: Mapped[float | None] = mapped_column(Float, nullable=True)
 
+    # ── Follow-up chain: days to wait after CONTACTED before flagging a lead
+    # that hasn't responded. Beat task task_check_followup honors this value.
+    followup_days: Mapped[int] = mapped_column(
+        Integer, default=3, server_default="3", nullable=False
+    )
+
     # ── Pricing matrix (JSON string for budget estimation)
     pricing_matrix: Mapped[str | None] = mapped_column(String, nullable=True)
 
