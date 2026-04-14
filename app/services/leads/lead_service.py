@@ -142,6 +142,23 @@ def update_lead_status(db: Session, lead_id: uuid.UUID, status: LeadStatus) -> L
     previous_status = lead.status
     lead.status = status
 
+    # Emit immutable event for timeline / analytics (US-005 post-hardening).
+    # Only on real transitions — repeated set to same status is noise.
+    if previous_status != status:
+        try:
+            from app.services.leads.event_service import emit_lead_event
+
+            emit_lead_event(
+                db,
+                lead_id=lead.id,
+                event_type="status_changed",
+                old_status=previous_status.value if previous_status else None,
+                new_status=status.value,
+                actor="user",
+            )
+        except Exception as exc:
+            logger.warning("lead_event_emit_failed", lead_id=str(lead.id), error=str(exc))
+
     log_action = {
         LeadStatus.APPROVED: LogAction.APPROVED,
         LeadStatus.CONTACTED: LogAction.SENT,

@@ -15,6 +15,7 @@ from app.models.inbound_mail import EmailThread, InboundMailSyncRun, InboundMess
 from app.models.integration_credentials import IntegrationCredentials
 from app.models.investigation_thread import InvestigationThread
 from app.models.lead import Lead
+from app.models.lead_event import LeadEvent
 from app.models.lead_signal import LeadSignal
 from app.models.lead_source import LeadSource
 from app.models.llm_invocation import LLMInvocation
@@ -47,6 +48,7 @@ __all__ = [
     "InboundMessage",
     "InboundMailSyncRun",
     "Lead",
+    "LeadEvent",
     "LeadSignal",
     "LeadSource",
     "MailCredentials",

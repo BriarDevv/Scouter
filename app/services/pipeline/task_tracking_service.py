@@ -307,6 +307,27 @@ def mark_task_succeeded(
     task_run.error = None
     task_run.finished_at = utcnow()
 
+    # Emit a LeadEvent for pipeline step completions (US-005 post-hardening).
+    # Only for tasks bound to a specific lead — crawl/beat/system tasks are
+    # not per-lead events.
+    if task_run.lead_id is not None and current_step:
+        try:
+            from app.services.leads.event_service import emit_lead_event
+
+            emit_lead_event(
+                db,
+                lead_id=task_run.lead_id,
+                event_type=f"pipeline_step_{current_step}",
+                payload={"task_id": task_id, "result": result},
+                actor="pipeline",
+            )
+        except Exception as exc:  # never let event emission break the task
+            logger.debug(
+                "lead_event_emit_failed_in_task_success",
+                task_id=task_id,
+                error=str(exc),
+            )
+
     if pipeline_run_id:
         update_pipeline_run(
             db,
