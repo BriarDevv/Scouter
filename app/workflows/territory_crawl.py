@@ -134,6 +134,13 @@ def run_territory_crawl_workflow(
 
                 cities = list(territory.cities or [])
                 territory_name = territory.name
+                territory_country_code = territory.country_code
+                territory_center = (
+                    (territory.center_lat, territory.center_lng)
+                    if territory.center_lat is not None and territory.center_lng is not None
+                    else None
+                )
+                territory_bbox = territory.bbox
                 if not cities:
                     error = "El territorio no tiene ciudades"
                     sync_progress(
@@ -186,6 +193,8 @@ def run_territory_crawl_workflow(
                 sync_progress(current_step="crawling")
 
                 try:
+                    from app.services.territories.geo_markers import markers_for_country
+
                     raw_leads = crawler.crawl(
                         city=city,
                         categories=categories,
@@ -193,6 +202,10 @@ def run_territory_crawl_workflow(
                         only_without_website=only_without_website,
                         target_leads=target_leads,
                         api_key=effective_api_key,
+                        country_code=territory_country_code,
+                        territory_center=territory_center,
+                        bbox=territory_bbox,
+                        country_markers=markers_for_country(territory_country_code),
                     )
                 except Exception as exc:
                     logger.error("crawl_city_error", city=city, error=str(exc))

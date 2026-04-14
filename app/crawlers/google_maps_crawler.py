@@ -15,11 +15,11 @@ from app.data.cities_ar import get_coords
 
 logger = get_logger(__name__)
 
-# Argentina region bias — hardcoded until Territory.country_code lands.
-# TODO: parametrize per-territory when Territory gains country_code/bbox columns.
+# Defaults — used when a territory does not yet have country_code/center/bbox
+# populated. Maintains backward compatibility with pre-multi-country callers.
 _DEFAULT_REGION_CODE = "AR"
 _DEFAULT_LOCATION_BIAS_RADIUS_M = 15000
-_COUNTRY_MARKERS = ("argentina",)
+_DEFAULT_COUNTRY_MARKERS: tuple[str, ...] = ("argentina",)
 
 # Categories relevant for web development services — ordered by prospect value
 DEFAULT_CATEGORIES = [
@@ -89,6 +89,12 @@ class GoogleMapsCrawler(BaseCrawler):
         only_without_website: bool = False,
         api_key: str | None = None,
         target_leads: int = 50,
+        # Multi-country parameterization. All optional; defaults preserve the
+        # legacy AR behavior so existing callers keep working.
+        country_code: str | None = None,
+        territory_center: tuple[float, float] | None = None,
+        bbox: dict | None = None,
+        country_markers: tuple[str, ...] | None = None,
     ) -> list[RawLead]:
         key = api_key or settings.GOOGLE_MAPS_API_KEY
         if not key:
@@ -100,12 +106,23 @@ class GoogleMapsCrawler(BaseCrawler):
         all_leads: list[RawLead] = []
         seen_ids: set[str] = set()
 
+        resolved_region = (country_code or _DEFAULT_REGION_CODE).upper()
+        resolved_markers = country_markers or _DEFAULT_COUNTRY_MARKERS
+
         for cat in cats:
             query = f"{cat} en {location}"
             logger.info("google_maps_search", query=query)
 
             try:
-                results = self._search_text(key, query, max_results_per_category, city=city)
+                results = self._search_text(
+                    key,
+                    query,
+                    max_results_per_category,
+                    city=city,
+                    region_code=resolved_region,
+                    territory_center=territory_center,
+                    bbox=bbox,
+                )
             except Exception as exc:
                 logger.error("google_maps_search_error", query=query, error=str(exc))
                 continue
@@ -118,13 +135,15 @@ class GoogleMapsCrawler(BaseCrawler):
 
                 # Post-filter: reject places whose formatted address does not
                 # match the expected country. Guards against ambiguous queries
-                # like "CABA" returning US businesses.
+                # like "CABA" returning US businesses. Markers come from the
+                # territory's country_code (default AR) via geo_markers.
                 formatted = (place.get("formattedAddress") or "").lower()
-                if formatted and not any(marker in formatted for marker in _COUNTRY_MARKERS):
+                if formatted and not any(marker in formatted for marker in resolved_markers):
                     logger.debug(
                         "google_maps_foreign_filtered",
                         place_id=place_id,
                         formatted_address=place.get("formattedAddress"),
+                        country_code=resolved_region,
                     )
                     continue
 
@@ -215,18 +234,49 @@ class GoogleMapsCrawler(BaseCrawler):
         query: str,
         max_results: int,
         city: str | None = None,
+        region_code: str | None = None,
+        territory_center: tuple[float, float] | None = None,
+        bbox: dict | None = None,
     ) -> list[dict]:
-        """Call Places API (New) Text Search with country + location anchoring."""
+        """Call Places API (New) Text Search with country + location anchoring.
+
+        Location-anchor precedence, strictest first:
+          1. bbox  → locationRestriction.rectangle (hard-bound)
+          2. territory_center (lat, lng) → locationBias.circle
+          3. get_coords(city)            → locationBias.circle (legacy AR)
+          4. none                        → regionCode only (text-only bias)
+        """
         body: dict = {
             "textQuery": query,
             "languageCode": "es",
-            "regionCode": _DEFAULT_REGION_CODE,
+            "regionCode": (region_code or _DEFAULT_REGION_CODE).upper(),
             "maxResultCount": min(max_results, 20),  # API max is 20
         }
 
-        # Location bias from known city coords — prevents "CABA" from matching
-        # US businesses when Google Places sees it as free text.
-        if city and (coords := get_coords(city)):
+        if bbox and isinstance(bbox, dict) and "sw" in bbox and "ne" in bbox:
+            body["locationRestriction"] = {
+                "rectangle": {
+                    "low": {
+                        "latitude": bbox["sw"]["lat"],
+                        "longitude": bbox["sw"]["lng"],
+                    },
+                    "high": {
+                        "latitude": bbox["ne"]["lat"],
+                        "longitude": bbox["ne"]["lng"],
+                    },
+                }
+            }
+        elif territory_center:
+            body["locationBias"] = {
+                "circle": {
+                    "center": {
+                        "latitude": territory_center[0],
+                        "longitude": territory_center[1],
+                    },
+                    "radius": _DEFAULT_LOCATION_BIAS_RADIUS_M,
+                }
+            }
+        elif city and (coords := get_coords(city)):
             body["locationBias"] = {
                 "circle": {
                     "center": {"latitude": coords[0], "longitude": coords[1]},
