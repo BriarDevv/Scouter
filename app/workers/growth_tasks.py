@@ -66,8 +66,15 @@ def task_snapshot_territory_performance() -> dict:
         return {"status": "failed", "error": str(exc)}
 
 
-@celery_app.task(name="app.workers.growth_tasks.task_growth_cycle")
-def task_growth_cycle() -> dict:
+@celery_app.task(
+    name="app.workers.growth_tasks.task_growth_cycle",
+    bind=True,
+    autoretry_for=(Exception,),
+    max_retries=2,
+    retry_backoff=True,
+    retry_backoff_max=60,
+)
+def task_growth_cycle(self) -> dict:
     """Run a Growth Intelligence decision cycle.
 
     Scheduled daily. The cycle only runs when:
@@ -77,18 +84,18 @@ def task_growth_cycle() -> dict:
     When it runs, the Growth Agent chooses between geographic expansion,
     niche shift, or source diversification, and the system applies the
     decision automatically.
-    """
-    try:
-        with SessionLocal() as db:
-            ops = db.query(OperationalSettings).first()
-            if not ops or not ops.auto_pipeline_enabled:
-                logger.info("growth_cycle_skipped_auto_pipeline_disabled")
-                return {"status": "skipped", "reason": "auto_pipeline_disabled"}
 
-            result = run_growth_cycle(db)
-            db.commit()
-            logger.info("growth_cycle_task_completed", status=result.get("status"))
-            return result
-    except Exception as exc:
-        logger.error("growth_cycle_task_failed", error=str(exc))
-        return {"status": "failed", "error": str(exc)}
+    Exceptions propagate so Celery's autoretry can fire with exponential
+    backoff; previously the blanket try/except swallowed every error and
+    the task would never retry.
+    """
+    with SessionLocal() as db:
+        ops = db.query(OperationalSettings).first()
+        if not ops or not ops.auto_pipeline_enabled:
+            logger.info("growth_cycle_skipped_auto_pipeline_disabled")
+            return {"status": "skipped", "reason": "auto_pipeline_disabled"}
+
+        result = run_growth_cycle(db)
+        db.commit()
+        logger.info("growth_cycle_task_completed", status=result.get("status"))
+        return result

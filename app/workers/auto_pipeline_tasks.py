@@ -15,7 +15,10 @@ _MIN_AGE_MINUTES = 10
 @celery_app.task(
     name="app.workers.auto_pipeline_tasks.task_auto_process_new_leads",
     bind=True,
-    max_retries=0,
+    autoretry_for=(Exception,),
+    max_retries=2,
+    retry_backoff=True,
+    retry_backoff_max=60,
 )
 def task_auto_process_new_leads(self):
     """Beat task: dispatch full pipeline for leads that are new and at least 10 minutes old."""

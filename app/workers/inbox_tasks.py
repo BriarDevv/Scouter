@@ -9,8 +9,10 @@ logger = get_logger(__name__)
 @celery_app.task(
     name="app.workers.inbox_tasks.task_sync_inbound_mail",
     bind=True,
-    max_retries=1,
-    default_retry_delay=60,
+    autoretry_for=(Exception,),
+    max_retries=2,
+    retry_backoff=True,
+    retry_backoff_max=60,
 )
 def task_sync_inbound_mail(self):
     """Periodic task: sync inbound mail if enabled."""
