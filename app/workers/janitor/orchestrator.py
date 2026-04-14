@@ -19,6 +19,7 @@ from app.workers.janitor.stale import (
     _check_pipeline_inactive,
     sweep_orphan_pipelines,
 )
+from app.workers.janitor.territory import sweep_unsaturate_old_territories
 from app.workers.janitor.zombies import (
     sweep_stuck_research_reports,
     sweep_zombie_leads,
@@ -152,6 +153,7 @@ def sweep_stale_tasks(session_factory=None) -> dict:
 
         research_report_count = sweep_stuck_research_reports(db)
         zombie_result = sweep_zombie_leads(db)
+        unsaturated_count = sweep_unsaturate_old_territories(db)
         _check_pipeline_inactive(db)
 
         if (
@@ -160,6 +162,7 @@ def sweep_stale_tasks(session_factory=None) -> dict:
             or orphan_count
             or batch_review_count
             or research_report_count
+            or unsaturated_count
         ):
             db.commit()
 
@@ -184,6 +187,7 @@ def sweep_stale_tasks(session_factory=None) -> dict:
         "batch_reviews_failed": batch_review_count,
         "research_reports_failed": research_report_count,
         "zombie_leads": zombie_result,
+        "territories_unsaturated": unsaturated_count,
     }
     logger.info("janitor_sweep_done", **result)
     return result

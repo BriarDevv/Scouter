@@ -28,6 +28,10 @@ from app.workers.janitor.stale import (
     _is_retryable_error,
     sweep_orphan_pipelines,
 )
+from app.workers.janitor.territory import (
+    UNSATURATE_THRESHOLD_DAYS,
+    sweep_unsaturate_old_territories,
+)
 from app.workers.janitor.zombies import (
     sweep_stuck_research_reports,
     sweep_zombie_leads,
@@ -41,6 +45,7 @@ __all__ = [
     "ORPHAN_THRESHOLD",
     "PIPELINE_STALE_THRESHOLD",
     "STALE_THRESHOLD",
+    "UNSATURATE_THRESHOLD_DAYS",
     "_REPLAYABLE_PIPELINE_TASKS",
     "_auto_resume_pipeline",
     "_check_pipeline_inactive",
@@ -49,6 +54,7 @@ __all__ = [
     "sweep_orphan_pipelines",
     "sweep_stale_tasks",
     "sweep_stuck_research_reports",
+    "sweep_unsaturate_old_territories",
     "sweep_zombie_leads",
     "task_drain_dead_letter",
     "task_sweep_stale",
