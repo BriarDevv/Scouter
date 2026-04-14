@@ -82,6 +82,14 @@ celery_app.conf.update(
             "task": "app.workers.weekly_tasks.task_weekly_report",
             "schedule": crontab(day_of_week=0, hour=20, minute=0),
         },
+        "weekly-growth-snapshot": {
+            "task": "app.workers.growth_tasks.task_snapshot_territory_performance",
+            "schedule": crontab(day_of_week=0, hour=21, minute=0),
+        },
+        "daily-growth-cycle": {
+            "task": "app.workers.growth_tasks.task_growth_cycle",
+            "schedule": crontab(hour=10, minute=0),  # daily at 10am
+        },
         "scheduled-territory-crawl": {
             "task": "app.workers.crawl_tasks.task_scheduled_crawl",
             "schedule": crontab(day_of_week="1,4", hour=8, minute=0),  # Mon+Thu 8am
@@ -102,6 +110,7 @@ import app.workers.auto_pipeline_tasks  # noqa: E402, F401 — register auto pip
 import app.workers.batch_tasks  # noqa: E402, F401 — register batch tasks
 import app.workers.brief_tasks  # noqa: E402, F401 — register brief tasks
 import app.workers.crawl_tasks  # noqa: E402, F401 — register crawl tasks
+import app.workers.growth_tasks  # noqa: E402, F401 — register growth snapshot beat task
 import app.workers.inbox_tasks  # noqa: E402, F401 — register inbox sync beat task
 import app.workers.janitor  # noqa: E402, F401 — register janitor beat task
 import app.workers.metrics  # noqa: E402, F401 — register celery signal metrics
