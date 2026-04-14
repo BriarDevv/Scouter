@@ -28,8 +28,28 @@ limiter = Limiter(key_func=get_remote_address, default_limits=[settings.API_RATE
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("app_starting", env=settings.APP_ENV)
+    _run_startup_recovery_sweep()
     yield
     logger.info("app_shutting_down")
+
+
+def _run_startup_recovery_sweep() -> None:
+    """Run the janitor sweep once at startup so the API does not wait up to
+    15 minutes for the beat-scheduled tick before recovering crashed tasks.
+
+    Failure must never tumble the app arrancar: we log and move on.
+    """
+    try:
+        from app.workers.janitor import sweep_stale_tasks
+
+        result = sweep_stale_tasks()
+        logger.info("startup_recovery_sweep_done", **result)
+    except Exception as exc:
+        logger.error(
+            "startup_recovery_sweep_failed",
+            error=str(exc),
+            exc_type=type(exc).__name__,
+        )
 
 
 app = FastAPI(
