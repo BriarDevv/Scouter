@@ -21,7 +21,13 @@ _MIN_AGE_MINUTES = 10
     retry_backoff_max=60,
 )
 def task_auto_process_new_leads(self):
-    """Beat task: dispatch full pipeline for leads that are new and at least 10 minutes old."""
+    """Beat task: dispatch full pipeline for leads that are new and at least 10 minutes old.
+
+    When no eligible leads are present and `auto_replenish_enabled` is set,
+    this dispatches a crawl for the least-recently-crawled active,
+    non-saturated territory. Keeps the pipeline fed outside the cron-scheduled
+    Mon/Thu 8am crawl window.
+    """
     from app.models.lead import Lead
     from app.models.settings import OperationalSettings
     from app.workers.pipeline_tasks import task_full_pipeline
@@ -48,6 +54,10 @@ def task_auto_process_new_leads(self):
         )
 
         if not leads:
+            if getattr(settings, "auto_replenish_enabled", False):
+                replenish_result = _trigger_auto_replenish(db)
+                if replenish_result is not None:
+                    return replenish_result
             logger.info("auto_pipeline_no_eligible_leads")
             return {"status": "ok", "dispatched": 0}
 
@@ -65,3 +75,47 @@ def task_auto_process_new_leads(self):
 
         logger.info("auto_pipeline_dispatched", count=dispatched)
         return {"status": "ok", "dispatched": dispatched}
+
+
+def _trigger_auto_replenish(db) -> dict | None:
+    """Dispatch a crawl for the least-recently-crawled active territory.
+
+    Returns the beat-task result payload if a crawl was dispatched, or None
+    if no eligible territory exists (caller falls through to the no-leads
+    payload).
+    """
+    from sqlalchemy import asc, nulls_first
+
+    from app.models.territory import Territory
+
+    next_territory = (
+        db.query(Territory)
+        .filter(Territory.is_active.is_(True), Territory.is_saturated.is_(False))
+        .order_by(nulls_first(asc(Territory.last_crawled_at)))
+        .first()
+    )
+    if next_territory is None:
+        logger.info("auto_replenish_no_territory_available")
+        return None
+
+    # Import lazily so the module stays importable without celery task
+    # registry in test contexts.
+    from app.workers.crawl_tasks import task_crawl_territory
+
+    try:
+        task_crawl_territory.delay(str(next_territory.id))
+    except Exception as exc:
+        logger.warning(
+            "auto_replenish_dispatch_failed",
+            territory_id=str(next_territory.id),
+            error=str(exc),
+        )
+        return None
+
+    logger.info(
+        "auto_replenish_triggered",
+        territory_id=str(next_territory.id),
+        territory_name=next_territory.name,
+        last_crawled_at=str(next_territory.last_crawled_at),
+    )
+    return {"status": "replenish_triggered", "territory_id": str(next_territory.id)}

@@ -99,6 +99,12 @@ class OperationalSettings(Base):
         Boolean, default=False, server_default="false"
     )
 
+    # ── Auto-replenish: when no NEW leads are left, dispatch a territory crawl
+    # Keeps the pipeline fed outside the Mon/Thu 8am scheduled crawl window.
+    auto_replenish_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default="true", nullable=False
+    )
+
     # ── Resource mode — overrides LOW_RESOURCE_MODE env var when set
     low_resource_mode: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
