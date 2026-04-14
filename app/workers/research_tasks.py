@@ -1,12 +1,14 @@
 """Celery tasks for lead research."""
 
 import uuid
+from datetime import UTC, datetime, timedelta
 
 from celery.exceptions import SoftTimeLimitExceeded
 
 from app.core.logging import get_logger
 from app.db.session import SessionLocal
 from app.models.lead import Lead
+from app.models.research_report import LeadResearchReport, ResearchStatus
 from app.services.pipeline.task_tracking_service import (
     mark_task_failed,
     tracked_task_step,
@@ -50,6 +52,44 @@ def task_research_lead(
                 current_step="research",
             ) as tracker,
         ):
+            # Idempotency guard: if a completed research report exists within
+            # the recency window, skip Scout + HTTP research and chain straight
+            # to brief generation. Prevents duplicate LLM cost / Playwright
+            # runs on pipeline re-entry.
+            recent_cutoff = datetime.now(UTC) - timedelta(hours=24)
+            existing = (
+                db.query(LeadResearchReport)
+                .filter(
+                    LeadResearchReport.lead_id == uuid.UUID(lead_id),
+                    LeadResearchReport.status == ResearchStatus.COMPLETED,
+                    LeadResearchReport.updated_at >= recent_cutoff,
+                )
+                .first()
+            )
+            if existing:
+                logger.info(
+                    "research_skipped_idempotent",
+                    lead_id=lead_id,
+                    existing_report_id=str(existing.id),
+                    existing_updated_at=str(existing.updated_at),
+                )
+                if pipeline_run_id:
+                    try:
+                        from app.workers.brief_tasks import task_generate_brief
+
+                        task_generate_brief.delay(
+                            lead_id, pipeline_run_id, correlation_id=correlation_id
+                        )
+                    except Exception as chain_exc:
+                        logger.warning(
+                            "brief_chain_failed",
+                            lead_id=lead_id,
+                            error=str(chain_exc),
+                        )
+                result = {"status": "skipped", "reason": "recent_research_exists"}
+                tracker.succeed(result)
+                return result
+
             from app.services.research.research_service import run_research
 
             # Try Scout agent first (deep investigation with tools)

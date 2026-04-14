@@ -1,10 +1,11 @@
 """Tests for idempotency guards in pipeline tasks."""
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 from app.models.lead import Lead, LeadStatus
+from app.models.research_report import LeadResearchReport, ResearchStatus
 from app.models.task_tracking import PipelineRun
 
 
@@ -219,3 +220,89 @@ def test_analyze_skip_non_high_chains_to_draft(db):
             pipeline_run_id=pipeline_run_id,
             correlation_id=correlation_id,
         )
+
+
+def _make_lead_with_research(
+    db, *, research_updated_at: datetime
+) -> tuple[Lead, LeadResearchReport]:
+    """Helper: create lead + completed research report pinned to a timestamp."""
+    lead = Lead(
+        id=uuid.uuid4(),
+        business_name="Research Idempotency Biz",
+        city="Buenos Aires",
+        status=LeadStatus.QUALIFIED,
+    )
+    db.add(lead)
+    db.commit()
+    db.refresh(lead)
+
+    report = LeadResearchReport(
+        lead_id=lead.id,
+        status=ResearchStatus.COMPLETED,
+    )
+    db.add(report)
+    db.commit()
+    # Force updated_at retroactively (server_default set it to NOW; tests need control)
+    report.updated_at = research_updated_at
+    db.commit()
+    db.refresh(report)
+    return lead, report
+
+
+def test_research_skips_when_recent_completed_report_exists(db):
+    """task_research_lead must skip Scout+HTTP research if a completed report exists <24h."""
+    lead, _report = _make_lead_with_research(
+        db,
+        research_updated_at=datetime.now(UTC) - timedelta(hours=1),
+    )
+    correlation_id = str(uuid.uuid4())
+    pipeline_run_id = _create_pipeline_run(db, lead.id, correlation_id)
+
+    with (
+        patch("app.services.research.research_service.run_research") as mock_run_research,
+        patch("app.workers.brief_tasks.task_generate_brief.delay") as mock_brief_delay,
+    ):
+        from app.workers.research_tasks import task_research_lead
+
+        result = task_research_lead(
+            str(lead.id),
+            pipeline_run_id=pipeline_run_id,
+            correlation_id=correlation_id,
+        )
+
+    assert result == {"status": "skipped", "reason": "recent_research_exists"}
+    mock_run_research.assert_not_called()
+    # Brief must still be chained so the pipeline doesn't stall.
+    mock_brief_delay.assert_called_once_with(
+        str(lead.id), pipeline_run_id, correlation_id=correlation_id
+    )
+
+
+def test_research_proceeds_when_recent_report_is_older_than_24h(db):
+    """task_research_lead must proceed normally if existing report is stale (>24h)."""
+    lead, _report = _make_lead_with_research(
+        db,
+        research_updated_at=datetime.now(UTC) - timedelta(hours=48),
+    )
+    correlation_id = str(uuid.uuid4())
+    pipeline_run_id = _create_pipeline_run(db, lead.id, correlation_id)
+
+    # If the guard is correctly bypassed, run_research is invoked. We short-circuit
+    # it with None to avoid running the real service.
+    with (
+        patch("app.services.research.research_service.run_research", return_value=None),
+        patch("app.workers.brief_tasks.task_generate_brief.delay"),
+        patch(
+            "app.agent.research_agent.run_scout_investigation", side_effect=Exception("scout off")
+        ),
+    ):
+        from app.workers.research_tasks import task_research_lead
+
+        result = task_research_lead(
+            str(lead.id),
+            pipeline_run_id=pipeline_run_id,
+            correlation_id=correlation_id,
+        )
+
+    # Guard bypassed -> result must NOT be the idempotent-skip payload.
+    assert result != {"status": "skipped", "reason": "recent_research_exists"}
