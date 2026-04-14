@@ -125,21 +125,11 @@ def resume_pipeline_run(pipeline_run_id: uuid.UUID, db: DbSession):
     run_id = str(run.id)
     correlation_id = run.correlation_id
 
-    # Determine the next step based on current_step
-    step = run.current_step or "pipeline_dispatch"
-    step_chain = {
-        "pipeline_dispatch": "task_enrich_lead",
-        "enrichment": "task_score_lead",
-        "scoring": "task_analyze_lead",
-        "analysis": "task_analyze_lead",  # re-trigger analysis to decide branch
-        "research": "task_generate_brief",
-        "scout": "task_generate_brief",  # Scout stuck → skip to brief
-        "brief_generation": "task_review_brief",
-        "brief_review": "task_generate_draft",
-        "draft_generation": None,  # terminal
-    }
+    # Determine the next step based on current_step (SSOT shared with janitor).
+    from app.workflows.step_chain import PIPELINE_STEP_CHAIN
 
-    next_task_name = step_chain.get(step)
+    step = run.current_step or "pipeline_dispatch"
+    next_task_name = PIPELINE_STEP_CHAIN.get(step)
     if next_task_name is None:
         raise HTTPException(status_code=400, detail=f"No next step after: {step}")
 
