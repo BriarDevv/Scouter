@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from typing import cast
 
 from app.llm.contracts import GrowthAction, GrowthDecision
 from app.llm.invocations.support import get_client_module
@@ -72,4 +73,4 @@ def decide_growth_strategy(
 
     if result.parsed is None:
         return _growth_decision_fallback(state_summary)
-    return result.parsed
+    return cast(GrowthDecision, result.parsed)
