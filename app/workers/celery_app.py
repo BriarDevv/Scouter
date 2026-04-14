@@ -102,6 +102,10 @@ celery_app.conf.update(
             "task": "app.workers.inbox_tasks.task_sync_inbound_mail",
             "schedule": crontab(minute="*/15"),  # every 15 minutes
         },
+        "drain-dead-letter": {
+            "task": "app.workers.janitor.task_drain_dead_letter",
+            "schedule": 3600.0,  # every hour — replays failed pipeline tasks
+        },
     },
 )
 
