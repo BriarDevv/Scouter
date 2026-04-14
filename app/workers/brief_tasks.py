@@ -54,6 +54,48 @@ def task_generate_brief(
                 current_step="brief_generation",
             ) as tracker,
         ):
+            # Idempotency guard: if a brief already exists in a terminal-or-
+            # reviewed state for this lead, skip generation and chain straight
+            # to the review step (or to draft if already reviewed).
+            from app.models.commercial_brief import BriefStatus, CommercialBrief
+
+            existing = db.query(CommercialBrief).filter_by(lead_id=uuid.UUID(lead_id)).first()
+            if existing and existing.status in (BriefStatus.GENERATED, BriefStatus.REVIEWED):
+                logger.info(
+                    "brief_skipped_idempotent",
+                    lead_id=lead_id,
+                    existing_brief_id=str(existing.id),
+                    existing_status=existing.status.value,
+                )
+                # Chain forward so the pipeline doesn't stall:
+                # - GENERATED -> chain to review
+                # - REVIEWED  -> chain directly to draft
+                # Guarded by pipeline_run_id so direct invocations (CLI /
+                # operator retry / tests) don't spawn orphan task chains
+                # with no pipeline_run context.
+                if pipeline_run_id:
+                    try:
+                        if existing.status == BriefStatus.GENERATED:
+                            task_review_brief.delay(lead_id, pipeline_run_id)
+                        else:
+                            from app.workers.pipeline_tasks import task_generate_draft
+
+                            task_generate_draft.delay(lead_id, pipeline_run_id)
+                    except Exception as chain_exc:
+                        logger.warning(
+                            "brief_chain_after_skip_failed",
+                            lead_id=lead_id,
+                            error=str(chain_exc),
+                        )
+                result = {
+                    "status": "skipped",
+                    "reason": "brief_exists",
+                    "lead_id": lead_id,
+                    "existing_status": existing.status.value,
+                }
+                tracker.succeed(result)
+                return result
+
             from app.services.research.brief_service import generate_brief
 
             brief = generate_brief(db, uuid.UUID(lead_id))

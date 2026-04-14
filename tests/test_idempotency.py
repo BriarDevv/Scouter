@@ -306,3 +306,100 @@ def test_research_proceeds_when_recent_report_is_older_than_24h(db):
 
     # Guard bypassed -> result must NOT be the idempotent-skip payload.
     assert result != {"status": "skipped", "reason": "recent_research_exists"}
+
+
+def _make_lead_with_brief(db, *, brief_status):
+    """Helper: create lead + commercial brief in a given status."""
+    from app.models.commercial_brief import CommercialBrief
+
+    lead = Lead(
+        id=uuid.uuid4(),
+        business_name="Brief Idempotency Biz",
+        city="Buenos Aires",
+        status=LeadStatus.QUALIFIED,
+    )
+    db.add(lead)
+    db.commit()
+    db.refresh(lead)
+
+    brief = CommercialBrief(lead_id=lead.id, status=brief_status)
+    db.add(brief)
+    db.commit()
+    db.refresh(brief)
+    return lead, brief
+
+
+def test_brief_generation_skipped_when_generated_brief_exists(db):
+    """task_generate_brief must skip if CommercialBrief.status == GENERATED."""
+    from app.models.commercial_brief import BriefStatus
+
+    lead, _brief = _make_lead_with_brief(db, brief_status=BriefStatus.GENERATED)
+    correlation_id = str(uuid.uuid4())
+    pipeline_run_id = _create_pipeline_run(db, lead.id, correlation_id)
+
+    with (
+        patch("app.services.research.brief_service.generate_brief") as mock_generate,
+        patch("app.workers.brief_tasks.task_review_brief.delay") as mock_review_delay,
+    ):
+        from app.workers.brief_tasks import task_generate_brief
+
+        result = task_generate_brief(
+            str(lead.id),
+            pipeline_run_id=pipeline_run_id,
+            correlation_id=correlation_id,
+        )
+
+    assert result["status"] == "skipped"
+    assert result["reason"] == "brief_exists"
+    assert result["existing_status"] == "generated"
+    mock_generate.assert_not_called()
+    # GENERATED brief -> chain to review
+    mock_review_delay.assert_called_once_with(str(lead.id), pipeline_run_id)
+
+
+def test_brief_generation_skipped_reviewed_brief_chains_to_draft(db):
+    """task_generate_brief with REVIEWED brief must chain to draft directly."""
+    from app.models.commercial_brief import BriefStatus
+
+    lead, _brief = _make_lead_with_brief(db, brief_status=BriefStatus.REVIEWED)
+    correlation_id = str(uuid.uuid4())
+    pipeline_run_id = _create_pipeline_run(db, lead.id, correlation_id)
+
+    with (
+        patch("app.services.research.brief_service.generate_brief") as mock_generate,
+        patch("app.workers.pipeline_tasks.task_generate_draft.delay") as mock_draft_delay,
+    ):
+        from app.workers.brief_tasks import task_generate_brief
+
+        result = task_generate_brief(
+            str(lead.id),
+            pipeline_run_id=pipeline_run_id,
+            correlation_id=correlation_id,
+        )
+
+    assert result["status"] == "skipped"
+    assert result["existing_status"] == "reviewed"
+    mock_generate.assert_not_called()
+    mock_draft_delay.assert_called_once_with(str(lead.id), pipeline_run_id)
+
+
+def test_brief_generation_proceeds_when_brief_is_pending(db):
+    """task_generate_brief with PENDING brief must still invoke generate_brief."""
+    from app.models.commercial_brief import BriefStatus
+
+    lead, _brief = _make_lead_with_brief(db, brief_status=BriefStatus.PENDING)
+    correlation_id = str(uuid.uuid4())
+    pipeline_run_id = _create_pipeline_run(db, lead.id, correlation_id)
+
+    with patch("app.services.research.brief_service.generate_brief", return_value=None):
+        from app.workers.brief_tasks import task_generate_brief
+
+        result = task_generate_brief(
+            str(lead.id),
+            pipeline_run_id=pipeline_run_id,
+            correlation_id=correlation_id,
+        )
+
+    # Guard bypassed -> we hit the generate_brief path (which returns None here),
+    # so result is the failure payload, NOT the idempotent-skip payload.
+    assert result.get("reason") != "brief_exists"
