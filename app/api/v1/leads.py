@@ -126,6 +126,45 @@ def patch_status(
     return lead
 
 
+@router.get("/{lead_id}/timeline")
+def get_lead_timeline(
+    lead_id: uuid.UUID,
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    """Return the immutable LeadEvent timeline for a lead, ordered newest first."""
+    from sqlalchemy import func, select
+
+    from app.models.lead_event import LeadEvent
+    from app.schemas.lead_event import LeadEventListOut, LeadEventOut
+
+    lead = db.get(Lead, lead_id)
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    total = db.execute(
+        select(func.count()).select_from(LeadEvent).where(LeadEvent.lead_id == lead_id)
+    ).scalar_one()
+    rows = (
+        db.execute(
+            select(LeadEvent)
+            .where(LeadEvent.lead_id == lead_id)
+            .order_by(LeadEvent.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        .scalars()
+        .all()
+    )
+    return LeadEventListOut(
+        items=[LeadEventOut.model_validate(r) for r in rows],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
 @router.get("/{lead_id}/research", response_model=ResearchReportResponse)
 def get_research_report(lead_id: uuid.UUID, db: Session = Depends(get_db)):
     """Get research report for a lead."""
