@@ -1,12 +1,18 @@
 """Territory model — groups cities into named territories for geographic analysis."""
 
+from __future__ import annotations
+
 import uuid
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String, Text, Uuid
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.territory_performance import TerritoryPerformance
 
 
 class Territory(Base):
@@ -32,4 +38,10 @@ class Territory(Base):
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
         nullable=False,
+    )
+
+    performance_snapshots: Mapped[list[TerritoryPerformance]] = relationship(  # noqa: F821
+        "TerritoryPerformance",
+        back_populates="territory",
+        cascade="all, delete-orphan",
     )

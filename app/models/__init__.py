@@ -10,6 +10,7 @@ from app.models.commercial_brief import (
 )
 from app.models.conversation import Conversation, Message, ToolCall
 from app.models.dead_letter import DeadLetterTask
+from app.models.growth_decision import GrowthDecisionLog
 from app.models.inbound_mail import EmailThread, InboundMailSyncRun, InboundMessage
 from app.models.integration_credentials import IntegrationCredentials
 from app.models.investigation_thread import InvestigationThread
@@ -33,6 +34,7 @@ from app.models.task_tracking import PipelineRun, TaskRun
 from app.models.telegram_audit import TelegramAuditLog
 from app.models.telegram_credentials import TelegramCredentials
 from app.models.territory import Territory
+from app.models.territory_performance import TerritoryPerformance
 from app.models.weekly_report import WeeklyReport
 from app.models.whatsapp_audit import WhatsAppAuditLog
 from app.models.whatsapp_credentials import WhatsAppCredentials
@@ -60,6 +62,7 @@ __all__ = [
     "TaskRun",
     "Notification",
     "Territory",
+    "TerritoryPerformance",
     "TelegramCredentials",
     "WhatsAppCredentials",
     "IntegrationCredentials",
@@ -87,4 +90,5 @@ __all__ = [
     "OutcomeSnapshot",
     "WeeklyReport",
     "DeadLetterTask",
+    "GrowthDecisionLog",
 ]
