@@ -117,6 +117,14 @@ def test_services_domain_packages_do_not_cross_import_each_other():
         "app/services/settings/setup_service.py: imports dashboard",
         "app/services/reviews/review_service.py: imports settings",
         "app/services/comms/kapso_service.py: imports deploy",
+        # Slack Incoming Webhook alerts (US-001 post-hardening). Reads
+        # slack_webhook_url from OperationalSettings via get_cached_settings.
+        "app/services/comms/slack_service.py: imports settings",
+        # Lead event emission on pipeline step success (US-005
+        # post-hardening). mark_task_succeeded in pipeline calls
+        # leads.event_service.emit_lead_event to write the immutable
+        # transition log.
+        "app/services/pipeline/task_tracking_service.py: imports leads",
     }
 
     for domain in sorted(domain_dirs):

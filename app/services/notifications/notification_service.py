@@ -103,6 +103,7 @@ def create_notification(
     # Dispatch to external channels if thresholds met
     _maybe_dispatch_whatsapp(db, notif)
     _maybe_dispatch_telegram(db, notif)
+    _maybe_dispatch_slack(db, notif)
 
     db.flush()
     db.refresh(notif)
@@ -289,6 +290,39 @@ def _maybe_dispatch_whatsapp(db: Session, notif: Notification) -> None:
             **(notif.channel_state or {}),
             "whatsapp": "failed",
             "whatsapp_error": str(exc)[:200],
+        }
+
+
+def _maybe_dispatch_slack(db: Session, notif: Notification) -> None:
+    """POST a Slack alert if notification meets severity threshold + webhook configured."""
+    settings = _get_ops_settings(db)
+    if not getattr(settings, "slack_alerts_enabled", False):
+        return
+
+    min_sev = getattr(settings, "slack_min_severity", "high")
+    if _SEV_ORDER.get(notif.severity.value, 0) < _SEV_ORDER.get(min_sev, 2):
+        return
+
+    # Anti-loop: never send Slack alert about Slack failure.
+    if notif.type == "slack_delivery_failed":
+        return
+
+    try:
+        from app.services.comms.slack_service import send_alert
+
+        result = send_alert(
+            db, title=notif.title, message=notif.message, severity=notif.severity.value
+        )
+        notif.channel_state = {
+            **(notif.channel_state or {}),
+            "slack": "sent" if result else "failed",
+        }
+    except Exception as exc:
+        logger.error("slack_dispatch_failed", error=str(exc))
+        notif.channel_state = {
+            **(notif.channel_state or {}),
+            "slack": "failed",
+            "slack_error": str(exc)[:200],
         }
 
 

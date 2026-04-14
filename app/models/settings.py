@@ -84,6 +84,15 @@ class OperationalSettings(Base):
     # ── Telegram alerts (non-secret config; secrets in TelegramCredentials)
     telegram_alerts_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
+    # ── Slack alerts (Incoming Webhook — no OAuth / bot token)
+    slack_alerts_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+    slack_webhook_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    slack_min_severity: Mapped[str] = mapped_column(
+        String, default="high", server_default="high", nullable=False
+    )
+
     # ── WhatsApp outreach (draft generation in pipeline)
     whatsapp_outreach_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
