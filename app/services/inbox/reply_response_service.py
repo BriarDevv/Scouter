@@ -93,6 +93,13 @@ def get_inbound_message_with_reply_context(
 def generate_reply_assistant_draft(
     db: Session, message_id: uuid.UUID
 ) -> ReplyAssistantDraft | None:
+    # Respect the reply_assistant_enabled toggle from operational settings.
+    from app.services.settings.operational_settings_service import get_or_create
+
+    ops = get_or_create(db)
+    if not ops.reply_assistant_enabled:
+        return None
+
     message = get_inbound_message_with_reply_context(db, message_id)
     if not message:
         return None
