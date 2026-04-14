@@ -24,6 +24,11 @@ class LLMInvocationMetadata:
     target_type: str | None = None
     target_id: str | None = None
     tags: dict[str, str] = field(default_factory=dict)
+    # Cost tracking — populated from Ollama response eval counts. Cost is
+    # computed downstream via app.llm.cost_estimation.estimate_usd_cost.
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    usd_cost_estimated: float | None = None
 
     def to_dict(self) -> dict[str, object]:
         return asdict(self)

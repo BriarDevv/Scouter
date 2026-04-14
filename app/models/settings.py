@@ -117,6 +117,11 @@ class OperationalSettings(Base):
     # ── Resource mode — overrides LOW_RESOURCE_MODE env var when set
     low_resource_mode: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
+    # ── Daily LLM budget kill-switch. If sum of usd_cost_estimated across
+    # llm_invocations for today exceeds this value, pipeline dispatch stops.
+    # None means unlimited.
+    daily_usd_budget: Mapped[float | None] = mapped_column(Float, nullable=True)
+
     # ── Pricing matrix (JSON string for budget estimation)
     pricing_matrix: Mapped[str | None] = mapped_column(String, nullable=True)
 

@@ -7,6 +7,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     Enum,
+    Float,
     Index,
     Integer,
     String,
@@ -51,6 +52,11 @@ class LLMInvocation(Base):
     degraded: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     parse_valid: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Cost tracking — populated from Ollama response eval counts; nullable for
+    # historical rows predating this column.
+    prompt_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    completion_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    usd_cost_estimated: Mapped[float | None] = mapped_column(Float, nullable=True)
     target_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
     target_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     correlation_id: Mapped[str | None] = mapped_column(String(64), nullable=True)

@@ -586,6 +586,34 @@ def task_full_pipeline(
                 current_step="pipeline_dispatch",
             ) as tracker,
         ):
+            # Daily LLM budget kill-switch — skip dispatch if today's spend
+            # has exceeded the configured limit.
+            from app.services.pipeline.cost_gate import check_daily_budget
+
+            if not check_daily_budget(db):
+                from app.models.notification import NotificationCategory, NotificationSeverity
+                from app.services.notifications.notification_emitter import _emit
+
+                _emit(
+                    db,
+                    type="daily_budget_exceeded",
+                    category=NotificationCategory.SYSTEM,
+                    severity=NotificationSeverity.CRITICAL,
+                    title="Daily LLM budget exceeded",
+                    message=(
+                        "Pipeline dispatch skipped: today's LLM spend has reached the daily budget."
+                    ),
+                    dedup_key=f"daily_budget_exceeded:{uuid.UUID(lead_id).hex[:8]}",
+                )
+                payload = {
+                    "status": "skipped",
+                    "reason": "daily_budget_exceeded",
+                    "lead_id": lead_id,
+                }
+                tracker.succeed(payload, pipeline_status="skipped" if pipeline_uuid else None)
+                logger.warning("pipeline_skipped_budget_exceeded", lead_id=lead_id)
+                return payload
+
             # Dispatch only the first step; each step chains forward.
             task_enrich_lead.delay(
                 lead_id,

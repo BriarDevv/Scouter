@@ -58,6 +58,8 @@ class _ChatCompletion:
     text: str
     model: str
     latency_ms: int
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
 
 
 def _extract_json(text: str) -> dict:
@@ -147,6 +149,9 @@ def _persist_invocation(metadata: LLMInvocationMetadata, db: "Session | None" = 
                 degraded=metadata.degraded,
                 parse_valid=metadata.parse_valid,
                 latency_ms=metadata.latency_ms,
+                prompt_tokens=metadata.prompt_tokens,
+                completion_tokens=metadata.completion_tokens,
+                usd_cost_estimated=metadata.usd_cost_estimated,
                 target_type=metadata.target_type,
                 target_id=metadata.target_id,
                 correlation_id=_context_value(context, "correlation_id"),
@@ -193,6 +198,8 @@ def _record_public_invocation(
     tags: Mapping[str, object] | None = None,
     persist: bool = False,
     error: str | None = None,
+    prompt_tokens: int | None = None,
+    completion_tokens: int | None = None,
 ) -> None:
     role_value = _role_value(role)
     if model is None:
@@ -211,6 +218,18 @@ def _record_public_invocation(
     if parse_valid is None:
         parse_valid = not fallback_used
 
+    from app.llm.cost_estimation import estimate_usd_cost
+
+    # Preserve 0.0 as a real value — it means "priced but compute was trivial".
+    # Only store None when we lack pricing info (unknown model or missing tokens),
+    # in which case estimate_usd_cost returns 0.0 as a sentinel. Map that sentinel
+    # to None here so NULL in the DB means "unknown cost" rather than "cost=0".
+    _raw_cost = estimate_usd_cost(model, prompt_tokens, completion_tokens)
+    if prompt_tokens is None and completion_tokens is None or model is None:
+        usd_cost_estimated = None
+    else:
+        usd_cost_estimated = _raw_cost  # may be 0.0 for billed-zero cases
+
     metadata = LLMInvocationMetadata(
         function_name=function_name,
         prompt_id=prompt_id or function_name,
@@ -226,6 +245,9 @@ def _record_public_invocation(
         target_type=target_type,
         target_id=target_id,
         tags=_normalize_tags(tags),
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        usd_cost_estimated=usd_cost_estimated,
     )
 
     record_invocation(metadata)
@@ -322,6 +344,10 @@ def _chat_completion(
     data = resp.json()
     message = data.get("message", {})
     response_text = message.get("content", "")
+    # Ollama /api/chat returns prompt_eval_count (input) + eval_count (output)
+    # at the root of the response payload. Missing keys → None.
+    prompt_tokens = data.get("prompt_eval_count")
+    completion_tokens = data.get("eval_count")
 
     if not response_text.strip():
         raise LLMError("Empty response from Ollama")
@@ -332,9 +358,17 @@ def _chat_completion(
         model=model,
         response_len=len(response_text),
         latency_ms=latency_ms,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
         structured_output=bool(format_schema),
     )
-    return _ChatCompletion(text=response_text, model=model, latency_ms=latency_ms)
+    return _ChatCompletion(
+        text=response_text,
+        model=model,
+        latency_ms=latency_ms,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+    )
 
 
 def _call_ollama_chat(
