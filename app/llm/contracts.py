@@ -234,6 +234,25 @@ class BatchReviewValidationResult(BaseModel):
     reviewer_notes: str = ""
 
 
+class GrowthAction(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    territory_id: str | None = None
+    new_cities: list[str] | None = None
+    new_categories: list[str] | None = None
+    new_source: str | None = None
+
+
+class GrowthDecision(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    decision: Literal["expand", "niche", "source"]
+    reason: str
+    action: GrowthAction
+    confidence: float = Field(ge=0, le=1)
+    next_step: str
+
+
 class TextInvocationResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 

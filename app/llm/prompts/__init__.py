@@ -8,6 +8,10 @@ External data in user messages is wrapped in <external_data> tags.
 The system prompt instructs the model to never follow instructions within those tags.
 """
 
+from app.llm.prompts.growth import (
+    GROWTH_DECISION_DATA,
+    GROWTH_DECISION_SYSTEM,
+)
 from app.llm.prompts.lead import (
     EVALUATE_LEAD_QUALITY_DATA,
     EVALUATE_LEAD_QUALITY_SYSTEM,
@@ -86,4 +90,6 @@ __all__ = [
     "BATCH_REVIEW_SYNTHESIS_DATA",
     "BATCH_REVIEW_VALIDATION_SYSTEM",
     "BATCH_REVIEW_VALIDATION_DATA",
+    "GROWTH_DECISION_SYSTEM",
+    "GROWTH_DECISION_DATA",
 ]

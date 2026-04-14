@@ -11,6 +11,7 @@ from app.llm.contracts import (
     CommercialBriefResult,
     CommercialBriefReviewResult,
     DossierResult,
+    GrowthDecision,
     InboundReplyReviewResult,
     LeadQualityResult,
     LeadReviewResult,
@@ -40,6 +41,8 @@ from app.llm.prompts import (
     GENERATE_REPLY_ASSISTANT_DRAFT_SYSTEM,
     GENERATE_WHATSAPP_DRAFT_DATA,
     GENERATE_WHATSAPP_DRAFT_SYSTEM,
+    GROWTH_DECISION_DATA,
+    GROWTH_DECISION_SYSTEM,
     REVIEW_COMMERCIAL_BRIEF_DATA,
     REVIEW_COMMERCIAL_BRIEF_SYSTEM,
     REVIEW_INBOUND_REPLY_DATA,
@@ -212,6 +215,17 @@ COMMERCIAL_BRIEF_REVIEW_PROMPT = PromptDefinition(
 )
 
 
+GROWTH_DECISION_PROMPT = PromptDefinition(
+    prompt_id="growth_decision.generate",
+    prompt_version="v1",
+    owner="app.services.growth.growth_service",
+    system_prompt=GROWTH_DECISION_SYSTEM,
+    user_prompt_template=GROWTH_DECISION_DATA,
+    response_model=GrowthDecision,
+    tags=("growth", "agent"),
+)
+
+
 PROMPT_REGISTRY: dict[str, PromptDefinition[BaseModel]] = {
     BUSINESS_SUMMARY_PROMPT.prompt_id: BUSINESS_SUMMARY_PROMPT,
     LEAD_QUALITY_PROMPT.prompt_id: LEAD_QUALITY_PROMPT,
@@ -226,6 +240,7 @@ PROMPT_REGISTRY: dict[str, PromptDefinition[BaseModel]] = {
     INBOUND_REPLY_REVIEW_PROMPT.prompt_id: INBOUND_REPLY_REVIEW_PROMPT,
     COMMERCIAL_BRIEF_PROMPT.prompt_id: COMMERCIAL_BRIEF_PROMPT,
     COMMERCIAL_BRIEF_REVIEW_PROMPT.prompt_id: COMMERCIAL_BRIEF_REVIEW_PROMPT,
+    GROWTH_DECISION_PROMPT.prompt_id: GROWTH_DECISION_PROMPT,
     "batch_review.synthesis": PromptDefinition(
         prompt_id="batch_review.synthesis",
         prompt_version="v1",
