@@ -1,6 +1,9 @@
 # Scouter
 
-Private lead prospecting system for web development services with an AI Agent OS.
+Private lead prospecting system for web development services — an LLM orchestration
+pipeline with two specialized agents (Mote, Scout) and two stateless LLM roles
+(Executor, Reviewer). See [ADR-004](docs/architecture/adrs/ADR-004-honest-agent-framing.md)
+for the framing rationale.
 
 Detects businesses that need web development, enriches leads, scores them, runs AI research and outreach, and manages client conversations — with human-in-the-loop control at every step.
 
@@ -21,18 +24,23 @@ Detects businesses that need web development, enriches leads, scores them, runs 
 | Services | 44 services in 9 subdomains |
 | Agent OS docs | 9 canonical docs |
 
-## AI Agent OS
+## Agents and LLM Roles
 
-4 AI roles work as a team through the pipeline:
+Scouter runs **2 genuine agents** (tool-using loops) plus **2 stateless LLM roles**
+(one-shot invocations under different prompts). The distinction matters: only the
+agents make branching decisions across multiple tool calls; the roles are
+specialized prompt configurations of the underlying model fleet.
 
-| Role | Model | What it does |
-| --- | --- | --- |
-| **Mote** (Agent) | hermes3:8b | Operator chat + WhatsApp client closer |
-| **Scout** (Agent) | qwen3.5:9b | Deep web research with Playwright |
-| **Executor** (Model) | qwen3.5:9b | Generates analysis, briefs, drafts |
-| **Reviewer** (Model) | qwen3.5:27b | Quality gate with structured corrections |
+| Name | Kind | Model | What it does |
+| --- | --- | --- | --- |
+| **Mote** | Agent (loops, ~58 tools) | hermes3:8b | Operator chat + WhatsApp client closer |
+| **Scout** | Agent (loops, Playwright tools) | qwen3.5:9b | Deep web research with browser automation |
+| **Executor** | LLM role (stateless) | qwen3.5:9b | Generates analysis, briefs, drafts |
+| **Reviewer** | LLM role (stateless) | qwen3.5:27b | Structured-corrections quality pass |
 
-See [docs/agents/hierarchy.md](docs/agents/hierarchy.md) for full team structure.
+See [docs/agents/hierarchy.md](docs/agents/hierarchy.md) for the full team structure
+and [ADR-004](docs/architecture/adrs/ADR-004-honest-agent-framing.md) for the
+rationale behind this framing.
 
 ## Stack
 

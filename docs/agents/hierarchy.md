@@ -1,6 +1,24 @@
 # Agent OS Hierarchy
 
-**Status:** Current as of 2026-04-04
+**Status:** Current as of 2026-04-13
+
+## Agent vs LLM Role
+
+Scouter uses the term "agent" strictly for components that **loop over tool calls
+and make branching decisions** (Mote, Scout). Components that do a single
+prompted call to the model fleet (Executor, Reviewer) are **LLM roles**, not
+agents — they don't have state, don't call tools, don't branch.
+
+This distinction matters because:
+
+- Agents can reason across multiple observations; roles cannot.
+- Agents can fail in ways that require loop termination and timeouts; roles
+  return once or fail once.
+- Marketing "4 AI agents" when the system has 2 agents + 2 roles is
+  misleading to operators who expect emergent multi-agent behaviour.
+
+See [ADR-004](../architecture/adrs/ADR-004-honest-agent-framing.md) for the
+decision rationale.
 
 ## Team Structure
 
